@@ -30,6 +30,7 @@ public static class SyntheticJob
             BitDepth = cell.BitDepth,
             Profile = cell.Profile,
             PixelFormat = cell.PixelFormat ?? (cell.BitDepth > 8 ? "yuv420p10le" : "yuv420p"),
+            IsInterlaced = cell.Interlaced,
             Width = Width,
             Height = Height,
             AverageFrameRate = 25,

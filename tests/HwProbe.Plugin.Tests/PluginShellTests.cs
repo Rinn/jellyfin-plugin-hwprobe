@@ -57,7 +57,7 @@ public sealed class PluginShellTests : IDisposable
         await service.RunAsync(TestContext.Current.CancellationToken);
         var content = Assert.IsType<ContentResult>(await controller.GetReportAsync(TestContext.Current.CancellationToken));
         Assert.Equal("application/json", content.ContentType);
-        Assert.Contains("\"schemaVersion\": 1", content.Content, StringComparison.Ordinal);
+        Assert.Contains("\"schemaVersion\": 2", content.Content, StringComparison.Ordinal);
     }
 
     /// <summary>The task fails visibly when the probe fails, and has no default trigger.</summary>

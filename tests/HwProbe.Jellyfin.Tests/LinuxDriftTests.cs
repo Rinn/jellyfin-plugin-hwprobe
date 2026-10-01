@@ -147,7 +147,7 @@ public sealed class LinuxDriftTests
     {
         await File.WriteAllTextAsync(Node, string.Empty, TestContext.Current.CancellationToken);
         var c = _cases[name];
-        var cell = c.Hdr10 ? MatrixCatalog.For(c.Type).Single(m => m.Group == MatrixGroup.Tonemap).Cell : MatrixCatalog.Smoke.Cell;
+        var cell = c.Hdr10 ? MatrixCatalog.For(c.Type).Single(m => m.Group == MatrixGroup.Tonemap && !m.Cell.VppTonemap).Cell : MatrixCatalog.Smoke.Cell;
         var recorder = new CallRecorder();
 
         var args = new ArgumentSource(await CorpusCapabilities.LoadAsync(c.Build, c.Driver), recorder).Build(c.Type, c.Device, cell);

@@ -8,6 +8,19 @@ public static class FixtureCatalog
     /// <summary>Gets the 8-bit H.264 clip, the smoke-probe source.</summary>
     public static FixtureSpec H264 { get; } = new("h264_8bit.mp4", "h264", 8, false, "libx264", $"{Source} -c:v libx264 -pix_fmt yuv420p", null);
 
+    /// <summary>Gets the interlaced (top field first) 8-bit H.264 clip, for deinterlacing.</summary>
+    public static FixtureSpec H264Interlaced { get; } = new(
+        "h264_interlaced.mp4",
+        "h264",
+        8,
+        false,
+        "libx264",
+        $"{Source} -vf setfield=tff -c:v libx264 -flags +ildct+ilme -x264-params tff=1 -pix_fmt yuv420p",
+        null)
+    {
+        Interlaced = true,
+    };
+
     /// <summary>Gets the 8-bit HEVC clip.</summary>
     public static FixtureSpec Hevc { get; } = new("hevc_8bit.mp4", "hevc", 8, false, "libx265", $"{Source} -c:v libx265 -pix_fmt yuv420p", null);
 
@@ -60,5 +73,5 @@ public static class FixtureCatalog
     public static FixtureSpec Vc1 { get; } = new("vc1.wmv", "vc1", 8, false, null, string.Empty, "No free VC-1 encoder exists; needs a checked-in sample.");
 
     /// <summary>Gets every fixture, including ones that can never be generated.</summary>
-    public static IReadOnlyList<FixtureSpec> All { get; } = [H264, Hevc, Hevc10, HevcRext10, HevcRext12, Hdr10, Vp8, Vp9, Vp910, Av1, Av110, Mpeg2, Vc1];
+    public static IReadOnlyList<FixtureSpec> All { get; } = [H264, H264Interlaced, Hevc, Hevc10, HevcRext10, HevcRext12, Hdr10, Vp8, Vp9, Vp910, Av1, Av110, Mpeg2, Vc1];
 }

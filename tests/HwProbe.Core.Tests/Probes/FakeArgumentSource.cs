@@ -35,6 +35,7 @@ internal sealed class FakeArgumentSource : IArgumentSource, IArgumentSourceFacto
             HardwareDecoder = cell.HardwareDecode && !SoftwareDecoded.Contains(cell.InputCodec) ? "-hwaccel videotoolbox" : null,
             HardwareEncoder = true,
             HardwareTonemap = cell.Tonemap,
+            HardwareDeinterlacer = cell.Interlaced ? "videotoolbox" : null,
         };
     }
 }

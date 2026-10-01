@@ -19,4 +19,7 @@ public sealed record ProbeArguments(
 
     /// <summary>Gets a value indicating whether enabling hardware tone-mapping changes upstream's filter chain.</summary>
     public bool HardwareTonemap { get; init; }
+
+    /// <summary>Gets the hardware filter family that deinterlaces, e.g. <c>vaapi</c>, or null when it's done on the CPU or not at all.</summary>
+    public string? HardwareDeinterlacer { get; init; }
 }

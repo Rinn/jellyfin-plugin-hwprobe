@@ -19,6 +19,15 @@ public sealed record ProbeCell(
     /// <summary>Gets the stream pixel format, or null for 4:2:0 at <see cref="BitDepth"/>.</summary>
     public string? PixelFormat { get; init; }
 
+    /// <summary>Gets a value indicating whether the stream is interlaced.</summary>
+    public bool Interlaced { get; init; }
+
+    /// <summary>Gets a value indicating whether Jellyfin's "Prefer OS native DXVA or VA-API decoders" is on (its default).</summary>
+    public bool PreferNativeDecoder { get; init; } = true;
+
+    /// <summary>Gets a value indicating whether Intel VPP tone-mapping is enabled; only meaningful with <see cref="Tonemap"/>.</summary>
+    public bool VppTonemap { get; init; }
+
     /// <summary>Gets the source colour transfer, e.g. <c>smpte2084</c> for HDR10.</summary>
     public string? ColorTransfer { get; init; }
 

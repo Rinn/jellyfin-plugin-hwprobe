@@ -8,7 +8,7 @@ namespace Jellyfin.Plugin.HwProbe.Cli;
 /// <summary>Renders a report as a plain-text table.</summary>
 internal static class TableRenderer
 {
-    private static readonly string[] _headers = ["TYPE", "DEVICE", "VERDICT", "TIER", "DECODE", "ENCODE", "TONEMAP"];
+    private static readonly string[] _headers = ["TYPE", "DEVICE", "VERDICT", "TIER", "DECODE", "ENCODE", "TONEMAP", "DEINTERLACE"];
 
     /// <summary>Renders the report.</summary>
     /// <param name="report">The report.</param>
@@ -94,6 +94,7 @@ internal static class TableRenderer
         Cells(backend.Decode),
         Cells(backend.Encode),
         Cells(backend.Tonemap),
+        Cells(backend.Deinterlace),
     ];
 
     /// <summary>Summarises a cell map as <c>passed/tested</c> plus the failing keys.</summary>

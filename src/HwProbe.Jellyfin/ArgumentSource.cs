@@ -14,6 +14,9 @@ public sealed class ArgumentSource : IArgumentSource
 {
     private static readonly Dictionary<string, Func<object?[], object?>> _noHandlers = [];
 
+    // Every suffix the filter chains pass to GetHwDeinterlaceFilter (EncodingHelper.cs, v12.1, L4093-5878).
+    private static readonly string[] _deinterlaceFamilies = ["vaapi", "qsv", "cuda", "videotoolbox", "opencl"];
+
     private readonly ProbeEncodingHelper _helper;
     private readonly IMediaEncoder _encoder;
     private readonly EnvironmentRules _environment;
@@ -88,6 +91,8 @@ public sealed class ArgumentSource : IArgumentSource
             EnableIntelLowPowerHevcHwEncoder = cell.LowPower,
             EnableTonemapping = cell.Tonemap,
             EnableVideoToolboxTonemapping = cell.Tonemap,
+            EnableVppTonemapping = cell.Tonemap && cell.VppTonemap,
+            PreferSystemNativeHwDecoder = cell.PreferNativeDecoder,
             AllowHevcEncoding = true,
             AllowAv1Encoding = true,
         };
@@ -141,8 +146,11 @@ public sealed class ArgumentSource : IArgumentSource
         // backend, and software tone-mapping (tonemapx) ignores the tone-map options, so a filter chain
         // that changes with them is a hardware tone-map.
         var softwareEncoder = _helper.GetVideoEncoder(state, CreateOptions(HwType.none, device, cell));
+
+        // A VPP cell is compared with VPP off rather than tone-mapping off: when VPP can't be used Jellyfin
+        // falls back to OpenCL, and that is the plain tone-map cell's result, not VPP's.
         var withoutTonemap = cell.Tonemap
-            ? _helper.GetVideoProcessingFilterParam(state, CreateOptions(type, device, cell with { Tonemap = false }), encoder)
+            ? _helper.GetVideoProcessingFilterParam(state, CreateOptions(type, device, cell.VppTonemap ? cell with { VppTonemap = false } : cell with { Tonemap = false }), encoder)
             : filterArgs;
 
         // The child gets generation's values, else the start-up values, never whatever is set right now.
@@ -156,6 +164,7 @@ public sealed class ArgumentSource : IArgumentSource
             HardwareDecoder = _helper.HardwareDecoder(state, options),
             HardwareEncoder = !string.Equals(encoder, softwareEncoder, StringComparison.Ordinal),
             HardwareTonemap = !string.Equals(filterArgs, withoutTonemap, StringComparison.Ordinal),
+            HardwareDeinterlacer = cell.Interlaced ? HardwareDeinterlacer(state, options, filterArgs) : null,
         };
     }
 
@@ -201,4 +210,14 @@ public sealed class ArgumentSource : IArgumentSource
                 $"Generating {type} arguments for this device sets {string.Join(", ", foreign)} in the server process, which the server's own configuration doesn't. Test this device with the hwprobe CLI.");
         }
     }
+
+    /// <summary>Returns the hardware filter family whose deinterlace filter appears in the generated chain.</summary>
+    /// <param name="state">The job.</param>
+    /// <param name="options">Encoding options.</param>
+    /// <param name="filterArgs">The generated filter arguments.</param>
+    /// <returns>The family, e.g. <c>vaapi</c>, or null when deinterlacing isn't done in hardware.</returns>
+    private string? HardwareDeinterlacer(EncodingJobInfo state, EncodingOptions options, string filterArgs) =>
+        _deinterlaceFamilies.FirstOrDefault(family =>
+            _helper.GetHwDeinterlaceFilter(state, options, family) is { Length: > 0 } filter
+            && filterArgs.Contains(filter, StringComparison.Ordinal));
 }

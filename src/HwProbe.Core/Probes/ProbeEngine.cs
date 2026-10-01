@@ -243,7 +243,7 @@ public sealed class ProbeEngine : IDisposable
     /// <param name="hint">Remedy text.</param>
     /// <returns>The row.</returns>
     private static BackendReport EmptyRow(DeviceCandidate candidate, BackendVerdict verdict, string hint) =>
-        new(candidate.Type, candidate.Device, verdict, PipelineTier.Unknown, new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), hint);
+        new(candidate.Type, candidate.Device, verdict, PipelineTier.Unknown, new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), hint);
 
     /// <summary>Formats a device for a message prefix.</summary>
     /// <param name="device">The device, possibly empty.</param>
@@ -381,6 +381,7 @@ public sealed class ProbeEngine : IDisposable
         Dictionary<string, ProbeOutcome> decode = [];
         Dictionary<string, ProbeOutcome> encode = [];
         Dictionary<string, ProbeOutcome> tonemap = [];
+        Dictionary<string, ProbeOutcome> deinterlace = [];
         var decodedTenBit = false;
         if (run.Options.StopAfter == StopStage.Matrix)
         {
@@ -403,7 +404,10 @@ public sealed class ProbeEngine : IDisposable
                         encode[cell.Key] = result.Outcome;
                         break;
                     case MatrixGroup.Tonemap when result.Outcome != ProbeOutcome.Skipped:
-                        tonemap[TonemapKey(candidate.Type, tier)] = result.Outcome;
+                        tonemap[cell.Cell.VppTonemap ? cell.Key : TonemapKey(candidate.Type, tier)] = result.Outcome;
+                        break;
+                    case MatrixGroup.Deinterlace when result.Codec is not null:
+                        deinterlace[result.Codec] = result.Outcome;
                         break;
                     default:
                         break;
@@ -411,7 +415,7 @@ public sealed class ProbeEngine : IDisposable
             }
         }
 
-        run.Backends.Add(new BackendReport(candidate.Type, candidate.Device, BackendVerdict.Viable, tier, decode, encode, tonemap, string.Empty));
+        run.Backends.Add(new BackendReport(candidate.Type, candidate.Device, BackendVerdict.Viable, tier, decode, encode, tonemap, deinterlace, string.Empty));
     }
 
     /// <summary>Builds, runs and classifies one cell under the probe gate.</summary>
@@ -461,6 +465,11 @@ public sealed class ProbeEngine : IDisposable
                     return Record(candidate, cell, stage, ProbeOutcome.Skipped, null, $"Jellyfin emits no hardware tone-map for this backend and build (filters:{args.FilterArgs}).", null);
                 }
 
+                if (cell.Group == MatrixGroup.Deinterlace && args.HardwareDeinterlacer is null)
+                {
+                    return Record(candidate, cell, stage, ProbeOutcome.Skipped, null, $"Jellyfin deinterlaces on the CPU for this backend and build (filters:{args.FilterArgs}).", null);
+                }
+
                 // Checked after asking Jellyfin: a codec it won't hardware-decode needs no clip to say so.
                 var fixture = run.Fixtures.GetValueOrDefault(cell.Fixture.FileName);
                 if (fixture?.Status != FixtureStatus.Available)
@@ -475,7 +484,10 @@ public sealed class ProbeEngine : IDisposable
                 var outcome = ran.Status == FfmpegRunStatus.LaunchFailed
                     ? ProbeOutcome.DeviceUnavailable
                     : VerdictEvaluator.Evaluate(ran, new ProbeExpectation(MatrixCatalog.Frames, StderrMarkers.HardwareFrames(candidate.Type)));
-                return Record(candidate, cell, stage, outcome, ran, Hints.For(outcome, candidate.Type, run.Host.Os, inContainer), commandLine);
+                var recorded = Record(candidate, cell, stage, outcome, ran, Hints.For(outcome, candidate.Type, run.Host.Os, inContainer), commandLine);
+
+                // The deinterlace column is keyed by the hardware filter family that did the work.
+                return cell.Group == MatrixGroup.Deinterlace ? recorded with { Codec = args.HardwareDeinterlacer } : recorded;
             },
             cancellationToken);
 

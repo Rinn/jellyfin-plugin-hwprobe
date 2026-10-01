@@ -14,4 +14,7 @@ public enum MatrixGroup
 
     /// <summary>Hardware HDR-to-SDR tone-map.</summary>
     Tonemap,
+
+    /// <summary>Hardware deinterlacing.</summary>
+    Deinterlace,
 }

@@ -43,10 +43,20 @@ public static class MatrixCatalog
             Encode(FixtureCatalog.Hevc10, "hevc", hardwareDecode: true),
             Encode(FixtureCatalog.H264, "av1", hardwareDecode: true),
             new(MatrixGroup.Tonemap, Key(FixtureCatalog.Hdr10), FixtureCatalog.Hdr10, Cell(FixtureCatalog.Hdr10, H264, hardwareDecode: true) with { Tonemap = true }),
+            new(MatrixGroup.Deinterlace, "interlaced", FixtureCatalog.H264Interlaced, Cell(FixtureCatalog.H264Interlaced, H264, hardwareDecode: true)),
         ];
+
+        if (type == HwType.qsv)
+        {
+            // "Prefer OS native DXVA or VA-API decoders" only changes QSV: off means Intel's QSV decoders.
+            cells.AddRange(decoded.Select(f => new MatrixCell(MatrixGroup.Decode, Key(f) + "_qsvdecoder", f, Cell(f, H264, hardwareDecode: true) with { PreferNativeDecoder = false })));
+        }
 
         if (type is HwType.qsv or HwType.vaapi)
         {
+            // Jellyfin's "Enable VPP Tone mapping", Intel only; it falls back to OpenCL when VPP can't be used.
+            cells.Add(new(MatrixGroup.Tonemap, "vpp", FixtureCatalog.Hdr10, Cell(FixtureCatalog.Hdr10, H264, hardwareDecode: true) with { Tonemap = true, VppTonemap = true }));
+
             // Jellyfin's two Intel Low-Power encoder options; they fail on specific Intel generations.
             foreach (var output in new[] { H264, "hevc" })
             {
@@ -99,6 +109,7 @@ public static class MatrixCatalog
         {
             Profile = fixture.Profile,
             PixelFormat = fixture.PixelFormat,
+            Interlaced = fixture.Interlaced,
             ColorPrimaries = color?.Primaries,
             ColorTransfer = color?.Transfer,
             ColorSpace = color?.Space,
