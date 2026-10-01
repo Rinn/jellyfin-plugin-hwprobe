@@ -425,13 +425,6 @@ public sealed class ProbeEngine : IDisposable
     private async Task<ProbeResult> RunCellAsync(Run run, DeviceCandidate candidate, IArgumentSource source, MatrixCell cell, ProbeStage stage, CancellationToken cancellationToken)
     {
         var inContainer = run.Host.Container is not null;
-        var fixture = run.Fixtures.GetValueOrDefault(cell.Fixture.FileName);
-        if (fixture?.Status != FixtureStatus.Available)
-        {
-            var outcome = fixture?.Status == FixtureStatus.Untested ? ProbeOutcome.Untested : ProbeOutcome.Skipped;
-            return Add(run, Record(candidate, cell, stage, outcome, null, fixture?.Reason ?? $"No {cell.Fixture.FileName} fixture.", null));
-        }
-
         var result = await _gate.RunAsync(
             async ct =>
             {
@@ -466,6 +459,14 @@ public sealed class ProbeEngine : IDisposable
                 if (cell.Group == MatrixGroup.Tonemap && !args.HardwareTonemap)
                 {
                     return Record(candidate, cell, stage, ProbeOutcome.Skipped, null, $"Jellyfin emits no hardware tone-map for this backend and build (filters:{args.FilterArgs}).", null);
+                }
+
+                // Checked after asking Jellyfin: a codec it won't hardware-decode needs no clip to say so.
+                var fixture = run.Fixtures.GetValueOrDefault(cell.Fixture.FileName);
+                if (fixture?.Status != FixtureStatus.Available)
+                {
+                    var missing = fixture?.Status == FixtureStatus.Untested ? ProbeOutcome.Untested : ProbeOutcome.Skipped;
+                    return Record(candidate, cell, stage, missing, null, fixture?.Reason ?? $"No {cell.Fixture.FileName} fixture.", null);
                 }
 
                 var commandLine = ProbeCommandLine.Build(args, fixture.Path!, MatrixCatalog.Frames);

@@ -10,6 +10,9 @@ internal sealed class FakeArgumentSource : IArgumentSource, IArgumentSourceFacto
     /// <summary>Gets input codecs that raise <see cref="ArgumentConstructionException"/>.</summary>
     public HashSet<string> Unconstructible { get; } = [];
 
+    /// <summary>Gets input codecs Jellyfin would decode in software (no hardware decoder).</summary>
+    public HashSet<string> SoftwareDecoded { get; } = [];
+
     /// <summary>Gets environment overrides returned with every set of arguments.</summary>
     public Dictionary<string, string?> Environment { get; } = [];
 
@@ -29,7 +32,7 @@ internal sealed class FakeArgumentSource : IArgumentSource, IArgumentSourceFacto
         var filters = cell.Tonemap ? " -vf \"scale_vt=color_transfer=bt709\"" : string.Empty;
         return new ProbeArguments(input, filters, $"{cell.OutputCodec}_{type}", Environment)
         {
-            HardwareDecoder = cell.HardwareDecode ? "-hwaccel videotoolbox" : null,
+            HardwareDecoder = cell.HardwareDecode && !SoftwareDecoded.Contains(cell.InputCodec) ? "-hwaccel videotoolbox" : null,
             HardwareEncoder = true,
             HardwareTonemap = cell.Tonemap,
         };

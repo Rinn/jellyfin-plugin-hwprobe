@@ -175,6 +175,18 @@ public sealed class ProbeEngineTests : IDisposable
         Assert.DoesNotContain(_runner.Calls, c => c.Contains("-progress", StringComparison.Ordinal) && c.Contains("av1_8bit", StringComparison.Ordinal));
     }
 
+    /// <summary>A codec Jellyfin won't hardware-decode is CodecUnsupported even with no fixture to test it.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task SoftwareDecodedCodecNeedsNoFixture()
+    {
+        _arguments.SoftwareDecoded.Add("vc1");
+
+        var report = await RunAsync(StopStage.Matrix);
+
+        Assert.Equal(ProbeOutcome.CodecUnsupported, report.Backends[0].Decode["vc1"]);
+    }
+
     /// <summary>Environment overrides from arg generation reach the launched probe.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
