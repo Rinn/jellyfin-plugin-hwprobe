@@ -37,6 +37,18 @@ public sealed class RecordedIntelTests
             ProbeOutcome.CodecUnsupported,
             VerdictEvaluator.Evaluate(new(FfmpegRunStatus.Exited, 69, string.Empty, CorpusFile.Load("stderr/jellyfin-linux-vaapi-av1-unsupported.txt"), 0, TimeSpan.Zero, null), new ProbeExpectation(MatrixCatalog.Frames, StderrMarkers.HardwareFrames(HwType.vaapi, "vaapi"))));
 
+    /// <summary>hevc_qsv dropping low-power mode logs the marker, and that log alone would be scored a software fallback.</summary>
+    [Fact]
+    public void QsvLowPowerDisabledIsRecognised()
+    {
+        var stderr = CorpusFile.Load("stderr/jellyfin-linux-qsv-hevc-lowpower-disabled.txt");
+
+        Assert.Contains(StderrMarkers.LowPowerDisabled, m => stderr.Contains(m, StringComparison.Ordinal));
+        Assert.Equal(
+            ProbeOutcome.SoftwareFallback,
+            VerdictEvaluator.Evaluate(new(FfmpegRunStatus.Exited, 0, string.Empty, stderr, MatrixCatalog.Frames, TimeSpan.Zero, null), new ProbeExpectation(MatrixCatalog.Frames, StderrMarkers.HardwareFrames(HwType.qsv, "vaapi"))));
+    }
+
     /// <summary>Deriving OpenCL with no OpenCL runtime installed is DeviceUnavailable.</summary>
     [Fact]
     public void OpenclWithoutRuntimeIsUnavailable() =>

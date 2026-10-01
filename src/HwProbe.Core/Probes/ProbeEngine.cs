@@ -560,6 +560,8 @@ public sealed class ProbeEngine : IDisposable
                 var ran = await _runner.RunAsync(invocation, ct);
                 var outcome = ran.Status == FfmpegRunStatus.LaunchFailed
                     ? ProbeOutcome.DeviceUnavailable
+                    : cell.Cell.LowPower && StderrMarkers.LowPowerDisabled.Any(m => ran.Stderr.Contains(m, StringComparison.Ordinal))
+                    ? ProbeOutcome.CodecUnsupported
                     : VerdictEvaluator.Evaluate(ran, new ProbeExpectation(MatrixCatalog.Frames, StderrMarkers.HardwareFrames(candidate.Type, args.Hwaccel)));
                 var hint = outcome == ProbeOutcome.Pass ? string.Empty
                     : cell.Cell.LowPower ? LowPowerAdvice.Remedy(cell.Cell.OutputCodec, run.Host.Os, inContainer, EnableGuc())

@@ -10,9 +10,9 @@ using Xunit;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Tests.Probes;
 
-/// <summary>The OpenCL runtime check on an Intel VAAPI host with an OpenCL-enabled jellyfin-ffmpeg build.</summary>
+/// <summary>An Intel VAAPI host with an OpenCL-enabled jellyfin-ffmpeg build.</summary>
 [Trait("Category", "FakeFfmpeg")]
-public sealed class ProbeEngineOpenclTests : IDisposable
+public sealed class ProbeEngineIntelTests : IDisposable
 {
     private const string Node = "/dev/dri/renderD128";
     private const string IntelDriver = "[VAAPI @ 0x1] VAAPI driver: Intel iHD driver for Intel(R) Gen Graphics - 26.3.5 (1b5e662).\n";
@@ -47,16 +47,33 @@ public sealed class ProbeEngineOpenclTests : IDisposable
         Assert.Equal(ProbeOutcome.Pass, Assert.Single(report.Probes, p => p.Stage == ProbeStage.Tier).Outcome);
     }
 
+    /// <summary>An encoder that drops low-power mode fails the low-power cell, not the plain one.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task DroppedLowPowerIsUnsupported()
+    {
+        var report = await RunAsync(openclStarts: true, lowPowerDropped: "hevc");
+
+        var vaapi = Assert.Single(report.Backends);
+        Assert.Equal(ProbeOutcome.CodecUnsupported, vaapi.Encode["hevc_lowpower"]);
+        Assert.Equal(ProbeOutcome.Pass, vaapi.Encode["hevc"]);
+        Assert.Equal(ProbeOutcome.Pass, vaapi.Encode["h264_lowpower"]);
+        Assert.Contains(report.Findings, f => f.Code == "lowpower-unavailable-hevc");
+    }
+
     /// <inheritdoc/>
     public void Dispose() => Directory.Delete(_root, recursive: true);
 
     /// <summary>Runs the engine against one Intel render node; tone-map probes fail, everything else passes.</summary>
     /// <param name="openclStarts">Whether deriving OpenCL from the VAAPI device succeeds.</param>
+    /// <param name="lowPowerDropped">An output codec whose encoder drops low-power mode, or null.</param>
     /// <returns>The report.</returns>
-    private async Task<CapabilityReport> RunAsync(bool openclStarts)
+    private async Task<CapabilityReport> RunAsync(bool openclStarts, string? lowPowerDropped = null)
     {
         _runner.Probe = invocation => invocation.Arguments switch
         {
+            var a when lowPowerDropped is not null && a.Contains($"-c:v {lowPowerDropped}_vaapi -low_power 1", StringComparison.Ordinal) =>
+                EngineRunner.Exited(0, 10, "[h264 @ 0x3] Format vaapi chosen by get_format().\n[hevc_qsv @ 0x4] Some encoding parameters are not supported under Low power mode, trying to recover with it set to disabled\n"),
             var a when a.Contains("opencl=ocl@va", StringComparison.Ordinal) && !openclStarts =>
                 EngineRunner.Exited(237, null, IntelDriver + "[OpenCL @ 0x2] Failed to get number of OpenCL platforms: -1001.\nDevice creation failed: -19.\n"),
             var a when !a.Contains("-progress", StringComparison.Ordinal) => EngineRunner.Exited(1, null, IntelDriver),

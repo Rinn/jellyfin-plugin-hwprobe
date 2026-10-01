@@ -55,6 +55,10 @@ public static class StderrMarkers
         "Failed setup for format",
     ];
 
+    /// <summary>The encoder dropped low-power mode and encoded without it.</summary>
+    /// <remarks>Observed from hevc_qsv with jellyfin-ffmpeg 8.1.2 on Gen 9 graphics, which have no low-power HEVC; exit 0 with frames.</remarks>
+    public static readonly IReadOnlyList<string> LowPowerDisabled = ["not supported under Low power mode"];
+
     /// <summary>The hwaccel could not start for this stream, so decoding fell back to software.</summary>
     /// <remarks>libavcodec/decode.c, hwaccel_init. Observed with jellyfin-ffmpeg 8.1.2 for AV1 on a GPU without AV1 decode.</remarks>
     public static readonly IReadOnlyList<string> HwaccelSetupFailed = ["Failed setup for format"];
