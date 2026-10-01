@@ -89,13 +89,18 @@ jobs:
       - name: Point the tests at it
         run: |
           dir="$PWD/.ffmpeg"
-          if [ "$RUNNER_OS" = Windows ]; then dir="$(cygpath -w "$dir")"; fi
+          downloads="${{ matrix.fixtures }}"
+          downloads="$HOME${downloads#\~}/downloads"
+          if [ "$RUNNER_OS" = Windows ]; then dir="$(cygpath -w "$dir")"; downloads="$(cygpath -w "$downloads")"; fi
           echo "HWPROBE_TEST_FFMPEG=$dir/${{ matrix.binary }}" >> "$GITHUB_ENV"
-      # hwprobe keys fixtures by ffmpeg path and version, so a restored cache is never stale.
+          echo "HWPROBE_TEST_DOWNLOADS=$downloads" >> "$GITHUB_ENV"
+      # Keyed on the fixture catalog too: GitHub caches never update under an existing key, so a new or
+      # changed fixture (including downloaded samples) would otherwise be rebuilt or re-downloaded every run.
       - uses: actions/cache@v6
         with:
           path: ${{ matrix.fixtures }}
-          key: fixtures-${{ env.JELLYFIN_FFMPEG_VERSION }}-${{ matrix.platform }}
+          key: fixtures-${{ env.JELLYFIN_FFMPEG_VERSION }}-${{ matrix.platform }}-${{ hashFiles('src/HwProbe.Core/Fixtures/FixtureCatalog.cs') }}
+          restore-keys: fixtures-${{ env.JELLYFIN_FFMPEG_VERSION }}-${{ matrix.platform }}-
       # The rest of the suite already ran in build-test; only Core.Tests has RealFfmpeg tests.
       - name: Test with jellyfin-ffmpeg
         run: dotnet test --project tests/HwProbe.Core.Tests -- --filter-trait "Category=RealFfmpeg"

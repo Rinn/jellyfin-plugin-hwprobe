@@ -17,14 +17,37 @@ public sealed class FixtureBuilder
     private readonly string _ffmpegPath;
     private readonly string _cacheRoot;
     private readonly TimeSpan _timeout;
+    private readonly IFixtureDownloader _downloader;
+    private readonly IReadOnlyList<FixtureSpec> _catalog;
+    private readonly string _downloadDirectory;
 
     /// <summary>Initializes a new instance of the <see cref="FixtureBuilder"/> class.</summary>
     /// <param name="runner">Launches ffmpeg.</param>
     /// <param name="ffmpegPath">The ffmpeg under test; fixtures must come from the same binary.</param>
     /// <param name="cacheRoot">Root fixture cache directory.</param>
-    /// <param name="timeout">Per-fixture generation timeout.</param>
-    public FixtureBuilder(IFfmpegRunner runner, string ffmpegPath, string cacheRoot, TimeSpan timeout)
+    /// <param name="timeout">Per-fixture generation or download timeout.</param>
+    /// <param name="downloader">Fetches fixtures that can't be generated.</param>
+    public FixtureBuilder(IFfmpegRunner runner, string ffmpegPath, string cacheRoot, TimeSpan timeout, IFixtureDownloader downloader)
+        : this(runner, ffmpegPath, cacheRoot, timeout, downloader, FixtureCatalog.All, null)
     {
+    }
+
+    /// <summary>Initializes a new instance of the <see cref="FixtureBuilder"/> class with a custom catalog.</summary>
+    /// <param name="runner">Launches ffmpeg.</param>
+    /// <param name="ffmpegPath">The ffmpeg under test.</param>
+    /// <param name="cacheRoot">Root fixture cache directory.</param>
+    /// <param name="timeout">Per-fixture timeout.</param>
+    /// <param name="downloader">Fetches fixtures that can't be generated.</param>
+    /// <param name="catalog">The fixtures to build.</param>
+    /// <param name="downloadDirectory">Where downloads are kept, or null for <c>downloads</c> under the cache root.</param>
+    internal FixtureBuilder(IFfmpegRunner runner, string ffmpegPath, string cacheRoot, TimeSpan timeout, IFixtureDownloader downloader, IReadOnlyList<FixtureSpec> catalog, string? downloadDirectory)
+    {
+        ArgumentNullException.ThrowIfNull(downloader);
+        _downloader = downloader;
+        _catalog = catalog;
+
+        // Downloads don't depend on the ffmpeg under test, so they're shared across cache keys.
+        _downloadDirectory = downloadDirectory ?? Path.Combine(cacheRoot, "downloads");
         ArgumentNullException.ThrowIfNull(runner);
         ArgumentException.ThrowIfNullOrEmpty(ffmpegPath);
         ArgumentException.ThrowIfNullOrEmpty(cacheRoot);
@@ -39,7 +62,7 @@ public sealed class FixtureBuilder
     /// <param name="cacheKey">Cache partition, normally the host fingerprint.</param>
     /// <param name="availableEncoders">Encoder names in this ffmpeg build, from build enumeration.</param>
     /// <param name="cancellationToken">Cancels generation.</param>
-    /// <returns>One result per fixture in <see cref="FixtureCatalog.All"/> order.</returns>
+    /// <returns>One result per fixture, in catalog order.</returns>
     public async Task<IReadOnlyList<FixtureResult>> BuildAsync(
         string cacheKey,
         IReadOnlySet<string> availableEncoders,
@@ -51,8 +74,8 @@ public sealed class FixtureBuilder
         var directory = Path.Combine(_cacheRoot, SanitizeKey(cacheKey));
         Directory.CreateDirectory(directory);
 
-        var results = new List<FixtureResult>(FixtureCatalog.All.Count);
-        foreach (var spec in FixtureCatalog.All)
+        var results = new List<FixtureResult>(_catalog.Count);
+        foreach (var spec in _catalog)
         {
             results.Add(await ResolveAsync(spec, directory, availableEncoders, cancellationToken));
         }
@@ -144,6 +167,11 @@ public sealed class FixtureBuilder
             return new FixtureResult(spec, FixtureStatus.Untested, null, spec.UntestedReason);
         }
 
+        if (spec.DownloadUrl is { } url)
+        {
+            return await DownloadAsync(spec, url, Path.Combine(_downloadDirectory, spec.Sha256 + Path.GetExtension(spec.FileName)), cancellationToken);
+        }
+
         if (spec.RequiredEncoder is { } encoder && !availableEncoders.Contains(encoder))
         {
             return new FixtureResult(spec, FixtureStatus.Skipped, null, $"software encoder {encoder} is not in this ffmpeg build");
@@ -156,6 +184,48 @@ public sealed class FixtureBuilder
         }
 
         return await GenerateAsync(spec, path, cancellationToken);
+    }
+
+    /// <summary>Returns a cached downloaded fixture, or downloads it and checks its pinned hash.</summary>
+    /// <param name="spec">The fixture.</param>
+    /// <param name="url">Where to download it from.</param>
+    /// <param name="path">Final cached path.</param>
+    /// <param name="cancellationToken">Cancels the download.</param>
+    /// <returns>Available, or Untested with the reason the sample couldn't be fetched.</returns>
+    private async Task<FixtureResult> DownloadAsync(FixtureSpec spec, Uri url, string path, CancellationToken cancellationToken)
+    {
+        if (File.Exists(path) && Convert.ToHexStringLower(SHA256.HashData(await File.ReadAllBytesAsync(path, cancellationToken))) == spec.Sha256)
+        {
+            return new FixtureResult(spec, FixtureStatus.Available, path, null);
+        }
+
+        byte[] bytes;
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(_timeout);
+            bytes = await _downloader.DownloadAsync(url, timeout.Token);
+        }
+        catch (HttpRequestException ex)
+        {
+            return new FixtureResult(spec, FixtureStatus.Untested, null, $"could not download the {spec.Codec} sample from {url}: {ex.Message}");
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return new FixtureResult(spec, FixtureStatus.Untested, null, $"downloading the {spec.Codec} sample from {url} timed out");
+        }
+
+        var hash = Convert.ToHexStringLower(SHA256.HashData(bytes));
+        if (hash != spec.Sha256)
+        {
+            return new FixtureResult(spec, FixtureStatus.Untested, null, $"the {spec.Codec} sample from {url} has SHA-256 {hash}, not the pinned {spec.Sha256}");
+        }
+
+        Directory.CreateDirectory(_downloadDirectory);
+        var partial = path + ".partial";
+        await File.WriteAllBytesAsync(partial, bytes, cancellationToken);
+        File.Move(partial, path, overwrite: true);
+        return new FixtureResult(spec, FixtureStatus.Available, path, null);
     }
 
     /// <summary>Encodes a fixture to a temp name, then moves it into place and writes its manifest.</summary>

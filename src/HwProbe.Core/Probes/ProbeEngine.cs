@@ -47,6 +47,9 @@ public sealed class ProbeEngine : IDisposable
         _time = time;
     }
 
+    /// <summary>Gets the downloader for fixtures that can't be generated, such as the VC-1 sample.</summary>
+    public IFixtureDownloader FixtureDownloader { get; init; } = new HttpFixtureDownloader();
+
     /// <summary>Probes the host.</summary>
     /// <param name="options">What to probe.</param>
     /// <param name="cancellationToken">Cancels the run; in-flight ffmpeg trees are killed.</param>
@@ -85,7 +88,7 @@ public sealed class ProbeEngine : IDisposable
 
         if (run.Opened.Count > 0)
         {
-            var fixtures = await new FixtureBuilder(_runner, ffmpeg, options.FixturesDirectory, options.FixtureTimeout)
+            var fixtures = await new FixtureBuilder(_runner, ffmpeg, options.FixturesDirectory, options.FixtureTimeout, FixtureDownloader)
                 .BuildAsync(Fingerprint.Compute(new FingerprintInputs(ffmpeg, caps.VersionLine, null, null, null, null, null, null)), caps.Encoders, cancellationToken);
             run.Fixtures = fixtures.ToDictionary(f => f.Spec.FileName, StringComparer.Ordinal);
 

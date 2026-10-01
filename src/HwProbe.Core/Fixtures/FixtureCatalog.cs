@@ -69,8 +69,16 @@ public static class FixtureCatalog
     /// <summary>Gets the MPEG-2 clip.</summary>
     public static FixtureSpec Mpeg2 { get; } = new("mpeg2.mpg", "mpeg2video", 8, false, "mpeg2video", $"{Source} -c:v mpeg2video", null);
 
-    /// <summary>Gets the VC-1 entry, which can't be generated.</summary>
-    public static FixtureSpec Vc1 { get; } = new("vc1.wmv", "vc1", 8, false, null, string.Empty, "No free VC-1 encoder exists; needs a checked-in sample.");
+    /// <summary>Gets the VC-1 Advanced Profile clip (320x240, 30 frames, progressive).</summary>
+    /// <remarks>
+    /// No free VC-1 encoder exists, so this is downloaded from FFmpeg's public FATE sample suite rather than generated.
+    /// It's a conformance stream with no clear redistribution terms, so it's fetched and pinned by hash, not checked in.
+    /// </remarks>
+    public static FixtureSpec Vc1 { get; } = new("vc1_SA00050.vc1", "vc1", 8, false, null, string.Empty, null)
+    {
+        DownloadUrl = new Uri("https://fate-suite.ffmpeg.org/vc1/SA00050.vc1"),
+        Sha256 = "29cf8bebc87be73a1b7a6169aff4c1c36d8891a20c200da7676560fefe3e461c",
+    };
 
     /// <summary>Gets every fixture, including ones that can never be generated.</summary>
     public static IReadOnlyList<FixtureSpec> All { get; } = [H264, H264Interlaced, Hevc, Hevc10, HevcRext10, HevcRext12, Hdr10, Vp8, Vp9, Vp910, Av1, Av110, Mpeg2, Vc1];

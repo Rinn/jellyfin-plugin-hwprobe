@@ -21,11 +21,12 @@ public sealed class FixtureBuilderRealFfmpegTests : IDisposable
         var runner = new FfmpegRunner();
         var encoders = (await new FfmpegCapabilityProbe(runner, TimeSpan.FromSeconds(15)).ProbeAsync(ffmpeg, ct)).Encoders;
 
-        var results = await new FixtureBuilder(runner, ffmpeg, _root, FixtureBuilder.DefaultTimeout)
+        var results = await new FixtureBuilder(runner, ffmpeg, _root, FixtureBuilder.DefaultTimeout, new HttpFixtureDownloader(), FixtureCatalog.All, TestEnvironment.FixtureDownloads)
             .BuildAsync("real", encoders, ct);
 
         Assert.All(results, r => Assert.True(r.Status != FixtureStatus.Failed, $"{r.Spec.FileName}: {r.Reason}"));
         Assert.Equal(FixtureStatus.Available, results.Single(r => r.Spec.FileName == "h264_8bit.mp4").Status);
+        Assert.Equal(FixtureStatus.Available, results.Single(r => r.Spec.Codec == "vc1").Status);
     }
 
     /// <inheritdoc/>

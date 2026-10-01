@@ -24,7 +24,7 @@ public sealed class FixtureBuilderTests : IDisposable
         var results = await BuildAsync(_allEncoders);
 
         Assert.Equal(FixtureCatalog.All.Count, results.Count);
-        Assert.All(results.Where(r => r.Spec.UntestedReason is null), r =>
+        Assert.All(results.Where(r => r.Spec.UntestedReason is null && r.Spec.DownloadUrl is null), r =>
         {
             Assert.Equal(FixtureStatus.Available, r.Status);
             Assert.True(File.Exists(r.Path));
@@ -32,10 +32,10 @@ public sealed class FixtureBuilderTests : IDisposable
         Assert.Equal(FixtureCatalog.All.Count - 1, _runner.Invocations.Count);
     }
 
-    /// <summary>VC-1 is reported Untested with a reason, never omitted.</summary>
+    /// <summary>Offline, the downloaded VC-1 sample is reported Untested with a reason, never omitted.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
-    public async Task Vc1IsUntestedNotOmitted()
+    public async Task Vc1OfflineIsUntestedNotOmitted()
     {
         var results = await BuildAsync(_allEncoders);
 
@@ -70,7 +70,7 @@ public sealed class FixtureBuilderTests : IDisposable
         var results = await BuildAsync(_allEncoders);
 
         Assert.Empty(_runner.Invocations);
-        Assert.All(results.Where(r => r.Spec.UntestedReason is null), r => Assert.Equal(FixtureStatus.Available, r.Status));
+        Assert.All(results.Where(r => r.Spec.UntestedReason is null && r.Spec.DownloadUrl is null), r => Assert.Equal(FixtureStatus.Available, r.Status));
     }
 
     /// <summary>A truncated cached fixture fails its manifest check and is regenerated.</summary>
@@ -160,6 +160,6 @@ public sealed class FixtureBuilderTests : IDisposable
     /// <param name="encoders">Encoders the fake build has.</param>
     /// <returns>The fixture results.</returns>
     private Task<IReadOnlyList<FixtureResult>> BuildAsync(IReadOnlySet<string> encoders) =>
-        new FixtureBuilder(_runner, "/fake/ffmpeg", _root, FixtureBuilder.DefaultTimeout)
+        new FixtureBuilder(_runner, "/fake/ffmpeg", _root, FixtureBuilder.DefaultTimeout, ScriptedDownloader.Offline)
             .BuildAsync(Key, encoders, TestContext.Current.CancellationToken);
 }

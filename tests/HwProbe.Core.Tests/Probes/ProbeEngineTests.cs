@@ -4,6 +4,7 @@ using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
 using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Core.Tests.Devices;
+using Jellyfin.Plugin.HwProbe.Core.Tests.Fixtures;
 using Xunit;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Tests.Probes;
@@ -116,7 +117,7 @@ public sealed class ProbeEngineTests : IDisposable
             ["-version"] = "ffmpeg version 7.1.4-Jellyfin Copyright (c) 2000-2025\n",
             ["-hwaccels"] = "Hardware acceleration methods:\nvaapi\n",
         });
-        using var engine = new ProbeEngine(runner, _arguments, linux, TimeProvider.System, EnvironmentRules.Standalone());
+        using var engine = new ProbeEngine(runner, _arguments, linux, TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
 
         var report = await engine.RunAsync(Options(StopStage.Devices, refresh: true), TestContext.Current.CancellationToken);
 
@@ -138,7 +139,7 @@ public sealed class ProbeEngineTests : IDisposable
         {
             OtherStderr = "Failed to set value 'd3d11va=dx11:0' for option 'init_hw_device': Unknown error occurred\n",
         };
-        using var engine = new ProbeEngine(runner, _arguments, new FakeHostPlatform(HostOs.Windows), TimeProvider.System, EnvironmentRules.Standalone());
+        using var engine = new ProbeEngine(runner, _arguments, new FakeHostPlatform(HostOs.Windows), TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
 
         var report = await engine.RunAsync(Options(StopStage.Devices, refresh: true), TestContext.Current.CancellationToken);
 
@@ -223,7 +224,7 @@ public sealed class ProbeEngineTests : IDisposable
     public async Task OldFfmpegIsUnusable()
     {
         var old = new ScriptedOnly(new() { ["-version"] = "ffmpeg version 4.3 Copyright (c) 2000-2020\n" });
-        using var engine = new ProbeEngine(old, _arguments, new FakeHostPlatform(HostOs.MacOS), TimeProvider.System, EnvironmentRules.Standalone());
+        using var engine = new ProbeEngine(old, _arguments, new FakeHostPlatform(HostOs.MacOS), TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
 
         await Assert.ThrowsAsync<FfmpegUnusableException>(() => engine.RunAsync(Options(StopStage.Matrix, refresh: true), TestContext.Current.CancellationToken));
     }
@@ -237,7 +238,7 @@ public sealed class ProbeEngineTests : IDisposable
     /// <returns>The report.</returns>
     private async Task<CapabilityReport> RunAsync(StopStage stop, bool refresh = false)
     {
-        using var engine = new ProbeEngine(_runner, _arguments, new FakeHostPlatform(HostOs.MacOS) { OsDescription = "macOS 27.0.1" }, TimeProvider.System, EnvironmentRules.Standalone());
+        using var engine = new ProbeEngine(_runner, _arguments, new FakeHostPlatform(HostOs.MacOS) { OsDescription = "macOS 27.0.1" }, TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
         return await engine.RunAsync(Options(stop, refresh), TestContext.Current.CancellationToken);
     }
 

@@ -25,4 +25,10 @@ public sealed record FixtureSpec(
 
     /// <summary>Gets a value indicating whether the clip is interlaced.</summary>
     public bool Interlaced { get; init; }
+
+    /// <summary>Gets where to download the clip when it can't be generated, or null.</summary>
+    public Uri? DownloadUrl { get; init; }
+
+    /// <summary>Gets the pinned SHA-256 (lowercase hex) a downloaded clip must match.</summary>
+    public string? Sha256 { get; init; }
 }
