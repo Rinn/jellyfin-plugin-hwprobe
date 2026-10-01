@@ -414,8 +414,10 @@ public sealed class ProbeEngine : IDisposable
                     case MatrixGroup.Tonemap when result.Outcome != ProbeOutcome.Skipped:
                         tonemap[cell.Cell.VppTonemap ? cell.Key : TonemapKey(candidate.Type, tier)] = result.Outcome;
                         break;
-                    case MatrixGroup.Deinterlace when result.Codec is not null:
-                        deinterlace[result.Codec] = result.Outcome;
+
+                    // Keyed by the hardware family that deinterlaced; CPU deinterlacing is Skipped and left out, like tone-map.
+                    case MatrixGroup.Deinterlace when result.Outcome != ProbeOutcome.Skipped:
+                        deinterlace[result.Codec is { } family && family != cell.Cell.InputCodec ? family : cell.Key] = result.Outcome;
                         break;
                     case MatrixGroup.Subtitles:
                         subtitles[cell.Key] = result.Outcome;

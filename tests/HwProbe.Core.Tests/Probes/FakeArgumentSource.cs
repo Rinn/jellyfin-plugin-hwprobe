@@ -13,6 +13,9 @@ internal sealed class FakeArgumentSource : IArgumentSource, IArgumentSourceFacto
     /// <summary>Gets input codecs Jellyfin would decode in software (no hardware decoder).</summary>
     public HashSet<string> SoftwareDecoded { get; } = [];
 
+    /// <summary>Gets or sets a value indicating whether deinterlacing happens on the CPU.</summary>
+    public bool NoHardwareDeinterlace { get; set; }
+
     /// <summary>Gets environment overrides returned with every set of arguments.</summary>
     public Dictionary<string, string?> Environment { get; } = [];
 
@@ -35,7 +38,7 @@ internal sealed class FakeArgumentSource : IArgumentSource, IArgumentSourceFacto
             HardwareDecoder = cell.HardwareDecode && !SoftwareDecoded.Contains(cell.InputCodec) ? "-hwaccel videotoolbox" : null,
             HardwareEncoder = true,
             HardwareTonemap = cell.Tonemap,
-            HardwareDeinterlacer = cell.Interlaced ? "videotoolbox" : null,
+            HardwareDeinterlacer = cell.Interlaced && !NoHardwareDeinterlace ? "videotoolbox" : null,
         };
     }
 }

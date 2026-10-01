@@ -178,6 +178,19 @@ public sealed class ProbeEngineTests : IDisposable
         Assert.DoesNotContain(_runner.Calls, c => c.Contains("-progress", StringComparison.Ordinal) && c.Contains("av1_8bit", StringComparison.Ordinal));
     }
 
+    /// <summary>CPU deinterlacing is left out of the deinterlace column rather than filed under the input codec.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task CpuDeinterlaceIsLeftOut()
+    {
+        _arguments.NoHardwareDeinterlace = true;
+
+        var report = await RunAsync(StopStage.Matrix);
+
+        Assert.Empty(report.Backends[0].Deinterlace);
+        Assert.Equal(ProbeOutcome.Skipped, Assert.Single(report.Probes, p => p.ProbeId.Contains("Deinterlace", StringComparison.Ordinal)).Outcome);
+    }
+
     /// <summary>A codec Jellyfin won't hardware-decode is CodecUnsupported even with no fixture to test it.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
