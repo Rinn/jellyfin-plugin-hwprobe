@@ -16,7 +16,7 @@
                 <p id="hwprobeStatus"></p>
                 <table id="hwprobeBackends" class="detailTable">
                     <thead>
-                        <tr><th>Backend</th><th>Device</th><th>Verdict</th><th>Pipeline</th><th>Decode</th><th>Encode</th><th>Remedy</th></tr>
+                        <tr><th>Backend</th><th>Device</th><th>Verdict</th><th>Pipeline</th><th>Decode</th><th>Encode</th><th>Tone mapping</th><th>Deinterlace</th><th>Subtitles</th><th>Remedy</th></tr>
                     </thead>
                     <tbody></tbody>
                 </table>
@@ -57,6 +57,9 @@
                         cell(row, b.verdict === 'Viable' ? b.tier : '-');
                         cell(row, passed(b.decode));
                         cell(row, passed(b.encode));
+                        cell(row, passed(b.tonemap));
+                        cell(row, passed(b.deinterlace));
+                        cell(row, passed(b.subtitles));
                         cell(row, b.hint || '');
                         body.appendChild(row);
                     }

@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Jellyfin.Plugin.HwProbe.Api;
+using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Probing;
 using MediaBrowser.Common.Api;
@@ -82,6 +84,23 @@ public sealed class PluginShellTests : IDisposable
 
         using var stream = assembly.GetManifestResourceStream(resource);
         Assert.NotNull(stream);
+    }
+
+    /// <summary>The configuration page shows every per-codec column of the report.</summary>
+    [Fact]
+    public void ConfigPageShowsEveryColumn()
+    {
+        var assembly = typeof(HwProbe.Plugin).Assembly;
+        using var stream = assembly.GetManifestResourceStream($"{typeof(HwProbe.Plugin).Namespace}.Configuration.configPage.html")!;
+        using var reader = new StreamReader(stream);
+        var page = reader.ReadToEnd();
+        var columns = typeof(BackendReport).GetProperties()
+            .Where(p => p.PropertyType == typeof(IReadOnlyDictionary<string, ProbeOutcome>))
+            .Select(p => JsonNamingPolicy.CamelCase.ConvertName(p.Name))
+            .ToList();
+
+        Assert.Equal(5, columns.Count);
+        Assert.All(columns, c => Assert.Contains($"passed(b.{c})", page, StringComparison.Ordinal));
     }
 
     /// <inheritdoc/>
