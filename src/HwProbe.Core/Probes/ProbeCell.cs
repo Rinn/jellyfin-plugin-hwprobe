@@ -28,6 +28,9 @@ public sealed record ProbeCell(
     /// <summary>Gets a value indicating whether Intel VPP tone-mapping is enabled; only meaningful with <see cref="Tonemap"/>.</summary>
     public bool VppTonemap { get; init; }
 
+    /// <summary>Gets a text subtitle file to burn in, or null for none.</summary>
+    public string? SubtitlePath { get; init; }
+
     /// <summary>Gets the source colour transfer, e.g. <c>smpte2084</c> for HDR10.</summary>
     public string? ColorTransfer { get; init; }
 

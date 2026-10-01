@@ -21,6 +21,17 @@ public static class FixtureCatalog
         Interlaced = true,
     };
 
+    /// <summary>Gets a one-line text subtitle (ASS), burned in when Jellyfin's "Allow subtitle extraction on the fly" is off.</summary>
+    /// <remarks>Made from an inline SRT through ffmpeg's data: protocol, so nothing is read from disk.</remarks>
+    public static FixtureSpec SubtitlesAss { get; } = new(
+        "subtitles.ass",
+        "ass",
+        8,
+        false,
+        "ass",
+        $"-hide_banner -loglevel error -y -f srt -i \"data:text/plain;base64,{Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("1\n00:00:00,000 --> 00:00:01,000\nhwprobe subtitle burn-in\n"))}\" -c:s ass",
+        null);
+
     /// <summary>Gets the 8-bit HEVC clip.</summary>
     public static FixtureSpec Hevc { get; } = new("hevc_8bit.mp4", "hevc", 8, false, "libx265", $"{Source} -c:v libx265 -pix_fmt yuv420p", null);
 
@@ -81,5 +92,5 @@ public static class FixtureCatalog
     };
 
     /// <summary>Gets every fixture, including ones that can never be generated.</summary>
-    public static IReadOnlyList<FixtureSpec> All { get; } = [H264, H264Interlaced, Hevc, Hevc10, HevcRext10, HevcRext12, Hdr10, Vp8, Vp9, Vp910, Av1, Av110, Mpeg2, Vc1];
+    public static IReadOnlyList<FixtureSpec> All { get; } = [H264, H264Interlaced, SubtitlesAss, Hevc, Hevc10, HevcRext10, HevcRext12, Hdr10, Vp8, Vp9, Vp910, Av1, Av110, Mpeg2, Vc1];
 }

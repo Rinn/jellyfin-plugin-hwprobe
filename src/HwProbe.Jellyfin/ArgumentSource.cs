@@ -14,6 +14,9 @@ public sealed class ArgumentSource : IArgumentSource
 {
     private static readonly Dictionary<string, Func<object?[], object?>> _noHandlers = [];
 
+    // No font attachments to extract: the burn-in filter then omits fontsdir (EncodingHelper.GetTextSubtitlesFilter).
+    private static readonly Dictionary<string, Func<object?[], object?>> _pathHandlers = new() { ["GetAttachmentFolderPath"] = _ => null };
+
     // Every suffix the filter chains pass to GetHwDeinterlaceFilter (EncodingHelper.cs, v12.1, L4093-5878).
     private static readonly string[] _deinterlaceFamilies = ["vaapi", "qsv", "cuda", "videotoolbox", "opencl"];
 
@@ -47,7 +50,7 @@ public sealed class ArgumentSource : IArgumentSource
             RecordingProxy.Create<ISubtitleEncoder>(recorder, _noHandlers),
             RecordingProxy.Create<IConfiguration>(recorder, _noHandlers),
             RecordingProxy.Create<MediaBrowser.Common.Configuration.IConfigurationManager>(recorder, _noHandlers),
-            RecordingProxy.Create<IPathManager>(recorder, _noHandlers));
+            RecordingProxy.Create<IPathManager>(recorder, _pathHandlers));
     }
 
     /// <summary>Initializes a new instance of the <see cref="ArgumentSource"/> class over a prepared helper.</summary>

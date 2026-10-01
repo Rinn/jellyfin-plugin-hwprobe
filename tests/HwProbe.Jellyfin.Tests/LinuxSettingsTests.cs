@@ -60,6 +60,26 @@ public sealed class LinuxSettingsTests
         Assert.NotNull(args.HardwareDeinterlacer);
     }
 
+    /// <summary>Text subtitle burn-in generates a subtitles= filter without reaching unmodelled server services.</summary>
+    /// <param name="type">The backend.</param>
+    /// <returns>A task representing the test.</returns>
+    [Theory(Skip = Skip, SkipUnless = nameof(TestEnvironment.IsLinux), SkipType = typeof(TestEnvironment))]
+    [InlineData(HwType.vaapi)]
+    [InlineData(HwType.qsv)]
+    [InlineData(HwType.nvenc)]
+    public async Task SubtitleBurnInIsGenerated(HwType type)
+    {
+        var cell = Assert.Single(MatrixCatalog.For(type), c => c.Group == MatrixGroup.Subtitles).Cell with { SubtitlePath = "/tmp/hwprobe-subtitles.ass" };
+        var recorder = new CallRecorder();
+        await File.WriteAllTextAsync(Node, string.Empty, TestContext.Current.CancellationToken);
+        var caps = await CorpusCapabilities.LoadAsync(Amd64, VaapiDriver.IntelIhd);
+
+        var args = new ArgumentSource(caps, recorder).Build(type, type == HwType.nvenc ? "0" : Node, cell);
+
+        Assert.Contains("subtitles=f='/tmp/hwprobe-subtitles.ass'", args.FilterArgs, StringComparison.Ordinal);
+        Assert.Empty(recorder.Unexpected);
+    }
+
     /// <summary>Builds args over the recorded amd64 build on an iHD device.</summary>
     /// <param name="type">The backend.</param>
     /// <param name="cell">The cell.</param>

@@ -1,5 +1,6 @@
 using Jellyfin.Plugin.HwProbe.Core.Probes;
 using MediaBrowser.Controller.MediaEncoding;
+using MediaBrowser.Model.Dlna;
 using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.MediaInfo;
@@ -40,16 +41,29 @@ public static class SyntheticJob
             ColorSpace = cell.ColorSpace,
         };
 
+        // External, like a track the server has extracted: it reaches the same subtitles= burn-in filter
+        // without needing the server's subtitle extraction.
+        var subtitle = cell.SubtitlePath is null ? null : new MediaStream
+        {
+            Index = 1,
+            Type = MediaStreamType.Subtitle,
+            Codec = "ass",
+            IsExternal = true,
+            Path = cell.SubtitlePath,
+        };
+
         var source = new MediaSourceInfo
         {
             Id = "hwprobe",
             Protocol = MediaProtocol.File,
             VideoType = VideoType.VideoFile,
-            MediaStreams = [stream],
+            MediaStreams = subtitle is null ? [stream] : [stream, subtitle],
         };
 
         return new EncodingJobInfo(TranscodingJobType.Progressive)
         {
+            SubtitleStream = subtitle,
+            SubtitleDeliveryMethod = subtitle is null ? SubtitleDeliveryMethod.External : SubtitleDeliveryMethod.Encode,
             IsVideoRequest = true,
             IsInputVideo = true,
             VideoType = VideoType.VideoFile,

@@ -246,7 +246,7 @@ public sealed class ProbeEngine : IDisposable
     /// <param name="hint">Remedy text.</param>
     /// <returns>The row.</returns>
     private static BackendReport EmptyRow(DeviceCandidate candidate, BackendVerdict verdict, string hint) =>
-        new(candidate.Type, candidate.Device, verdict, PipelineTier.Unknown, new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), hint);
+        new(candidate.Type, candidate.Device, verdict, PipelineTier.Unknown, new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), hint);
 
     /// <summary>Formats a device for a message prefix.</summary>
     /// <param name="device">The device, possibly empty.</param>
@@ -389,6 +389,7 @@ public sealed class ProbeEngine : IDisposable
         Dictionary<string, ProbeOutcome> encode = [];
         Dictionary<string, ProbeOutcome> tonemap = [];
         Dictionary<string, ProbeOutcome> deinterlace = [];
+        Dictionary<string, ProbeOutcome> subtitles = [];
         var decodedTenBit = false;
         if (run.Options.StopAfter == StopStage.Matrix)
         {
@@ -416,6 +417,9 @@ public sealed class ProbeEngine : IDisposable
                     case MatrixGroup.Deinterlace when result.Codec is not null:
                         deinterlace[result.Codec] = result.Outcome;
                         break;
+                    case MatrixGroup.Subtitles:
+                        subtitles[cell.Key] = result.Outcome;
+                        break;
                     default:
                         break;
                 }
@@ -427,7 +431,7 @@ public sealed class ProbeEngine : IDisposable
             run.Findings.AddRange(LowPowerAdvice.Findings(candidate.Type, candidate.Device, encode, run.Host.Os, inContainer, EnableGuc()));
         }
 
-        run.Backends.Add(new BackendReport(candidate.Type, candidate.Device, BackendVerdict.Viable, tier, decode, encode, tonemap, deinterlace, string.Empty));
+        run.Backends.Add(new BackendReport(candidate.Type, candidate.Device, BackendVerdict.Viable, tier, decode, encode, tonemap, deinterlace, subtitles, string.Empty));
     }
 
     /// <summary>Builds, runs and classifies one cell under the probe gate.</summary>
@@ -441,13 +445,28 @@ public sealed class ProbeEngine : IDisposable
     private async Task<ProbeResult> RunCellAsync(Run run, DeviceCandidate candidate, IArgumentSource source, MatrixCell cell, ProbeStage stage, CancellationToken cancellationToken)
     {
         var inContainer = run.Host.Container is not null;
+
+        // A burn-in cell needs its subtitle file's path before arguments can be generated.
+        var probeCell = cell.Cell;
+        if (cell.SubtitleFixture is { } subtitleSpec)
+        {
+            var subtitle = run.Fixtures.GetValueOrDefault(subtitleSpec.FileName);
+            if (subtitle?.Status != FixtureStatus.Available)
+            {
+                var missing = subtitle?.Status == FixtureStatus.Untested ? ProbeOutcome.Untested : ProbeOutcome.Skipped;
+                return Add(run, Record(candidate, cell, stage, missing, null, subtitle?.Reason ?? $"No {subtitleSpec.FileName} fixture.", null));
+            }
+
+            probeCell = probeCell with { SubtitlePath = subtitle.Path };
+        }
+
         var result = await _gate.RunAsync(
             async ct =>
             {
                 ProbeArguments args;
                 try
                 {
-                    args = source.Build(candidate.Type, candidate.Device.Length == 0 ? null : candidate.Device, cell.Cell);
+                    args = source.Build(candidate.Type, candidate.Device.Length == 0 ? null : candidate.Device, probeCell);
                 }
                 catch (ArgumentConstructionException ex)
                 {

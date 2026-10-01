@@ -11,6 +11,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Report;
 /// <param name="Encode">Encode cells by codec key, e.g. <c>h264_lowpower</c>.</param>
 /// <param name="Tonemap">Tone-map cells by method.</param>
 /// <param name="Deinterlace">Deinterlace cells by hardware filter family.</param>
+/// <param name="Subtitles">Subtitle burn-in cells by subtitle kind, e.g. <c>text</c>.</param>
 /// <param name="Hint">Remedy for a non-viable verdict; empty otherwise.</param>
 public sealed record BackendReport(
     HwType Type,
@@ -21,4 +22,5 @@ public sealed record BackendReport(
     IReadOnlyDictionary<string, ProbeOutcome> Encode,
     IReadOnlyDictionary<string, ProbeOutcome> Tonemap,
     IReadOnlyDictionary<string, ProbeOutcome> Deinterlace,
+    IReadOnlyDictionary<string, ProbeOutcome> Subtitles,
     string Hint);

@@ -32,7 +32,7 @@ internal sealed class EngineRunner : IFfmpegRunner
         Calls.Add(invocation.Arguments);
         Invocations.Add(invocation);
 
-        if (invocation.Arguments.Contains("testsrc2", StringComparison.Ordinal))
+        if (invocation.Arguments.Contains("-loglevel error -y", StringComparison.Ordinal))
         {
             // Fixture encode: the output path is the last argument.
             var output = invocation.Arguments.Split(' ')[^1].Trim('"');

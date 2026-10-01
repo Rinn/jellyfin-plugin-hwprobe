@@ -73,6 +73,7 @@ public sealed class ReportStoreTests : IDisposable
                 new Dictionary<string, ProbeOutcome> { ["h264_lowpower"] = ProbeOutcome.Pass },
                 new Dictionary<string, ProbeOutcome> { ["opencl"] = ProbeOutcome.Pass },
                 new Dictionary<string, ProbeOutcome> { ["qsv"] = ProbeOutcome.Pass },
+                new Dictionary<string, ProbeOutcome> { ["text"] = ProbeOutcome.Pass },
                 string.Empty),
         ],
         [new Finding(FindingSeverity.Warn, "legacy-copyback", "Install intel-opencl-icd.")],

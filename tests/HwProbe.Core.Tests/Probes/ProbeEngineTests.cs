@@ -40,6 +40,7 @@ public sealed class ProbeEngineTests : IDisposable
         Assert.Equal(ProbeOutcome.Untested, backend.Decode["vc1"]);
         Assert.Equal(ProbeOutcome.Pass, backend.Tonemap["videotoolbox"]);
         Assert.Equal(ProbeOutcome.Pass, backend.Deinterlace["videotoolbox"]);
+        Assert.Equal(ProbeOutcome.Pass, backend.Subtitles["text"]);
         Assert.Contains(report.Findings, f => f.Code == "legacy-copyback");
         Assert.Equal(CapabilityReport.CurrentSchemaVersion, report.SchemaVersion);
     }

@@ -17,4 +17,7 @@ public enum MatrixGroup
 
     /// <summary>Hardware deinterlacing.</summary>
     Deinterlace,
+
+    /// <summary>Burning text subtitles into the video while transcoding.</summary>
+    Subtitles,
 }

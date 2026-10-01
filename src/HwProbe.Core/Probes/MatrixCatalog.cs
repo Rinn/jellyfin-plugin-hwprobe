@@ -44,6 +44,7 @@ public static class MatrixCatalog
             Encode(FixtureCatalog.H264, "av1", hardwareDecode: true),
             new(MatrixGroup.Tonemap, Key(FixtureCatalog.Hdr10), FixtureCatalog.Hdr10, Cell(FixtureCatalog.Hdr10, H264, hardwareDecode: true) with { Tonemap = true }),
             new(MatrixGroup.Deinterlace, "interlaced", FixtureCatalog.H264Interlaced, Cell(FixtureCatalog.H264Interlaced, H264, hardwareDecode: true)),
+            new(MatrixGroup.Subtitles, "text", FixtureCatalog.H264, Cell(FixtureCatalog.H264, H264, hardwareDecode: true)) { SubtitleFixture = FixtureCatalog.SubtitlesAss },
         ];
 
         if (type == HwType.qsv)
