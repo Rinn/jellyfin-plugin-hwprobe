@@ -11,6 +11,8 @@
             #HwProbeConfigPage td, #HwProbeConfigPage th { padding: 0.2em 1.5em 0.2em 0; text-align: left; vertical-align: top; }
             #HwProbeConfigPage th { font-weight: 500; opacity: 0.7; }
             #HwProbeConfigPage .hwprobe-section { margin-top: 2em; }
+            #HwProbeConfigPage .hwprobe-backends td:first-child, #HwProbeConfigPage .hwprobe-backends th:first-child { width: 18em; }
+            #HwProbeConfigPage .hwprobe-backends td:nth-child(2), #HwProbeConfigPage .hwprobe-backends th:nth-child(2) { width: 12em; }
             #HwProbeConfigPage .hwprobe-group td { padding-top: 0.8em; font-weight: 500; opacity: 0.7; }
             #HwProbeConfigPage .hwprobe-mark { width: 1.2em; font-weight: bold; }
             #HwProbeConfigPage .hwprobe-on { color: #52b54b; }
@@ -47,7 +49,7 @@
                 let encoding = null;
                 let selected = null;
 
-                // The names on Jellyfin's Hardware acceleration dropdown.
+                // The names and order of Jellyfin's Hardware acceleration dropdown.
                 const names = {
                     amf: 'AMD AMF',
                     nvenc: 'Nvidia NVENC',
@@ -57,6 +59,8 @@
                     videotoolbox: 'Apple VideoToolBox',
                     v4l2m2m: 'Video4Linux2 (V4L2)'
                 };
+                const order = Object.keys(names);
+                const byDropdown = (a, b) => order.indexOf(a.type) - order.indexOf(b.type);
                 const tiers = {
                     FullOpencl: 'Full GPU pipeline (OpenCL)',
                     FullVulkan: 'Full GPU pipeline (Vulkan)',
@@ -102,6 +106,16 @@
                     div.appendChild(el('h3', title));
                     results.appendChild(div);
                     return div;
+                }
+
+                // Available and Unavailable share one layout: backend, device, status.
+                function backendTable(rows) {
+                    const table = el('table', null, 'hwprobe-backends');
+                    row(table, [el('th', 'Backend'), el('th', 'Device'), el('th', 'Status')]);
+                    for (const [type, device, status] of rows) {
+                        row(table, [names[type] || type, device || '-', el('td', status, 'hwprobe-reason')]);
+                    }
+                    return table;
                 }
 
                 function groupRow(table, title) {
@@ -220,16 +234,12 @@
                         return;
                     }
 
-                    const viable = report.backends.filter(b => b.verdict === 'Viable');
+                    const viable = report.backends.filter(b => b.verdict === 'Viable').sort(byDropdown);
                     const available = section('Available');
                     if (viable.length === 0) {
                         available.appendChild(el('p', 'None'));
                     } else {
-                        const table = el('table');
-                        for (const b of viable) {
-                            row(table, [names[b.type] || b.type, b.device || '-', tiers[b.tier] || '']);
-                        }
-                        available.appendChild(table);
+                        available.appendChild(backendTable(viable.map(b => [b.type, b.device, tiers[b.tier] || ''])));
 
                         if (!selected || viable.indexOf(selected) === -1) {
                             selected = viable.find(b => encoding && b.type === encoding.HardwareAccelerationType) || viable[0];
@@ -239,16 +249,12 @@
                         renderSettings(container, viable);
                     }
 
-                    const table = el('table');
-                    for (const b of report.backends.filter(x => x.verdict !== 'Viable')) {
-                        row(table, [names[b.type] || b.type, el('td', verdicts[b.verdict] || b.verdict, 'hwprobe-reason')]);
-                    }
-                    const notBuilt = Object.entries(report.stageA.types || {}).filter(([, s]) => s === 'NotBuilt').map(([t]) => names[t] || t);
-                    if (notBuilt.length) {
-                        row(table, [notBuilt.join(', '), el('td', 'Not in this ffmpeg build', 'hwprobe-reason')]);
-                    }
-                    if (table.children.length) {
-                        section('Unavailable').appendChild(table);
+                    const unavailable = report.backends.filter(b => b.verdict !== 'Viable')
+                        .map(b => [b.type, b.verdict === 'NotPresent' ? '' : b.device, verdicts[b.verdict] || b.verdict])
+                        .concat(Object.entries(report.stageA.types || {}).filter(([, s]) => s === 'NotBuilt').map(([t]) => [t, '', 'Not in this ffmpeg build']))
+                        .sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
+                    if (unavailable.length) {
+                        section('Unavailable').appendChild(backendTable(unavailable));
                     }
 
                     renderNotes();
