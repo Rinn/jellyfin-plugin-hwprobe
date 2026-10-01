@@ -1,83 +1,106 @@
-# jellyfin-plugin-hwprobe
+# HwProbe for Jellyfin
 
-Device-verified hardware-transcode detection for Jellyfin.
+Find out which hardware transcoding options actually work on your Jellyfin server.
 
-Jellyfin's hardware-acceleration dropdown offers the same eight choices on every server, whatever
-ffmpeg was built with and whatever hardware the machine has. Picking one tells you nothing about
-whether it works. HwProbe runs tiny real transcodes and reports which backends, codecs and
-filter-pipeline tiers genuinely work, with a remedy for each failure.
+Jellyfin's **Hardware acceleration** setting offers the same eight choices on every server
+(AMD AMF, NVIDIA NVENC, Intel QuickSync, VAAPI and so on), whatever GPU you have. Choosing one
+that doesn't work can mean every transcode fails, or quietly falls back to the CPU. HwProbe runs a
+few tiny test transcodes on your server and tells you:
 
-**Status:** early development. Milestone 1 (standalone CLI) and Milestone 2 (read-only plugin) are
-implemented. VAAPI and QSV have been validated on one Intel GPU (Apollo Lake, Linux); other
-backends have not been run on real hardware.
+- which hardware acceleration choices work on this machine, and on which device;
+- which codecs your GPU can decode and encode, so you know which boxes to tick;
+- whether tone mapping, deinterlacing and subtitle burn-in run on the GPU;
+- how to fix each one that doesn't work.
 
-## Plugin
+HwProbe only reads and tests. It never changes your Jellyfin settings.
 
-Download `hwprobe-plugin.zip` from the [releases page](https://github.com/Rinn/jellyfin-plugin-hwprobe/releases)
-(or build `src/HwProbe.Plugin`) and copy the `Jellyfin.Plugin.HwProbe*.dll` files into
-`<config>/plugins/HwProbe_0.1.0.0/`. The plugin adds a configuration page with a **Run probe**
-button, a *Probe hardware transcoding* scheduled task (no default trigger), and admin-only
-endpoints: `GET /HwProbe/Report`, `GET /HwProbe/Status`, `POST /HwProbe/Run`. It refuses to probe
-while any session is transcoding. It never changes Jellyfin's settings.
+## Install the plugin
 
-## Network access
+Requires Jellyfin **12.1** or newer.
 
-hwprobe doesn't send data anywhere: no telemetry, no reports uploaded, nothing about your server
+1. In Jellyfin, go to **Dashboard > Plugins > Manage Repositories > New Repository**.
+2. Enter any name, for example `HwProbe`, and this **Repository URL**:
+
+   ```
+   https://raw.githubusercontent.com/Rinn/jellyfin-plugin-hwprobe/manifest/manifest.json
+   ```
+
+3. Go back to **Plugins**, find **HwProbe** under **Available**, and install it.
+4. Restart Jellyfin.
+
+## Run a probe
+
+1. Make sure nothing is playing. HwProbe won't start while anyone is transcoding, so it doesn't
+   disturb playback.
+2. Go to **Dashboard > Plugins > HwProbe** and press **Run probe**. It can take a few minutes;
+   the first run takes longest because it creates the test clips.
+3. Read the results table and the findings below it.
+
+The probe is also available as a scheduled task, **Probe hardware transcoding**, under
+**Dashboard > Scheduled Tasks**. It has no schedule by default.
+
+## Reading the results
+
+Each row is one hardware acceleration choice on one device.
+
+| Verdict | Meaning |
+|---|---|
+| **Viable** | It works. The Decode and Encode columns show which codecs passed. |
+| **NotPresent** | No device for it was found, for example NVENC without an NVIDIA card. |
+| **PermissionDenied** | The device exists, but Jellyfin isn't allowed to open it. |
+| **DevicePresentPipelineBroken** | The device opens, but a test transcode failed or quietly used the CPU. |
+| **NotBuilt** | Your Jellyfin's ffmpeg doesn't include this choice at all. |
+| **Untested** | HwProbe couldn't check it, for example because no test clip was available. |
+
+For a working choice, the **Pipeline** column says how much of the work stays on the GPU:
+
+| Pipeline | Meaning |
+|---|---|
+| **FullOpencl**, **FullVulkan**, **FullMetal** | Scaling, tone mapping and subtitles all run on the GPU. |
+| **Limited** | Scaling runs on the GPU; tone mapping doesn't. |
+| **LegacyCopyBack** | Every frame is copied back to the CPU for filtering, which is much slower. |
+
+Every failure comes with a suggested fix. The common ones:
+
+- **Docker: no device.** Pass the GPU into the container, for example `--device /dev/dri` for
+  Intel and AMD, or the NVIDIA container runtime (`--gpus all`) for NVIDIA.
+- **Permission denied.** Add the render group to the container (`--group-add`), or add the
+  `jellyfin` user to the `render` group on a normal install.
+- **OpenCL doesn't start (Intel).** Tone mapping needs Intel's OpenCL runtime. The official
+  `jellyfin/jellyfin` Docker image includes it. On `linuxserver/jellyfin`, it comes from the
+  `jellyfin-opencl-intel` mod; check the container's start-up log shows it installing.
+- **A codec fails.** Your GPU can't handle that codec. Leave it unticked in Jellyfin's hardware
+  decoding list.
+
+## Command-line version
+
+HwProbe is also a standalone program, for testing before you install the plugin or on a machine
+without Jellyfin. Download the file for your system from the
+[releases page](https://github.com/Rinn/jellyfin-plugin-hwprobe/releases), unpack it and run it
+(on Linux and macOS: `gunzip hwprobe-linux-x64.gz && chmod +x hwprobe-linux-x64`).
+It finds Jellyfin's ffmpeg by itself, or you can point it at one with `--ffmpeg`. Run it where
+Jellyfin runs, which for Docker means inside the container, so it tests the same ffmpeg and
+devices. `--format summary` prints a short version that's easy to share; `--help` lists every option.
+
+## Privacy and network access
+
+HwProbe doesn't send data anywhere: no telemetry, no reports uploaded, nothing about your server
 leaves the machine. It makes one outbound request:
 
 | When | Request | Why |
 |---|---|---|
-| CLI or plugin run, first time only | `GET https://fate-suite.ffmpeg.org/vc1/SA00050.vc1` (124 KB) | No free VC-1 encoder exists, so the VC-1 test clip is downloaded from FFmpeg's public test-sample suite instead of generated. It's checked against a pinned SHA-256 and cached under `<fixtures>/downloads`, so later runs reuse it. Offline, VC-1 is reported as `Untested` and everything else still runs. |
+| First run only | `GET https://fate-suite.ffmpeg.org/vc1/SA00050.vc1` (124 KB) | No free VC-1 encoder exists, so the VC-1 test clip is downloaded from FFmpeg's public test-sample suite instead of generated. It's checked against a pinned SHA-256 and cached, so later runs reuse it. Offline, VC-1 is reported as `Untested` and everything else still runs. |
 
-All other test clips are generated locally by the ffmpeg under test.
+All other test clips are generated on your server by Jellyfin's own ffmpeg.
 
-The tests and scripts have their own network needs:
+## Status
 
-| What | Network access |
-|---|---|
-| `dotnet build` / `dotnet test` | NuGet package restore. Unit and FakeFfmpeg tests make no other requests; downloads go through a scripted fake. |
-| `HWPROBE_HW_TESTS=1 dotnet test` | The VC-1 download above, unless `HWPROBE_TEST_DOWNLOADS` points at a folder that already has it. |
-| `scripts/container-linux.sh` | Pulls `mcr.microsoft.com/dotnet/sdk:10.0` and `docker.io/jellyfin/jellyfin:12.1`; NuGet restore inside the container. |
-| `scripts/container-plugin.sh` | Pulls `docker.io/jellyfin/jellyfin:12.1`. The script only talks to that server on `127.0.0.1`; the server itself starts with Jellyfin's defaults, which can make its own outbound requests. |
-| `scripts/container-windows.sh` | Pulls `docker.io/library/ubuntu:24.04` and `mcr.microsoft.com/dotnet/sdk:10.0`, installs Wine with `apt-get`, and downloads Windows jellyfin-ffmpeg from the [jellyfin/jellyfin-ffmpeg releases](https://github.com/jellyfin/jellyfin-ffmpeg/releases) with `gh`. |
-| GitHub Actions CI | Everything above, plus the portable jellyfin-ffmpeg builds for Linux, macOS and Windows. Downloads, NuGet packages and generated fixtures are cached between runs. |
+Early development. Intel VAAPI and QuickSync have been tested on real hardware (one Intel
+Apollo Lake GPU on Linux). The other choices are checked by automated tests but haven't been run on
+real GPUs, and the report says so where a result can't be confirmed.
 
-## Building
-
-```sh
-dotnet build -warnaserror
-dotnet format --verify-no-changes
-dotnet test                        # Unit + FakeFfmpeg tests
-HWPROBE_HW_TESTS=1 dotnet test     # also RealFfmpeg + Hardware tests
-```
-
-## Testing other platforms
-
-With podman installed:
-
-```sh
-scripts/container-linux.sh     # test suite on Linux, then hwprobe against jellyfin-ffmpeg (no GPU)
-scripts/container-windows.sh   # win-x64 build under Wine against Windows jellyfin-ffmpeg (no GPU)
-scripts/container-plugin.sh    # installs the plugin into a Jellyfin 12.1 server and probes through its API
-```
-
-Extra arguments are passed to hwprobe. On Apple Silicon the Windows script needs Rosetta for
-x86_64 containers: add `[machine]` / `rosetta = true` to `~/.config/containers/containers.conf`
-and restart the podman machine.
-
-## Continuous integration
-
-`.github/workflows/ci.yml` builds and tests on Linux, macOS and Windows, runs the real-ffmpeg tests
-and a CLI run against jellyfin-ffmpeg's portable builds on all three, runs the plugin end-to-end
-script, and uploads the plugin zip and CLI builds as artifacts.
-
-## Pre-commit hook
-
-All three checks above must pass before every commit. Install the checked-in hook once per clone:
-
-```sh
-git config core.hooksPath scripts/
-```
+Found a problem? [Open an issue](https://github.com/Rinn/jellyfin-plugin-hwprobe/issues) and
+include the output of a probe.
 
 ## AI disclosure
 
@@ -87,9 +110,11 @@ reviewed the results along the way; the assistant wrote most of the code, tests,
 documentation. Commits made with the assistant carry a `Co-Authored-By: Claude` trailer.
 
 Everything is checked by the build (warnings are errors, with .NET, StyleCop and threading
-analyzers), by the test suite on Linux, macOS and Windows, and by the real runs described in the
-commit messages. As the status above says, the hardware conclusions haven't been validated on real
-Linux or Windows GPUs yet.
+analyzers), by the test suite on Linux, macOS and Windows, and by real runs on an Intel GPU.
+
+## Building from source
+
+See [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## License
 
