@@ -385,6 +385,11 @@ public sealed class ProbeEngine : IDisposable
             run.Findings.Add(new Finding(FindingSeverity.Warn, "legacy-copyback", $"{candidate.Type}{DevicePrefix(candidate.Device)}{remedy}"));
         }
 
+        if (tier == PipelineTier.FullOpencl && DeviceOpenProbe.OpenclArguments(candidate.Type, candidate.Device, run.Host.Os) is { } openclArguments)
+        {
+            await CheckOpenclAsync(run, candidate, openclArguments, cancellationToken);
+        }
+
         if (open.Driver == VaapiDriver.Amd)
         {
             run.Findings.Add(new Finding(FindingSeverity.Info, "vulkan-interop-unprobed", $"{candidate.Type}{DevicePrefix(candidate.Device)}Vulkan DRM interop is not probed, so FullVulkan is never reported."));
@@ -444,6 +449,30 @@ public sealed class ProbeEngine : IDisposable
         }
 
         run.Backends.Add(new BackendReport(candidate.Type, candidate.Device, BackendVerdict.Viable, tier, decode, encode, tonemap, deinterlace, subtitles, string.Empty));
+    }
+
+    /// <summary>Opens OpenCL on a device that upstream will send through its OpenCL pipeline.</summary>
+    /// <param name="run">Run state.</param>
+    /// <param name="candidate">The device.</param>
+    /// <param name="arguments">The OpenCL derive arguments.</param>
+    /// <param name="cancellationToken">Cancels the probe.</param>
+    /// <returns>A task that completes when the probe is recorded.</returns>
+    /// <remarks>Upstream picks the OpenCL pipeline from the build alone (EncodingHelper.IsOpenclFullSupported), so a missing runtime doesn't change the tier; it breaks the OpenCL filters.</remarks>
+    private async Task CheckOpenclAsync(Run run, DeviceCandidate candidate, string arguments, CancellationToken cancellationToken)
+    {
+        var invocation = new FfmpegInvocation(run.Options.Ffmpeg.Path, arguments, _environment.Baseline, run.Options.ProbeTimeout);
+        var result = await _gate.RunAsync(ct => _runner.RunAsync(invocation, ct), cancellationToken);
+        var outcome = DeviceOpenProbe.EvaluateOpencl(result);
+        var remedy = Hints.OpenclUnavailable(run.Host.Container is not null);
+        run.Probes.Add(Record(candidate, null, ProbeStage.Tier, outcome, result, outcome == ProbeOutcome.Pass ? string.Empty : remedy, arguments));
+        if (outcome != ProbeOutcome.Pass)
+        {
+            run.NoOpencl.Add(candidate);
+            run.Findings.Add(new Finding(
+                FindingSeverity.Warn,
+                "opencl-unavailable",
+                $"{candidate.Type}{DevicePrefix(candidate.Device)}OpenCL doesn't start, but Jellyfin still picks its OpenCL pipeline because this ffmpeg was built with OpenCL, so OpenCL tone-mapping fails. {remedy}"));
+        }
     }
 
     /// <summary>Builds, runs and classifies one cell under the probe gate.</summary>
@@ -532,8 +561,9 @@ public sealed class ProbeEngine : IDisposable
                 var outcome = ran.Status == FfmpegRunStatus.LaunchFailed
                     ? ProbeOutcome.DeviceUnavailable
                     : VerdictEvaluator.Evaluate(ran, new ProbeExpectation(MatrixCatalog.Frames, StderrMarkers.HardwareFrames(candidate.Type, args.Hwaccel)));
-                var hint = cell.Cell.LowPower && outcome != ProbeOutcome.Pass
-                    ? LowPowerAdvice.Remedy(run.Host.Os, inContainer, EnableGuc())
+                var hint = outcome == ProbeOutcome.Pass ? string.Empty
+                    : cell.Cell.LowPower ? LowPowerAdvice.Remedy(run.Host.Os, inContainer, EnableGuc())
+                    : cell.Group == MatrixGroup.Tonemap && !cell.Cell.VppTonemap && run.NoOpencl.Contains(candidate) ? Hints.OpenclUnavailable(inContainer)
                     : Hints.For(outcome, candidate.Type, run.Host.Os, inContainer);
                 var recorded = Record(candidate, cell, stage, outcome, ran, hint, commandLine);
 
@@ -554,6 +584,9 @@ public sealed class ProbeEngine : IDisposable
     {
         /// <summary>Gets devices that opened.</summary>
         public List<(DeviceCandidate Candidate, DeviceOpenResult Open)> Opened { get; } = [];
+
+        /// <summary>Gets devices on the OpenCL pipeline whose OpenCL runtime doesn't start.</summary>
+        public HashSet<DeviceCandidate> NoOpencl { get; } = [];
 
         /// <summary>Gets VAAPI driver lines by device, for the fingerprint.</summary>
         public Dictionary<string, string> DriverLines { get; } = new(StringComparer.Ordinal);

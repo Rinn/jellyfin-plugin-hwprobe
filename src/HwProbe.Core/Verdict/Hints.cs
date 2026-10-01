@@ -10,6 +10,14 @@ public static class Hints
     public const string LegacyCopyBack =
         "Filters run in software (copy-back). Install the OpenCL runtime (intel-opencl-icd on Intel) to reach the full hardware pipeline.";
 
+    /// <summary>Returns the remedy for an Intel device whose OpenCL runtime doesn't start.</summary>
+    /// <param name="inContainer">Whether the probe ran inside a container.</param>
+    /// <returns>Remedy text.</returns>
+    /// <remarks>The official image installs intel-opencl-icd, and intel-opencl-icd-legacy1 for "&lt;= Gen11 graphics" (jellyfin-packaging, docker/Dockerfile).</remarks>
+    public static string OpenclUnavailable(bool inContainer) => inContainer
+        ? "Install Intel's OpenCL runtime in the container. The official jellyfin/jellyfin image includes it (intel-opencl-icd, and intel-opencl-icd-legacy1 for Gen 11 and older GPUs)."
+        : "Install Intel's OpenCL runtime: intel-opencl-icd, or intel-opencl-icd-legacy1 for Gen 11 and older GPUs.";
+
     /// <summary>Returns the remedy for an outcome.</summary>
     /// <param name="outcome">The probe outcome.</param>
     /// <param name="type">The backend probed.</param>

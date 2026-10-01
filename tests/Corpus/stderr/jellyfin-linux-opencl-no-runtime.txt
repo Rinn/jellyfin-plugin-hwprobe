@@ -1,0 +1,12 @@
+[VAAPI @ 0x56195a7aa800] libva: VA-API version 1.24.0
+[VAAPI @ 0x56195a7aa800] libva: Trying to open /usr/lib/jellyfin-ffmpeg/lib/dri/iHD_drv_video.so
+[VAAPI @ 0x56195a7aa800] libva: Found init function __vaDriverInit_1_24
+[VAAPI @ 0x56195a7aa800] libva: va_openDriver() returns 0
+[VAAPI @ 0x56195a7aa800] Initialised VAAPI connection: version 1.24
+[VAAPI @ 0x56195a7aa800] VAAPI driver: Intel iHD driver for Intel(R) Gen Graphics - 26.3.5 (1b5e662).
+[VAAPI @ 0x56195a7aa800] Driver not found in known nonstandard list, using standard behaviour.
+[OpenCL @ 0x56195a7f2b40] Failed to get number of OpenCL platforms: -1001.
+Device creation failed: -19.
+Failed to set value 'opencl=ocl@va' for option 'init_hw_device': No such device
+Error parsing global options: No such device
+Exiting with exit code -19

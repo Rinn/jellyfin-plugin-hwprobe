@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.HwProbe.Core.Devices;
 using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
@@ -28,6 +29,25 @@ public sealed class RecordedIntelTests
         Assert.Equal(
             ProbeOutcome.SoftwareFallback,
             VerdictEvaluator.Evaluate(Completed(CorpusFile.Load("stderr/jellyfin-linux-qsv-over-vaapi-pass.txt")), new ProbeExpectation(MatrixCatalog.Frames, StderrMarkers.HardwareFrames(HwType.qsv))));
+
+    /// <summary>Deriving OpenCL with no OpenCL runtime installed is DeviceUnavailable.</summary>
+    [Fact]
+    public void OpenclWithoutRuntimeIsUnavailable() =>
+        Assert.Equal(
+            ProbeOutcome.DeviceUnavailable,
+            DeviceOpenProbe.EvaluateOpencl(new(FfmpegRunStatus.Exited, 237, string.Empty, CorpusFile.Load("stderr/jellyfin-linux-opencl-no-runtime.txt"), null, TimeSpan.Zero, null)));
+
+    /// <summary>OpenCL is derived from the VAAPI device for VAAPI and QSV on Linux only.</summary>
+    [Fact]
+    public void OpenclArgumentsDeriveFromVaapi()
+    {
+        const string Expected = "-v verbose -hide_banner -init_hw_device vaapi=va:/dev/dri/renderD128 -init_hw_device opencl=ocl@va";
+
+        Assert.Equal(Expected, DeviceOpenProbe.OpenclArguments(HwType.vaapi, "/dev/dri/renderD128", HostOs.Linux));
+        Assert.Equal(Expected, DeviceOpenProbe.OpenclArguments(HwType.qsv, "/dev/dri/renderD128", HostOs.Linux));
+        Assert.Null(DeviceOpenProbe.OpenclArguments(HwType.qsv, "0", HostOs.Windows));
+        Assert.Null(DeviceOpenProbe.OpenclArguments(HwType.nvenc, "0", HostOs.Linux));
+    }
 
     /// <summary>Wraps recorded stderr as a run that exited 0 with the expected frames.</summary>
     /// <param name="stderr">The stderr text.</param>
