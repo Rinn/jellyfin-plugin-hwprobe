@@ -13,6 +13,10 @@ How to build, test and release hwprobe. For installing and using it, see the [RE
 | `tests/` | Unit, fake-ffmpeg, real-ffmpeg and hardware tests, plus recorded ffmpeg output in `tests/Corpus`. |
 | `build.yaml` | Plugin metadata (name, GUID, version, target ABI) used to build the plugin repository manifest. |
 
+## Command-line tool
+
+`src/HwProbe.Cli` runs the same probe without the plugin. Releases attach builds for linux-x64, linux-arm64, osx-arm64 and win-x64. Run it where Jellyfin runs (inside the container, for Docker) so it tests the same ffmpeg and devices: `dotnet run --project src/HwProbe.Cli -- --help` lists the options, and `--format summary` prints a short report to share.
+
 ## Building
 
 ```sh
@@ -45,10 +49,7 @@ HWPROBE_INSTALL=existing HWPROBE_BASE=http://host:18096 scripts/container-plugin
                                # checks a server you started yourself, e.g. one with a GPU passed in
 ```
 
-Extra arguments are passed to hwprobe. On Apple Silicon the Windows script needs Rosetta for
-x86_64 containers: add `[machine]` / `rosetta = true` to `~/.config/containers/containers.conf`
-and restart the podman machine. If a script pulls an amd64 image on Apple Silicon, Jellyfin runs
-under emulation and can crash at start-up; `podman pull --platform linux/arm64 <image>` fixes it.
+Extra arguments are passed to hwprobe. On Apple Silicon the Windows script needs Rosetta for x86_64 containers: add `[machine]` / `rosetta = true` to `~/.config/containers/containers.conf` and restart the podman machine. If a script pulls an amd64 image on Apple Silicon, Jellyfin runs under emulation and can crash at start-up; `podman pull --platform linux/arm64 <image>` fixes it.
 
 ## Continuous integration
 
@@ -63,24 +64,19 @@ under emulation and can crash at start-up; `podman pull --platform linux/arm64 <
 
 `.github/workflows/release.yml` runs when a GitHub release is published.
 
-1. Set the version in `build.yaml` (`version: "1.2.3.0"`) and in `src/HwProbe.Plugin/HwProbe.Plugin.csproj`
-   (`<Version>1.2.3</Version>`), and merge that to `main`.
-2. Create a release with tag `v1.2.3`. Its description becomes the plugin's changelog in Jellyfin.
-   For example: `gh release create v1.2.3 --target main --title v1.2.3 --notes "What changed"`.
+1. Set the version in `build.yaml` (`version: "1.2.3.0"`) and in `src/HwProbe.Plugin/HwProbe.Plugin.csproj` (`<Version>1.2.3</Version>`), and merge that to `main`.
+2. Create a release with tag `v1.2.3`. Its description becomes the plugin's changelog in Jellyfin. For example: `gh release create v1.2.3 --target main --title v1.2.3 --notes "What changed"`.
 3. The workflow checks the tag matches both versions, builds and tests, and attaches to the release:
    - `hwprobe-plugin_1.2.3.0.zip`
    - `hwprobe-linux-x64.gz`, `hwprobe-linux-arm64.gz`, `hwprobe-osx-arm64.gz`, `hwprobe-win-x64.zip`
-4. For a full release (not a pre-release), it adds the version to `manifest.json` on the
-   `manifest` branch, keeping earlier versions. That file is the repository URL users add in
-   Jellyfin. The workflow never pushes to `main`.
+4. For a full release (not a pre-release), it adds the version to `manifest.json` on the `manifest` branch, keeping earlier versions. That file is the repository URL users add in Jellyfin. The workflow never pushes to `main`.
 
-`scripts/manifest.py` writes the manifest. Its fields follow Jellyfin's `PackageInfo` and
-`VersionInfo`. The checksum is MD5, which Jellyfin checks before installing. Jellyfin writes the
-plugin's `meta.json` itself from the manifest, so the zip holds only the DLLs.
+`scripts/manifest.py` writes the manifest. Its fields follow Jellyfin's `PackageInfo` and `VersionInfo`. The checksum is MD5, which Jellyfin checks before installing. Jellyfin writes the plugin's `meta.json` itself from the manifest, so the zip holds only the DLLs.
 
 ## Network access in development
 
-The tool's own network access is described in the [README](README.md#privacy-and-network-access).
+The tool itself makes one request: `GET https://fate-suite.ffmpeg.org/vc1/SA00050.vc1` (124 KB), on the first run only. No free VC-1 encoder exists, so that clip can't be generated like the others. It is checked against a pinned SHA-256 and cached under `<fixtures>/downloads`. Offline, VC-1 is reported as `Untested` and everything else still runs.
+
 The tests and scripts need more:
 
 | What | Network access |
