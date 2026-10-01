@@ -75,7 +75,7 @@ public sealed class ProbeEngine : IDisposable
             await OpenDevicesAsync(run, cancellationToken);
         }
 
-        var fingerprint = ComputeFingerprint(run);
+        var fingerprint = ComputeFingerprint(run, ToolBuild(_arguments));
         var store = new ReportStore(options.ReportCacheDirectory);
         if (options.StopAfter == StopStage.Matrix && !options.Refresh)
         {
@@ -167,10 +167,17 @@ public sealed class ProbeEngine : IDisposable
         return Version.TryParse(numeric.Contains('.', StringComparison.Ordinal) ? numeric : numeric + ".0", out var version) ? version : new Version(0, 0);
     }
 
+    /// <summary>Identifies the code that judges and generates probes.</summary>
+    /// <param name="arguments">The argument source factory, whose assembly generates the arguments.</param>
+    /// <returns>Module version IDs, which change whenever a deterministic build's code changes.</returns>
+    private static string ToolBuild(IArgumentSourceFactory arguments) =>
+        $"{typeof(ProbeEngine).Assembly.ManifestModule.ModuleVersionId}:{arguments.GetType().Assembly.ManifestModule.ModuleVersionId}";
+
     /// <summary>Computes the fingerprint from build enumeration and device-open by-products.</summary>
     /// <param name="run">Run state.</param>
+    /// <param name="toolBuild">The hwprobe build identity.</param>
     /// <returns>The fingerprint.</returns>
-    private static string ComputeFingerprint(Run run)
+    private static string ComputeFingerprint(Run run, string toolBuild)
     {
         var identities = new Dictionary<string, string?>(StringComparer.Ordinal);
         foreach (var node in run.Devices.RenderNodes)
@@ -186,7 +193,10 @@ public sealed class ProbeEngine : IDisposable
             identities,
             run.Host.Os == HostOs.MacOS ? run.Host.Kernel : null,
             run.Host.Os.ToString(),
-            run.Host.Kernel));
+            run.Host.Kernel)
+        {
+            ToolBuild = toolBuild,
+        });
     }
 
     /// <summary>Report key for a hardware tone-map: the filter family the tier implies.</summary>

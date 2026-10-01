@@ -46,6 +46,8 @@ public sealed class FingerprintTests
             _baseline with { KernelRelease = "24.0.0" },
             _baseline with { OsPlatform = "windows" },
             _baseline with { OsVersion = "6.9.0" },
+            _baseline with { ToolBuild = "a:b" },
+            _baseline with { ToolBuild = "a:c" },
         ];
 
         var keys = variants.Select(Fingerprint.Compute).Append(Fingerprint.Compute(_baseline)).ToList();
