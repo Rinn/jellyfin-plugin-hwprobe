@@ -103,6 +103,16 @@ public sealed class PluginShellTests : IDisposable
         Assert.All(columns, c => Assert.Contains($"passed(b.{c})", page, StringComparison.Ordinal));
     }
 
+    /// <summary>The page has no "${", which jellyfin-web's translateHtml would replace with a translation lookup.</summary>
+    [Fact]
+    public void ConfigPageHasNoTranslationPlaceholders()
+    {
+        using var stream = typeof(HwProbe.Plugin).Assembly.GetManifestResourceStream($"{typeof(HwProbe.Plugin).Namespace}.Configuration.configPage.html")!;
+        using var reader = new StreamReader(stream);
+
+        Assert.DoesNotContain("${", reader.ReadToEnd(), StringComparison.Ordinal);
+    }
+
     /// <inheritdoc/>
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 

@@ -27,6 +27,8 @@
         <script type="text/javascript">
             (function () {
                 // The server's API uses PascalCase; the report keeps hwprobe's own camelCase schema.
+                // No template literals: jellyfin-web's translateHtml treats every dollar sign followed by
+                // a brace in the page, scripts included, as a translation key and replaces it.
                 const page = document.querySelector('#HwProbeConfigPage');
                 const statusText = page.querySelector('#hwprobeStatus');
                 let pollTimer = null;
@@ -37,7 +39,7 @@
                         return '-';
                     }
                     const failed = tested.filter(([, v]) => v !== 'Pass').map(([k]) => k);
-                    return `${tested.length - failed.length}/${tested.length}` + (failed.length ? ` (no ${failed.join(', ')})` : '');
+                    return (tested.length - failed.length) + '/' + tested.length + (failed.length ? ' (no ' + failed.join(', ') + ')' : '');
                 }
 
                 function cell(row, text) {
@@ -68,7 +70,7 @@
                     findings.replaceChildren();
                     for (const f of report.findings) {
                         const li = document.createElement('li');
-                        li.textContent = `${f.severity}: ${f.message}`;
+                        li.textContent = f.severity + ': ' + f.message;
                         findings.appendChild(li);
                     }
                 }
@@ -85,7 +87,7 @@
                             pollTimer = setTimeout(loadStatus, 3000);
                             return;
                         }
-                        statusText.textContent = s.LastError ? `Last probe failed: ${s.LastError}` : (s.LastCompletedUtc ? `Last probe: ${new Date(s.LastCompletedUtc).toLocaleString()}` : '');
+                        statusText.textContent = s.LastError ? 'Last probe failed: ' + s.LastError : (s.LastCompletedUtc ? 'Last probe: ' + new Date(s.LastCompletedUtc).toLocaleString() : '');
                         loadReport();
                     });
                 }
