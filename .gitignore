@@ -484,3 +484,6 @@ $RECYCLE.BIN/
 # Local working docs, not committed (temporary)
 PLAN.md
 CLAUDE.md
+
+# Agent worktrees
+.claude/

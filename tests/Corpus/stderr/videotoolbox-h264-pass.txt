@@ -1,0 +1,61 @@
+# Observed: macOS 27.0.1 arm64, Homebrew ffmpeg 9.0.2.
+# ffmpeg -v verbose -init_hw_device videotoolbox=vt -hwaccel videotoolbox -hwaccel_output_format videotoolbox_vld -noautorotate -i h264_320x240.mp4 -frames:v 10 -c:v h264_videotoolbox -f null -
+[h264 @ 0x7aaf040380] Reinit context to 320x240, pix_fmt: yuv420p
+[vist#0:0/h264 @ 0x7aaf010600] Selecting decoder 'h264' because of requested hwaccel method videotoolbox
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'vt_in.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf63.1.102
+  Duration: 00:00:00.40, start: 0.000000, bitrate: 353 kb/s
+  Stream #0:0[0x1](und): Video: h264 (High), 1 reference frame (avc1 / 0x31637661), yuv420p(progressive, left), 320x240 [SAR 1:1 DAR 4:3], 333 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+    Metadata:
+      handler_name    : VideoHandler
+      encoder         : Lavc63.1.102 libx264
+[out#0/null @ 0x7aaf044180] No explicit maps, mapping streams automatically...
+[vost#0:0/h264_videotoolbox @ 0x7aaec6c300] Created video stream from input stream 0:0
+Stream mapping:
+  Stream #0:0 -> #0:0 (h264 (native) -> h264 (h264_videotoolbox))
+[vost#0:0/h264_videotoolbox @ 0x7aaec6c300] Starting thread...
+[vf#0:0 @ 0x7aaf098000] Starting thread...
+[vist#0:0/h264 @ 0x7aaf010600] [dec:h264 @ 0x7aaf0183c0] Starting thread...
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7aaf018000] Starting thread...
+Press [q] to stop, [?] for help
+[h264 @ 0x7aaf041180] Reinit context to 320x240, pix_fmt: videotoolbox_vld
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7aaf018000] EOF while reading input
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7aaf018000] Terminating thread with return code 0 (success)
+[graph -1 input from stream 0:0 @ 0x7aaf046100] w:320 h:240 pixfmt:videotoolbox_vld tb:1/12800 fr:25/1 sar:1/1 csp:unknown range:unknown alpha:unspecified
+[graph -1 input from stream 0:0 @ 0x7aaf046100] video frame properties congruent with link at pts_time: 0
+[vost#0:0/h264_videotoolbox @ 0x7aaec6c300] [enc:h264_videotoolbox @ 0x7aaf01c460] Using input frames context (format videotoolbox_vld) with h264_videotoolbox encoder.
+Output #0, null, to 'pipe:':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf63.1.102
+  Stream #0:0(und): Video: h264, 1 reference frame, nv12(progressive, left), 320x240 [SAR 1:1 DAR 4:3], q=2-31, 25 fps, 25 tbn (default)
+    Metadata:
+      encoder         : Lavc63.1.102 h264_videotoolbox
+      handler_name    : VideoHandler
+[out#0/null @ 0x7aaf044180] Starting thread...
+[vist#0:0/h264 @ 0x7aaf010600] [dec:h264 @ 0x7aaf0183c0] Decoder thread received EOF packet
+[vist#0:0/h264 @ 0x7aaf010600] [dec:h264 @ 0x7aaf0183c0] Decoder returned EOF, finishing
+[vf#0:0 @ 0x7aaf098000] All consumers returned EOF
+[vf#0:0 @ 0x7aaf098000] Terminating thread with return code 0 (success)
+[vost#0:0/h264_videotoolbox @ 0x7aaec6c300] [enc:h264_videotoolbox @ 0x7aaf01c460] Encoder thread received EOF
+[vist#0:0/h264 @ 0x7aaf010600] [dec:h264 @ 0x7aaf0183c0] Terminating thread with return code 0 (success)
+[vost#0:0/h264_videotoolbox @ 0x7aaec6c300] Terminating thread with return code 0 (success)
+[out#0/null @ 0x7aaf044180] All streams finished
+[out#0/null @ 0x7aaf044180] Terminating thread with return code 0 (success)
+[out#0/null @ 0x7aaf044180] Output file #0 (pipe:):
+[out#0/null @ 0x7aaf044180]   Output stream #0:0 (video): 10 frames encoded; 10 packets muxed (29300 bytes); 
+[out#0/null @ 0x7aaf044180]   Total: 10 packets (29300 bytes) muxed
+[out#0/null @ 0x7aaf044180] video:29KiB audio:0KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+frame=   10 fps=0.0 q=-0.0 Lsize=N/A time=00:00:00.36 bitrate=N/A speed=1.59x elapsed=0:00:00.22    
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7aaf018000] Input file #0 (vt_in.mp4):
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7aaf018000]   Input stream #0:0 (video): 10 packets read (16699 bytes); 10 frames decoded; 0 decode errors; 
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7aaf018000]   Total: 10 packets (16699 bytes) demuxed
+[AVIOContext @ 0x7aaf018140] Statistics: 17693 bytes read, 0 seeks
+
+Exiting with exit code 0

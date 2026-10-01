@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>Jellyfin.Plugin.HwProbe.Core</AssemblyName>
+    <RootNamespace>Jellyfin.Plugin.HwProbe.Core</RootNamespace>
+  </PropertyGroup>
+
+</Project>

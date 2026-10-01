@@ -1,0 +1,41 @@
+namespace Jellyfin.Plugin.HwProbe.Core.Fixtures;
+
+/// <summary>The fixture clips from PLAN.md: 640x360, 25 frames of testsrc2.</summary>
+public static class FixtureCatalog
+{
+    private const string Source = "-hide_banner -loglevel error -y -f lavfi -i testsrc2=size=640x360:rate=25 -frames:v 25";
+
+    /// <summary>Gets the 8-bit H.264 clip, the smoke-probe source.</summary>
+    public static FixtureSpec H264 { get; } = new("h264_8bit.mp4", "h264", 8, false, "libx264", $"{Source} -c:v libx264 -pix_fmt yuv420p", null);
+
+    /// <summary>Gets the 8-bit HEVC clip.</summary>
+    public static FixtureSpec Hevc { get; } = new("hevc_8bit.mp4", "hevc", 8, false, "libx265", $"{Source} -c:v libx265 -pix_fmt yuv420p", null);
+
+    /// <summary>Gets the 10-bit HEVC clip.</summary>
+    public static FixtureSpec Hevc10 { get; } = new("hevc_10bit.mp4", "hevc", 10, false, "libx265", $"{Source} -c:v libx265 -pix_fmt yuv420p10le", null);
+
+    /// <summary>Gets the HDR10 clip for the tone-map probes.</summary>
+    public static FixtureSpec Hdr10 { get; } = new(
+        "hdr10.mp4",
+        "hevc",
+        10,
+        true,
+        "libx265",
+        $"{Source} -c:v libx265 -pix_fmt yuv420p10le -color_primaries {ColorMetadata.Hdr10.Primaries} -color_trc {ColorMetadata.Hdr10.Transfer} -colorspace {ColorMetadata.Hdr10.Space}",
+        null);
+
+    /// <summary>Gets the 8-bit VP9 clip.</summary>
+    public static FixtureSpec Vp9 { get; } = new("vp9_8bit.webm", "vp9", 8, false, "libvpx-vp9", $"{Source} -c:v libvpx-vp9 -pix_fmt yuv420p", null);
+
+    /// <summary>Gets the 8-bit AV1 clip.</summary>
+    public static FixtureSpec Av1 { get; } = new("av1_8bit.mp4", "av1", 8, false, "libsvtav1", $"{Source} -c:v libsvtav1 -pix_fmt yuv420p", null);
+
+    /// <summary>Gets the MPEG-2 clip.</summary>
+    public static FixtureSpec Mpeg2 { get; } = new("mpeg2.mpg", "mpeg2video", 8, false, "mpeg2video", $"{Source} -c:v mpeg2video", null);
+
+    /// <summary>Gets the VC-1 entry, which can't be generated.</summary>
+    public static FixtureSpec Vc1 { get; } = new("vc1.wmv", "vc1", 8, false, null, string.Empty, "No free VC-1 encoder exists; needs a checked-in sample.");
+
+    /// <summary>Gets every fixture, including ones that can never be generated.</summary>
+    public static IReadOnlyList<FixtureSpec> All { get; } = [H264, Hevc, Hevc10, Hdr10, Vp9, Av1, Mpeg2, Vc1];
+}

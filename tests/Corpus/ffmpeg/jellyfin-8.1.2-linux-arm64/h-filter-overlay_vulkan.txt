@@ -1,0 +1,19 @@
+Filter overlay_vulkan
+  Overlay a source on top of another
+    Inputs:
+       #0: main (video)
+       #1: overlay (video)
+    Outputs:
+       #0: default (video)
+overlay_vulkan AVOptions:
+   x                 <int>        ..FV....... Set horizontal offset (from 0 to INT_MAX) (default 0)
+   y                 <int>        ..FV....... Set vertical offset (from 0 to INT_MAX) (default 0)
+   eof_action        <int>        ..FV....... Action to take when encountering EOF from secondary input  (from 0 to 2) (default repeat)
+     repeat          0            ..FV....... Repeat the previous frame.
+     endall          1            ..FV....... End both streams.
+     pass            2            ..FV....... Pass through the main input.
+   shortest          <boolean>    ..FV....... force termination when the shortest input terminates (default false)
+   repeatlast        <boolean>    ..FV....... repeat overlay of the last overlay frame (default true)
+
+
+Exiting with exit code 0

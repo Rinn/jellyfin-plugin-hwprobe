@@ -1,0 +1,38 @@
+# Observed: Linux arm64 container (podman), jellyfin-ffmpeg 8.1.2, no V4L2 device. h264_v4l2m2m encode fails; last 4 KB.
+# ffmpeg -hide_banner -v debug -nostats -progress pipe:1 -i "/cache/hwprobe/fixtures/sha256_d99a9e622f7b4231ee3158b5c9e089c49a42d9332823e2899f5acf09d85ad8cc/h264_8bit.mp4" -frames:v 10 -vf "setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,format=yuv420p" -c:v h264_v4l2m2m -an -f null -
+le bayer_grbg16be yuv440p10le yuv440p10be yuv440p12le yuv440p12be ayuv64le ayuv64be videotoolbox_vld p010le p010be gbrap12be gbrap12le gbrap10be gbrap10le mediacodec gray12be gray12le gray10be gray10le p016le p016be d3d11 gray9be gray9le gbrpf32be gbrpf32le gbrapf32be gbrapf32le drm_prime opencl gray14be gray14le grayf32be grayf32le yuva422p12be yuva422p12le yuva444p12be yuva444p12le nv24 nv42 vulkan y210be y210le x2rgb10le x2rgb10be x2bgr10le x2bgr10be p210be p210le p410be p410le p216be p216le p416be p416le vuya rgbaf16be rgbaf16le vuyx p012le p012be y212be y212le xv30be xv30le xv36be xv36le rgbf32be rgbf32le rgbaf32be rgbaf32le p212be p212le p412be p412le gbrap14be gbrap14le d3d12 ayuv uyva vyu444 v30xbe v30xle rgbf16be rgbf16le rgba128be rgba128le rgb96be rgb96le y216be y216le xv48be xv48le gbrpf16be gbrpf16le gbrapf16be gbrapf16le grayf16be grayf16le amf gray32be gray32le yaf32be yaf32le yaf16be yaf16le gbrap32be gbrap32le yuv444p10msbbe yuv444p10msble yuv444p12msbbe yuv444p12msble gbrp10msbbe gbrp10msble gbrp12msbbe gbrp12msble ohcodec nv15 nv20
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: tv
+    Alpha modes: unspecified premultiplied straight
+[AVFilterGraph @ 0xffff9d6a0000] query_formats: 5 queried, 16 merged, 0 already done, 0 delayed
+[graph -1 input from stream 0:0 @ 0xffff9d7a0180] video frame properties congruent with link at pts_time: 0
+[h264_v4l2m2m @ 0xffffa36f0e00] Could not find a valid device
+[h264_v4l2m2m @ 0xffffa36f0e00] can't configure encoder
+[vost#0:0/h264_v4l2m2m @ 0xffffa3100600] [enc:h264_v4l2m2m @ 0xffffa35508c0] Error while opening encoder - maybe incorrect parameters such as bit_rate, rate, width or height.
+[vf#0:0 @ 0xffffa2cf0000] Error sending frames to consumers: Invalid argument
+[vf#0:0 @ 0xffffa2cf0000] Task finished with error code: -22 (Invalid argument)
+[out#0/null @ 0xffffa3b2d280] sq: 0 EOF
+[out#0/null @ 0xffffa3b2d280] sq: finish 0; head ts NOPTS
+[out#0/null @ 0xffffa3b2d280] sq: finish queue
+[vf#0:0 @ 0xffffa2cf0000] Terminating thread with return code -22 (Invalid argument)
+[vost#0:0/h264_v4l2m2m @ 0xffffa3100600] [enc:h264_v4l2m2m @ 0xffffa35508c0] Encoder thread received EOF
+[vost#0:0/h264_v4l2m2m @ 0xffffa3100600] [enc:h264_v4l2m2m @ 0xffffa35508c0] Could not open encoder before EOF
+[vost#0:0/h264_v4l2m2m @ 0xffffa3100600] Task finished with error code: -22 (Invalid argument)
+[vost#0:0/h264_v4l2m2m @ 0xffffa3100600] Terminating thread with return code -22 (Invalid argument)
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0xffffa3b70280] Terminating thread with return code 0 (success)
+[h264 @ 0xffffa36f2300] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[h264 @ 0xffffa36f1500] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[h264 @ 0xffffa36f1880] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[vist#0:0/h264 @ 0xffffa3b40480] [dec:h264 @ 0xffffa3b70500] Decoder returned EOF, finishing
+[h264 @ 0xffffa36f1c00] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[vist#0:0/h264 @ 0xffffa3b40480] [dec:h264 @ 0xffffa3b70500] Terminating thread with return code 0 (success)
+[out#0/null @ 0xffffa3b2d280] Nothing was written into output file, because at least one of its streams received no packets.
+frame=    0 fps=0.0 q=0.0 Lsize=       0KiB time=N/A bitrate=N/A speed=N/A elapsed=0:00:00.00    
+[AVIOContext @ 0xffffa3b70140] Statistics: 154 bytes written, 0 seeks, 1 writeouts
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0xffffa3b70280] Input file #0 (/cache/hwprobe/fixtures/sha256_d99a9e622f7b4231ee3158b5c9e089c49a42d9332823e2899f5acf09d85ad8cc/h264_8bit.mp4):
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0xffffa3b70280]   Input stream #0:0 (video): 15 packets read (59253 bytes); 2 frames decoded; 0 decode errors; 
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0xffffa3b70280]   Total: 15 packets (59253 bytes) demuxed
+[AVIOContext @ 0xffffa3b703c0] Statistics: 99432 bytes read, 2 seeks
+Conversion failed!
+
+Exiting with exit code -22

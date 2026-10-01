@@ -18,6 +18,19 @@ dotnet test                        # Unit + FakeFfmpeg tests
 HWPROBE_HW_TESTS=1 dotnet test     # also RealFfmpeg + Hardware tests
 ```
 
+## Testing other platforms
+
+With podman installed:
+
+```sh
+scripts/container-linux.sh     # test suite on Linux, then hwprobe against jellyfin-ffmpeg (no GPU)
+scripts/container-windows.sh   # win-x64 build under Wine against Windows jellyfin-ffmpeg (no GPU)
+```
+
+Extra arguments are passed to hwprobe. On Apple Silicon the Windows script needs Rosetta for
+x86_64 containers: add `[machine]` / `rosetta = true` to `~/.config/containers/containers.conf`
+and restart the podman machine.
+
 ## Pre-commit hook
 
 All three checks above must pass before every commit. Install the checked-in hook once per clone:

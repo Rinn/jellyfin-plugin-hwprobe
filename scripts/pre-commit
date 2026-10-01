@@ -1,0 +1,19 @@
+#!/bin/sh
+# Pre-commit gate: build, format and tests must all pass. Install with:
+#   git config core.hooksPath scripts/
+#
+# Checks the working tree, not just the staged snapshot — commit with a clean tree.
+set -eu
+
+cd "$(git rev-parse --show-toplevel)"
+
+echo "pre-commit: dotnet build -warnaserror"
+dotnet build -warnaserror --nologo -v quiet
+
+echo "pre-commit: dotnet format --verify-no-changes"
+dotnet format --verify-no-changes
+
+echo "pre-commit: dotnet test"
+dotnet test
+
+echo "pre-commit: all checks passed"

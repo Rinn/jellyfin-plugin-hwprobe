@@ -1,0 +1,11 @@
+ffmpeg version 4.4-Jellyfin Copyright (c) 2000-2021 the FFmpeg developers
+built with gcc 10.3.0 (Rev5, Built by MSYS2 project)
+configuration:  --disable-static --enable-shared --extra-version=Jellyfin --disable-ffplay --disable-debug --enable-gpl --enable-version3 --enable-bzlib --enable-iconv --enable-lzma --enable-zlib --enable-sdl2 --enable-fontconfig --enable-gmp --enable-libass --enable-libzimg --enable-libbluray --enable-libfreetype --enable-libmp3lame --enable-libopus --enable-libtheora --enable-libvorbis --enable-libwebp --enable-libvpx --enable-libx264 --enable-libx265 --enable-libdav1d --enable-opencl --enable-dxva2 --enable-d3d11va --enable-amf --enable-libmfx --enable-cuda --enable-cuda-llvm --enable-cuvid --enable-nvenc --enable-nvdec --enable-ffnvcodec --enable-gnutls
+libavutil      56. 70.100 / 56. 70.100
+libavcodec     58.134.100 / 58.134.100
+libavformat    58. 76.100 / 58. 76.100
+libavdevice    58. 13.100 / 58. 13.100
+libavfilter     7.110.100 /  7.110.100
+libswscale      5.  9.100 /  5.  9.100
+libswresample   3.  9.100 /  3.  9.100
+libpostproc    55.  9.100 / 55.  9.100

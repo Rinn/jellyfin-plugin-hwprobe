@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>Jellyfin.Plugin.HwProbe.Cli</AssemblyName>
+    <RootNamespace>Jellyfin.Plugin.HwProbe.Cli</RootNamespace>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Jellyfin.Plugin.HwProbe.Cli.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HwProbe.Core\HwProbe.Core.csproj" />
+    <ProjectReference Include="..\HwProbe.Jellyfin\HwProbe.Jellyfin.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Jellyfin.Plugin.HwProbe.Core.Tests</AssemblyName>
+    <RootNamespace>Jellyfin.Plugin.HwProbe.Core.Tests</RootNamespace>
+    <UseCorpus>true</UseCorpus>
+    <UseFakeFfmpeg>true</UseFakeFfmpeg>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\HwProbe.Core\HwProbe.Core.csproj" />
+  </ItemGroup>
+
+</Project>

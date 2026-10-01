@@ -1,0 +1,23 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- UseFakeFfmpeg=true builds FakeFfmpeg, embeds its output path, and compiles FakeFfmpegHost. -->
+  <ItemGroup Condition="'$(UseFakeFfmpeg)' == 'true'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)FakeFfmpeg/FakeFfmpeg.csproj" ReferenceOutputAssembly="false" />
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>FakeFfmpegDirectory</_Parameter1>
+      <_Parameter2>$(MSBuildThisFileDirectory)FakeFfmpeg/bin/$(Configuration)/$(TargetFramework)/</_Parameter2>
+    </AssemblyAttribute>
+    <Compile Include="$(MSBuildThisFileDirectory)TestSupport/FakeFfmpegHost.cs" Link="TestSupport/FakeFfmpegHost.cs" />
+  </ItemGroup>
+
+  <!-- UseCorpus=true copies tests/Corpus into the output and compiles the scripted runner that replays it. -->
+  <ItemGroup Condition="'$(UseCorpus)' == 'true'">
+    <None Include="$(MSBuildThisFileDirectory)Corpus/**/*" LinkBase="Corpus" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestSupport/ScriptedFfmpegRunner.cs" Link="TestSupport/ScriptedFfmpegRunner.cs" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
+    <Compile Include="$(MSBuildThisFileDirectory)TestSupport/TestEnvironment.cs" Link="TestSupport/TestEnvironment.cs" />
+  </ItemGroup>
+</Project>

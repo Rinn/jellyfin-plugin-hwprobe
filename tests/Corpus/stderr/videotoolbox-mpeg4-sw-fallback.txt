@@ -1,0 +1,61 @@
+# Observed: macOS 27.0.1 arm64, Homebrew ffmpeg 9.0.2. Clean exit, 10 frames, decoded in software.
+# ffmpeg -v verbose -init_hw_device videotoolbox=vt -hwaccel videotoolbox -hwaccel_output_format videotoolbox_vld -noautorotate -i mpeg4_320x240.mp4 -frames:v 10 -c:v h264_videotoolbox -f null -
+[vist#0:0/mpeg4 @ 0x77e1010300] Selecting decoder 'mpeg4' because of requested hwaccel method videotoolbox
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/tmp/mpeg4_in.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2mp41
+    encoder         : Lavf63.1.102
+  Duration: 00:00:00.40, start: 0.000000, bitrate: 1048 kb/s
+  Stream #0:0[0x1](und): Video: mpeg4 (Simple Profile), 1 reference frame (mp4v / 0x7634706D), yuv420p(left), 320x240 [SAR 1:1 DAR 4:3], 1030 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+    Metadata:
+      handler_name    : VideoHandler
+      encoder         : Lavc63.1.102 mpeg4
+[out#0/null @ 0x77e0c48180] No explicit maps, mapping streams automatically...
+[vost#0:0/h264_videotoolbox @ 0x77e1074000] Created video stream from input stream 0:0
+Stream mapping:
+  Stream #0:0 -> #0:0 (mpeg4 (native) -> h264 (h264_videotoolbox))
+[vost#0:0/h264_videotoolbox @ 0x77e1074000] Starting thread...
+[vf#0:0 @ 0x77e106c000] Starting thread...
+[vist#0:0/mpeg4 @ 0x77e1010300] [dec:mpeg4 @ 0x77e10143c0] Starting thread...
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x77e1014000] Starting thread...
+Press [q] to stop, [?] for help
+[mpeg4 @ 0x77e0c45180] VideoToolbox decoder for this format not found.
+[mpeg4 @ 0x77e0c45180] Failed setup for format videotoolbox_vld: hwaccel initialisation returned error.
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x77e1014000] EOF while reading input
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x77e1014000] Terminating thread with return code 0 (success)
+[graph -1 input from stream 0:0 @ 0x77e0c49b00] w:320 h:240 pixfmt:yuv420p tb:1/12800 fr:25/1 sar:1/1 csp:unknown range:unknown alpha:unspecified
+[graph -1 input from stream 0:0 @ 0x77e0c49b00] video frame properties congruent with link at pts_time: 0
+[vist#0:0/mpeg4 @ 0x77e1010300] [dec:mpeg4 @ 0x77e10143c0] Decoder thread received EOF packet
+Output #0, null, to 'pipe:':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2mp41
+    encoder         : Lavf63.1.102
+  Stream #0:0(und): Video: h264, 1 reference frame, yuv420p(progressive, left), 320x240 [SAR 1:1 DAR 4:3], q=2-31, 25 fps, 25 tbn (default)
+    Metadata:
+      encoder         : Lavc63.1.102 h264_videotoolbox
+      handler_name    : VideoHandler
+[out#0/null @ 0x77e0c48180] Starting thread...
+[h264_videotoolbox @ 0x77e0c44a80] Color range not set for yuv420p. Using MPEG range.
+[vist#0:0/mpeg4 @ 0x77e1010300] [dec:mpeg4 @ 0x77e10143c0] Decoder returned EOF, finishing
+[vist#0:0/mpeg4 @ 0x77e1010300] [dec:mpeg4 @ 0x77e10143c0] Terminating thread with return code 0 (success)
+[vf#0:0 @ 0x77e106c000] All consumers returned EOF
+[vf#0:0 @ 0x77e106c000] Terminating thread with return code 0 (success)
+[vost#0:0/h264_videotoolbox @ 0x77e1074000] [enc:h264_videotoolbox @ 0x77e0c1c3f0] Encoder thread received EOF
+[vost#0:0/h264_videotoolbox @ 0x77e1074000] Terminating thread with return code 0 (success)
+[out#0/null @ 0x77e0c48180] All streams finished
+[out#0/null @ 0x77e0c48180] Terminating thread with return code 0 (success)
+[out#0/null @ 0x77e0c48180] Output file #0 (pipe:):
+[out#0/null @ 0x77e0c48180]   Output stream #0:0 (video): 10 frames encoded; 10 packets muxed (31919 bytes); 
+[out#0/null @ 0x77e0c48180]   Total: 10 packets (31919 bytes) muxed
+[out#0/null @ 0x77e0c48180] video:31KiB audio:0KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+frame=   10 fps=0.0 q=-0.0 Lsize=N/A time=00:00:00.36 bitrate=N/A speed=2.21x elapsed=0:00:00.16    
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x77e1014000] Input file #0 (/tmp/mpeg4_in.mp4):
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x77e1014000]   Input stream #0:0 (video): 10 packets read (51503 bytes); 10 frames decoded; 0 decode errors; 
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x77e1014000]   Total: 10 packets (51503 bytes) demuxed
+[AVIOContext @ 0x77e1014140] Statistics: 104832 bytes read, 1 seeks
+
+Exiting with exit code 0

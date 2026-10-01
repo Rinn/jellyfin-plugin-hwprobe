@@ -1,0 +1,9 @@
+# Observed: Wine 9.0 (x86_64 under Rosetta), jellyfin-ffmpeg 8.1.3 win64, no Direct3D 11 adapter. Device open fails.
+# ffmpeg -v verbose -hide_banner -init_hw_device d3d11va=dx11:0 -init_hw_device qsv=qs@dx11
+[D3D11VA @ 00007fffff1228c0] Selecting d3d11va adapter 0
+[D3D11VA @ 00007fffff1228c0] Failed to create Direct3D device (887a0004)
+Device creation failed: -1313558101.
+Failed to set value 'd3d11va=dx11:0' for option 'init_hw_device': Unknown error occurred
+Error parsing global options: Unknown error occurred
+
+Exiting with exit code -1313558101

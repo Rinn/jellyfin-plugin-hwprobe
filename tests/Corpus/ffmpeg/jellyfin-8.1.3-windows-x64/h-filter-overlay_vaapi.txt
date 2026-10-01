@@ -1,0 +1,3 @@
+Unknown filter 'overlay_vaapi'.
+
+Exiting with exit code 0

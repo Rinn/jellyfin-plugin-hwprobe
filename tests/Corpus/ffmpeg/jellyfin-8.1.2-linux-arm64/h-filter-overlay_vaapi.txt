@@ -1,0 +1,33 @@
+Filter overlay_vaapi
+  Overlay one video on top of another
+    Inputs:
+       #0: main (video)
+       #1: overlay (video)
+    Outputs:
+       #0: default (video)
+overlay_vaapi AVOptions:
+   x                 <string>     ..FV....... Overlay x position (default "0")
+   y                 <string>     ..FV....... Overlay y position (default "0")
+   w                 <string>     ..FV....... Overlay width (default "overlay_iw")
+   h                 <string>     ..FV....... Overlay height (default "overlay_ih*w/overlay_iw")
+   alpha             <float>      ..FV....... Overlay global alpha (from 0 to 1) (default 1)
+   eof_action        <int>        ..FV....... Action to take when encountering EOF from secondary input  (from 0 to 2) (default repeat)
+     repeat          0            ..FV....... Repeat the previous frame.
+     endall          1            ..FV....... End both streams.
+     pass            2            ..FV....... Pass through the main input.
+   shortest          <boolean>    ..FV....... force termination when the shortest input terminates (default false)
+   repeatlast        <boolean>    ..FV....... repeat overlay of the last overlay frame (default true)
+
+framesync AVOptions:
+   eof_action        <int>        ..FV....... Action to take when encountering EOF from secondary input  (from 0 to 2) (default repeat)
+     repeat          0            ..FV....... Repeat the previous frame.
+     endall          1            ..FV....... End both streams.
+     pass            2            ..FV....... Pass through the main input.
+   shortest          <boolean>    ..FV....... force termination when the shortest input terminates (default false)
+   repeatlast        <boolean>    ..FV....... extend last frame of secondary streams beyond EOF (default true)
+   ts_sync_mode      <int>        ..FV....... How strictly to sync streams based on secondary input timestamps (from 0 to 1) (default default)
+     default         0            ..FV....... Frame from secondary input with the nearest lower or equal timestamp to the primary input frame
+     nearest         1            ..FV....... Frame from secondary input with the absolute nearest timestamp to the primary input frame
+
+
+Exiting with exit code 0

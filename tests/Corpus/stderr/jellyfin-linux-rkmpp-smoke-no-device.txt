@@ -1,0 +1,62 @@
+# Observed: Linux arm64 container (podman), jellyfin-ffmpeg 8.1.2, no Rockchip device. Smoke probe fails; last 4 KB.
+# ffmpeg -hide_banner -v debug -nostats -progress pipe:1 -init_hw_device rkmpp=rk -hwaccel rkmpp -hwaccel_output_format drm_prime -noautorotate -afbc rga -i "/cache/hwprobe/fixtures/sha256_d99a9e622f7b4231ee3158b5c9e089c49a42d9332823e2899f5acf09d85ad8cc/h264_8bit.mp4" -frames:v 10 -vf "setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,vpp_rkrga=w=320:h=180:format=nv12:afbc=1" -c:v h264_rkmpp -an -f null -
+0000] Opening '/cache/hwprobe/fixtures/sha256_d99a9e622f7b4231ee3158b5c9e089c49a42d9332823e2899f5acf09d85ad8cc/h264_8bit.mp4' for reading
+[file @ 0xffff87e300e0] Setting default whitelist 'file,crypto,data'
+[in#0 @ 0xffff87ea0000] Format mov,mp4,m4a,3gp,3g2,mj2 probed with size=2048 and score=100
+[in#0 @ 0xffff87ea0000] ISO: File Type Major Brand: isom
+[in#0 @ 0xffff87ea0000] Unknown dref type 0x206c7275 size 12
+[in#0 @ 0xffff87ea0000] Processing st: 0, edit list 0 - media time: 1024, duration: 12800
+[in#0 @ 0xffff87ea0000] Offset DTS by 1024 to make first pts zero.
+[in#0 @ 0xffff87ea0000] Setting codecpar->delay to 2 for stream st: 0
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0xffff87ea0000] Before avformat_find_stream_info() pos: 93512 bytes read:33896 seeks:1 nb_streams:1
+[h264 @ 0xffff87ef0380] nal_unit_type: 7(SPS), nal_ref_idc: 3
+[h264 @ 0xffff87ef0380] Decoding VUI
+[h264 @ 0xffff87ef0380] nal_unit_type: 8(PPS), nal_ref_idc: 3
+[h264 @ 0xffff87ef0380] nal_unit_type: 7(SPS), nal_ref_idc: 3
+[h264 @ 0xffff87ef0380] Decoding VUI
+[h264 @ 0xffff87ef0380] nal_unit_type: 8(PPS), nal_ref_idc: 3
+[h264 @ 0xffff87ef0380] nal_unit_type: 6(SEI), nal_ref_idc: 0
+[h264 @ 0xffff87ef0380] nal_unit_type: 5(IDR), nal_ref_idc: 3
+[h264 @ 0xffff87ef0380] Format yuv420p chosen by get_format().
+[h264 @ 0xffff87ef0380] Reinit context to 640x368, pix_fmt: yuv420p
+[h264 @ 0xffff87ef0380] no picture 
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0xffff87ea0000] All info found
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0xffff87ea0000] After avformat_find_stream_info() pos: 8958 bytes read:66664 seeks:2 frames:1
+[vist#0:0/h264 @ 0xffff88340480] Selecting decoder 'h264_rkmpp' because of requested hwaccel method rkmpp
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/cache/hwprobe/fixtures/sha256_d99a9e622f7b4231ee3158b5c9e089c49a42d9332823e2899f5acf09d85ad8cc/h264_8bit.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf62.12.102
+  Duration: 00:00:01.00, start: 0.000000, bitrate: 748 kb/s
+  Stream #0:0[0x1](und), 1, 1/12800: Video: h264 (High), 1 reference frame (avc1 / 0x31637661), yuv420p(progressive, left), 640x360 [SAR 1:1 DAR 16:9], 0/1, 738 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+    Metadata:
+      handler_name    : VideoHandler
+      encoder         : Lavc62.28.102 libx264
+Successfully opened the file.
+Parsing a group of options: output url -.
+Applying option frames:v (set the number of frames to output) with argument 10.
+Applying option vf (alias for -filter:v (apply filters to video streams)) with argument setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,vpp_rkrga=w=320:h=180:format=nv12:afbc=1.
+Applying option c:v (select encoder/decoder ('copy' to copy stream without reencoding)) with argument h264_rkmpp.
+Applying option an (disable audio) with argument 1.
+Applying option f (force container format (auto-detected otherwise)) with argument null.
+Successfully parsed a group of options.
+Opening an output file: -.
+[out#0/null @ 0xffff8832d340] No explicit maps, mapping streams automatically...
+[vost#0:0/h264_rkmpp @ 0xffff87900600] Created video stream from input stream 0:0
+[AVFilterGraph @ 0xffff88222f00] Setting 'color_primaries' to value 'bt709'
+[AVFilterGraph @ 0xffff88222f00] Setting 'color_trc' to value 'bt709'
+[AVFilterGraph @ 0xffff88222f00] Setting 'colorspace' to value 'bt709'
+[AVFilterGraph @ 0xffff88222f00] Setting 'w' to value '320'
+[AVFilterGraph @ 0xffff88222f00] Setting 'h' to value '180'
+[AVFilterGraph @ 0xffff88222f00] Setting 'format' to value 'nv12'
+[AVFilterGraph @ 0xffff88222f00] Setting 'afbc' to value '1'
+[h264_rkmpp @ 0xffff87ef1180] Format drm_prime chosen by get_format().
+[h264_rkmpp @ 0xffff87ef1180] Failed to init MPP context: -1
+[vist#0:0/h264 @ 0xffff88340480] [dec:h264_rkmpp @ 0xffff88370500] Error while opening decoder: Generic error in an external library
+Error opening output file -.
+Error opening output files: Generic error in an external library
+[AVIOContext @ 0xffff883703c0] Statistics: 66664 bytes read, 2 seeks
+
+Exiting with exit code -542398533

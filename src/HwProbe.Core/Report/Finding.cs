@@ -1,0 +1,7 @@
+namespace Jellyfin.Plugin.HwProbe.Core.Report;
+
+/// <summary>A report-level observation with a remedy.</summary>
+/// <param name="Severity">How much it matters.</param>
+/// <param name="Code">Stable kebab-case identifier, e.g. <c>legacy-copyback</c>.</param>
+/// <param name="Message">Human-readable explanation and remedy.</param>
+public sealed record Finding(FindingSeverity Severity, string Code, string Message);

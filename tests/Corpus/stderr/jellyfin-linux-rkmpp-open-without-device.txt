@@ -1,0 +1,8 @@
+# Observed: Linux arm64 container (podman), jellyfin-ffmpeg 8.1.2, no Rockchip device. Device open succeeds anyway.
+# ffmpeg -v verbose -hide_banner -init_hw_device rkmpp=rk
+Universal media converter
+usage: ffmpeg [options] [[infile options] -i infile]... {[outfile options] outfile}...
+
+Use -h to get full help or, even better, run 'man ffmpeg'
+
+Exiting with exit code 1

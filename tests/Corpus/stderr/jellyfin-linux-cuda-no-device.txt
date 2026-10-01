@@ -1,0 +1,9 @@
+# Observed: Linux arm64 container (podman), jellyfin-ffmpeg 8.1.2, no NVIDIA device. Device open fails.
+# ffmpeg -v verbose -hide_banner -init_hw_device cuda=cu:0
+[CUDA @ 0xffff78b2d100] Cannot load libcuda.so.1
+[CUDA @ 0xffff78b2d100] Could not dynamically load CUDA
+Device creation failed: -1.
+Failed to set value 'cuda=cu:0' for option 'init_hw_device': Operation not permitted
+Error parsing global options: Operation not permitted
+
+Exiting with exit code -1

@@ -1,0 +1,22 @@
+Filter transpose_opencl
+  Transpose input video
+    Inputs:
+       #0: default (video)
+    Outputs:
+       #0: default (video)
+transpose_opencl AVOptions:
+   dir               <int>        ..FV....... set transpose direction (from 0 to 6) (default cclock_flip)
+     cclock_flip     0            ..FV....... rotate counter-clockwise with vertical flip
+     clock           1            ..FV....... rotate clockwise
+     cclock          2            ..FV....... rotate counter-clockwise
+     clock_flip      3            ..FV....... rotate clockwise with vertical flip
+     reversal        4            ..FV....... rotate by half-turn
+     hflip           5            ..FV....... flip horizontally
+     vflip           6            ..FV....... flip vertically
+   passthrough       <int>        ..FV....... do not apply transposition if the input matches the specified geometry (from 0 to INT_MAX) (default none)
+     none            0            ..FV....... always apply transposition
+     portrait        2            ..FV....... preserve portrait geometry
+     landscape       1            ..FV....... preserve landscape geometry
+
+
+Exiting with exit code 0

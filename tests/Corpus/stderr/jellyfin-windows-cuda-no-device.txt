@@ -1,0 +1,9 @@
+# Observed: Wine 9.0 (x86_64 under Rosetta), jellyfin-ffmpeg 8.1.3 win64, no NVIDIA device. Device open fails.
+# ffmpeg -v verbose -hide_banner -init_hw_device cuda=cu:0
+[CUDA @ 00007fffff122240] Cannot load nvcuda.dll
+[CUDA @ 00007fffff122240] Could not dynamically load CUDA
+Device creation failed: -1.
+Failed to set value 'cuda=cu:0' for option 'init_hw_device': Operation not permitted
+Error parsing global options: Operation not permitted
+
+Exiting with exit code -1

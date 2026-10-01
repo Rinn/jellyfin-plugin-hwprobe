@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Jellyfin.Plugin.HwProbe.Jellyfin.Tests</AssemblyName>
+    <RootNamespace>Jellyfin.Plugin.HwProbe.Jellyfin.Tests</RootNamespace>
+    <UseCorpus>true</UseCorpus>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\HwProbe.Jellyfin\HwProbe.Jellyfin.csproj" />
+  </ItemGroup>
+
+</Project>
