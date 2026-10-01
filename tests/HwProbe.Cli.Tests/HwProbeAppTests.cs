@@ -42,7 +42,7 @@ public sealed class HwProbeAppTests : IDisposable
         var (code, stdout, _) = await RunAsync(SoftwareOnly(), ["--format", "json", "--json", file]);
 
         Assert.Equal(0, code);
-        Assert.Contains("\"schemaVersion\": 2", stdout, StringComparison.Ordinal);
+        Assert.Contains("\"schemaVersion\": 3", stdout, StringComparison.Ordinal);
         var report = ReportStore.Deserialize(stdout);
         Assert.NotNull(report);
         Assert.Equal(report.Fingerprint, ReportStore.Deserialize(await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken))!.Fingerprint);

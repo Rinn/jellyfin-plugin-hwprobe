@@ -48,4 +48,26 @@ public sealed class HintsTests
     [Fact]
     public void UnknownOutcomeThrows() =>
         Assert.Throws<ArgumentOutOfRangeException>(() => Hints.For((ProbeOutcome)99, HwType.vaapi, HostOs.Linux, false));
+
+    /// <summary>Backends the user can fix get a short action and a link; missing hardware and missing builds get none.</summary>
+    /// <param name="verdict">The backend's verdict.</param>
+    /// <param name="type">The backend.</param>
+    /// <param name="inContainer">Whether the probe ran in a container.</param>
+    /// <param name="action">The expected action, or null for no fix.</param>
+    /// <param name="link">The expected link.</param>
+    [Theory]
+    [InlineData(BackendVerdict.NotPresent, HwType.nvenc, true, "NVIDIA GPU present? Run with --gpus all", "https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/nvidia/#official-docker")]
+    [InlineData(BackendVerdict.NotPresent, HwType.qsv, true, "GPU present? Pass --device /dev/dri", "https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/intel/#official-docker")]
+    [InlineData(BackendVerdict.NotPresent, HwType.vaapi, true, "GPU present? Pass --device /dev/dri", "https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/")]
+    [InlineData(BackendVerdict.PermissionDenied, HwType.qsv, false, "usermod -aG render jellyfin", "https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/intel/#configure-on-linux-host")]
+    [InlineData(BackendVerdict.NotPresent, HwType.nvenc, false, null, null)]
+    [InlineData(BackendVerdict.NotPresent, HwType.v4l2m2m, true, null, null)]
+    [InlineData(BackendVerdict.DevicePresentPipelineBroken, HwType.qsv, true, null, null)]
+    public void FixForBackend(BackendVerdict verdict, HwType type, bool inContainer, string? action, string? link)
+    {
+        var fix = Hints.FixFor(verdict, type, HostOs.Linux, inContainer);
+
+        Assert.Equal(action, fix?.Action);
+        Assert.Equal(link, fix?.Url?.ToString());
+    }
 }

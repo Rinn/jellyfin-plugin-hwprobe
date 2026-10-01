@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Jellyfin.Plugin.HwProbe.Api;
+using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Probing;
 using MediaBrowser.Common.Api;
@@ -57,7 +59,7 @@ public sealed class PluginShellTests : IDisposable
         await service.RunAsync(TestContext.Current.CancellationToken);
         var content = Assert.IsType<ContentResult>(await controller.GetReportAsync(TestContext.Current.CancellationToken));
         Assert.Equal("application/json", content.ContentType);
-        Assert.Contains("\"schemaVersion\": 2", content.Content, StringComparison.Ordinal);
+        Assert.Contains("\"schemaVersion\": 3", content.Content, StringComparison.Ordinal);
     }
 
     /// <summary>The task fails visibly when the probe fails, and has no default trigger.</summary>
@@ -82,6 +84,34 @@ public sealed class PluginShellTests : IDisposable
 
         using var stream = assembly.GetManifestResourceStream(resource);
         Assert.NotNull(stream);
+    }
+
+    /// <summary>The configuration page shows every per-codec column of the report, and the settings advice.</summary>
+    [Fact]
+    public void ConfigPageShowsEveryColumn()
+    {
+        var assembly = typeof(HwProbe.Plugin).Assembly;
+        using var stream = assembly.GetManifestResourceStream($"{typeof(HwProbe.Plugin).Namespace}.Configuration.configPage.html")!;
+        using var reader = new StreamReader(stream);
+        var page = reader.ReadToEnd();
+        var columns = typeof(BackendReport).GetProperties()
+            .Where(p => p.PropertyType == typeof(IReadOnlyDictionary<string, ProbeOutcome>))
+            .Select(p => JsonNamingPolicy.CamelCase.ConvertName(p.Name))
+            .ToList();
+
+        Assert.Equal(5, columns.Count);
+        Assert.All(columns, c => Assert.Contains($"'{c}'", page, StringComparison.Ordinal));
+        Assert.Contains("selected.settings", page, StringComparison.Ordinal);
+    }
+
+    /// <summary>The page has no "${", which jellyfin-web's translateHtml would replace with a translation lookup.</summary>
+    [Fact]
+    public void ConfigPageHasNoTranslationPlaceholders()
+    {
+        using var stream = typeof(HwProbe.Plugin).Assembly.GetManifestResourceStream($"{typeof(HwProbe.Plugin).Namespace}.Configuration.configPage.html")!;
+        using var reader = new StreamReader(stream);
+
+        Assert.DoesNotContain("${", reader.ReadToEnd(), StringComparison.Ordinal);
     }
 
     /// <inheritdoc/>

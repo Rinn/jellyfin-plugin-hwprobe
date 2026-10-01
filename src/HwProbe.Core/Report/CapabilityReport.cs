@@ -24,5 +24,5 @@ public sealed record CapabilityReport(
     IReadOnlyList<ProbeResult> Probes)
 {
     /// <summary>The schema version this build writes.</summary>
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
 }

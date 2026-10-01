@@ -6,6 +6,8 @@
 # HWPROBE_INSTALL=copy (default) copies the DLLs into the plugins folder. HWPROBE_INSTALL=repository
 # installs the way users do: the zip and a manifest built by scripts/manifest.py are served from a
 # second container, added as a plugin repository, and installed through Jellyfin's package API.
+# HWPROBE_INSTALL=existing checks a server that is already running with the plugin installed and the
+# setup wizard not yet done, at HWPROBE_BASE (e.g. http://nas.local:18096); nothing is built or started.
 set -eu
 
 root="$(git rev-parse --show-toplevel)"
@@ -39,8 +41,15 @@ wait_healthy() {
         [ "$(curl -s "$base/health" || true)" = "Healthy" ] && return 0
         sleep 2
     done
-    echo "FAIL  server never became healthy"; podman logs --tail 50 "$name"; exit 1
+    echo "FAIL  server never became healthy"
+    [ "$install" = existing ] || podman logs --tail 50 "$name"
+    exit 1
 }
+
+if [ "$install" = existing ]; then
+    base="${HWPROBE_BASE:?HWPROBE_BASE must be set for HWPROBE_INSTALL=existing}"
+    wait_healthy
+else
 
 rm -rf "$work" && mkdir -p "$work/config/plugins" "$work/cache" "$work/repo"
 dotnet publish "$root/src/HwProbe.Plugin" -c Release -o "$work/publish" -v q --nologo
@@ -72,6 +81,7 @@ podman run -d --name "$name" $network -p 127.0.0.1::8096 \
     -v "$work/config":/config -v "$work/cache":/cache "$image" >/dev/null
 base="http://$(podman port "$name" 8096 | head -1)"
 wait_healthy
+fi
 
 curl -sf -X POST "$base/Startup/Configuration" -H 'Content-Type: application/json' \
     -d '{"UICulture":"en-US","MetadataCountryCode":"US","PreferredMetadataLanguage":"en"}'
@@ -110,8 +120,9 @@ check "report without token" 401 "$(code "$base/HwProbe/Report")"
 check "report before a probe" 404 "$(code "$base/HwProbe/Report" -H "$h")"
 check "start probe" 202 "$(code -X POST "$base/HwProbe/Run" -H "$h")"
 
+# A probe on real hardware runs the full matrix, which takes minutes.
 state=Running
-for _ in $(seq 1 60); do
+for _ in $(seq 1 300); do
     state="$(curl -sf "$base/HwProbe/Status" -H "$h" | json 'j["State"]')"
     [ "$state" = Idle ] && break
     sleep 2
@@ -121,7 +132,7 @@ check "probe error" None "$(curl -sf "$base/HwProbe/Status" -H "$h" | json 'j.ge
 
 report="$(curl -sf "$base/HwProbe/Report" -H "$h")"
 printf "%s" "$report" | json '"\n".join("      %-8s %-8s %-12s %s" % (b["type"], b["device"] or "-", b["verdict"], b["hint"]) for b in j["backends"])'
-check "report schema" 2 "$(printf "%s" "$report" | json 'j["schemaVersion"]')"
+check "report schema" 3 "$(printf "%s" "$report" | json 'j["schemaVersion"]')"
 check "ffmpeg source" Server "$(printf "%s" "$report" | json 'j["ffmpeg"]["source"]')"
 check "backends reported" True "$(printf "%s" "$report" | json 'len(j["backends"]) > 0')"
 check "every failure has a remedy" True "$(printf "%s" "$report" | json 'all(b["hint"] for b in j["backends"] if b["verdict"] != "Viable")')"
@@ -129,7 +140,7 @@ check "every failure has a remedy" True "$(printf "%s" "$report" | json 'all(b["
 task_id="$(curl -sf "$base/ScheduledTasks" -H "$h" | json 'next(t["Id"] for t in j if t["Key"]=="HwProbeHardwareProbe")')"
 check "run task" 204 "$(code -X POST "$base/ScheduledTasks/Running/$task_id" -H "$h")"
 result=-
-for _ in $(seq 1 60); do
+for _ in $(seq 1 300); do
     result="$(curl -sf "$base/ScheduledTasks/$task_id" -H "$h" | json 'j["State"] + " " + (j.get("LastExecutionResult") or {}).get("Status", "-")')"
     case "$result" in "Idle Completed" | "Idle Failed") break ;; esac
     sleep 2

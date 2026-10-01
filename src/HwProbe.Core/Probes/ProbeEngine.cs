@@ -105,7 +105,9 @@ public sealed class ProbeEngine : IDisposable
             new FfmpegSummary(ffmpeg, options.Ffmpeg.Source.ToString(), caps.Version?.ToString() ?? "unknown", caps.IsJellyfinBuild),
             new HostSummary(OsName(host.Os), host.Kernel, host.Container),
             new StageASummary([.. caps.Hwaccels.Order(StringComparer.Ordinal)], caps.BuildStatus, caps.FilterOptions),
-            [.. run.Backends.OrderBy(b => b.Type).ThenBy(b => b.Device, StringComparer.Ordinal)],
+            [.. run.Backends
+                .Select(b => b.Verdict == BackendVerdict.Viable ? b : b with { Fix = Hints.FixFor(b.Verdict, b.Type, host.Os, host.Container is not null) })
+                .OrderBy(b => b.Type).ThenBy(b => b.Device, StringComparer.Ordinal)],
             run.Findings,
             run.Probes);
 
@@ -382,7 +384,10 @@ public sealed class ProbeEngine : IDisposable
             var remedy = candidate.Type == HwType.videotoolbox
                 ? $"Filters run in software (copy-back). This ffmpeg lacks {string.Join(", ", VideoToolboxTier.MissingFilters(run.Caps.SupportsFilter))}; use jellyfin-ffmpeg for the Metal pipeline."
                 : Hints.LegacyCopyBack;
-            run.Findings.Add(new Finding(FindingSeverity.Warn, "legacy-copyback", $"{candidate.Type}{DevicePrefix(candidate.Device)}{remedy}"));
+            run.Findings.Add(new Finding(FindingSeverity.Warn, "legacy-copyback", $"{candidate.Type}{DevicePrefix(candidate.Device)}{remedy}")
+            {
+                Fix = candidate.Type == HwType.videotoolbox ? new Fix("Use jellyfin-ffmpeg", null) : Hints.OpenclFix(inContainer),
+            });
         }
 
         if (tier == PipelineTier.FullOpencl && DeviceOpenProbe.OpenclArguments(candidate.Type, candidate.Device, run.Host.Os) is { } openclArguments)
@@ -448,7 +453,8 @@ public sealed class ProbeEngine : IDisposable
             run.Findings.AddRange(LowPowerAdvice.Findings(candidate.Type, candidate.Device, encode, run.Host.Os, inContainer, EnableGuc()));
         }
 
-        run.Backends.Add(new BackendReport(candidate.Type, candidate.Device, BackendVerdict.Viable, tier, decode, encode, tonemap, deinterlace, subtitles, string.Empty));
+        var row = new BackendReport(candidate.Type, candidate.Device, BackendVerdict.Viable, tier, decode, encode, tonemap, deinterlace, subtitles, string.Empty);
+        run.Backends.Add(row with { Settings = SettingsAdvisor.For(row, new AdviceContext(run.Host.Os, inContainer, run.NoOpencl.Contains(candidate))) });
     }
 
     /// <summary>Opens OpenCL on a device that upstream will send through its OpenCL pipeline.</summary>
@@ -471,7 +477,10 @@ public sealed class ProbeEngine : IDisposable
             run.Findings.Add(new Finding(
                 FindingSeverity.Warn,
                 "opencl-unavailable",
-                $"{candidate.Type}{DevicePrefix(candidate.Device)}OpenCL doesn't start, but Jellyfin still picks its OpenCL pipeline because this ffmpeg was built with OpenCL, so OpenCL tone-mapping fails. {remedy}"));
+                $"{candidate.Type}{DevicePrefix(candidate.Device)}OpenCL doesn't start, but Jellyfin still picks its OpenCL pipeline because this ffmpeg was built with OpenCL, so OpenCL tone-mapping fails. {remedy}")
+            {
+                Fix = Hints.OpenclFix(run.Host.Container is not null),
+            });
         }
     }
 

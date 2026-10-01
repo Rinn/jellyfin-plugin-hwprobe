@@ -14,7 +14,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Verdict;
 public static class LowPowerAdvice
 {
     /// <summary>Jellyfin's guide to setting up low-power mode on Linux.</summary>
-    public const string GuideUrl = "https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/intel#configure-and-verify-lp-mode-on-linux";
+    public const string GuideUrl = "https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/intel/#configure-and-verify-lp-mode-on-linux";
 
     /// <summary>Path of the i915 driver's GuC/HuC loading parameter; readable without root.</summary>
     public const string EnableGucPath = "/sys/module/i915/parameters/enable_guc";
