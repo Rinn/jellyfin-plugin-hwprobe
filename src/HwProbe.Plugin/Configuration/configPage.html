@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>HwProbe</title>
+</head>
+<body>
+    <div id="HwProbeConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-button">
+        <div data-role="content">
+            <div class="content-primary">
+                <h2>HwProbe</h2>
+                <p>Tests which hardware transcoding backends and codecs actually work on this server. Run it while nothing is playing.</p>
+                <button is="emby-button" type="button" id="hwprobeRun" class="raised button-submit block">
+                    <span>Run probe</span>
+                </button>
+                <p id="hwprobeStatus"></p>
+                <table id="hwprobeBackends" class="detailTable">
+                    <thead>
+                        <tr><th>Backend</th><th>Device</th><th>Verdict</th><th>Pipeline</th><th>Decode</th><th>Encode</th><th>Remedy</th></tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <h3>Findings</h3>
+                <ul id="hwprobeFindings"></ul>
+            </div>
+        </div>
+        <script type="text/javascript">
+            (function () {
+                // The server's API uses PascalCase; the report keeps hwprobe's own camelCase schema.
+                const page = document.querySelector('#HwProbeConfigPage');
+                const statusText = page.querySelector('#hwprobeStatus');
+                let pollTimer = null;
+
+                function passed(cells) {
+                    const tested = Object.entries(cells || {}).filter(([, v]) => v !== 'Skipped' && v !== 'Untested');
+                    if (tested.length === 0) {
+                        return '-';
+                    }
+                    const failed = tested.filter(([, v]) => v !== 'Pass').map(([k]) => k);
+                    return `${tested.length - failed.length}/${tested.length}` + (failed.length ? ` (no ${failed.join(', ')})` : '');
+                }
+
+                function cell(row, text) {
+                    const td = document.createElement('td');
+                    td.textContent = text;
+                    row.appendChild(td);
+                }
+
+                function renderReport(report) {
+                    const body = page.querySelector('#hwprobeBackends tbody');
+                    body.replaceChildren();
+                    for (const b of report.backends) {
+                        const row = document.createElement('tr');
+                        cell(row, b.type);
+                        cell(row, b.device || '-');
+                        cell(row, b.verdict);
+                        cell(row, b.verdict === 'Viable' ? b.tier : '-');
+                        cell(row, passed(b.decode));
+                        cell(row, passed(b.encode));
+                        cell(row, b.hint || '');
+                        body.appendChild(row);
+                    }
+
+                    const findings = page.querySelector('#hwprobeFindings');
+                    findings.replaceChildren();
+                    for (const f of report.findings) {
+                        const li = document.createElement('li');
+                        li.textContent = `${f.severity}: ${f.message}`;
+                        findings.appendChild(li);
+                    }
+                }
+
+                function loadReport() {
+                    return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Report'), dataType: 'json' })
+                        .then(renderReport, () => { statusText.textContent = 'No probe has run yet.'; });
+                }
+
+                function loadStatus() {
+                    return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Status'), dataType: 'json' }).then(s => {
+                        if (s.State === 'Running') {
+                            statusText.textContent = 'Probing…';
+                            pollTimer = setTimeout(loadStatus, 3000);
+                            return;
+                        }
+                        statusText.textContent = s.LastError ? `Last probe failed: ${s.LastError}` : (s.LastCompletedUtc ? `Last probe: ${new Date(s.LastCompletedUtc).toLocaleString()}` : '');
+                        loadReport();
+                    });
+                }
+
+                page.querySelector('#hwprobeRun').addEventListener('click', () => {
+                    ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Run') })
+                        .then(loadStatus, (r) => { statusText.textContent = 'Could not start: a probe is running or a session is transcoding.'; });
+                });
+
+                page.addEventListener('pageshow', loadStatus);
+                page.addEventListener('pagehide', () => clearTimeout(pollTimer));
+            })();
+        </script>
+    </div>
+</body>
+</html>

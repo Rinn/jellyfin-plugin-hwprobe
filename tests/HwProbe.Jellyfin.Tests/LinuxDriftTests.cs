@@ -155,7 +155,7 @@ public sealed class LinuxDriftTests
         Assert.Equal(c.Input, args.InputArgs);
         Assert.Equal(c.Filters, args.FilterArgs);
         Assert.Equal(c.Encoder, args.VideoEncoder);
-        Assert.Equal(c.Environment, string.Join(",", args.Environment.Select(kv => $"{kv.Key}={kv.Value}")));
+        Assert.Equal(c.Environment, string.Join(",", args.Environment.Where(kv => kv.Value is not null).Select(kv => $"{kv.Key}={kv.Value}")));
         Assert.NotNull(args.HardwareDecoder);
         Assert.True(args.HardwareEncoder);
         Assert.Equal(c.Hdr10, args.HardwareTonemap);
@@ -171,6 +171,6 @@ public sealed class LinuxDriftTests
     /// <param name="Input">Expected input args.</param>
     /// <param name="Filters">Expected filter args.</param>
     /// <param name="Encoder">Expected encoder.</param>
-    /// <param name="Environment">Expected env overrides, as <c>K=V,K=V</c>.</param>
+    /// <param name="Environment">Expected set variables for the child, as <c>K=V,K=V</c>.</param>
     private sealed record Case(string Build, VaapiDriver Driver, HwType Type, string? Device, bool Hdr10, string Input, string Filters, string Encoder, string Environment);
 }

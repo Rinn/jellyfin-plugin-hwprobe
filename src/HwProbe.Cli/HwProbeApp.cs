@@ -64,7 +64,7 @@ internal static class HwProbeApp
         CapabilityReport report;
         try
         {
-            using var engine = new ProbeEngine(new FfmpegRunner(), new ArgumentSourceFactory(), platform, TimeProvider.System);
+            using var engine = new ProbeEngine(new FfmpegRunner(), new ArgumentSourceFactory(), platform, TimeProvider.System, EnvironmentRules.Standalone());
             report = await engine.RunAsync(engineOptions, cancellationToken);
         }
         catch (FfmpegUnusableException ex)

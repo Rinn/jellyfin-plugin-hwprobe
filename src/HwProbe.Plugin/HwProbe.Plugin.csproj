@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>Jellyfin.Plugin.HwProbe</AssemblyName>
+    <RootNamespace>Jellyfin.Plugin.HwProbe</RootNamespace>
+    <!-- Keep in step with build.yaml; the server shows this when there's no meta.json. -->
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The server provides these at runtime; shipping copies breaks plugin loading. -->
+    <PackageReference Include="Jellyfin.Controller" ExcludeAssets="runtime" />
+    <PackageReference Include="Jellyfin.Model" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HwProbe.Core\HwProbe.Core.csproj" />
+    <ProjectReference Include="..\HwProbe.Jellyfin\HwProbe.Jellyfin.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Configuration\configPage.html" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Jellyfin.Plugin.HwProbe.Plugin.Tests" />
+  </ItemGroup>
+
+</Project>

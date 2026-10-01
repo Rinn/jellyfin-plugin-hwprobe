@@ -19,19 +19,27 @@ public sealed class ProbeEngine : IDisposable
     private readonly IArgumentSourceFactory _arguments;
     private readonly IHostPlatform _platform;
     private readonly TimeProvider _time;
-    private readonly SerialProbeGate _gate = new(EncodingHelperEnvironment.Variables);
+    private readonly EnvironmentRules _environment;
+    private readonly SerialProbeGate _gate;
 
     /// <summary>Initializes a new instance of the <see cref="ProbeEngine"/> class.</summary>
     /// <param name="runner">Launches ffmpeg.</param>
     /// <param name="arguments">Generates probe arguments per device.</param>
     /// <param name="platform">Host access for device enumeration and host info.</param>
     /// <param name="time">Clock for the report timestamp.</param>
-    public ProbeEngine(IFfmpegRunner runner, IArgumentSourceFactory arguments, IHostPlatform platform, TimeProvider time)
+    /// <param name="environment">How to treat the process environment EncodingHelper writes to.</param>
+    public ProbeEngine(IFfmpegRunner runner, IArgumentSourceFactory arguments, IHostPlatform platform, TimeProvider time, EnvironmentRules environment)
     {
         ArgumentNullException.ThrowIfNull(runner);
         ArgumentNullException.ThrowIfNull(arguments);
         ArgumentNullException.ThrowIfNull(platform);
         ArgumentNullException.ThrowIfNull(time);
+        ArgumentNullException.ThrowIfNull(environment);
+
+        _environment = environment;
+
+        // Inside the server, restoring would undo variables its own transcodes rely on.
+        _gate = new SerialProbeGate(environment.RestoreAfterGeneration ? EncodingHelperEnvironment.Variables : []);
 
         _runner = runner;
         _arguments = arguments;
@@ -293,7 +301,7 @@ public sealed class ProbeEngine : IDisposable
                 continue;
             }
 
-            var invocation = new FfmpegInvocation(run.Options.Ffmpeg.Path, arguments, new Dictionary<string, string?>(), run.Options.ProbeTimeout);
+            var invocation = new FfmpegInvocation(run.Options.Ffmpeg.Path, arguments, _environment.Baseline, run.Options.ProbeTimeout);
             var result = await _gate.RunAsync(ct => _runner.RunAsync(invocation, ct), cancellationToken);
             var open = DeviceOpenProbe.Evaluate(candidate.Type, result);
             if (open.DriverDescription is not null)
@@ -435,6 +443,10 @@ public sealed class ProbeEngine : IDisposable
                 catch (ArgumentConstructionException ex)
                 {
                     return Record(candidate, cell, stage, ProbeOutcome.CodecUnsupported, null, ex.Message, null);
+                }
+                catch (UnsafeProbeException ex)
+                {
+                    return Record(candidate, cell, stage, ProbeOutcome.Untested, null, ex.Message, null);
                 }
                 catch (NotSupportedException ex)
                 {

@@ -50,7 +50,7 @@ public sealed class ArgumentSourceTests
         Assert.Equal("-init_hw_device videotoolbox=vt -hwaccel videotoolbox -hwaccel_output_format videotoolbox_vld -noautorotate", args.InputArgs);
         Assert.Equal(" -vf \"scale_vt=w=320:h=180\"", args.FilterArgs);
         Assert.Equal("h264_videotoolbox", args.VideoEncoder);
-        Assert.Empty(args.Environment);
+        Assert.Equal(EncodingHelperEnvironment.Capture(), args.Environment);
         Assert.NotNull(args.HardwareDecoder);
         Assert.True(args.HardwareEncoder);
     }

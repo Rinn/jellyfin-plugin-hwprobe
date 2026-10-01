@@ -1,0 +1,109 @@
+using Jellyfin.Plugin.HwProbe.Core.Model;
+using Jellyfin.Plugin.HwProbe.Core.Report;
+using Jellyfin.Plugin.HwProbe.Probing;
+using Microsoft.Extensions.Logging.Abstractions;
+using Xunit;
+
+namespace Jellyfin.Plugin.HwProbe.PluginTests;
+
+/// <summary>Single-flight, busy refusal and report saving in <see cref="ProbeService"/>.</summary>
+[Trait("Category", "Unit")]
+public sealed class ProbeServiceTests : IDisposable
+{
+    private readonly string _directory = Directory.CreateTempSubdirectory("hwprobe-plugin-").FullName;
+
+    /// <summary>A completed probe saves its report and records timestamps.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task CompletedProbeSavesReport()
+    {
+        using var service = Create(_ => Task.FromResult(Reports.Sample()), transcoding: false);
+
+        var result = await service.RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(ProbeRunResult.Completed, result);
+        var json = await service.LatestJsonAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(Reports.Sample().Fingerprint, ReportStore.Deserialize(json!)!.Fingerprint);
+        Assert.Equal(ProbeState.Idle, service.Status.State);
+        Assert.NotNull(service.Status.LastCompletedUtc);
+        Assert.Null(service.Status.LastError);
+    }
+
+    /// <summary>Nothing runs while a session is transcoding.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task RefusesWhileTranscoding()
+    {
+        var ran = false;
+        using var service = Create(
+            _ =>
+            {
+                ran = true;
+                return Task.FromResult(Reports.Sample());
+            },
+            transcoding: true);
+
+        Assert.Equal(ProbeRunResult.ServerBusy, await service.RunAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(ProbeRunResult.ServerBusy, service.Start());
+        Assert.False(ran);
+    }
+
+    /// <summary>A second request while one runs is refused, not queued.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task SecondRequestWhileRunningIsRefused()
+    {
+        using var release = new SemaphoreSlim(0);
+        using var service = Create(
+            async ct =>
+            {
+                await release.WaitAsync(ct);
+                return Reports.Sample();
+            },
+            transcoding: false);
+
+        var first = service.RunAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(ProbeState.Running, service.Status.State);
+        Assert.Equal(ProbeRunResult.AlreadyRunning, await service.RunAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(ProbeRunResult.AlreadyRunning, service.Start());
+
+        release.Release();
+        Assert.Equal(ProbeRunResult.Completed, await first);
+    }
+
+    /// <summary>A failing probe is recorded and doesn't throw, and the next probe can run.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task FailureIsRecordedNotThrown()
+    {
+        var fail = true;
+        using var service = Create(_ => fail ? throw new InvalidOperationException("ffmpeg vanished") : Task.FromResult(Reports.Sample()), transcoding: false);
+
+        Assert.Equal(ProbeRunResult.Failed, await service.RunAsync(TestContext.Current.CancellationToken));
+        Assert.Equal("ffmpeg vanished", service.Status.LastError);
+
+        fail = false;
+        Assert.Equal(ProbeRunResult.Completed, await service.RunAsync(TestContext.Current.CancellationToken));
+        Assert.Null(service.Status.LastError);
+    }
+
+    /// <summary>No report reads as null before any probe completes.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task NoReportBeforeFirstProbe()
+    {
+        using var service = Create(_ => Task.FromResult(Reports.Sample()), transcoding: false);
+
+        Assert.Null(await service.LatestJsonAsync(TestContext.Current.CancellationToken));
+    }
+
+    /// <inheritdoc/>
+    public void Dispose() => Directory.Delete(_directory, recursive: true);
+
+    /// <summary>Creates a service with a scripted probe.</summary>
+    /// <param name="probe">The probe.</param>
+    /// <param name="transcoding">Whether a session is transcoding.</param>
+    /// <returns>The service.</returns>
+    private ProbeService Create(Func<CancellationToken, Task<CapabilityReport>> probe, bool transcoding) =>
+        new(probe, () => transcoding, Path.Combine(_directory, "latest.json"), TimeProvider.System, NullLogger.Instance);
+}

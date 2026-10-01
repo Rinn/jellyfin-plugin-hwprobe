@@ -3,11 +3,13 @@
     <Project Path="src/HwProbe.Cli/HwProbe.Cli.csproj" />
     <Project Path="src/HwProbe.Core/HwProbe.Core.csproj" />
     <Project Path="src/HwProbe.Jellyfin/HwProbe.Jellyfin.csproj" />
+    <Project Path="src/HwProbe.Plugin/HwProbe.Plugin.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/FakeFfmpeg/FakeFfmpeg.csproj" />
     <Project Path="tests/HwProbe.Cli.Tests/HwProbe.Cli.Tests.csproj" />
     <Project Path="tests/HwProbe.Core.Tests/HwProbe.Core.Tests.csproj" />
     <Project Path="tests/HwProbe.Jellyfin.Tests/HwProbe.Jellyfin.Tests.csproj" />
+    <Project Path="tests/HwProbe.Plugin.Tests/HwProbe.Plugin.Tests.csproj" />
   </Folder>
 </Solution>

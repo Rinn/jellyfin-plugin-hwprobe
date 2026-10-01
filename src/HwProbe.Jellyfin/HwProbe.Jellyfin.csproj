@@ -14,4 +14,8 @@
     <ProjectReference Include="..\HwProbe.Core\HwProbe.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Jellyfin.Plugin.HwProbe.Jellyfin.Tests" />
+  </ItemGroup>
+
 </Project>

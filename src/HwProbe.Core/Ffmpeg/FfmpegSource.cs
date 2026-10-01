@@ -14,4 +14,7 @@ public enum FfmpegSource
 
     /// <summary>The first <c>ffmpeg</c> on <c>PATH</c>; likely not the binary the server uses.</summary>
     SystemPath,
+
+    /// <summary>The binary the running Jellyfin server is configured to use.</summary>
+    Server,
 }
