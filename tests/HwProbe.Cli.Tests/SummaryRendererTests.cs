@@ -42,7 +42,7 @@ public sealed class SummaryRendererTests
             ]);
 
         var expected = """
-            hwprobe summary (report schema 2)
+            hwprobe summary (report schema 3)
             ffmpeg  8.1.2, jellyfin-ffmpeg, /usr/lib/jellyfin-ffmpeg/ffmpeg (EnvironmentVariable)
             host    linux 6.8.0, in docker
             built   qsv; not built: amf

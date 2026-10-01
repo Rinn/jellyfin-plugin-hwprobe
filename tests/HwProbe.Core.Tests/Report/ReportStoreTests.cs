@@ -19,7 +19,7 @@ public sealed class ReportStoreTests : IDisposable
         var json = ReportStore.Serialize(report);
         var back = ReportStore.Deserialize(json);
 
-        Assert.Contains("\"schemaVersion\": 2", json, StringComparison.Ordinal);
+        Assert.Contains("\"schemaVersion\": 3", json, StringComparison.Ordinal);
         Assert.Contains("\"verdict\": \"Viable\"", json, StringComparison.Ordinal);
         Assert.Contains("\"type\": \"qsv\"", json, StringComparison.Ordinal);
         Assert.Contains("\"hevc_10bit\": \"Pass\"", json, StringComparison.Ordinal);

@@ -132,7 +132,7 @@ check "probe error" None "$(curl -sf "$base/HwProbe/Status" -H "$h" | json 'j.ge
 
 report="$(curl -sf "$base/HwProbe/Report" -H "$h")"
 printf "%s" "$report" | json '"\n".join("      %-8s %-8s %-12s %s" % (b["type"], b["device"] or "-", b["verdict"], b["hint"]) for b in j["backends"])'
-check "report schema" 2 "$(printf "%s" "$report" | json 'j["schemaVersion"]')"
+check "report schema" 3 "$(printf "%s" "$report" | json 'j["schemaVersion"]')"
 check "ffmpeg source" Server "$(printf "%s" "$report" | json 'j["ffmpeg"]["source"]')"
 check "backends reported" True "$(printf "%s" "$report" | json 'len(j["backends"]) > 0')"
 check "every failure has a remedy" True "$(printf "%s" "$report" | json 'all(b["hint"] for b in j["backends"] if b["verdict"] != "Viable")')"

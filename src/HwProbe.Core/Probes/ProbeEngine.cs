@@ -448,7 +448,8 @@ public sealed class ProbeEngine : IDisposable
             run.Findings.AddRange(LowPowerAdvice.Findings(candidate.Type, candidate.Device, encode, run.Host.Os, inContainer, EnableGuc()));
         }
 
-        run.Backends.Add(new BackendReport(candidate.Type, candidate.Device, BackendVerdict.Viable, tier, decode, encode, tonemap, deinterlace, subtitles, string.Empty));
+        var row = new BackendReport(candidate.Type, candidate.Device, BackendVerdict.Viable, tier, decode, encode, tonemap, deinterlace, subtitles, string.Empty);
+        run.Backends.Add(row with { Settings = SettingsAdvisor.For(row) });
     }
 
     /// <summary>Opens OpenCL on a device that upstream will send through its OpenCL pipeline.</summary>

@@ -23,4 +23,8 @@ public sealed record BackendReport(
     IReadOnlyDictionary<string, ProbeOutcome> Tonemap,
     IReadOnlyDictionary<string, ProbeOutcome> Deinterlace,
     IReadOnlyDictionary<string, ProbeOutcome> Subtitles,
-    string Hint);
+    string Hint)
+{
+    /// <summary>Gets advice for each option on Jellyfin's Transcoding page; empty for a backend that doesn't work.</summary>
+    public IReadOnlyList<SettingAdvice> Settings { get; init; } = [];
+}
