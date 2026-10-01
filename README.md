@@ -18,7 +18,7 @@ Requires Jellyfin 12.1 or newer.
 
 ## Use
 
-**Dashboard > Plugins > HwProbe > Run probe**, while nothing is playing. The first run takes a few minutes.
+**Dashboard > Plugins > HwProbe > Settings > Run probe**, while nothing is playing. The first run takes a few minutes.
 
 ## Command-line version
 
