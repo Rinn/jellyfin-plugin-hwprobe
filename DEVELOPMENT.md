@@ -13,6 +13,10 @@ How to build, test and release hwprobe. For installing and using it, see the [RE
 | `tests/` | Unit, fake-ffmpeg, real-ffmpeg and hardware tests, plus recorded ffmpeg output in `tests/Corpus`. |
 | `build.yaml` | Plugin metadata (name, GUID, version, target ABI) used to build the plugin repository manifest. |
 
+## Command-line tool
+
+`src/HwProbe.Cli` runs the same probe without the plugin. Releases attach builds for linux-x64, linux-arm64, osx-arm64 and win-x64. Run it where Jellyfin runs (inside the container, for Docker) so it tests the same ffmpeg and devices: `dotnet run --project src/HwProbe.Cli -- --help` lists the options, and `--format summary` prints a short report to share.
+
 ## Building
 
 ```sh

@@ -20,10 +20,6 @@ Requires Jellyfin 12.1 or newer.
 
 **Dashboard > Plugins > HwProbe > Settings > Run probe**, while nothing is playing. The first run takes a few minutes.
 
-## Command-line version
-
-For testing without the plugin, download the build for your system from [Releases](../../releases) and run it where Jellyfin runs (inside the container, for Docker). `--help` lists the options.
-
 ## Privacy
 
 Nothing is sent anywhere. The only download is a 124 KB VC-1 test clip from [FFmpeg's sample suite](https://fate-suite.ffmpeg.org/vc1/), once, checked against a pinned hash.
