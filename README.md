@@ -11,21 +11,6 @@ filter-pipeline tiers genuinely work, with a remedy for each failure.
 implemented. VAAPI and QSV have been validated on one Intel GPU (Apollo Lake, Linux); other
 backends have not been run on real hardware.
 
-## Running on a Jellyfin server
-
-Inside the Jellyfin container (Linux x86-64), while nothing is playing. Everything it writes goes
-to `/tmp`; the `jellyfin/jellyfin` image points `XDG_CACHE_HOME` at the persistent `/cache`
-volume, so the command redirects it:
-
-```sh
-curl -fsSL https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.1.0-preview/hwprobe-linux-x64.gz | gzip -d > /tmp/hwprobe && chmod +x /tmp/hwprobe && HOME=/tmp/hwprobe-home XDG_CACHE_HOME=/tmp/hwprobe-cache /tmp/hwprobe --fixtures /tmp/hwprobe-cache/fixtures --json /tmp/hwprobe-report.json --format summary
-```
-
-`--format summary` prints a short, paste-friendly result: one line per check group, the findings,
-and for each failure only the stderr lines that explain it. The full report, with every command
-line and stderr tail, is in `/tmp/hwprobe-report.json`. Clean up with
-`rm -rf /tmp/hwprobe /tmp/hwprobe-home /tmp/hwprobe-cache /tmp/hwprobe-report.json`.
-
 ## Plugin
 
 Build `src/HwProbe.Plugin` and copy `Jellyfin.Plugin.HwProbe*.dll` into
