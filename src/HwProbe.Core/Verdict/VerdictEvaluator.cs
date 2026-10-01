@@ -115,6 +115,13 @@ public static class VerdictEvaluator
             return ProbeOutcome.DeviceUnavailable;
         }
 
+        // A hwaccel that couldn't start hands software frames to the hardware filters, which then fail too;
+        // the codec is the cause.
+        if (ContainsAny(stderr, StderrMarkers.HwaccelSetupFailed))
+        {
+            return ProbeOutcome.CodecUnsupported;
+        }
+
         if (ContainsAny(stderr, StderrMarkers.FilterUnsupported))
         {
             return ProbeOutcome.FilterUnsupported;

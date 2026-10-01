@@ -55,6 +55,10 @@ public static class StderrMarkers
         "Failed setup for format",
     ];
 
+    /// <summary>The hwaccel could not start for this stream, so decoding fell back to software.</summary>
+    /// <remarks>libavcodec/decode.c, hwaccel_init; read from source, not yet observed for a failed run.</remarks>
+    public static readonly IReadOnlyList<string> HwaccelSetupFailed = ["Failed setup for format"];
+
     /// <summary>Driver names upstream matches in that line (MediaEncoder.cs, v12.1, L246-248).</summary>
     public static readonly IReadOnlyList<(string Name, VaapiDriver Driver)> VaapiDrivers =
     [
