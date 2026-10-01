@@ -1,0 +1,411 @@
+Splitting the commandline.
+Reading option '-hide_banner' ... matched as option 'hide_banner' (do not show program banner) with argument '1'.
+Reading option '-v' ... matched as option 'v' (set logging level) with argument 'debug'.
+Reading option '-init_hw_device' ... matched as option 'init_hw_device' (initialise hardware device) with argument 'vaapi=va:/dev/dri/renderD128,driver=iHD'.
+Reading option '-hwaccel' ... matched as option 'hwaccel' (use HW accelerated decoding) with argument 'vaapi'.
+Reading option '-hwaccel_output_format' ... matched as option 'hwaccel_output_format' (select output format used with HW accelerated decoding) with argument 'vaapi'.
+Reading option '-noautorotate' ... matched as option 'autorotate' (automatically insert correct rotate filters) with argument 0.
+Reading option '-i' ... matched as input url with argument '/tmp/hwprobe-cache/fixtures/sha256_d99a9e622f7b4231ee3158b5c9e089c49a42d9332823e2899f5acf09d85ad8cc/av1_8bit.mp4'.
+Reading option '-frames:v' ... matched as option 'frames' (set the number of frames to output) with argument '10'.
+Reading option '-vf' ... matched as option 'vf' (alias for -filter:v (apply filters to video streams)) with argument 'scale_vaapi=format=nv12:extra_hw_frames=24'.
+Reading option '-c:v' ... matched as option 'c' (select encoder/decoder ('copy' to copy stream without reencoding)) with argument 'h264_vaapi'.
+Reading option '-an' ... matched as option 'an' (disable audio) with argument '1'.
+Reading option '-f' ... matched as option 'f' (force container format (auto-detected otherwise)) with argument 'null'.
+Reading option '-' ... matched as output url.
+Finished splitting the commandline.
+Parsing a group of options: global .
+Applying option hide_banner (do not show program banner) with argument 1.
+Applying option v (set logging level) with argument debug.
+Applying option init_hw_device (initialise hardware device) with argument vaapi=va:/dev/dri/renderD128,driver=iHD.
+[VAAPI @ 0x7f5503871bc0] libva: VA-API version 1.24.0
+[VAAPI @ 0x7f5503871bc0] libva: User requested driver 'iHD'
+[VAAPI @ 0x7f5503871bc0] libva: Trying to open /usr/lib/jellyfin-ffmpeg/lib/dri/iHD_drv_video.so
+[VAAPI @ 0x7f5503871bc0] libva: Found init function __vaDriverInit_1_24
+[VAAPI @ 0x7f5503871bc0] libva: va_openDriver() returns 0
+[VAAPI @ 0x7f5503871bc0] Initialised VAAPI connection: version 1.24
+[VAAPI @ 0x7f5503871bc0] Format 0x41524742 -> bgra.
+[VAAPI @ 0x7f5503871bc0] Format 0x41424752 -> rgba.
+[VAAPI @ 0x7f5503871bc0] Format 0x58524742 -> bgr0.
+[VAAPI @ 0x7f5503871bc0] Format 0x58424752 -> rgb0.
+[VAAPI @ 0x7f5503871bc0] Format 0x30335241 -> unknown.
+[VAAPI @ 0x7f5503871bc0] Format 0x30334241 -> unknown.
+[VAAPI @ 0x7f5503871bc0] Format 0x30335258 -> x2rgb10le.
+[VAAPI @ 0x7f5503871bc0] Format 0x30334258 -> x2bgr10le.
+[VAAPI @ 0x7f5503871bc0] Format 0x36314752 -> unknown.
+[VAAPI @ 0x7f5503871bc0] Format 0x50424752 -> unknown.
+[VAAPI @ 0x7f5503871bc0] Format 0x50524742 -> unknown.
+[VAAPI @ 0x7f5503871bc0] Format 0x56555941 -> unknown.
+[VAAPI @ 0x7f5503871bc0] Format 0x30303859 -> gray.
+[VAAPI @ 0x7f5503871bc0] Format 0x3231564e -> nv12.
+[VAAPI @ 0x7f5503871bc0] Format 0x3132564e -> unknown.
+[VAAPI @ 0x7f5503871bc0] Format 0x32595559 -> yuyv422.
+[VAAPI @ 0x7f5503871bc0] Format 0x59565955 -> uyvy422.
+[VAAPI @ 0x7f5503871bc0] Format 0x32315659 -> yuv420p.
+[VAAPI @ 0x7f5503871bc0] Format 0x30323449 -> yuv420p.
+[VAAPI @ 0x7f5503871bc0] Format 0x50313134 -> yuv411p.
+[VAAPI @ 0x7f5503871bc0] Format 0x48323234 -> yuv422p.
+[VAAPI @ 0x7f5503871bc0] Format 0x56323234 -> yuv440p.
+[VAAPI @ 0x7f5503871bc0] Format 0x50343434 -> yuv444p.
+[VAAPI @ 0x7f5503871bc0] Format 0x33434d49 -> unknown.
+[VAAPI @ 0x7f5503871bc0] Format 0x30313050 -> p010le.
+[VAAPI @ 0x7f5503871bc0] VAAPI driver: Intel iHD driver for Intel(R) Gen Graphics - 26.2.4 (2aa8891).
+[VAAPI @ 0x7f5503871bc0] Driver not found in known nonstandard list, using standard behaviour.
+Successfully parsed a group of options.
+Parsing a group of options: input url /tmp/hwprobe-cache/fixtures/sha256_d99a9e622f7b4231ee3158b5c9e089c49a42d9332823e2899f5acf09d85ad8cc/av1_8bit.mp4.
+Applying option hwaccel (use HW accelerated decoding) with argument vaapi.
+Applying option hwaccel_output_format (select output format used with HW accelerated decoding) with argument vaapi.
+Applying option noautorotate (automatically insert correct rotate filters) with argument 0.
+Successfully parsed a group of options.
+Opening an input file: /tmp/hwprobe-cache/fixtures/sha256_d99a9e622f7b4231ee3158b5c9e089c49a42d9332823e2899f5acf09d85ad8cc/av1_8bit.mp4.
+[in#0 @ 0x7f55038b9500] Opening '/tmp/hwprobe-cache/fixtures/sha256_d99a9e622f7b4231ee3158b5c9e089c49a42d9332823e2899f5acf09d85ad8cc/av1_8bit.mp4' for reading
+[file @ 0x7f5503946100] Setting default whitelist 'file,crypto,data'
+[in#0 @ 0x7f55038b9500] Format mov,mp4,m4a,3gp,3g2,mj2 probed with size=2048 and score=100
+[in#0 @ 0x7f55038b9500] ISO: File Type Major Brand: isom
+[in#0 @ 0x7f55038b9500] Unknown dref type 0x206c7275 size 12
+[in#0 @ 0x7f55038b9500] Processing st: 0, edit list 0 - media time: 0, duration: 12800
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7f55038b9500] Before avformat_find_stream_info() pos: 82609 bytes read:33697 seeks:1 nb_streams:1
+[libdav1d @ 0x7f55038dca80] libdav1d 1.5.3-0-gb546257
+[libdav1d @ 0x7f55038dca80] Using 1 threads, 0 max_frame_delay
+[libdav1d @ 0x7f55038dca80] Frame 0:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7f55038b9500] All info found
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7f55038b9500] After avformat_find_stream_info() pos: 7710 bytes read:66465 seeks:2 frames:1
+[vist#0:0/av1 @ 0x7f55038a8480] Selecting decoder 'av1' because of requested hwaccel method vaapi
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/tmp/hwprobe-cache/fixtures/sha256_d99a9e622f7b4231ee3158b5c9e089c49a42d9332823e2899f5acf09d85ad8cc/av1_8bit.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomav01iso2mp41
+    encoder         : Lavf62.12.102
+  Duration: 00:00:01.00, start: 0.000000, bitrate: 660 kb/s
+  Stream #0:0[0x1](und), 1, 1/12800: Video: av1 (libdav1d) (Main), 1 reference frame (av01 / 0x31307661), yuv420p(tv, progressive), 640x360 [SAR 1:1 DAR 16:9], 0/1, 653 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+    Metadata:
+      handler_name    : VideoHandler
+      encoder         : Lavc62.28.102 libsvtav1
+Successfully opened the file.
+Parsing a group of options: output url -.
+Applying option frames:v (set the number of frames to output) with argument 10.
+Applying option vf (alias for -filter:v (apply filters to video streams)) with argument scale_vaapi=format=nv12:extra_hw_frames=24.
+Applying option c:v (select encoder/decoder ('copy' to copy stream without reencoding)) with argument h264_vaapi.
+Applying option an (disable audio) with argument 1.
+Applying option f (force container format (auto-detected otherwise)) with argument null.
+Successfully parsed a group of options.
+Opening an output file: -.
+[out#0/null @ 0x7f55038f3680] No explicit maps, mapping streams automatically...
+[vost#0:0/h264_vaapi @ 0x7f55038b9c80] Created video stream from input stream 0:0
+[AVFilterGraph @ 0x7f5503972000] Setting 'format' to value 'nv12'
+[AVFilterGraph @ 0x7f5503972000] Setting 'extra_hw_frames' to value '24'
+Successfully opened the file.
+Stream mapping:
+  Stream #0:0 -> #0:0 (av1 (native) -> h264 (h264_vaapi))
+[vost#0:0/h264_vaapi @ 0x7f55038b9c80] Starting thread...
+[vf#0:0 @ 0x7f55038c4f00] Starting thread...
+[vist#0:0/av1 @ 0x7f55038a8480] [dec:av1 @ 0x7f5503921c80] Starting thread...
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7f5503921a00] Starting thread...
+Press [q] to stop, [?] for help
+[av1 @ 0x7f55038dd880] Frame 0:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 2.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:1, content available:1.
+[av1 @ 0x7f55038dd880] OBU idx:1, type:6, content available:1.
+[libdav1d @ 0x7f55038dd180] Frame 16:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[libdav1d @ 0x7f55038dd180] Frame 8:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Format vaapi chosen by get_format().
+[av1 @ 0x7f55038dd880] Format vaapi requires hwaccel av1_vaapi initialisation.
+[libdav1d @ 0x7f55038dd180] Frame 4:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[libdav1d @ 0x7f55038dd180] Frame 2:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[libdav1d @ 0x7f55038dd180] Frame 1:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] No support for codec av1 profile 0.
+[av1 @ 0x7f55038dd880] Failed setup for format vaapi: hwaccel initialisation returned error.
+[av1 @ 0x7f55038dd880] Format vaapi not usable, retrying get_format() without it.
+[libdav1d @ 0x7f55038dd180] Frame 3:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Format yuv420p chosen by get_format().
+[av1 @ 0x7f55038dd880] Your platform doesn't support hardware accelerated AV1 decoding.
+[av1 @ 0x7f55038dd880] Failed to get pixel format.
+[av1 @ 0x7f55038dd880] Get current frame error
+[libdav1d @ 0x7f55038dd180] Frame 6:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[vist#0:0/av1 @ 0x7f55038a8480] [dec:av1 @ 0x7f5503921c80] Error submitting packet to decoder: Function not implemented
+[libdav1d @ 0x7f55038dd180] Frame 5:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Frame 16:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[libdav1d @ 0x7f55038dd180] Frame 7:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Frame 8:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Frame 4:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[libdav1d @ 0x7f55038dd180] Frame 12:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Frame 2:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[libdav1d @ 0x7f55038dd180] Frame 10:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Frame 1:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 5.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:6, content available:1.
+[av1 @ 0x7f55038dd880] Format vaapi chosen by get_format().
+[av1 @ 0x7f55038dd880] Format vaapi requires hwaccel av1_vaapi initialisation.
+[libdav1d @ 0x7f55038dd180] Frame 9:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] No support for codec av1 profile 0.
+[av1 @ 0x7f55038dd880] Failed setup for format vaapi: hwaccel initialisation returned error.
+[av1 @ 0x7f55038dd880] Format vaapi not usable, retrying get_format() without it.
+[av1 @ 0x7f55038dd880] Format yuv420p chosen by get_format().
+[av1 @ 0x7f55038dd880] Your platform doesn't support hardware accelerated AV1 decoding.
+[av1 @ 0x7f55038dd880] Failed to get pixel format.
+[av1 @ 0x7f55038dd880] Get current frame error
+[vist#0:0/av1 @ 0x7f55038a8480] [dec:av1 @ 0x7f5503921c80] Error submitting packet to decoder: Function not implemented
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 1.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:3, content available:1.
+[libdav1d @ 0x7f55038dd180] Frame 11:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Frame 3:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 1.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:6, content available:1.
+[av1 @ 0x7f55038dd880] Format vaapi chosen by get_format().
+[av1 @ 0x7f55038dd880] Format vaapi requires hwaccel av1_vaapi initialisation.
+[av1 @ 0x7f55038dd880] No support for codec av1 profile 0.
+[av1 @ 0x7f55038dd880] Failed setup for format vaapi: hwaccel initialisation returned error.
+[av1 @ 0x7f55038dd880] Format vaapi not usable, retrying get_format() without it.
+[av1 @ 0x7f55038dd880] Format yuv420p chosen by get_format().
+[av1 @ 0x7f55038dd880] Your platform doesn't support hardware accelerated AV1 decoding.
+[av1 @ 0x7f55038dd880] Failed to get pixel format.
+[av1 @ 0x7f55038dd880] Get current frame error
+[vist#0:0/av1 @ 0x7f55038a8480] [dec:av1 @ 0x7f5503921c80] Error submitting packet to decoder: Function not implemented
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 1.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:3, content available:1.
+[libdav1d @ 0x7f55038dd180] Frame 14:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Frame 6:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[libdav1d @ 0x7f55038dd180] Frame 13:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Frame 5:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 2.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:6, content available:1.
+[av1 @ 0x7f55038dd880] Format vaapi chosen by get_format().
+[av1 @ 0x7f55038dd880] Format vaapi requires hwaccel av1_vaapi initialisation.
+[av1 @ 0x7f55038dd880] No support for codec av1 profile 0.
+[av1 @ 0x7f55038dd880] Failed setup for format vaapi: hwaccel initialisation returned error.
+[av1 @ 0x7f55038dd880] Format vaapi not usable, retrying get_format() without it.
+[av1 @ 0x7f55038dd880] Format yuv420p chosen by get_format().
+[av1 @ 0x7f55038dd880] Your platform doesn't support hardware accelerated AV1 decoding.
+[av1 @ 0x7f55038dd880] Failed to get pixel format.
+[av1 @ 0x7f55038dd880] Get current frame error
+[vist#0:0/av1 @ 0x7f55038a8480] [dec:av1 @ 0x7f5503921c80] Error submitting packet to decoder: Function not implemented
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 1.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:3, content available:1.
+[libdav1d @ 0x7f55038dd180] Frame 15:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Frame 7:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 1.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:6, content available:1.
+[av1 @ 0x7f55038dd880] Format vaapi chosen by get_format().
+[av1 @ 0x7f55038dd880] Format vaapi requires hwaccel av1_vaapi initialisation.
+[av1 @ 0x7f55038dd880] No support for codec av1 profile 0.
+[av1 @ 0x7f55038dd880] Failed setup for format vaapi: hwaccel initialisation returned error.
+[av1 @ 0x7f55038dd880] Format vaapi not usable, retrying get_format() without it.
+[av1 @ 0x7f55038dd880] Format yuv420p chosen by get_format().
+[av1 @ 0x7f55038dd880] Your platform doesn't support hardware accelerated AV1 decoding.
+[av1 @ 0x7f55038dd880] Failed to get pixel format.
+[av1 @ 0x7f55038dd880] Get current frame error
+[vist#0:0/av1 @ 0x7f55038a8480] [dec:av1 @ 0x7f5503921c80] Error submitting packet to decoder: Function not implemented
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 1.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:3, content available:1.
+[av1 @ 0x7f55038dd880] Frame 12:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[libdav1d @ 0x7f55038dd180] Frame 24:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Frame 10:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[libdav1d @ 0x7f55038dd180] Frame 20:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Frame 9:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 3.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:6, content available:1.
+[av1 @ 0x7f55038dd880] Format vaapi chosen by get_format().
+[av1 @ 0x7f55038dd880] Format vaapi requires hwaccel av1_vaapi initialisation.
+[libdav1d @ 0x7f55038dd180] Frame 18:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] No support for codec av1 profile 0.
+[av1 @ 0x7f55038dd880] Failed setup for format vaapi: hwaccel initialisation returned error.
+[av1 @ 0x7f55038dd880] Format vaapi not usable, retrying get_format() without it.
+[av1 @ 0x7f55038dd880] Format yuv420p chosen by get_format().
+[av1 @ 0x7f55038dd880] Your platform doesn't support hardware accelerated AV1 decoding.
+[av1 @ 0x7f55038dd880] Failed to get pixel format.
+[av1 @ 0x7f55038dd880] Get current frame error
+[libdav1d @ 0x7f55038dd180] Frame 17:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[vist#0:0/av1 @ 0x7f55038a8480] [dec:av1 @ 0x7f5503921c80] Error submitting packet to decoder: Function not implemented
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 1.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:3, content available:1.
+[libdav1d @ 0x7f55038dd180] Frame 19:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Frame 11:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 1.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:6, content available:1.
+[av1 @ 0x7f55038dd880] Format vaapi chosen by get_format().
+[av1 @ 0x7f55038dd880] Format vaapi requires hwaccel av1_vaapi initialisation.
+[av1 @ 0x7f55038dd880] No support for codec av1 profile 0.
+[av1 @ 0x7f55038dd880] Failed setup for format vaapi: hwaccel initialisation returned error.
+[av1 @ 0x7f55038dd880] Format vaapi not usable, retrying get_format() without it.
+[av1 @ 0x7f55038dd880] Format yuv420p chosen by get_format().
+[av1 @ 0x7f55038dd880] Your platform doesn't support hardware accelerated AV1 decoding.
+[av1 @ 0x7f55038dd880] Failed to get pixel format.
+[av1 @ 0x7f55038dd880] Get current frame error
+[vist#0:0/av1 @ 0x7f55038a8480] [dec:av1 @ 0x7f5503921c80] Error submitting packet to decoder: Function not implemented
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 1.
+[libdav1d @ 0x7f55038dd180] Frame 22:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[libdav1d @ 0x7f55038dd180] Frame 21:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:3, content available:1.
+[av1 @ 0x7f55038dd880] Frame 14:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Frame 13:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 2.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:6, content available:1.
+[av1 @ 0x7f55038dd880] Format vaapi chosen by get_format().
+[av1 @ 0x7f55038dd880] Format vaapi requires hwaccel av1_vaapi initialisation.
+[av1 @ 0x7f55038dd880] No support for codec av1 profile 0.
+[av1 @ 0x7f55038dd880] Failed setup for format vaapi: hwaccel initialisation returned error.
+[av1 @ 0x7f55038dd880] Format vaapi not usable, retrying get_format() without it.
+[av1 @ 0x7f55038dd880] Format yuv420p chosen by get_format().
+[av1 @ 0x7f55038dd880] Your platform doesn't support hardware accelerated AV1 decoding.
+[av1 @ 0x7f55038dd880] Failed to get pixel format.
+[av1 @ 0x7f55038dd880] Get current frame error
+[vist#0:0/av1 @ 0x7f55038a8480] [dec:av1 @ 0x7f5503921c80] Error submitting packet to decoder: Function not implemented
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 1.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:3, content available:1.
+[libdav1d @ 0x7f55038dd180] Frame 23:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Frame 15:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 1.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:6, content available:1.
+[av1 @ 0x7f55038dd880] Format vaapi chosen by get_format().
+[av1 @ 0x7f55038dd880] Format vaapi requires hwaccel av1_vaapi initialisation.
+[av1 @ 0x7f55038dd880] No support for codec av1 profile 0.
+[av1 @ 0x7f55038dd880] Failed setup for format vaapi: hwaccel initialisation returned error.
+[av1 @ 0x7f55038dd880] Format vaapi not usable, retrying get_format() without it.
+[av1 @ 0x7f55038dd880] Format yuv420p chosen by get_format().
+[av1 @ 0x7f55038dd880] Your platform doesn't support hardware accelerated AV1 decoding.
+[av1 @ 0x7f55038dd880] Failed to get pixel format.
+[av1 @ 0x7f55038dd880] Get current frame error
+[vist#0:0/av1 @ 0x7f55038a8480] [dec:av1 @ 0x7f5503921c80] Error submitting packet to decoder: Function not implemented
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 1.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:3, content available:1.
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7f5503921a00] EOF while reading input
+[av1 @ 0x7f55038dd880] Frame 24:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7f5503921a00] Terminating thread with return code 0 (success)
+[av1 @ 0x7f55038dd880] Frame 20:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Frame 18:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Frame 17:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 4.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:6, content available:1.
+[av1 @ 0x7f55038dd880] Format vaapi chosen by get_format().
+[av1 @ 0x7f55038dd880] Format vaapi requires hwaccel av1_vaapi initialisation.
+[av1 @ 0x7f55038dd880] No support for codec av1 profile 0.
+[av1 @ 0x7f55038dd880] Failed setup for format vaapi: hwaccel initialisation returned error.
+[av1 @ 0x7f55038dd880] Format vaapi not usable, retrying get_format() without it.
+[av1 @ 0x7f55038dd880] Format yuv420p chosen by get_format().
+[av1 @ 0x7f55038dd880] Your platform doesn't support hardware accelerated AV1 decoding.
+[av1 @ 0x7f55038dd880] Failed to get pixel format.
+[av1 @ 0x7f55038dd880] Get current frame error
+[vist#0:0/av1 @ 0x7f55038a8480] [dec:av1 @ 0x7f5503921c80] Error submitting packet to decoder: Function not implemented
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 1.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:3, content available:1.
+[av1 @ 0x7f55038dd880] Frame 19:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 1.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:6, content available:1.
+[av1 @ 0x7f55038dd880] Format vaapi chosen by get_format().
+[av1 @ 0x7f55038dd880] Format vaapi requires hwaccel av1_vaapi initialisation.
+[av1 @ 0x7f55038dd880] No support for codec av1 profile 0.
+[av1 @ 0x7f55038dd880] Failed setup for format vaapi: hwaccel initialisation returned error.
+[av1 @ 0x7f55038dd880] Format vaapi not usable, retrying get_format() without it.
+[av1 @ 0x7f55038dd880] Format yuv420p chosen by get_format().
+[av1 @ 0x7f55038dd880] Your platform doesn't support hardware accelerated AV1 decoding.
+[av1 @ 0x7f55038dd880] Failed to get pixel format.
+[av1 @ 0x7f55038dd880] Get current frame error
+[vist#0:0/av1 @ 0x7f55038a8480] [dec:av1 @ 0x7f5503921c80] Error submitting packet to decoder: Function not implemented
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 1.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:3, content available:1.
+[av1 @ 0x7f55038dd880] Frame 22:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Frame 21:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 2.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:6, content available:1.
+[av1 @ 0x7f55038dd880] Format vaapi chosen by get_format().
+[av1 @ 0x7f55038dd880] Format vaapi requires hwaccel av1_vaapi initialisation.
+[av1 @ 0x7f55038dd880] No support for codec av1 profile 0.
+[av1 @ 0x7f55038dd880] Failed setup for format vaapi: hwaccel initialisation returned error.
+[av1 @ 0x7f55038dd880] Format vaapi not usable, retrying get_format() without it.
+[av1 @ 0x7f55038dd880] Format yuv420p chosen by get_format().
+[av1 @ 0x7f55038dd880] Your platform doesn't support hardware accelerated AV1 decoding.
+[av1 @ 0x7f55038dd880] Failed to get pixel format.
+[av1 @ 0x7f55038dd880] Get current frame error
+[vist#0:0/av1 @ 0x7f55038a8480] [dec:av1 @ 0x7f5503921c80] Error submitting packet to decoder: Function not implemented
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 1.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:3, content available:1.
+[av1 @ 0x7f55038dd880] Frame 23:  size 640x360  upscaled 640  render 640x360  subsample 2x2  bitdepth 8  tiles 1x1.
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 1.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:6, content available:1.
+[av1 @ 0x7f55038dd880] Format vaapi chosen by get_format().
+[av1 @ 0x7f55038dd880] Format vaapi requires hwaccel av1_vaapi initialisation.
+[av1 @ 0x7f55038dd880] No support for codec av1 profile 0.
+[av1 @ 0x7f55038dd880] Failed setup for format vaapi: hwaccel initialisation returned error.
+[av1 @ 0x7f55038dd880] Format vaapi not usable, retrying get_format() without it.
+[av1 @ 0x7f55038dd880] Format yuv420p chosen by get_format().
+[av1 @ 0x7f55038dd880] Your platform doesn't support hardware accelerated AV1 decoding.
+[av1 @ 0x7f55038dd880] Failed to get pixel format.
+[av1 @ 0x7f55038dd880] Get current frame error
+[vist#0:0/av1 @ 0x7f55038a8480] [dec:av1 @ 0x7f5503921c80] Error submitting packet to decoder: Function not implemented
+[av1 @ 0x7f55038dd880] Total OBUs on this packet: 1.
+[av1 @ 0x7f55038dd880] OBU idx:0, type:3, content available:1.
+[vist#0:0/av1 @ 0x7f55038a8480] [dec:av1 @ 0x7f5503921c80] Decoder thread received EOF packet
+[vist#0:0/av1 @ 0x7f55038a8480] [dec:av1 @ 0x7f5503921c80] Decoder returned EOF, finishing
+[vist#0:0/av1 @ 0x7f55038a8480] [dec:av1 @ 0x7f5503921c80] Decode error rate 1 exceeds maximum 0.666667
+[vist#0:0/av1 @ 0x7f55038a8480] [dec:av1 @ 0x7f5503921c80] Task finished with error code: -1145393733 (Error number -1145393733 occurred)
+[vist#0:0/av1 @ 0x7f55038a8480] [dec:av1 @ 0x7f5503921c80] Terminating thread with return code -1145393733 (Error number -1145393733 occurred)
+[AVFilterGraph @ 0x7f54fde09000] Setting 'format' to value 'nv12'
+[AVFilterGraph @ 0x7f54fde09000] Setting 'extra_hw_frames' to value '24'
+detected 4 logical cores
+[graph -1 input from stream 0:0 @ 0x7f54fde0f180] w:640 h:360 pixfmt:yuv420p tb:1/12800 fr:25/1 sar:1/1 csp:unknown range:tv alpha:unspecified
+[format @ 0x7f54fde0f3c0] Setting 'pix_fmts' to value 'vaapi'
+[format @ 0x7f54fde0f3c0] Setting 'color_ranges' to value 'tv|pc'
+Filter 'Parsed_scale_vaapi_0' formats:
+  in[0] 'default':
+    Pixel formats: vaapi
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+  out[0] 'default':
+    Pixel formats: vaapi
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+Filter 'graph -1 input from stream 0:0' formats:
+  out[0] 'default':
+    Pixel formats: yuv420p
+    Color spaces: unknown
+    Color ranges: tv
+    Alpha modes: unspecified premultiplied straight
+Filter 'out_#0:0' formats:
+  in[0] 'default':
+    Pixel formats: yuv420p yuyv422 rgb24 bgr24 yuv422p yuv444p yuv410p yuv411p gray monow monob pal8 yuvj420p yuvj422p yuvj444p uyvy422 uyyvyy411 bgr8 bgr4 bgr4_byte rgb8 rgb4 rgb4_byte nv12 nv21 argb rgba abgr bgra gray16be gray16le yuv440p yuvj440p yuva420p rgb48be rgb48le rgb565be rgb565le rgb555be rgb555le bgr565be bgr565le bgr555be bgr555le vaapi yuv420p16le yuv420p16be yuv422p16le yuv422p16be yuv444p16le yuv444p16be dxva2_vld rgb444le rgb444be bgr444le bgr444be ya8 bgr48be bgr48le yuv420p9be yuv420p9le yuv420p10be yuv420p10le yuv422p10be yuv422p10le yuv444p9be yuv444p9le yuv444p10be yuv444p10le yuv422p9be yuv422p9le gbrp gbrp9be gbrp9le gbrp10be gbrp10le gbrp16be gbrp16le yuva422p yuva444p yuva420p9be yuva420p9le yuva422p9be yuva422p9le yuva444p9be yuva444p9le yuva420p10be yuva420p10le yuva422p10be yuva422p10le yuva444p10be yuva444p10le yuva420p16be yuva420p16le yuva422p16be yuva422p16le yuva444p16be yuva444p16le vdpau xyz12le xyz12be nv16 nv20le nv20be rgba64be rgba64le bgra64be bgra64le yvyu422 ya16be ya16le gbrap gbrap16be gbrap16le qsv mmal d3d11va_vld cuda 0rgb rgb0 0bgr bgr0 yuv420p12be yuv420p12le yuv420p14be yuv420p14le yuv422p12be yuv422p12le yuv422p14be yuv422p14le yuv444p12be yuv444p12le yuv444p14be yuv444p14le gbrp12be gbrp12le gbrp14be gbrp14le yuvj411p bayer_bggr8 bayer_rggb8 bayer_gbrg8 bayer_grbg8 bayer_bggr16le bayer_bggr16be bayer_rggb16le bayer_rggb16be bayer_gbrg16le bayer_gbrg16be bayer_grbg16le bayer_grbg16be yuv440p10le yuv440p10be yuv440p12le yuv440p12be ayuv64le ayuv64be videotoolbox_vld p010le p010be gbrap12be gbrap12le gbrap10be gbrap10le mediacodec gray12be gray12le gray10be gray10le p016le p016be d3d11 gray9be gray9le gbrpf32be gbrpf32le gbrapf32be gbrapf32le drm_prime opencl gray14be gray14le grayf32be grayf32le yuva422p12be yuva422p12le yuva444p12be yuva444p12le nv24 nv42 vulkan y210be y210le x2rgb10le x2rgb10be x2bgr10le x2bgr10be p210be p210le p410be p410le p216be p216le p416be p416le vuya rgbaf16be rgbaf16le vuyx p012le p012be y212be y212le xv30be xv30le xv36be xv36le rgbf32be rgbf32le rgbaf32be rgbaf32le p212be p212le p412be p412le gbrap14be gbrap14le d3d12 ayuv uyva vyu444 v30xbe v30xle rgbf16be rgbf16le rgba128be rgba128le rgb96be rgb96le y216be y216le xv48be xv48le gbrpf16be gbrpf16le gbrapf16be gbrapf16le grayf16be grayf16le amf gray32be gray32le yaf32be yaf32le yaf16be yaf16le gbrap32be gbrap32le yuv444p10msbbe yuv444p10msble yuv444p12msbbe yuv444p12msble gbrp10msbbe gbrp10msble gbrp12msbbe gbrp12msble ohcodec nv15 nv20
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+Filter 'format' formats:
+  in[0] 'default':
+    Pixel formats: vaapi
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: tv pc
+    Alpha modes: unspecified premultiplied straight
+  out[0] 'default':
+    Pixel formats: vaapi
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: tv pc
+    Alpha modes: unspecified premultiplied straight
+[auto_scale_0 @ 0x7f54fde0f480] w:iw h:ih flags:'' interl:0
+[Parsed_scale_vaapi_0 @ 0x7f54fde0f0c0] auto-inserting filter 'auto_scale_0' between the filter 'graph -1 input from stream 0:0' and the filter 'Parsed_scale_vaapi_0'
+Impossible to convert between the formats supported by the filter 'graph -1 input from stream 0:0' and the filter 'auto_scale_0'
+Link 'graph -1 input from stream 0:0.default' -> 'auto_scale_0.default':
+  Pixel formats:
+    src: yuv420p
+    dst: yuv420p
+Link 'auto_scale_0.default' -> 'Parsed_scale_vaapi_0.default':
+  Pixel formats:
+    src: yuv420p yuyv422 rgb24 bgr24 yuv422p yuv444p yuv410p yuv411p gray monow monob pal8 yuvj420p yuvj422p yuvj444p uyvy422 bgr8 bgr4 bgr4_byte rgb8 rgb4 rgb4_byte nv12 nv21 argb rgba abgr bgra gray16be gray16le yuv440p yuvj440p yuva420p rgb48be rgb48le rgb565be rgb565le rgb555be rgb555le bgr565be bgr565le bgr555be bgr555le yuv420p16le yuv420p16be yuv422p16le yuv422p16be yuv444p16le yuv444p16be rgb444le rgb444be bgr444le bgr444be ya8 bgr48be bgr48le yuv420p9be yuv420p9le yuv420p10be yuv420p10le yuv422p10be yuv422p10le yuv444p9be yuv444p9le yuv444p10be yuv444p10le yuv422p9be yuv422p9le gbrp gbrp9be gbrp9le gbrp10be gbrp10le gbrp16be gbrp16le yuva422p yuva444p yuva420p9be yuva420p9le yuva422p9be yuva422p9le yuva444p9be yuva444p9le yuva420p10be yuva420p10le yuva422p10be yuva422p10le yuva444p10be yuva444p10le yuva420p16be yuva420p16le yuva422p16be yuva422p16le yuva444p16be yuva444p16le xyz12le xyz12be nv16 nv20le nv20be rgba64be rgba64le bgra64be bgra64le yvyu422 ya16be ya16le gbrap gbrap16be gbrap16le 0rgb rgb0 0bgr bgr0 yuv420p12be yuv420p12le yuv420p14be yuv420p14le yuv422p12be yuv422p12le yuv422p14be yuv422p14le yuv444p12be yuv444p12le yuv444p14be yuv444p14le gbrp12be gbrp12le gbrp14be gbrp14le yuvj411p yuv440p10le yuv440p10be yuv440p12le yuv440p12be ayuv64le ayuv64be p010le p010be gbrap12be gbrap12le gbrap10be gbrap10le gray12be gray12le gray10be gray10le p016le p016be gray9be gray9le gbrpf32be gbrpf32le gbrapf32be gbrapf32le gray14be gray14le grayf32be grayf32le yuva422p12be yuva422p12le yuva444p12be yuva444p12le nv24 nv42 y210le x2rgb10le x2bgr10le p210be p210le p410be p410le p216be p216le p416be p416le vuya vuyx p012le p012be y212le xv30le xv36be xv36le p212be p212le p412be p412le gbrap14be gbrap14le ayuv uyva vyu444 v30xle y216le xv48be xv48le yuv444p10msbbe yuv444p10msble yuv444p12msbbe yuv444p12msble gbrp10msbbe gbrp10msble gbrp12msbbe gbrp12msble
+    dst: vaapi
+[vf#0:0 @ 0x7f55038c4f00] Error initializing filters!
+[vf#0:0 @ 0x7f55038c4f00] Task finished with error code: -38 (Function not implemented)
+[out#0/null @ 0x7f55038f3680] sq: 0 EOF
+[out#0/null @ 0x7f55038f3680] sq: finish 0; head ts NOPTS
+[out#0/null @ 0x7f55038f3680] sq: finish queue
+[vf#0:0 @ 0x7f55038c4f00] Terminating thread with return code -38 (Function not implemented)
+[vost#0:0/h264_vaapi @ 0x7f55038b9c80] [enc:h264_vaapi @ 0x7f55038fbc80] Encoder thread received EOF
+[vost#0:0/h264_vaapi @ 0x7f55038b9c80] [enc:h264_vaapi @ 0x7f55038fbc80] Could not open encoder before EOF
+[vost#0:0/h264_vaapi @ 0x7f55038b9c80] Task finished with error code: -22 (Invalid argument)
+[vost#0:0/h264_vaapi @ 0x7f55038b9c80] Terminating thread with return code -22 (Invalid argument)
+[out#0/null @ 0x7f55038f3680] Nothing was written into output file, because at least one of its streams received no packets.
+frame=    0 fps=0.0 q=0.0 Lsize=       0KiB time=N/A bitrate=N/A speed=N/A elapsed=0:00:00.00    
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7f5503921a00] Input file #0 (/tmp/hwprobe-cache/fixtures/sha256_d99a9e622f7b4231ee3158b5c9e089c49a42d9332823e2899f5acf09d85ad8cc/av1_8bit.mp4):
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7f5503921a00]   Input stream #0:0 (video): 25 packets read (81632 bytes); 0 frames decoded; 13 decode errors; 
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7f5503921a00]   Total: 25 packets (81632 bytes) demuxed
+[AVIOContext @ 0x7f5503921b40] Statistics: 116258 bytes read, 2 seeks
+Conversion failed!
+
+Exiting with exit code 69

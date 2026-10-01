@@ -56,7 +56,7 @@ public static class StderrMarkers
     ];
 
     /// <summary>The hwaccel could not start for this stream, so decoding fell back to software.</summary>
-    /// <remarks>libavcodec/decode.c, hwaccel_init; read from source, not yet observed for a failed run.</remarks>
+    /// <remarks>libavcodec/decode.c, hwaccel_init. Observed with jellyfin-ffmpeg 8.1.2 for AV1 on a GPU without AV1 decode.</remarks>
     public static readonly IReadOnlyList<string> HwaccelSetupFailed = ["Failed setup for format"];
 
     /// <summary>Driver names upstream matches in that line (MediaEncoder.cs, v12.1, L246-248).</summary>

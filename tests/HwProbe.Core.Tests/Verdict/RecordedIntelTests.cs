@@ -30,6 +30,13 @@ public sealed class RecordedIntelTests
             ProbeOutcome.SoftwareFallback,
             VerdictEvaluator.Evaluate(Completed(CorpusFile.Load("stderr/jellyfin-linux-qsv-over-vaapi-pass.txt")), new ProbeExpectation(MatrixCatalog.Frames, StderrMarkers.HardwareFrames(HwType.qsv))));
 
+    /// <summary>A codec the GPU can't decode is CodecUnsupported, though the hardware filters fail too.</summary>
+    [Fact]
+    public void UndecodableCodecIsCodecUnsupported() =>
+        Assert.Equal(
+            ProbeOutcome.CodecUnsupported,
+            VerdictEvaluator.Evaluate(new(FfmpegRunStatus.Exited, 69, string.Empty, CorpusFile.Load("stderr/jellyfin-linux-vaapi-av1-unsupported.txt"), 0, TimeSpan.Zero, null), new ProbeExpectation(MatrixCatalog.Frames, StderrMarkers.HardwareFrames(HwType.vaapi, "vaapi"))));
+
     /// <summary>Deriving OpenCL with no OpenCL runtime installed is DeviceUnavailable.</summary>
     [Fact]
     public void OpenclWithoutRuntimeIsUnavailable() =>
