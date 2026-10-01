@@ -27,4 +27,7 @@ public sealed record BackendReport(
 {
     /// <summary>Gets advice for each option on Jellyfin's Transcoding page; empty for a backend that doesn't work.</summary>
     public IReadOnlyList<SettingAdvice> Settings { get; init; } = [];
+
+    /// <summary>Gets a short fix for a backend that doesn't work, when there is one.</summary>
+    public Fix? Fix { get; init; }
 }

@@ -1,5 +1,7 @@
+using Jellyfin.Plugin.HwProbe.Core.Devices;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Report;
+using Jellyfin.Plugin.HwProbe.Core.Verdict;
 using Xunit;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Tests.Report;
@@ -10,6 +12,8 @@ public sealed class SettingsAdvisorTests
 {
     private const ProbeOutcome P = ProbeOutcome.Pass;
     private const ProbeOutcome U = ProbeOutcome.CodecUnsupported;
+
+    private static readonly AdviceContext _docker = new(HostOs.Linux, InContainer: true, OpenclUnavailable: false);
 
     /// <summary>QSV on the Apollo Lake host, as probed on 2026-10-01.</summary>
     private static readonly BackendReport _apolloLakeQsv = new(
@@ -46,7 +50,7 @@ public sealed class SettingsAdvisorTests
     [Fact]
     public void ListsEveryQsvOptionInPageOrder()
     {
-        var labels = SettingsAdvisor.For(_apolloLakeQsv).Select(a => a.Label);
+        var labels = SettingsAdvisor.For(_apolloLakeQsv, _docker).Select(a => a.Label);
 
         Assert.Equal(
             [
@@ -76,7 +80,7 @@ public sealed class SettingsAdvisorTests
     [InlineData("Enable VPP Tone mapping", SettingState.LeaveOff, "Test failed")]
     public void AdviceFollowsResults(string label, SettingState state, string note)
     {
-        var advice = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv), a => a.Label == label);
+        var advice = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv, _docker), a => a.Label == label);
 
         Assert.Equal((state, note), (advice.State, advice.Note));
     }
@@ -87,7 +91,7 @@ public sealed class SettingsAdvisorTests
     {
         var decode = new Dictionary<string, ProbeOutcome>(_apolloLakeQsv.Decode) { ["vc1"] = U, ["vc1_qsvdecoder"] = P };
 
-        var advice = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Decode = decode }), a => a.Setting == "PreferSystemNativeHwDecoder");
+        var advice = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Decode = decode }, _docker), a => a.Setting == "PreferSystemNativeHwDecoder");
 
         Assert.Equal((SettingState.LeaveOff, "QSV decoders needed for VC1"), (advice.State, advice.Note));
     }
@@ -96,25 +100,41 @@ public sealed class SettingsAdvisorTests
     [Fact]
     public void MissingTestsAreNotTested()
     {
-        var advice = SettingsAdvisor.For(_apolloLakeQsv with { Tonemap = new Dictionary<string, ProbeOutcome>(), Decode = new Dictionary<string, ProbeOutcome>() });
+        var advice = SettingsAdvisor.For(_apolloLakeQsv with { Tonemap = new Dictionary<string, ProbeOutcome>(), Decode = new Dictionary<string, ProbeOutcome>() }, _docker);
 
         Assert.Equal(SettingState.NotTested, Assert.Single(advice, a => a.Setting == "EnableTonemapping").State);
         Assert.Equal("Needs HEVC 10bit decoding", Assert.Single(advice, a => a.Setting == "EnableTonemapping").Note);
         Assert.Equal(SettingState.NotTested, Assert.Single(advice, a => a.Setting == "HardwareDecodingCodecs:h264").State);
     }
 
+    /// <summary>Failed options that a host change could fix carry a short fix with a documentation link.</summary>
+    [Fact]
+    public void ActionableFailuresCarryFixes()
+    {
+        var tonemap = new Dictionary<string, ProbeOutcome> { ["opencl"] = ProbeOutcome.FilterUnsupported, ["vpp"] = ProbeOutcome.FilterUnsupported };
+
+        var advice = SettingsAdvisor.For(_apolloLakeQsv with { Tonemap = tonemap }, _docker with { OpenclUnavailable = true });
+
+        var lowPower = Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerHevcHwEncoder").Fix!;
+        Assert.Equal("Gen 11+: enable HuC firmware", lowPower.Action);
+        Assert.EndsWith("#configure-and-verify-lp-mode-on-linux", lowPower.Url!.ToString(), StringComparison.Ordinal);
+        Assert.Equal(Hints.OpenclFix(inContainer: true), Assert.Single(advice, a => a.Setting == "EnableTonemapping").Fix);
+        Assert.Null(Assert.Single(advice, a => a.Setting == "EnableVppTonemapping").Fix);
+        Assert.Null(Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerH264HwEncoder").Fix);
+    }
+
     /// <summary>Each backend gets the options its Transcoding page shows, and a backend that doesn't work gets none.</summary>
     [Fact]
     public void OptionsDependOnBackend()
     {
-        var nvenc = SettingsAdvisor.For(_apolloLakeQsv with { Type = HwType.nvenc }).Select(a => a.Setting).ToList();
-        var videotoolbox = SettingsAdvisor.For(_apolloLakeQsv with { Type = HwType.videotoolbox }).Select(a => a.Setting).ToList();
+        var nvenc = SettingsAdvisor.For(_apolloLakeQsv with { Type = HwType.nvenc }, _docker).Select(a => a.Setting).ToList();
+        var videotoolbox = SettingsAdvisor.For(_apolloLakeQsv with { Type = HwType.videotoolbox }, _docker).Select(a => a.Setting).ToList();
 
         Assert.Contains("HardwareDecodingCodecs:mpeg4", nvenc);
         Assert.DoesNotContain("EnableIntelLowPowerH264HwEncoder", nvenc);
         Assert.DoesNotContain("PreferSystemNativeHwDecoder", nvenc);
         Assert.Contains("EnableVideoToolboxTonemapping", videotoolbox);
         Assert.DoesNotContain("HardwareDecodingCodecs:vc1", videotoolbox);
-        Assert.Empty(SettingsAdvisor.For(_apolloLakeQsv with { Verdict = BackendVerdict.NotPresent }));
+        Assert.Empty(SettingsAdvisor.For(_apolloLakeQsv with { Verdict = BackendVerdict.NotPresent }, _docker));
     }
 }

@@ -1,5 +1,6 @@
 using Jellyfin.Plugin.HwProbe.Core.Devices;
 using Jellyfin.Plugin.HwProbe.Core.Model;
+using Jellyfin.Plugin.HwProbe.Core.Report;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Verdict;
 
@@ -21,6 +22,34 @@ public static class Hints
     public static string OpenclUnavailable(bool inContainer) => inContainer
         ? "Install Intel's OpenCL runtime in the container. The official jellyfin/jellyfin image includes it (intel-opencl-icd, and intel-opencl-icd-legacy1 for Gen 11 and older GPUs). On linuxserver/jellyfin, set DOCKER_MODS=linuxserver/mods:jellyfin-opencl-intel and check the container's start-up log shows the packages installing."
         : "Install Intel's OpenCL runtime: intel-opencl-icd, or intel-opencl-icd-legacy1 for Gen 11 and older GPUs.";
+
+    /// <summary>Returns a short fix for a backend that doesn't work, when the user can act on it.</summary>
+    /// <param name="verdict">The backend's verdict.</param>
+    /// <param name="type">The backend.</param>
+    /// <param name="os">The host OS.</param>
+    /// <param name="inContainer">Whether the probe ran inside a container.</param>
+    /// <returns>The fix, or null when there's nothing to do (e.g. the hardware isn't there or the build lacks it).</returns>
+    public static Fix? FixFor(BackendVerdict verdict, HwType type, HostOs os, bool inContainer) => (verdict, type) switch
+    {
+        (BackendVerdict.PermissionDenied, HwType.vaapi or HwType.qsv) when inContainer =>
+            new("Add the render group (--group-add)", Section(type, "official-docker")),
+        (BackendVerdict.PermissionDenied, HwType.vaapi or HwType.qsv) =>
+            new("usermod -aG render jellyfin", Section(type, "configure-on-linux-host")),
+        (BackendVerdict.NotPresent, HwType.nvenc) when inContainer =>
+            new("NVIDIA GPU present? Run with --gpus all", JellyfinDocs.Guide("nvidia", "official-docker")),
+        (BackendVerdict.NotPresent, HwType.vaapi or HwType.qsv) when inContainer =>
+            new("GPU present? Pass --device /dev/dri", Section(type, "official-docker")),
+        (BackendVerdict.NotPresent, HwType.vaapi or HwType.qsv) when os == HostOs.Linux =>
+            new("Load the GPU driver", Section(type, "configure-on-linux-host")),
+        _ => null,
+    };
+
+    /// <summary>Returns the fix for an Intel device whose OpenCL runtime doesn't start.</summary>
+    /// <param name="inContainer">Whether the probe ran inside a container.</param>
+    /// <returns>The fix.</returns>
+    public static Fix OpenclFix(bool inContainer) => inContainer
+        ? new("Install Intel OpenCL runtime", JellyfinDocs.Guide("intel", "official-docker"))
+        : new("Install intel-opencl-icd", JellyfinDocs.Guide("intel", "configure-on-linux-host"));
 
     /// <summary>Returns the remedy for an outcome.</summary>
     /// <param name="outcome">The probe outcome.</param>
@@ -47,6 +76,13 @@ public static class Hints
             "Not verified: no hardware or sample was available to test this.",
         _ => throw new ArgumentOutOfRangeException(nameof(outcome), outcome, null),
     };
+
+    /// <summary>Returns a section of the guide for a backend.</summary>
+    /// <param name="type">The backend.</param>
+    /// <param name="anchor">The section anchor in the Intel guide.</param>
+    /// <returns>The Intel guide section for QSV; the overview for VAAPI, which serves both Intel and AMD and has no such sections.</returns>
+    private static Uri Section(HwType type, string anchor) =>
+        type == HwType.qsv ? JellyfinDocs.Guide("intel", anchor) : JellyfinDocs.Guide(string.Empty);
 
     /// <summary>Remedy for a device this user cannot open.</summary>
     /// <param name="type">The backend.</param>

@@ -111,11 +111,26 @@
                 // Available and Unavailable share one layout: backend, device, status.
                 function backendTable(rows) {
                     const table = el('table', null, 'hwprobe-backends');
-                    row(table, [el('th', 'Backend'), el('th', 'Device'), el('th', 'Status')]);
-                    for (const [type, device, status] of rows) {
-                        row(table, [names[type] || type, device || '-', el('td', status, 'hwprobe-reason')]);
+                    const fixes = rows.some(r => r[3]);
+                    row(table, [el('th', 'Backend'), el('th', 'Device'), el('th', 'Status'), el('th', fixes ? 'Fix' : '')]);
+                    for (const [type, device, status, fix] of rows) {
+                        row(table, [names[type] || type, device || '-', el('td', status, 'hwprobe-reason'), fixCell(fix)]);
                     }
                     return table;
+                }
+
+                function fixCell(fix) {
+                    const td = el('td');
+                    if (fix && fix.url) {
+                        const a = el('a', fix.action, 'button-link');
+                        a.href = fix.url;
+                        a.target = '_blank';
+                        a.rel = 'noopener noreferrer';
+                        td.appendChild(a);
+                    } else if (fix) {
+                        td.textContent = fix.action;
+                    }
+                    return td;
                 }
 
                 function groupRow(table, title) {
@@ -176,14 +191,14 @@
 
                     const compare = !!encoding && encoding.HardwareAccelerationType === selected.type;
                     const table = el('table');
-                    row(table, [el('th'), el('th', 'Option'), el('th', 'Result'), el('th', compare ? 'Current' : '')]);
+                    row(table, [el('th'), el('th', 'Option'), el('th', 'Result'), el('th', compare ? 'Current' : ''), el('th', 'Fix')]);
                     let group = null;
                     for (const a of selected.settings || []) {
                         if (a.section !== group) {
                             group = a.section;
                             groupRow(table, group);
                         }
-                        row(table, [mark(a.state), a.label, el('td', a.note, 'hwprobe-reason'), currentCell(a, compare)]);
+                        row(table, [mark(a.state), a.label, el('td', a.note, 'hwprobe-reason'), currentCell(a, compare), fixCell(a.fix)]);
                     }
                     groupRow(table, 'Also tested');
                     outcomeRow(table, 'Hardware deinterlacing', firstOutcome(selected.deinterlace));
@@ -219,13 +234,13 @@
                     if (!codes.length) {
                         return;
                     }
-                    const list = el('ul');
+                    const table = el('table');
+                    row(table, [el('th', 'Note'), el('th', 'Backends'), el('th', 'Fix')]);
                     for (const code of codes) {
                         const g = grouped[code];
-                        const text = (notes[code] || g.finding.message) + ' (' + g.backends.join(', ') + ')';
-                        list.appendChild(el('li', text, g.finding.severity === 'Warn' ? 'hwprobe-differs' : ''));
+                        row(table, [el('td', notes[code] || g.finding.message, g.finding.severity === 'Warn' ? 'hwprobe-differs' : ''), g.backends.join(', '), fixCell(g.finding.fix)]);
                     }
-                    section('Notes').appendChild(list);
+                    section('Notes').appendChild(table);
                 }
 
                 function render() {
@@ -250,7 +265,7 @@
                     }
 
                     const unavailable = report.backends.filter(b => b.verdict !== 'Viable')
-                        .map(b => [b.type, b.verdict === 'NotPresent' ? '' : b.device, verdicts[b.verdict] || b.verdict])
+                        .map(b => [b.type, b.verdict === 'NotPresent' ? '' : b.device, verdicts[b.verdict] || b.verdict, b.fix])
                         .concat(Object.entries(report.stageA.types || {}).filter(([, s]) => s === 'NotBuilt').map(([t]) => [t, '', 'Not in this ffmpeg build']))
                         .sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
                     if (unavailable.length) {

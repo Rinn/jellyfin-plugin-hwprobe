@@ -1,4 +1,6 @@
+using Jellyfin.Plugin.HwProbe.Core.Devices;
 using Jellyfin.Plugin.HwProbe.Core.Model;
+using Jellyfin.Plugin.HwProbe.Core.Verdict;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Report;
 
@@ -45,10 +47,12 @@ public static class SettingsAdvisor
 
     /// <summary>Returns advice for every option Jellyfin's Transcoding page shows for this backend.</summary>
     /// <param name="backend">The backend's results.</param>
+    /// <param name="context">Host facts that decide which fixes apply.</param>
     /// <returns>The advice in the page's order; empty for a backend that doesn't work.</returns>
-    public static IReadOnlyList<SettingAdvice> For(BackendReport backend)
+    public static IReadOnlyList<SettingAdvice> For(BackendReport backend, AdviceContext context)
     {
         ArgumentNullException.ThrowIfNull(backend);
+        ArgumentNullException.ThrowIfNull(context);
         if (backend.Verdict != BackendVerdict.Viable)
         {
             return [];
@@ -76,8 +80,15 @@ public static class SettingsAdvisor
         if (intel)
         {
             const string NotUsed = "Not used with this driver";
-            advice.Add(Advise(EncodingSection, "EnableIntelLowPowerH264HwEncoder", "Enable Intel Low-Power H.264 hardware encoder", Cell(backend.Encode, "h264_lowpower"), NotUsed));
-            advice.Add(Advise(EncodingSection, "EnableIntelLowPowerHevcHwEncoder", "Enable Intel Low-Power HEVC hardware encoder", Cell(backend.Encode, "hevc_lowpower"), NotUsed));
+
+            // Jellyfin's Intel guide: on Linux, low-power mode needs the HuC firmware, and Gen 9 has low-power H.264 only.
+            var huc = context.Os == HostOs.Linux ? new Uri(LowPowerAdvice.GuideUrl) : null;
+            advice.Add(WithFix(
+                Advise(EncodingSection, "EnableIntelLowPowerH264HwEncoder", "Enable Intel Low-Power H.264 hardware encoder", Cell(backend.Encode, "h264_lowpower"), NotUsed),
+                huc is null ? null : new Fix("Enable HuC firmware", huc)));
+            advice.Add(WithFix(
+                Advise(EncodingSection, "EnableIntelLowPowerHevcHwEncoder", "Enable Intel Low-Power HEVC hardware encoder", Cell(backend.Encode, "hevc_lowpower"), NotUsed),
+                huc is null ? null : new Fix("Gen 11+: enable HuC firmware", huc)));
         }
 
         advice.Add(Advise(FormatSection, "AllowHevcEncoding", "Allow encoding in HEVC format", Cell(backend.Encode, "hevc")));
@@ -85,7 +96,7 @@ public static class SettingsAdvisor
 
         if (type != HwType.v4l2m2m)
         {
-            advice.Add(Tonemap(backend, "EnableTonemapping", "Enable Tone mapping"));
+            advice.Add(WithFix(Tonemap(backend, "EnableTonemapping", "Enable Tone mapping"), context.OpenclUnavailable ? Hints.OpenclFix(context.InContainer) : null));
         }
 
         if (intel)
@@ -116,6 +127,13 @@ public static class SettingsAdvisor
             ProbeOutcome.CodecUnsupported => new(section, setting, label, SettingState.LeaveOff, "Not supported by this GPU"),
             _ => new(section, setting, label, SettingState.LeaveOff, "Test failed"),
         };
+
+    /// <summary>Attaches a fix to advice that says to leave an option off.</summary>
+    /// <param name="advice">The advice.</param>
+    /// <param name="fix">The fix, or null.</param>
+    /// <returns>The advice, with the fix only when the option failed.</returns>
+    private static SettingAdvice WithFix(SettingAdvice advice, Fix? fix) =>
+        advice.State == SettingState.LeaveOff && fix is not null ? advice with { Fix = fix } : advice;
 
     /// <summary>Advice for "Prefer OS native DXVA or VA-API hardware decoders", from the native and QSV decoder results.</summary>
     /// <param name="backend">The QSV backend's results.</param>
