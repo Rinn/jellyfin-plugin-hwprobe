@@ -18,10 +18,9 @@
             #HwProbeConfigPage .hwprobe-none { opacity: 0.5; }
             #HwProbeConfigPage .hwprobe-reason { opacity: 0.7; }
             #HwProbeConfigPage .hwprobe-differs { color: #e0a030; font-weight: 500; }
-            #HwProbeConfigPage .hwprobe-tabs button { margin: 0 0.5em 0.5em 0; }
-            #HwProbeConfigPage .hwprobe-tabs button.hwprobe-selected { outline: 2px solid currentColor; }
+            #HwProbeConfigPage .hwprobe-tabs button { margin: 0 0.5em 0.75em 0; padding: 0.4em 1em; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 0.2em; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+            #HwProbeConfigPage .hwprobe-tabs button.hwprobe-selected { background: #00a4dc; border-color: #00a4dc; color: #fff; }
             #HwProbeConfigPage details { margin-top: 2em; }
-            #HwProbeConfigPage details li { margin-bottom: 0.5em; }
         </style>
         <div data-role="content">
             <div class="content-primary">
@@ -192,18 +191,6 @@
                         }
                     }
                     details.appendChild(table);
-
-                    const remedies = el('ul');
-                    for (const b of r.backends.filter(x => x.hint)) {
-                        remedies.appendChild(el('li', (names[b.type] || b.type) + ': ' + b.hint));
-                    }
-                    for (const f of r.findings) {
-                        remedies.appendChild(el('li', f.message));
-                    }
-                    if (remedies.children.length) {
-                        details.appendChild(el('h4', 'Remedies and findings'));
-                        details.appendChild(remedies);
-                    }
                     return details;
                 }
 
