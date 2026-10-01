@@ -41,6 +41,8 @@ scripts/container-linux.sh     # test suite on Linux, then hwprobe against jelly
 scripts/container-windows.sh   # win-x64 build under Wine against Windows jellyfin-ffmpeg (no GPU)
 scripts/container-plugin.sh    # installs the plugin into a Jellyfin 12.1 server and probes through its API
 HWPROBE_INSTALL=repository scripts/container-plugin.sh   # same, installing from a plugin repository
+HWPROBE_INSTALL=existing HWPROBE_BASE=http://host:18096 scripts/container-plugin.sh
+                               # checks a server you started yourself, e.g. one with a GPU passed in
 ```
 
 Extra arguments are passed to hwprobe. On Apple Silicon the Windows script needs Rosetta for
