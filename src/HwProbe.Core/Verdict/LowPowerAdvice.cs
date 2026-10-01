@@ -19,6 +19,18 @@ public static class LowPowerAdvice
     /// <summary>Path of the i915 driver's GuC/HuC loading parameter; readable without root.</summary>
     public const string EnableGucPath = "/sys/module/i915/parameters/enable_guc";
 
+    /// <summary>Returns the remedy for a codec whose low-power encode fails.</summary>
+    /// <param name="codec">The output codec, e.g. <c>hevc</c>.</param>
+    /// <param name="os">The host OS.</param>
+    /// <param name="inContainer">Whether the probe ran in a container.</param>
+    /// <param name="enableGuc">The i915 <c>enable_guc</c> value, or null when the i915 driver isn't loaded.</param>
+    /// <returns>Remedy text.</returns>
+    /// <remarks>From Jellyfin's Intel guide, which says Gen 9.x graphics support "non-LP and LP (H.264 only) encoding".</remarks>
+    public static string Remedy(string codec, HostOs os, bool inContainer, string? enableGuc) =>
+        codec == "hevc"
+            ? "Gen 9 Intel graphics (Skylake to Comet Lake, Apollo Lake, Gemini Lake) have low-power H.264 only, so there this is expected and no firmware change helps. On newer GPUs: " + Remedy(os, inContainer, enableGuc)
+            : Remedy(os, inContainer, enableGuc);
+
     /// <summary>Returns the remedy for a failed low-power encode.</summary>
     /// <param name="os">The host OS.</param>
     /// <param name="inContainer">Whether the probe ran in a container, where firmware and driver options belong to the host.</param>
@@ -76,7 +88,7 @@ public static class LowPowerAdvice
             }
             else if (normalOk && !lowPowerOk)
             {
-                yield return new Finding(FindingSeverity.Info, $"lowpower-unavailable-{codec}", prefix + $"leave '{option}' off. " + Remedy(os, inContainer, enableGuc));
+                yield return new Finding(FindingSeverity.Info, $"lowpower-unavailable-{codec}", prefix + $"leave '{option}' off. " + Remedy(codec, os, inContainer, enableGuc));
             }
         }
     }

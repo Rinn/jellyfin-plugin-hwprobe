@@ -562,7 +562,7 @@ public sealed class ProbeEngine : IDisposable
                     ? ProbeOutcome.DeviceUnavailable
                     : VerdictEvaluator.Evaluate(ran, new ProbeExpectation(MatrixCatalog.Frames, StderrMarkers.HardwareFrames(candidate.Type, args.Hwaccel)));
                 var hint = outcome == ProbeOutcome.Pass ? string.Empty
-                    : cell.Cell.LowPower ? LowPowerAdvice.Remedy(run.Host.Os, inContainer, EnableGuc())
+                    : cell.Cell.LowPower ? LowPowerAdvice.Remedy(cell.Cell.OutputCodec, run.Host.Os, inContainer, EnableGuc())
                     : cell.Group == MatrixGroup.Tonemap && !cell.Cell.VppTonemap && run.NoOpencl.Contains(candidate) ? Hints.OpenclUnavailable(inContainer)
                     : Hints.For(outcome, candidate.Type, run.Host.Os, inContainer);
                 var recorded = Record(candidate, cell, stage, outcome, ran, hint, commandLine);

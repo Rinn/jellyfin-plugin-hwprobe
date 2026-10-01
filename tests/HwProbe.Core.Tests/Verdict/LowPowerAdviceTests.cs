@@ -28,6 +28,14 @@ public sealed class LowPowerAdviceTests
         Assert.Equal(string.IsNullOrEmpty(expectedCode) ? [] : [expectedCode], codes);
     }
 
+    /// <summary>Failed low-power HEVC says Gen 9 has low-power H.264 only; H.264 gets the firmware remedy alone.</summary>
+    [Fact]
+    public void HevcRemedyNamesGen9Limit()
+    {
+        Assert.StartsWith("Gen 9 Intel graphics", LowPowerAdvice.Remedy("hevc", HostOs.Linux, inContainer: true, "0"), StringComparison.Ordinal);
+        Assert.Equal(LowPowerAdvice.Remedy(HostOs.Linux, inContainer: true, "0"), LowPowerAdvice.Remedy("h264", HostOs.Linux, inContainer: true, "0"));
+    }
+
     /// <summary>On Linux with i915, the remedy names the firmware, enable_guc=2 and its current value, and links the guide.</summary>
     [Fact]
     public void LinuxRemedyNamesFirmwareAndGuc()
