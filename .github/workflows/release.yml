@@ -1,0 +1,94 @@
+name: Release
+
+# Runs when a GitHub release is published. Attaches the plugin zip and CLI builds to the release and,
+# for full releases, adds the version to manifest.json on the manifest branch, which is the plugin
+# repository URL users add in Jellyfin. Nothing is pushed to main.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+# Two releases at once would race on the manifest branch.
+concurrency:
+  group: release-manifest
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  TAG: ${{ github.event.release.tag_name }}
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+
+      - name: Check the tag matches the version
+        id: version
+        run: |
+          version="${TAG#v}"
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Tag '$TAG' must look like v1.2.3"; exit 1
+          fi
+          yaml="$(sed -n 's/^version: "\(.*\)"/\1/p' build.yaml)"
+          csproj="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' src/HwProbe.Plugin/HwProbe.Plugin.csproj)"
+          if [ "$yaml" != "$version.0" ] || [ "$csproj" != "$version" ]; then
+            echo "::error::Tag $TAG needs build.yaml version $version.0 and csproj Version $version; found $yaml and $csproj"; exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Build and test
+        run: |
+          dotnet build -warnaserror
+          dotnet test
+
+      - name: Package plugin
+        run: |
+          dotnet publish src/HwProbe.Plugin -c Release -o artifacts/plugin
+          mkdir -p artifacts/dist
+          (cd artifacts/plugin && zip ../dist/hwprobe-plugin_${{ steps.version.outputs.version }}.0.zip Jellyfin.Plugin.HwProbe*.dll)
+
+      # The SDK ad-hoc signs osx-arm64 executables on Linux too (checked with codesign on macOS).
+      - name: Package CLI
+        run: |
+          for rid in linux-x64 linux-arm64 win-x64 osx-arm64; do
+            dotnet publish src/HwProbe.Cli -c Release -r "$rid" --self-contained -p:PublishSingleFile=true -o "artifacts/cli/$rid"
+          done
+          for rid in linux-x64 linux-arm64 osx-arm64; do
+            gzip -c "artifacts/cli/$rid/Jellyfin.Plugin.HwProbe.Cli" > "artifacts/dist/hwprobe-$rid.gz"
+          done
+          cp artifacts/cli/win-x64/Jellyfin.Plugin.HwProbe.Cli.exe artifacts/hwprobe.exe
+          (cd artifacts && zip dist/hwprobe-win-x64.zip hwprobe.exe)
+
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" artifacts/dist/* --clobber
+
+      - name: Add the version to the plugin repository
+        if: ${{ !github.event.release.prerelease }}
+        env:
+          CHANGELOG: ${{ github.event.release.body }}
+        run: |
+          version="${{ steps.version.outputs.version }}.0"
+          zip="hwprobe-plugin_$version.zip"
+          dir="$RUNNER_TEMP/manifest"
+          if git fetch --depth 1 origin manifest; then
+            git worktree add -B manifest "$dir" FETCH_HEAD
+          else
+            git worktree add --orphan -b manifest "$dir"
+          fi
+          python3 scripts/manifest.py --build-yaml build.yaml --zip "artifacts/dist/$zip" --version "$version" \
+            --source-url "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$zip" \
+            --changelog "$CHANGELOG" --manifest "$dir/manifest.json" --out "$dir/manifest.json"
+          git -C "$dir" add manifest.json
+          git -C "$dir" -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -m "Add HwProbe $version"
+          # Pushed from the main checkout, where actions/checkout stored the token; the branch is shared.
+          git push origin manifest
