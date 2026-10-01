@@ -30,7 +30,7 @@ Nothing is sent anywhere. The only download is a 124 KB VC-1 test clip from [FFm
 
 ## Status
 
-Tested on real hardware with Intel QuickSync and VAAPI on Linux, and VideoToolbox on macOS (Apple Silicon). Report problems in [Issues](../../issues).
+Work in progress. Tested on real hardware with Intel QuickSync and VAAPI on Linux, and VideoToolbox on macOS (Apple Silicon). Results for other hardware (NVIDIA, AMD, Rockchip, V4L2) are untested and may be inaccurate. Report problems in [Issues](../../issues).
 
 Written with substantial help from Claude (Anthropic) via Claude Code, directed and reviewed by the repository owner.
 
