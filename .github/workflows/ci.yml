@@ -120,6 +120,10 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Install the plugin into jellyfin/jellyfin and probe through its API
         run: scripts/container-plugin.sh
+      - name: Install the plugin from a plugin repository, as users do
+        run: scripts/container-plugin.sh
+        env:
+          HWPROBE_INSTALL: repository
       - name: Upload server logs
         if: failure()
         uses: actions/upload-artifact@v7

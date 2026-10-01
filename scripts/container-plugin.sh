@@ -2,13 +2,21 @@
 # Installs the plugin into the jellyfin/jellyfin image, completes the setup wizard over the API,
 # runs a probe through the plugin's endpoints and checks the results. Exits non-zero on any failed check.
 # No GPU is passed through, so checks don't depend on what hardware is found.
+#
+# HWPROBE_INSTALL=copy (default) copies the DLLs into the plugins folder. HWPROBE_INSTALL=repository
+# installs the way users do: the zip and a manifest built by scripts/manifest.py are served from a
+# second container, added as a plugin repository, and installed through Jellyfin's package API.
 set -eu
 
 root="$(git rev-parse --show-toplevel)"
 work="$root/artifacts/plugin-e2e"
 image="${JELLYFIN_IMAGE:-docker.io/jellyfin/jellyfin:12.1}"
 name=hwprobe-e2e
+repo=hwprobe-e2e-repo
+net=hwprobe-e2e-net
+install="${HWPROBE_INSTALL:-copy}"
 version="$(sed -n 's/^version: "\(.*\)"/\1/p' "$root/build.yaml")"
+guid="$(sed -n 's/^guid: "\(.*\)"/\1/p' "$root/build.yaml")"
 auth='MediaBrowser Client="hwprobe-e2e", Device="script", DeviceId="hwprobe-e2e", Version="1.0"'
 failures=0
 
@@ -25,24 +33,44 @@ json() { # python expression over the JSON on stdin, bound to j
     python3 -c "import json,sys; j=json.load(sys.stdin); print($1)"
 }
 
-rm -rf "$work" && mkdir -p "$work/config/plugins/HwProbe_$version" "$work/cache"
-dotnet publish "$root/src/HwProbe.Plugin" -c Release -o "$work/publish" -v q --nologo
-cp "$work"/publish/Jellyfin.Plugin.HwProbe*.dll "$work/config/plugins/HwProbe_$version/"
-
-podman rm -f "$name" >/dev/null 2>&1 || true
-podman run -d --name "$name" -p 127.0.0.1::8096 -v "$work/config":/config -v "$work/cache":/cache "$image" >/dev/null
-trap 'podman rm -f "$name" >/dev/null 2>&1' EXIT
-base="http://$(podman port "$name" 8096 | head -1)"
-
-echo "waiting for $image at $base"
-healthy=no
-for _ in $(seq 1 60); do
-    if [ "$(curl -s "$base/health" || true)" = "Healthy" ]; then healthy=yes; break; fi
-    sleep 2
-done
-if [ "$healthy" != yes ]; then
+wait_healthy() {
+    echo "waiting for $image at $base"
+    for _ in $(seq 1 60); do
+        [ "$(curl -s "$base/health" || true)" = "Healthy" ] && return 0
+        sleep 2
+    done
     echo "FAIL  server never became healthy"; podman logs --tail 50 "$name"; exit 1
-fi
+}
+
+rm -rf "$work" && mkdir -p "$work/config/plugins" "$work/cache" "$work/repo"
+dotnet publish "$root/src/HwProbe.Plugin" -c Release -o "$work/publish" -v q --nologo
+
+podman rm -f "$name" "$repo" >/dev/null 2>&1 || true
+podman network rm "$net" >/dev/null 2>&1 || true
+trap 'podman rm -f "$name" "$repo" >/dev/null 2>&1; podman network rm "$net" >/dev/null 2>&1 || true' EXIT
+case "$install" in
+    copy)
+        mkdir -p "$work/config/plugins/HwProbe_$version"
+        cp "$work"/publish/Jellyfin.Plugin.HwProbe*.dll "$work/config/plugins/HwProbe_$version/"
+        ;;
+    repository)
+        zip="hwprobe-plugin_$version.zip"
+        (cd "$work/publish" && zip -q "$work/repo/$zip" Jellyfin.Plugin.HwProbe*.dll)
+        python3 "$root/scripts/manifest.py" --build-yaml "$root/build.yaml" --zip "$work/repo/$zip" \
+            --version "$version" --source-url "http://$repo:8000/$zip" --out "$work/repo/manifest.json"
+        podman network create "$net" >/dev/null
+        podman run -d --name "$repo" --network "$net" -v "$work/repo":/repo:ro -w /repo \
+            docker.io/library/python:3-alpine python -m http.server 8000 >/dev/null
+        ;;
+    *) echo "HWPROBE_INSTALL must be copy or repository, not '$install'"; exit 2 ;;
+esac
+
+network=""
+[ "$install" = repository ] && network="--network $net"
+podman run -d --name "$name" $network -p 127.0.0.1::8096 \
+    -v "$work/config":/config -v "$work/cache":/cache "$image" >/dev/null
+base="http://$(podman port "$name" 8096 | head -1)"
+wait_healthy
 
 curl -sf -X POST "$base/Startup/Configuration" -H 'Content-Type: application/json' \
     -d '{"UICulture":"en-US","MetadataCountryCode":"US","PreferredMetadataLanguage":"en"}'
@@ -53,6 +81,25 @@ token="$(curl -sf -X POST "$base/Users/AuthenticateByName" -H "Authorization: $a
     -d '{"Username":"admin","Pw":"hwprobe"}' | json 'j["AccessToken"]')"
 h="Authorization: $auth, Token=\"$token\""
 code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
+
+if [ "$install" = repository ]; then
+    url="http://$repo:8000/manifest.json"
+    added="$(curl -s -w ' %{http_code}' -X POST "$base/Repositories" -H "$h" -H 'Content-Type: application/json' \
+        -d "[{\"Name\":\"hwprobe-e2e\",\"Url\":\"$url\",\"Enabled\":true}]")"
+    check "add repository" 204 "${added##* }"
+    [ "${added##* }" = 204 ] || echo "      $added"
+    check "listed in catalog" "$version" "$(curl -sf "$base/Packages" -H "$h" | json 'next((v["version"] for p in j if p["name"]=="HwProbe" for v in p["versions"]), "missing")')"
+    check "install" 204 "$(code -X POST "$base/Packages/Installed/HwProbe?assemblyGuid=$guid&version=$version&repositoryUrl=$url" -H "$h")"
+    installed=no
+    for _ in $(seq 1 30); do
+        [ -f "$work/config/plugins/HwProbe_$version/meta.json" ] && { installed=yes; break; }
+        sleep 2
+    done
+    check "installed with meta.json" yes "$installed"
+    podman restart "$name" >/dev/null
+    base="http://$(podman port "$name" 8096 | head -1)"
+    wait_healthy
+fi
 
 check "plugin status" Active "$(curl -sf "$base/Plugins" -H "$h" | json 'next((p["Status"] for p in j if p["Name"]=="HwProbe"), "missing")')"
 check "plugin version" "$version" "$(curl -sf "$base/Plugins" -H "$h" | json 'next((p["Version"] for p in j if p["Name"]=="HwProbe"), "missing")')"
