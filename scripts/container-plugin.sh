@@ -45,9 +45,10 @@ wait_healthy() {
 rm -rf "$work" && mkdir -p "$work/config/plugins" "$work/cache" "$work/repo"
 dotnet publish "$root/src/HwProbe.Plugin" -c Release -o "$work/publish" -v q --nologo
 
-podman rm -f "$name" "$repo" >/dev/null 2>&1 || true
+# --ignore: without it, a missing container (repo, in copy mode) stops podman removing the others.
+podman rm -f --ignore "$name" "$repo" >/dev/null
 podman network rm "$net" >/dev/null 2>&1 || true
-trap 'podman rm -f "$name" "$repo" >/dev/null 2>&1; podman network rm "$net" >/dev/null 2>&1 || true' EXIT
+trap 'podman rm -f --ignore "$name" "$repo" >/dev/null; podman network rm "$net" >/dev/null 2>&1 || true' EXIT
 case "$install" in
     copy)
         mkdir -p "$work/config/plugins/HwProbe_$version"
