@@ -80,7 +80,11 @@ plugin's `meta.json` itself from the manifest, so the zip holds only the DLLs.
 
 ## Network access in development
 
-The tool's own network access is described in the [README](README.md#privacy-and-network-access).
+The tool itself makes one request: `GET https://fate-suite.ffmpeg.org/vc1/SA00050.vc1` (124 KB), on the
+first run only. No free VC-1 encoder exists, so that clip can't be generated like the others. It is
+checked against a pinned SHA-256 and cached under `<fixtures>/downloads`. Offline, VC-1 is reported as
+`Untested` and everything else still runs.
+
 The tests and scripts need more:
 
 | What | Network access |
