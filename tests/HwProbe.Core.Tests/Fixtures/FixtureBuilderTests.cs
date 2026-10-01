@@ -90,6 +90,22 @@ public sealed class FixtureBuilderTests : IDisposable
         Assert.Equal(FixtureStatus.Available, second.Single(r => r.Spec.FileName == "h264_8bit.mp4").Status);
     }
 
+    /// <summary>A fixture made from different encode arguments (an older catalog) is regenerated.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task ChangedRecipeIsRegenerated()
+    {
+        var first = await BuildAsync(_allEncoders);
+        var manifest = first.Single(r => r.Spec.FileName == "hevc_10bit.mp4").Path! + ".sha256";
+        var fields = (await File.ReadAllTextAsync(manifest, TestContext.Current.CancellationToken)).Split(' ');
+        await File.WriteAllTextAsync(manifest, $"{fields[0]} {fields[1]} {new string('0', 64)}", TestContext.Current.CancellationToken);
+        _runner.Invocations.Clear();
+
+        await BuildAsync(_allEncoders);
+
+        Assert.Contains("yuv420p10le", Assert.Single(_runner.Invocations).Arguments, StringComparison.Ordinal);
+    }
+
     /// <summary>A fixture with no manifest (e.g. a run killed mid-way) is regenerated.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

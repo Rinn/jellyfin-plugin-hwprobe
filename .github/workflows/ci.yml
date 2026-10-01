@@ -1,0 +1,151 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# GitHub's own actions are referenced by major tag; pin any third-party action to a full commit SHA.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Superseded PR runs are cancelled; every main commit gets a complete result.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-test:
+    name: Build and test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Build
+        run: dotnet build -warnaserror
+      - name: Check formatting
+        if: runner.os == 'Linux'
+        run: dotnet format --verify-no-changes
+      - name: Test
+        run: dotnet test --no-build
+
+  real-ffmpeg:
+    name: jellyfin-ffmpeg (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # Portable builds from jellyfin/jellyfin-ffmpeg releases.
+        include:
+          - os: ubuntu-latest
+            platform: portable_linux64-gpl.tar.xz
+            binary: ffmpeg
+            fixtures: ~/.cache/hwprobe/fixtures
+          - os: macos-latest
+            platform: portable_macarm64-gpl.tar.xz
+            binary: ffmpeg
+            fixtures: ~/Library/Caches/hwprobe/fixtures
+          - os: windows-latest
+            platform: portable_win64-clang-gpl.zip
+            binary: ffmpeg.exe
+            fixtures: ~/AppData/Local/hwprobe/fixtures
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      JELLYFIN_FFMPEG_VERSION: 8.1.3-1
+      HWPROBE_HW_TESTS: "1"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - uses: actions/cache@v6
+        id: ffmpeg-cache
+        with:
+          path: .ffmpeg
+          key: jellyfin-ffmpeg_${{ env.JELLYFIN_FFMPEG_VERSION }}_${{ matrix.platform }}
+      - name: Download jellyfin-ffmpeg
+        if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "v$JELLYFIN_FFMPEG_VERSION" -R jellyfin/jellyfin-ffmpeg -p "jellyfin-ffmpeg_${JELLYFIN_FFMPEG_VERSION}_${{ matrix.platform }}" -O "${{ matrix.platform }}"
+      - name: Extract (tar)
+        if: steps.ffmpeg-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
+        run: mkdir -p .ffmpeg && tar -xf "${{ matrix.platform }}" -C .ffmpeg
+      - name: Extract (zip)
+        if: steps.ffmpeg-cache.outputs.cache-hit != 'true' && runner.os == 'Windows'
+        shell: pwsh
+        run: Expand-Archive -Path "${{ matrix.platform }}" -DestinationPath .ffmpeg
+      - name: Point the tests at it
+        run: |
+          dir="$PWD/.ffmpeg"
+          if [ "$RUNNER_OS" = Windows ]; then dir="$(cygpath -w "$dir")"; fi
+          echo "HWPROBE_TEST_FFMPEG=$dir/${{ matrix.binary }}" >> "$GITHUB_ENV"
+      # hwprobe keys fixtures by ffmpeg path and version, so a restored cache is never stale.
+      - uses: actions/cache@v6
+        with:
+          path: ${{ matrix.fixtures }}
+          key: fixtures-${{ env.JELLYFIN_FFMPEG_VERSION }}-${{ matrix.platform }}
+      # The rest of the suite already ran in build-test; only Core.Tests has RealFfmpeg tests.
+      - name: Test with jellyfin-ffmpeg
+        run: dotnet test --project tests/HwProbe.Core.Tests -- --filter-trait "Category=RealFfmpeg"
+      - name: Run hwprobe
+        run: dotnet run --project src/HwProbe.Cli -- --ffmpeg "$HWPROBE_TEST_FFMPEG" --json hwprobe-report.json --verbose
+      - uses: actions/upload-artifact@v7
+        with:
+          name: hwprobe-report-${{ matrix.os }}
+          path: hwprobe-report.json
+
+  plugin-e2e:
+    name: Plugin in Jellyfin 12.1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Install the plugin into jellyfin/jellyfin and probe through its API
+        run: scripts/container-plugin.sh
+      - name: Upload server logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: plugin-e2e-logs
+          path: artifacts/plugin-e2e/config/log
+
+  package:
+    name: Package
+    needs: [build-test, real-ffmpeg, plugin-e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Publish plugin
+        run: |
+          dotnet publish src/HwProbe.Plugin -c Release -o artifacts/plugin
+          mkdir -p artifacts/dist
+          (cd artifacts/plugin && zip ../dist/hwprobe-plugin.zip Jellyfin.Plugin.HwProbe*.dll)
+      # The SDK ad-hoc signs osx-arm64 executables on Linux too (checked with codesign on macOS).
+      - name: Publish CLI
+        run: |
+          for rid in linux-x64 win-x64 osx-arm64; do
+            dotnet publish src/HwProbe.Cli -c Release -r "$rid" --self-contained -p:PublishSingleFile=true -o "artifacts/cli/$rid"
+          done
+      - uses: actions/upload-artifact@v7
+        with:
+          name: hwprobe-plugin
+          path: artifacts/dist/hwprobe-plugin.zip
+      - uses: actions/upload-artifact@v7
+        with:
+          name: hwprobe-cli
+          path: artifacts/cli

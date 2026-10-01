@@ -1,0 +1,4 @@
+# LF everywhere, including Windows checkouts: recorded ffmpeg output and golden strings are compared byte for byte.
+* text=auto eol=lf
+*.png binary
+*.zip binary

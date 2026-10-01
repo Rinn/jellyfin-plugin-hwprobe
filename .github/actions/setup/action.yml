@@ -1,0 +1,13 @@
+name: Set up .NET
+description: Installs the .NET 10 SDK and restores the NuGet package cache.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: 10.0.x
+    - uses: actions/cache@v6
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', 'Directory.Build.props', '**/*.csproj', 'global.json') }}
+        restore-keys: nuget-${{ runner.os }}-

@@ -487,3 +487,6 @@ CLAUDE.md
 
 # Agent worktrees
 .claude/
+
+# Script and CI outputs
+artifacts/

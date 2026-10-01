@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Security.Cryptography;
+using System.Text;
 using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Fixtures;
@@ -68,11 +69,12 @@ public sealed class FixtureBuilder
         return string.Concat(cacheKey.Select(c => c == ':' || invalid.Contains(c) ? '_' : c));
     }
 
-    /// <summary>Reports whether a cached fixture matches its manifest.</summary>
+    /// <summary>Reports whether a cached fixture matches its manifest and was made from this spec.</summary>
     /// <param name="path">The fixture path.</param>
+    /// <param name="spec">The fixture spec it must have been encoded from.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
-    /// <returns>True when the file and manifest both exist and size and hash match.</returns>
-    private static async Task<bool> IsValidAsync(string path, CancellationToken cancellationToken)
+    /// <returns>True when the file and manifest both exist and size, hash and recipe match.</returns>
+    private static async Task<bool> IsValidAsync(string path, FixtureSpec spec, CancellationToken cancellationToken)
     {
         var manifestPath = path + ManifestSuffix;
         if (!File.Exists(path) || !File.Exists(manifestPath))
@@ -81,18 +83,21 @@ public sealed class FixtureBuilder
         }
 
         var expected = (await File.ReadAllTextAsync(manifestPath, cancellationToken)).Trim();
-        return expected == await DescribeAsync(path, cancellationToken);
+        return expected == await DescribeAsync(path, spec, cancellationToken);
     }
 
-    /// <summary>Returns the manifest line for a file: its size and SHA-256.</summary>
+    /// <summary>Returns the manifest line for a file: its size, SHA-256, and the hash of the recipe that made it.</summary>
     /// <param name="path">The file.</param>
+    /// <param name="spec">The spec it was encoded from.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
-    /// <returns><c>{size} {sha256-hex}</c>.</returns>
-    private static async Task<string> DescribeAsync(string path, CancellationToken cancellationToken)
+    /// <returns><c>{size} {sha256-hex} {recipe-sha256-hex}</c>.</returns>
+    /// <remarks>The recipe hash makes a changed encode argument regenerate the fixture instead of reusing it.</remarks>
+    private static async Task<string> DescribeAsync(string path, FixtureSpec spec, CancellationToken cancellationToken)
     {
         await using var stream = File.OpenRead(path);
         var hash = await SHA256.HashDataAsync(stream, cancellationToken);
-        return string.Create(CultureInfo.InvariantCulture, $"{stream.Length} {Convert.ToHexStringLower(hash)}");
+        var recipe = SHA256.HashData(Encoding.UTF8.GetBytes($"{spec.RequiredEncoder}\n{spec.EncodeArguments}"));
+        return string.Create(CultureInfo.InvariantCulture, $"{stream.Length} {Convert.ToHexStringLower(hash)} {Convert.ToHexStringLower(recipe)}");
     }
 
     /// <summary>Summarises a failed encode for the report.</summary>
@@ -145,7 +150,7 @@ public sealed class FixtureBuilder
         }
 
         var path = Path.Combine(directory, spec.FileName);
-        if (await IsValidAsync(path, cancellationToken))
+        if (await IsValidAsync(path, spec, cancellationToken))
         {
             return new FixtureResult(spec, FixtureStatus.Available, path, null);
         }
@@ -182,7 +187,7 @@ public sealed class FixtureBuilder
 
         // Manifest last: a run killed before this leaves a file that won't validate.
         File.Move(partial, path, overwrite: true);
-        var manifest = await DescribeAsync(path, cancellationToken);
+        var manifest = await DescribeAsync(path, spec, cancellationToken);
         var manifestPartial = manifestPath + ".partial";
         await File.WriteAllTextAsync(manifestPartial, manifest, cancellationToken);
         File.Move(manifestPartial, manifestPath, overwrite: true);

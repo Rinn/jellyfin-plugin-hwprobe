@@ -5,10 +5,10 @@
 set -eu
 
 root="$(git rev-parse --show-toplevel)"
-win="$root/.claude/win"
+win="$root/artifacts/win"
 release=v8.1.3-1
 zip="jellyfin-ffmpeg_8.1.3-1_portable_win64-clang-gpl.zip"
-copy='mkdir /work && cd /src && tar --exclude=./.git --exclude=./.claude --exclude="*/bin" --exclude="*/obj" -cf - . | tar -C /work -xf - && cd /work'
+copy='mkdir /work && cd /src && tar --exclude=./.git --exclude=./.claude --exclude=./artifacts --exclude="*/bin" --exclude="*/obj" -cf - . | tar -C /work -xf - && cd /work'
 
 mkdir -p "$win/ffmpeg"
 if [ ! -f "$win/ffmpeg/ffmpeg.exe" ]; then

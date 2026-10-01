@@ -41,6 +41,12 @@ Extra arguments are passed to hwprobe. On Apple Silicon the Windows script needs
 x86_64 containers: add `[machine]` / `rosetta = true` to `~/.config/containers/containers.conf`
 and restart the podman machine.
 
+## Continuous integration
+
+`.github/workflows/ci.yml` builds and tests on Linux, macOS and Windows, runs the real-ffmpeg tests
+and a CLI run against jellyfin-ffmpeg's portable builds on all three, runs the plugin end-to-end
+script, and uploads the plugin zip and CLI builds as artifacts.
+
 ## Pre-commit hook
 
 All three checks above must pass before every commit. Install the checked-in hook once per clone:

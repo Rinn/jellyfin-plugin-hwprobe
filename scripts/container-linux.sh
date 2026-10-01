@@ -4,14 +4,14 @@
 set -eu
 
 root="$(git rev-parse --show-toplevel)"
-out="$root/.claude/linux-publish"
+out="$root/artifacts/linux-publish"
 sdk=mcr.microsoft.com/dotnet/sdk:10.0
-copy='mkdir /work && cd /src && tar --exclude=./.git --exclude=./.claude --exclude="*/bin" --exclude="*/obj" -cf - . | tar -C /work -xf - && cd /work'
+copy='mkdir /work && cd /src && tar --exclude=./.git --exclude=./.claude --exclude=./artifacts --exclude="*/bin" --exclude="*/obj" -cf - . | tar -C /work -xf - && cd /work'
 
 podman run --rm -v "$root":/src:ro "$sdk" sh -c "$copy && dotnet test"
 
 rm -rf "$out" && mkdir -p "$out"
 podman run --rm -v "$root":/src:ro -v "$out":/out "$sdk" sh -c \
     "$copy && dotnet publish src/HwProbe.Cli -c Release -r linux-arm64 --self-contained -o /out -v q"
-podman run --rm --entrypoint /bin/sh -v "$out":/hwprobe:ro docker.io/jellyfin/jellyfin:latest -c \
+podman run --rm --entrypoint /bin/sh -v "$out":/hwprobe:ro "${JELLYFIN_IMAGE:-docker.io/jellyfin/jellyfin:12.1}" -c \
     '/hwprobe/Jellyfin.Plugin.HwProbe.Cli "$@"' -- "$@"
