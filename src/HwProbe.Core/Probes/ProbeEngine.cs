@@ -261,6 +261,10 @@ public sealed class ProbeEngine : IDisposable
         _ => "other",
     };
 
+    /// <summary>Reads the i915 driver's enable_guc parameter.</summary>
+    /// <returns>The value, or null when the i915 driver isn't loaded.</returns>
+    private string? EnableGuc() => _platform.TryReadText(LowPowerAdvice.EnableGucPath)?.Trim();
+
     /// <summary>Opens every selected device.</summary>
     /// <param name="run">Run state.</param>
     /// <param name="cancellationToken">Cancels the run.</param>
@@ -415,6 +419,11 @@ public sealed class ProbeEngine : IDisposable
             }
         }
 
+        if (candidate.Type is HwType.qsv or HwType.vaapi)
+        {
+            run.Findings.AddRange(LowPowerAdvice.Findings(candidate.Type, candidate.Device, encode, run.Host.Os, inContainer, EnableGuc()));
+        }
+
         run.Backends.Add(new BackendReport(candidate.Type, candidate.Device, BackendVerdict.Viable, tier, decode, encode, tonemap, deinterlace, string.Empty));
     }
 
@@ -484,7 +493,10 @@ public sealed class ProbeEngine : IDisposable
                 var outcome = ran.Status == FfmpegRunStatus.LaunchFailed
                     ? ProbeOutcome.DeviceUnavailable
                     : VerdictEvaluator.Evaluate(ran, new ProbeExpectation(MatrixCatalog.Frames, StderrMarkers.HardwareFrames(candidate.Type)));
-                var recorded = Record(candidate, cell, stage, outcome, ran, Hints.For(outcome, candidate.Type, run.Host.Os, inContainer), commandLine);
+                var hint = cell.Cell.LowPower && outcome != ProbeOutcome.Pass
+                    ? LowPowerAdvice.Remedy(run.Host.Os, inContainer, EnableGuc())
+                    : Hints.For(outcome, candidate.Type, run.Host.Os, inContainer);
+                var recorded = Record(candidate, cell, stage, outcome, ran, hint, commandLine);
 
                 // The deinterlace column is keyed by the hardware filter family that did the work.
                 return cell.Group == MatrixGroup.Deinterlace ? recorded with { Codec = args.HardwareDeinterlacer } : recorded;
