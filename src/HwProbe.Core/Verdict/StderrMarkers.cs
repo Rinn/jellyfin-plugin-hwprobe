@@ -66,6 +66,13 @@ public static class StderrMarkers
     /// <summary>Generic failure text; any occurrence rules out a pass.</summary>
     public static readonly IReadOnlyList<string> Generic = ["Failed to"];
 
+    /// <summary>Lines that match a failure marker but don't affect the transcode; removed before matching.</summary>
+    /// <remarks>
+    /// Stream probing's own decoder open (libavformat, avformat_find_stream_info). Observed with jellyfin-ffmpeg
+    /// 8.1.3 on a VC-1 elementary stream that then decoded in hardware.
+    /// </remarks>
+    public static readonly IReadOnlyList<string> Harmless = ["Failed to open codec in avformat_find_stream_info"];
+
     /// <summary>Returns the stderr lines that prove the decoder produced hardware frames.</summary>
     /// <param name="type">The backend.</param>
     /// <returns>Alternative strings, any one of which confirms; empty when there is no hardware frame format.</returns>
