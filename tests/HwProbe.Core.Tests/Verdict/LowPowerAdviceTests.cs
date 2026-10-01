@@ -18,6 +18,7 @@ public sealed class LowPowerAdviceTests
     [InlineData(ProbeOutcome.Pass, ProbeOutcome.Pass, "lowpower-available-h264")]
     [InlineData(ProbeOutcome.Pass, ProbeOutcome.CodecUnsupported, "lowpower-unavailable-h264")]
     [InlineData(ProbeOutcome.CodecUnsupported, ProbeOutcome.CodecUnsupported, "")]
+    [InlineData(ProbeOutcome.Pass, ProbeOutcome.Skipped, "")]
     public void FindingMatchesResults(ProbeOutcome normal, ProbeOutcome lowPower, string expectedCode)
     {
         var encode = new Dictionary<string, ProbeOutcome> { ["h264"] = normal, ["h264_lowpower"] = lowPower };

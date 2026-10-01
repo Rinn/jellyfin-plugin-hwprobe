@@ -56,7 +56,9 @@ public static class LowPowerAdvice
 
         foreach (var (codec, option) in new[] { ("h264", "Intel Low-Power H.264 hardware encoder"), ("hevc", "Intel Low-Power HEVC hardware encoder") })
         {
-            if (!encode.TryGetValue(codec, out var normal) || !encode.TryGetValue(codec + "_lowpower", out var lowPower))
+            // Skipped means Jellyfin ignores the option here, so there is nothing to advise.
+            if (!encode.TryGetValue(codec, out var normal) || !encode.TryGetValue(codec + "_lowpower", out var lowPower)
+                || lowPower is ProbeOutcome.Skipped or ProbeOutcome.Untested)
             {
                 continue;
             }

@@ -17,4 +17,13 @@ public sealed class ProbeArgumentsTests
     [InlineData("", null)]
     public void HwaccelIsReadFromInputArgs(string inputArgs, string? expected) =>
         Assert.Equal(expected, new ProbeArguments(inputArgs, string.Empty, "h264_qsv", new Dictionary<string, string?>()).Hwaccel);
+
+    /// <summary>Encoder options follow the encoder name.</summary>
+    [Fact]
+    public void EncoderArgsFollowEncoder()
+    {
+        var args = new ProbeArguments("-hwaccel vaapi", string.Empty, "h264_vaapi", new Dictionary<string, string?>()) { EncoderArgs = " -low_power 1" };
+
+        Assert.Contains("-c:v h264_vaapi -low_power 1 -an", ProbeCommandLine.Build(args, "/f.mp4", 10), StringComparison.Ordinal);
+    }
 }

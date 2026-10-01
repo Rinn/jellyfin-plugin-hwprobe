@@ -503,6 +503,11 @@ public sealed class ProbeEngine : IDisposable
                     return Record(candidate, cell, stage, ProbeOutcome.CodecUnsupported, null, $"No {candidate.Type} encoder for {cell.Cell.OutputCodec} in this build.", null);
                 }
 
+                if (cell.Cell.LowPower && !args.LowPowerEncoder)
+                {
+                    return Record(candidate, cell, stage, ProbeOutcome.Skipped, null, $"Jellyfin doesn't use low-power mode for {args.VideoEncoder} with this driver.", null);
+                }
+
                 if (cell.Group == MatrixGroup.Tonemap && !args.HardwareTonemap)
                 {
                     return Record(candidate, cell, stage, ProbeOutcome.Skipped, null, $"Jellyfin emits no hardware tone-map for this backend and build (filters:{args.FilterArgs}).", null);

@@ -11,6 +11,12 @@ public sealed record ProbeArguments(
     string VideoEncoder,
     IReadOnlyDictionary<string, string?> Environment)
 {
+    /// <summary>Gets encoder options placed after <c>-c:v</c>, with a leading space, or empty.</summary>
+    public string EncoderArgs { get; init; } = string.Empty;
+
+    /// <summary>Gets a value indicating whether upstream asked the encoder for low-power mode.</summary>
+    public bool LowPowerEncoder { get; init; }
+
     /// <summary>Gets the hardware decoder upstream selected, or null when it decodes in software.</summary>
     public string? HardwareDecoder { get; init; }
 
