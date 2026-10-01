@@ -13,9 +13,13 @@ public static class Hints
     /// <summary>Returns the remedy for an Intel device whose OpenCL runtime doesn't start.</summary>
     /// <param name="inContainer">Whether the probe ran inside a container.</param>
     /// <returns>Remedy text.</returns>
-    /// <remarks>The official image installs intel-opencl-icd, and intel-opencl-icd-legacy1 for "&lt;= Gen11 graphics" (jellyfin-packaging, docker/Dockerfile).</remarks>
+    /// <remarks>
+    /// The official image installs intel-opencl-icd, and intel-opencl-icd-legacy1 for "&lt;= Gen11 graphics" (jellyfin-packaging,
+    /// docker/Dockerfile). The linuxserver mod installs both at container start (docker-mods, jellyfin-opencl-intel branch); on one
+    /// Synology host its packages were present but never installed, so the log check matters.
+    /// </remarks>
     public static string OpenclUnavailable(bool inContainer) => inContainer
-        ? "Install Intel's OpenCL runtime in the container. The official jellyfin/jellyfin image includes it (intel-opencl-icd, and intel-opencl-icd-legacy1 for Gen 11 and older GPUs)."
+        ? "Install Intel's OpenCL runtime in the container. The official jellyfin/jellyfin image includes it (intel-opencl-icd, and intel-opencl-icd-legacy1 for Gen 11 and older GPUs). On linuxserver/jellyfin, set DOCKER_MODS=linuxserver/mods:jellyfin-opencl-intel and check the container's start-up log shows the packages installing."
         : "Install Intel's OpenCL runtime: intel-opencl-icd, or intel-opencl-icd-legacy1 for Gen 11 and older GPUs.";
 
     /// <summary>Returns the remedy for an outcome.</summary>
