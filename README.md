@@ -30,7 +30,7 @@ Nothing is sent anywhere. The only download is a 124 KB VC-1 test clip from [FFm
 
 ## Status
 
-Tested on real hardware with Intel QuickSync and VAAPI only. Report problems in [Issues](https://github.com/Rinn/jellyfin-plugin-hwprobe/issues).
+Tested on real hardware with Intel QuickSync and VAAPI on Linux, and VideoToolbox on macOS (Apple Silicon). Report problems in [Issues](https://github.com/Rinn/jellyfin-plugin-hwprobe/issues).
 
 Written with substantial help from Claude (Anthropic) via Claude Code, directed and reviewed by the repository owner.
 
