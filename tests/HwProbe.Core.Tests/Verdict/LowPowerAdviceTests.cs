@@ -18,6 +18,7 @@ public sealed class LowPowerAdviceTests
     [InlineData(ProbeOutcome.Pass, ProbeOutcome.Pass, "lowpower-available-h264")]
     [InlineData(ProbeOutcome.Pass, ProbeOutcome.CodecUnsupported, "lowpower-unavailable-h264")]
     [InlineData(ProbeOutcome.CodecUnsupported, ProbeOutcome.CodecUnsupported, "")]
+    [InlineData(ProbeOutcome.Pass, ProbeOutcome.Skipped, "")]
     public void FindingMatchesResults(ProbeOutcome normal, ProbeOutcome lowPower, string expectedCode)
     {
         var encode = new Dictionary<string, ProbeOutcome> { ["h264"] = normal, ["h264_lowpower"] = lowPower };
@@ -25,6 +26,14 @@ public sealed class LowPowerAdviceTests
         var codes = LowPowerAdvice.Findings(HwType.qsv, "/dev/dri/renderD128", encode, HostOs.Linux, inContainer: false, "-1").Select(f => f.Code);
 
         Assert.Equal(string.IsNullOrEmpty(expectedCode) ? [] : [expectedCode], codes);
+    }
+
+    /// <summary>Failed low-power HEVC says Gen 9 has low-power H.264 only; H.264 gets the firmware remedy alone.</summary>
+    [Fact]
+    public void HevcRemedyNamesGen9Limit()
+    {
+        Assert.StartsWith("Gen 9 Intel graphics", LowPowerAdvice.Remedy("hevc", HostOs.Linux, inContainer: true, "0"), StringComparison.Ordinal);
+        Assert.Equal(LowPowerAdvice.Remedy(HostOs.Linux, inContainer: true, "0"), LowPowerAdvice.Remedy("h264", HostOs.Linux, inContainer: true, "0"));
     }
 
     /// <summary>On Linux with i915, the remedy names the firmware, enable_guc=2 and its current value, and links the guide.</summary>

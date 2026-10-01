@@ -21,7 +21,7 @@ public static class ProbeCommandLine
 
         return string.Create(
             CultureInfo.InvariantCulture,
-            $"-hide_banner -v debug -nostats -progress pipe:1 {args.InputArgs} -i \"{fixturePath}\" -frames:v {frames}{args.FilterArgs} -c:v {args.VideoEncoder} -an -f null -")
+            $"-hide_banner -v debug -nostats -progress pipe:1 {args.InputArgs} -i \"{fixturePath}\" -frames:v {frames}{args.FilterArgs} -c:v {args.VideoEncoder}{args.EncoderArgs} -an -f null -")
             .Replace("  ", " ", StringComparison.Ordinal);
     }
 }

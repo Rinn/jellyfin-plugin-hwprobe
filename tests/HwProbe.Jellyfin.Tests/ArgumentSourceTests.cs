@@ -97,6 +97,21 @@ public sealed class ArgumentSourceTests
         Assert.Equal("h264_qsv", args.VideoEncoder);
     }
 
+    /// <summary>Upstream asks VAAPI for low-power only on Intel drivers, and only when the cell enables it.</summary>
+    [Fact(Skip = "Requires Linux: EncodingHelper only emits VAAPI args there.", SkipUnless = nameof(TestEnvironment.IsLinux), SkipType = typeof(TestEnvironment))]
+    public void VaapiLowPowerNeedsIntelDriver()
+    {
+        var lowPower = _smoke with { LowPower = true };
+        var amd = TestCapabilities.Full with { IsVaapiDeviceInteliHD = false, IsVaapiDeviceAmd = true };
+
+        var intel = Build(HwType.vaapi, Node, lowPower);
+
+        Assert.True(intel.LowPowerEncoder);
+        Assert.Equal(" -low_power 1", intel.EncoderArgs);
+        Assert.False(Build(HwType.vaapi, Node, _smoke).LowPowerEncoder);
+        Assert.False(new ArgumentSource(amd, _recorder).Build(HwType.vaapi, Node, lowPower).LowPowerEncoder);
+    }
+
     /// <summary>i965 sets two env vars during generation; they are returned for the child and the parent is restored.</summary>
     [Fact(Skip = "Requires Linux: the i965 branch only runs there.", SkipUnless = nameof(TestEnvironment.IsLinux), SkipType = typeof(TestEnvironment))]
     public void I965EnvironmentIsReturnedAndRestored()

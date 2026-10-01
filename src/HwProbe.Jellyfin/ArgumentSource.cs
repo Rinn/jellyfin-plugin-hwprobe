@@ -12,6 +12,9 @@ namespace Jellyfin.Plugin.HwProbe.Jellyfin;
 /// <summary><see cref="IArgumentSource"/> over upstream's own <see cref="EncodingHelper"/>.</summary>
 public sealed class ArgumentSource : IArgumentSource
 {
+    // Emitted by EncodingHelper.GetVideoQualityParam (v12.1, L2166) when it allows low-power encoding.
+    private const string LowPowerArg = "-low_power 1";
+
     private static readonly Dictionary<string, Func<object?[], object?>> _noHandlers = [];
 
     // No font attachments to extract: the burn-in filter then omits fontsdir (EncodingHelper.GetTextSubtitlesFilter).
@@ -162,8 +165,15 @@ public sealed class ArgumentSource : IArgumentSource
             v => effects.TryGetValue(v, out var value) ? value : _environment.Baseline.GetValueOrDefault(v),
             StringComparer.Ordinal);
 
+        // Only the low-power flag is taken from the quality arguments, so a low-power cell differs from
+        // its plain cell by that flag alone.
+        var lowPower = cell.LowPower
+            && _helper.GetVideoQualityParam(state, encoder, options, EncoderPreset.veryfast).Contains(LowPowerArg, StringComparison.Ordinal);
+
         return new ProbeArguments(inputArgs, filterArgs, encoder, childEnvironment)
         {
+            EncoderArgs = lowPower ? " " + LowPowerArg : string.Empty,
+            LowPowerEncoder = lowPower,
             HardwareDecoder = _helper.HardwareDecoder(state, options),
             HardwareEncoder = !string.Equals(encoder, softwareEncoder, StringComparison.Ordinal),
             HardwareTonemap = !string.Equals(filterArgs, withoutTonemap, StringComparison.Ordinal),

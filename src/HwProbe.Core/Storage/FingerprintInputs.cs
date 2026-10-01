@@ -17,4 +17,8 @@ public sealed record FingerprintInputs(
     IReadOnlyDictionary<string, string?>? DeviceIdentities,
     string? KernelRelease,
     string? OsPlatform,
-    string? OsVersion);
+    string? OsVersion)
+{
+    /// <summary>Gets the identity of the hwprobe build, so a changed build never reuses an older build's report; omitted when null.</summary>
+    public string? ToolBuild { get; init; }
+}

@@ -32,6 +32,27 @@ public static class DeviceOpenProbe
         };
     }
 
+    /// <summary>Returns arguments that derive OpenCL from the device the way upstream's OpenCL pipeline does, or null where it doesn't.</summary>
+    /// <param name="type">The backend.</param>
+    /// <param name="device">Render node.</param>
+    /// <param name="os">The host OS.</param>
+    /// <returns>The arguments, or null outside VAAPI and QSV on Linux.</returns>
+    /// <remarks>EncodingHelper derives <c>opencl=ocl@va</c> from the VAAPI device for both (v12.1, L1070 and L1136).</remarks>
+    public static string? OpenclArguments(HwType type, string device, HostOs os) =>
+        os == HostOs.Linux && type is HwType.vaapi or HwType.qsv
+            ? Arguments(HwType.vaapi, device, os) + " -init_hw_device opencl=ocl@va"
+            : null;
+
+    /// <summary>Classifies an OpenCL derive.</summary>
+    /// <param name="result">The run of <see cref="OpenclArguments"/>.</param>
+    /// <returns>The outcome.</returns>
+    /// <remarks>Observed with jellyfin-ffmpeg 8.1.3: with no OpenCL runtime, "Failed to get number of OpenCL platforms: -1001" then "Device creation failed".</remarks>
+    public static ProbeOutcome EvaluateOpencl(FfmpegRunResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        return result.Status == FfmpegRunStatus.TimedOut ? ProbeOutcome.Timeout : GenericOutcome(result.Stderr);
+    }
+
     /// <summary>Classifies a device-open run.</summary>
     /// <param name="type">The backend.</param>
     /// <param name="result">The run result.</param>

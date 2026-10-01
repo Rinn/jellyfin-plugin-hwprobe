@@ -2,13 +2,14 @@
 
 Device-verified hardware-transcode detection for Jellyfin.
 
-Jellyfin's hardware-acceleration dropdown is built from `ffmpeg -hwaccels`, which lists what the
-binary was *compiled* with, not what this machine can actually *open*. HwProbe runs tiny real
-transcodes and reports which backends, codecs and filter-pipeline tiers genuinely work, with a
-remedy for each failure.
+Jellyfin's hardware-acceleration dropdown offers the same eight choices on every server, whatever
+ffmpeg was built with and whatever hardware the machine has. Picking one tells you nothing about
+whether it works. HwProbe runs tiny real transcodes and reports which backends, codecs and
+filter-pipeline tiers genuinely work, with a remedy for each failure.
 
 **Status:** early development. Milestone 1 (standalone CLI) and Milestone 2 (read-only plugin) are
-implemented; neither has been validated on real GPU hardware yet.
+implemented. VAAPI and QSV have been validated on one Intel GPU (Apollo Lake, Linux); other
+backends have not been run on real hardware.
 
 ## Plugin
 

@@ -43,6 +43,29 @@ public sealed class StderrMarkersTests
         Assert.DoesNotContain(confirmations, n => fallback.Contains(n, StringComparison.Ordinal));
     }
 
+    /// <summary>QSV decoded through VAAPI is confirmed by VAAPI frames, and QSV frames still count.</summary>
+    [Fact]
+    public void QsvOverVaapiAcceptsVaapiFrames()
+    {
+        var confirmations = StderrMarkers.HardwareFrames(HwType.qsv, "vaapi");
+
+        Assert.Contains("Format vaapi chosen by get_format()", confirmations);
+        Assert.Contains("Format qsv chosen by get_format()", confirmations);
+        Assert.Equal(StderrMarkers.HardwareFrames(HwType.qsv), StderrMarkers.HardwareFrames(HwType.qsv, null));
+    }
+
+    /// <summary>Each upstream hwaccel maps to the output format it is paired with.</summary>
+    /// <param name="hwaccel">The <c>-hwaccel</c> value.</param>
+    /// <param name="expected">The frame format.</param>
+    [Theory]
+    [InlineData("vaapi", "vaapi")]
+    [InlineData("d3d11va", "d3d11")]
+    [InlineData("videotoolbox", "videotoolbox_vld")]
+    [InlineData("rkmpp", "drm_prime")]
+    [InlineData("auto", null)]
+    public void HwaccelFormatPerHwaccel(string hwaccel, string? expected) =>
+        Assert.Equal(expected, StderrMarkers.HwaccelFormat(hwaccel));
+
     /// <summary>An out-of-range backend is rejected.</summary>
     [Fact]
     public void UnknownTypeThrows() =>

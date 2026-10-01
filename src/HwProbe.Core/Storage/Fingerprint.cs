@@ -26,6 +26,10 @@ public static class Fingerprint
         Append(text, "kernel.release", inputs.KernelRelease);
         Append(text, "os.platform", inputs.OsPlatform);
         Append(text, "os.version", inputs.OsVersion);
+        if (inputs.ToolBuild is not null)
+        {
+            Append(text, "tool.build", inputs.ToolBuild);
+        }
 
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(text.ToString()));
         return "sha256:" + Convert.ToHexStringLower(hash);

@@ -6,7 +6,11 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Probes;
 /// <summary>Replays recorded build enumeration output, writes fixture files, and scripts every other launch.</summary>
 internal sealed class EngineRunner : IFfmpegRunner
 {
-    private readonly ScriptedFfmpegRunner _stageA = ScriptedFfmpegRunner.FromCorpus("homebrew-9.0.2-macos");
+    private readonly ScriptedFfmpegRunner _stageA;
+
+    /// <summary>Initializes a new instance of the <see cref="EngineRunner"/> class.</summary>
+    /// <param name="corpus">The recorded ffmpeg build whose enumeration output is replayed.</param>
+    public EngineRunner(string corpus = "homebrew-9.0.2-macos") => _stageA = ScriptedFfmpegRunner.FromCorpus(corpus);
 
     /// <summary>Gets or sets the response for device-open and probe launches.</summary>
     public Func<FfmpegInvocation, FfmpegRunResult> Probe { get; set; } = _ => Exited(0, 10, string.Empty);

@@ -75,7 +75,7 @@ public sealed class ProbeEngine : IDisposable
             await OpenDevicesAsync(run, cancellationToken);
         }
 
-        var fingerprint = ComputeFingerprint(run);
+        var fingerprint = ComputeFingerprint(run, ToolBuild(_arguments));
         var store = new ReportStore(options.ReportCacheDirectory);
         if (options.StopAfter == StopStage.Matrix && !options.Refresh)
         {
@@ -167,10 +167,17 @@ public sealed class ProbeEngine : IDisposable
         return Version.TryParse(numeric.Contains('.', StringComparison.Ordinal) ? numeric : numeric + ".0", out var version) ? version : new Version(0, 0);
     }
 
+    /// <summary>Identifies the code that judges and generates probes.</summary>
+    /// <param name="arguments">The argument source factory, whose assembly generates the arguments.</param>
+    /// <returns>Module version IDs, which change whenever a deterministic build's code changes.</returns>
+    private static string ToolBuild(IArgumentSourceFactory arguments) =>
+        $"{typeof(ProbeEngine).Assembly.ManifestModule.ModuleVersionId}:{arguments.GetType().Assembly.ManifestModule.ModuleVersionId}";
+
     /// <summary>Computes the fingerprint from build enumeration and device-open by-products.</summary>
     /// <param name="run">Run state.</param>
+    /// <param name="toolBuild">The hwprobe build identity.</param>
     /// <returns>The fingerprint.</returns>
-    private static string ComputeFingerprint(Run run)
+    private static string ComputeFingerprint(Run run, string toolBuild)
     {
         var identities = new Dictionary<string, string?>(StringComparer.Ordinal);
         foreach (var node in run.Devices.RenderNodes)
@@ -186,7 +193,10 @@ public sealed class ProbeEngine : IDisposable
             identities,
             run.Host.Os == HostOs.MacOS ? run.Host.Kernel : null,
             run.Host.Os.ToString(),
-            run.Host.Kernel));
+            run.Host.Kernel)
+        {
+            ToolBuild = toolBuild,
+        });
     }
 
     /// <summary>Report key for a hardware tone-map: the filter family the tier implies.</summary>
@@ -375,6 +385,11 @@ public sealed class ProbeEngine : IDisposable
             run.Findings.Add(new Finding(FindingSeverity.Warn, "legacy-copyback", $"{candidate.Type}{DevicePrefix(candidate.Device)}{remedy}"));
         }
 
+        if (tier == PipelineTier.FullOpencl && DeviceOpenProbe.OpenclArguments(candidate.Type, candidate.Device, run.Host.Os) is { } openclArguments)
+        {
+            await CheckOpenclAsync(run, candidate, openclArguments, cancellationToken);
+        }
+
         if (open.Driver == VaapiDriver.Amd)
         {
             run.Findings.Add(new Finding(FindingSeverity.Info, "vulkan-interop-unprobed", $"{candidate.Type}{DevicePrefix(candidate.Device)}Vulkan DRM interop is not probed, so FullVulkan is never reported."));
@@ -436,6 +451,30 @@ public sealed class ProbeEngine : IDisposable
         run.Backends.Add(new BackendReport(candidate.Type, candidate.Device, BackendVerdict.Viable, tier, decode, encode, tonemap, deinterlace, subtitles, string.Empty));
     }
 
+    /// <summary>Opens OpenCL on a device that upstream will send through its OpenCL pipeline.</summary>
+    /// <param name="run">Run state.</param>
+    /// <param name="candidate">The device.</param>
+    /// <param name="arguments">The OpenCL derive arguments.</param>
+    /// <param name="cancellationToken">Cancels the probe.</param>
+    /// <returns>A task that completes when the probe is recorded.</returns>
+    /// <remarks>Upstream picks the OpenCL pipeline from the build alone (EncodingHelper.IsOpenclFullSupported), so a missing runtime doesn't change the tier; it breaks the OpenCL filters.</remarks>
+    private async Task CheckOpenclAsync(Run run, DeviceCandidate candidate, string arguments, CancellationToken cancellationToken)
+    {
+        var invocation = new FfmpegInvocation(run.Options.Ffmpeg.Path, arguments, _environment.Baseline, run.Options.ProbeTimeout);
+        var result = await _gate.RunAsync(ct => _runner.RunAsync(invocation, ct), cancellationToken);
+        var outcome = DeviceOpenProbe.EvaluateOpencl(result);
+        var remedy = Hints.OpenclUnavailable(run.Host.Container is not null);
+        run.Probes.Add(Record(candidate, null, ProbeStage.Tier, outcome, result, outcome == ProbeOutcome.Pass ? string.Empty : remedy, arguments));
+        if (outcome != ProbeOutcome.Pass)
+        {
+            run.NoOpencl.Add(candidate);
+            run.Findings.Add(new Finding(
+                FindingSeverity.Warn,
+                "opencl-unavailable",
+                $"{candidate.Type}{DevicePrefix(candidate.Device)}OpenCL doesn't start, but Jellyfin still picks its OpenCL pipeline because this ffmpeg was built with OpenCL, so OpenCL tone-mapping fails. {remedy}"));
+        }
+    }
+
     /// <summary>Builds, runs and classifies one cell under the probe gate.</summary>
     /// <param name="run">Run state.</param>
     /// <param name="candidate">The device.</param>
@@ -493,6 +532,11 @@ public sealed class ProbeEngine : IDisposable
                     return Record(candidate, cell, stage, ProbeOutcome.CodecUnsupported, null, $"No {candidate.Type} encoder for {cell.Cell.OutputCodec} in this build.", null);
                 }
 
+                if (cell.Cell.LowPower && !args.LowPowerEncoder)
+                {
+                    return Record(candidate, cell, stage, ProbeOutcome.Skipped, null, $"Jellyfin doesn't use low-power mode for {args.VideoEncoder} with this driver.", null);
+                }
+
                 if (cell.Group == MatrixGroup.Tonemap && !args.HardwareTonemap)
                 {
                     return Record(candidate, cell, stage, ProbeOutcome.Skipped, null, $"Jellyfin emits no hardware tone-map for this backend and build (filters:{args.FilterArgs}).", null);
@@ -516,9 +560,12 @@ public sealed class ProbeEngine : IDisposable
                 var ran = await _runner.RunAsync(invocation, ct);
                 var outcome = ran.Status == FfmpegRunStatus.LaunchFailed
                     ? ProbeOutcome.DeviceUnavailable
-                    : VerdictEvaluator.Evaluate(ran, new ProbeExpectation(MatrixCatalog.Frames, StderrMarkers.HardwareFrames(candidate.Type)));
-                var hint = cell.Cell.LowPower && outcome != ProbeOutcome.Pass
-                    ? LowPowerAdvice.Remedy(run.Host.Os, inContainer, EnableGuc())
+                    : cell.Cell.LowPower && StderrMarkers.LowPowerDisabled.Any(m => ran.Stderr.Contains(m, StringComparison.Ordinal))
+                    ? ProbeOutcome.CodecUnsupported
+                    : VerdictEvaluator.Evaluate(ran, new ProbeExpectation(MatrixCatalog.Frames, StderrMarkers.HardwareFrames(candidate.Type, args.Hwaccel)));
+                var hint = outcome == ProbeOutcome.Pass ? string.Empty
+                    : cell.Cell.LowPower ? LowPowerAdvice.Remedy(cell.Cell.OutputCodec, run.Host.Os, inContainer, EnableGuc())
+                    : cell.Group == MatrixGroup.Tonemap && !cell.Cell.VppTonemap && run.NoOpencl.Contains(candidate) ? Hints.OpenclUnavailable(inContainer)
                     : Hints.For(outcome, candidate.Type, run.Host.Os, inContainer);
                 var recorded = Record(candidate, cell, stage, outcome, ran, hint, commandLine);
 
@@ -539,6 +586,9 @@ public sealed class ProbeEngine : IDisposable
     {
         /// <summary>Gets devices that opened.</summary>
         public List<(DeviceCandidate Candidate, DeviceOpenResult Open)> Opened { get; } = [];
+
+        /// <summary>Gets devices on the OpenCL pipeline whose OpenCL runtime doesn't start.</summary>
+        public HashSet<DeviceCandidate> NoOpencl { get; } = [];
 
         /// <summary>Gets VAAPI driver lines by device, for the fingerprint.</summary>
         public Dictionary<string, string> DriverLines { get; } = new(StringComparer.Ordinal);

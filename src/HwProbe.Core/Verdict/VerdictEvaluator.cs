@@ -115,6 +115,13 @@ public static class VerdictEvaluator
             return ProbeOutcome.DeviceUnavailable;
         }
 
+        // A hwaccel that couldn't start hands software frames to the hardware filters, which then fail too;
+        // the codec is the cause.
+        if (ContainsAny(stderr, StderrMarkers.HwaccelSetupFailed))
+        {
+            return ProbeOutcome.CodecUnsupported;
+        }
+
         if (ContainsAny(stderr, StderrMarkers.FilterUnsupported))
         {
             return ProbeOutcome.FilterUnsupported;
@@ -128,12 +135,15 @@ public static class VerdictEvaluator
     /// <summary>Reports whether stderr holds any marker that rules out a pass.</summary>
     /// <param name="stderr">The run's stderr.</param>
     /// <returns>True if any failure marker appears.</returns>
-    private static bool HasFailureMarker(string stderr) =>
-        ContainsAny(stderr, StderrMarkers.PermissionDenied)
-        || ContainsAny(stderr, StderrMarkers.DeviceUnavailable)
-        || ContainsAny(stderr, StderrMarkers.FilterUnsupported)
-        || ContainsAny(stderr, StderrMarkers.CodecUnsupported)
-        || ContainsAny(stderr, StderrMarkers.Generic);
+    private static bool HasFailureMarker(string stderr)
+    {
+        stderr = StderrMarkers.Harmless.Aggregate(stderr, (text, line) => text.Replace(line, string.Empty, StringComparison.Ordinal));
+        return ContainsAny(stderr, StderrMarkers.PermissionDenied)
+            || ContainsAny(stderr, StderrMarkers.DeviceUnavailable)
+            || ContainsAny(stderr, StderrMarkers.FilterUnsupported)
+            || ContainsAny(stderr, StderrMarkers.CodecUnsupported)
+            || ContainsAny(stderr, StderrMarkers.Generic);
+    }
 
     /// <summary>Reports whether the text contains any of the markers.</summary>
     /// <param name="text">The text to search.</param>

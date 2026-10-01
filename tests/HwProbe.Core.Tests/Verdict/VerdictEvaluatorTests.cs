@@ -86,6 +86,7 @@ public sealed class VerdictEvaluatorTests
     [InlineData("Impossible to convert between the formats supported by the filter 'a' and the filter 'b'\n", ProbeOutcome.FilterUnsupported)]
     [InlineData("No such filter: 'scale_vaapi'\n", ProbeOutcome.FilterUnsupported)]
     [InlineData("Error reinitializing filters!\n", ProbeOutcome.FilterUnsupported)]
+    [InlineData("Failed setup for format vaapi: hwaccel initialisation returned error.\nImpossible to convert between the formats supported by the filter 'a' and the filter 'b'\n", ProbeOutcome.CodecUnsupported)]
     [InlineData("Error while opening encoder - maybe incorrect parameters\n", ProbeOutcome.CodecUnsupported)]
     [InlineData("Unknown encoder 'av1_vaapi'\n", ProbeOutcome.CodecUnsupported)]
     [InlineData("profile not supported\n", ProbeOutcome.CodecUnsupported)]
