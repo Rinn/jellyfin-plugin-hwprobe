@@ -20,6 +20,18 @@ public sealed record ProbeArguments(
     /// <summary>Gets a value indicating whether enabling hardware tone-mapping changes upstream's filter chain.</summary>
     public bool HardwareTonemap { get; init; }
 
+    /// <summary>Gets the <c>-hwaccel</c> named in <see cref="InputArgs"/>, or null when there is none.</summary>
+    /// <remarks>Not always the backend's own: Jellyfin decodes QSV through VAAPI when native decoders are preferred.</remarks>
+    public string? Hwaccel
+    {
+        get
+        {
+            var tokens = InputArgs.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var index = Array.IndexOf(tokens, "-hwaccel");
+            return index >= 0 && index + 1 < tokens.Length ? tokens[index + 1] : null;
+        }
+    }
+
     /// <summary>Gets the hardware filter family that deinterlaces, e.g. <c>vaapi</c>, or null when it's done on the CPU or not at all.</summary>
     public string? HardwareDeinterlacer { get; init; }
 }

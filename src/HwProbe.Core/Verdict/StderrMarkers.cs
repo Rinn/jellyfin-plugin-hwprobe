@@ -77,8 +77,29 @@ public static class StderrMarkers
     /// A failed hwaccel init also logs the get_format line, then "Failed setup for format", which the
     /// evaluator treats as a failure. Formats are upstream's <c>-hwaccel_output_format</c> values.
     /// </remarks>
-    public static IReadOnlyList<string> HardwareFrames(HwType type) =>
-        HardwareFormat(type) is { } format ? [$"Format {format} chosen by get_format()", $"pix_fmt: {format}", $"pixfmt:{format}"] : [];
+    public static IReadOnlyList<string> HardwareFrames(HwType type) => Confirmations(HardwareFormat(type));
+
+    /// <summary>Returns stderr strings confirming hardware frames for a backend or for the hwaccel its arguments use.</summary>
+    /// <param name="type">The backend.</param>
+    /// <param name="hwaccel">The <c>-hwaccel</c> value in the generated arguments, or null.</param>
+    /// <returns>Alternative strings, any one of which confirms.</returns>
+    public static IReadOnlyList<string> HardwareFrames(HwType type, string? hwaccel) =>
+        [.. HardwareFrames(type).Union(Confirmations(hwaccel is null ? null : HwaccelFormat(hwaccel)), StringComparer.Ordinal)];
+
+    /// <summary>Returns the frame format a <c>-hwaccel</c> decodes to, as paired in upstream's decoder arguments.</summary>
+    /// <param name="hwaccel">The <c>-hwaccel</c> value.</param>
+    /// <returns>The format, or null for an unknown hwaccel.</returns>
+    /// <remarks>EncodingHelper.GetHwaccelType pairs each <c>-hwaccel</c> with its <c>-hwaccel_output_format</c>.</remarks>
+    public static string? HwaccelFormat(string hwaccel) => hwaccel switch
+    {
+        "vaapi" => "vaapi",
+        "qsv" => "qsv",
+        "cuda" => "cuda",
+        "d3d11va" => "d3d11",
+        "videotoolbox" => "videotoolbox_vld",
+        "rkmpp" => "drm_prime",
+        _ => null,
+    };
 
     /// <summary>Returns upstream's <c>-hwaccel_output_format</c> for a backend.</summary>
     /// <param name="type">The backend.</param>
@@ -94,4 +115,10 @@ public static class StderrMarkers
         HwType.v4l2m2m or HwType.none => null,
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),
     };
+
+    /// <summary>Returns the three stderr strings that confirm frames in a format.</summary>
+    /// <param name="format">The hardware frame format, or null.</param>
+    /// <returns>The strings; empty for null.</returns>
+    private static IReadOnlyList<string> Confirmations(string? format) =>
+        format is null ? [] : [$"Format {format} chosen by get_format()", $"pix_fmt: {format}", $"pixfmt:{format}"];
 }
