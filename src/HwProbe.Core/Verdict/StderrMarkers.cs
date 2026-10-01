@@ -81,6 +81,9 @@ public static class StderrMarkers
     /// </remarks>
     public static readonly IReadOnlyList<string> Harmless = ["Failed to open codec in avformat_find_stream_info"];
 
+    /// <summary>Gets every failure marker, for picking the stderr lines that explain a failure.</summary>
+    public static IReadOnlyList<string> AllFailures { get; } = [.. PermissionDenied, .. DeviceUnavailable, .. FilterUnsupported, .. CodecUnsupported, .. Generic];
+
     /// <summary>Returns the stderr lines that prove the decoder produced hardware frames.</summary>
     /// <param name="type">The backend.</param>
     /// <returns>Alternative strings, any one of which confirms; empty when there is no hardware frame format.</returns>

@@ -73,7 +73,12 @@ internal static class HwProbeApp
             return (int)HwProbeExitCode.FfmpegUnusable;
         }
 
-        var rendered = options.Format == OutputFormat.Json ? ReportStore.Serialize(report) + "\n" : TableRenderer.Render(report, options.Verbose);
+        var rendered = options.Format switch
+        {
+            OutputFormat.Json => ReportStore.Serialize(report) + "\n",
+            OutputFormat.Summary => SummaryRenderer.Render(report),
+            _ => TableRenderer.Render(report, options.Verbose),
+        };
         await stdout.WriteAsync(rendered.AsMemory(), cancellationToken);
         if (options.JsonPath is not null)
         {

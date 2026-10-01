@@ -8,4 +8,7 @@ internal enum OutputFormat
 
     /// <summary>The JSON report.</summary>
     Json,
+
+    /// <summary>A compact text summary for pasting into an issue or chat.</summary>
+    Summary,
 }
