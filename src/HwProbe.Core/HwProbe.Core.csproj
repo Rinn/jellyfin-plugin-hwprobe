@@ -5,4 +5,8 @@
     <RootNamespace>Jellyfin.Plugin.HwProbe.Core</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Jellyfin.Plugin.HwProbe.Core.Tests" />
+  </ItemGroup>
+
 </Project>

@@ -27,33 +27,68 @@ public static class MatrixCatalog
             return [Encode(FixtureCatalog.H264, H264, hardwareDecode: false)];
         }
 
+        // One decode cell per Jellyfin "Enable hardware decoding for" option (EncodingOptions.HardwareDecodingCodecs
+        // and the EnableDecodingColorDepth* switches), plus 10-bit AV1, which the AV1 option also covers.
+        FixtureSpec[] decoded =
+        [
+            FixtureCatalog.H264, FixtureCatalog.Hevc, FixtureCatalog.Mpeg2, FixtureCatalog.Vc1, FixtureCatalog.Vp8, FixtureCatalog.Vp9,
+            FixtureCatalog.Av1, FixtureCatalog.Hevc10, FixtureCatalog.Vp910, FixtureCatalog.HevcRext10, FixtureCatalog.HevcRext12, FixtureCatalog.Av110,
+        ];
+
         List<MatrixCell> cells =
         [
-            .. new[] { FixtureCatalog.H264, FixtureCatalog.Hevc, FixtureCatalog.Hevc10, FixtureCatalog.Vp9, FixtureCatalog.Av1, FixtureCatalog.Mpeg2, FixtureCatalog.Vc1 }
-                .Select(f => new MatrixCell(MatrixGroup.Decode, Key(f.Codec, f.BitDepth), f, Cell(f, H264, hardwareDecode: true))),
+            .. decoded.Select(f => new MatrixCell(MatrixGroup.Decode, Key(f), f, Cell(f, H264, hardwareDecode: true))),
             Encode(FixtureCatalog.H264, H264, hardwareDecode: true),
             Encode(FixtureCatalog.H264, "hevc", hardwareDecode: true),
             Encode(FixtureCatalog.Hevc10, "hevc", hardwareDecode: true),
             Encode(FixtureCatalog.H264, "av1", hardwareDecode: true),
-            new(MatrixGroup.Tonemap, Key(FixtureCatalog.Hdr10.Codec, FixtureCatalog.Hdr10.BitDepth), FixtureCatalog.Hdr10, Cell(FixtureCatalog.Hdr10, H264, hardwareDecode: true) with { Tonemap = true }),
+            new(MatrixGroup.Tonemap, Key(FixtureCatalog.Hdr10), FixtureCatalog.Hdr10, Cell(FixtureCatalog.Hdr10, H264, hardwareDecode: true) with { Tonemap = true }),
+            new(MatrixGroup.Deinterlace, "interlaced", FixtureCatalog.H264Interlaced, Cell(FixtureCatalog.H264Interlaced, H264, hardwareDecode: true)),
+            new(MatrixGroup.Subtitles, "text", FixtureCatalog.H264, Cell(FixtureCatalog.H264, H264, hardwareDecode: true)) { SubtitleFixture = FixtureCatalog.SubtitlesAss },
         ];
+
+        if (type == HwType.qsv)
+        {
+            // "Prefer OS native DXVA or VA-API decoders" only changes QSV: off means Intel's QSV decoders.
+            cells.AddRange(decoded.Select(f => new MatrixCell(MatrixGroup.Decode, Key(f) + "_qsvdecoder", f, Cell(f, H264, hardwareDecode: true) with { PreferNativeDecoder = false })));
+        }
 
         if (type is HwType.qsv or HwType.vaapi)
         {
-            // Independently configurable upstream, and fails on specific Intel generations.
-            var lowPower = Encode(FixtureCatalog.H264, H264, hardwareDecode: true);
-            cells.Add(lowPower with { Key = lowPower.Key + "_lowpower", Cell = lowPower.Cell with { LowPower = true } });
+            // Jellyfin's "Enable VPP Tone mapping", Intel only; it falls back to OpenCL when VPP can't be used.
+            cells.Add(new(MatrixGroup.Tonemap, "vpp", FixtureCatalog.Hdr10, Cell(FixtureCatalog.Hdr10, H264, hardwareDecode: true) with { Tonemap = true, VppTonemap = true }));
+
+            // Jellyfin's two Intel Low-Power encoder options; they fail on specific Intel generations.
+            foreach (var output in new[] { H264, "hevc" })
+            {
+                var lowPower = Encode(FixtureCatalog.H264, output, hardwareDecode: true);
+                cells.Add(lowPower with { Key = output + "_lowpower", Cell = lowPower.Cell with { LowPower = true } });
+            }
         }
 
         return cells;
     }
 
-    /// <summary>Report key for a codec and bit depth, e.g. <c>hevc10</c>; 8-bit has no suffix.</summary>
+    /// <summary>Report key for a fixture, e.g. <c>hevc_rext_12bit</c>; 8-bit 4:2:0 is the bare codec.</summary>
+    /// <param name="fixture">The fixture.</param>
+    /// <returns>The key.</returns>
+    private static string Key(FixtureSpec fixture) => Key(fixture.Codec, fixture.BitDepth, fixture.Profile);
+
+    /// <summary>Report key for a codec, bit depth and profile.</summary>
     /// <param name="codec">The codec.</param>
     /// <param name="bitDepth">The bit depth.</param>
+    /// <param name="profile">The profile, e.g. <c>Rext</c>, or null.</param>
     /// <returns>The key.</returns>
-    private static string Key(string codec, int bitDepth) =>
-        bitDepth > 8 ? codec + bitDepth.ToString(CultureInfo.InvariantCulture) : codec;
+    private static string Key(string codec, int bitDepth, string? profile = null)
+    {
+        var key = profile switch
+        {
+            null => codec,
+            "Rext" => $"{codec}_rext",
+            _ => $"{codec}_{profile}",
+        };
+        return bitDepth > 8 ? $"{key}_{bitDepth.ToString(CultureInfo.InvariantCulture)}bit" : key;
+    }
 
     /// <summary>An encode cell from a fixture to an output codec at the fixture's bit depth.</summary>
     /// <param name="fixture">The input fixture.</param>
@@ -73,6 +108,9 @@ public static class MatrixCatalog
         var color = fixture.IsHdr10 ? ColorMetadata.Hdr10 : null;
         return new ProbeCell(fixture.Codec, fixture.BitDepth, output, hardwareDecode, HardwareEncode: true)
         {
+            Profile = fixture.Profile,
+            PixelFormat = fixture.PixelFormat,
+            Interlaced = fixture.Interlaced,
             ColorPrimaries = color?.Primaries,
             ColorTransfer = color?.Transfer,
             ColorSpace = color?.Space,

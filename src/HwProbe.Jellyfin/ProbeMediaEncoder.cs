@@ -21,6 +21,13 @@ public static class ProbeMediaEncoder
             ["SupportsEncoder"] = a => capabilities.Encoders.Contains((string)a[0]!),
             ["SupportsDecoder"] = a => capabilities.Decoders.Contains((string)a[0]!),
             ["SupportsFilter"] = a => capabilities.Filters.Contains((string)a[0]!),
+
+            // Same escaping as MediaEncoder.EscapeSubtitleFilterPath (v12.1, L1224); the server uses the real one.
+            ["EscapeSubtitleFilterPath"] = a => ((string)a[0]!)
+                .Replace('\\', '/')
+                .Replace(":", "\\:", StringComparison.Ordinal)
+                .Replace("'", @"'\\\''", StringComparison.Ordinal)
+                .Replace("\"", "\\\"", StringComparison.Ordinal),
             ["SupportsFilterWithOption"] = a => capabilities.FilterOptions.Contains((FilterOptionType)a[0]!),
             ["get_IsVaapiDeviceInteliHD"] = _ => capabilities.IsVaapiDeviceInteliHD,
             ["get_IsVaapiDeviceInteli965"] = _ => capabilities.IsVaapiDeviceInteli965,

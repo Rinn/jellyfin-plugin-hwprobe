@@ -47,6 +47,9 @@ public sealed class ProbeEngine : IDisposable
         _time = time;
     }
 
+    /// <summary>Gets the downloader for fixtures that can't be generated, such as the VC-1 sample.</summary>
+    public IFixtureDownloader FixtureDownloader { get; init; } = new HttpFixtureDownloader();
+
     /// <summary>Probes the host.</summary>
     /// <param name="options">What to probe.</param>
     /// <param name="cancellationToken">Cancels the run; in-flight ffmpeg trees are killed.</param>
@@ -85,7 +88,7 @@ public sealed class ProbeEngine : IDisposable
 
         if (run.Opened.Count > 0)
         {
-            var fixtures = await new FixtureBuilder(_runner, ffmpeg, options.FixturesDirectory, options.FixtureTimeout)
+            var fixtures = await new FixtureBuilder(_runner, ffmpeg, options.FixturesDirectory, options.FixtureTimeout, FixtureDownloader)
                 .BuildAsync(Fingerprint.Compute(new FingerprintInputs(ffmpeg, caps.VersionLine, null, null, null, null, null, null)), caps.Encoders, cancellationToken);
             run.Fixtures = fixtures.ToDictionary(f => f.Spec.FileName, StringComparer.Ordinal);
 
@@ -243,7 +246,7 @@ public sealed class ProbeEngine : IDisposable
     /// <param name="hint">Remedy text.</param>
     /// <returns>The row.</returns>
     private static BackendReport EmptyRow(DeviceCandidate candidate, BackendVerdict verdict, string hint) =>
-        new(candidate.Type, candidate.Device, verdict, PipelineTier.Unknown, new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), hint);
+        new(candidate.Type, candidate.Device, verdict, PipelineTier.Unknown, new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), hint);
 
     /// <summary>Formats a device for a message prefix.</summary>
     /// <param name="device">The device, possibly empty.</param>
@@ -260,6 +263,10 @@ public sealed class ProbeEngine : IDisposable
         HostOs.MacOS => "macos",
         _ => "other",
     };
+
+    /// <summary>Reads the i915 driver's enable_guc parameter.</summary>
+    /// <returns>The value, or null when the i915 driver isn't loaded.</returns>
+    private string? EnableGuc() => _platform.TryReadText(LowPowerAdvice.EnableGucPath)?.Trim();
 
     /// <summary>Opens every selected device.</summary>
     /// <param name="run">Run state.</param>
@@ -381,6 +388,8 @@ public sealed class ProbeEngine : IDisposable
         Dictionary<string, ProbeOutcome> decode = [];
         Dictionary<string, ProbeOutcome> encode = [];
         Dictionary<string, ProbeOutcome> tonemap = [];
+        Dictionary<string, ProbeOutcome> deinterlace = [];
+        Dictionary<string, ProbeOutcome> subtitles = [];
         var decodedTenBit = false;
         if (run.Options.StopAfter == StopStage.Matrix)
         {
@@ -403,7 +412,15 @@ public sealed class ProbeEngine : IDisposable
                         encode[cell.Key] = result.Outcome;
                         break;
                     case MatrixGroup.Tonemap when result.Outcome != ProbeOutcome.Skipped:
-                        tonemap[TonemapKey(candidate.Type, tier)] = result.Outcome;
+                        tonemap[cell.Cell.VppTonemap ? cell.Key : TonemapKey(candidate.Type, tier)] = result.Outcome;
+                        break;
+
+                    // Keyed by the hardware family that deinterlaced; CPU deinterlacing is Skipped and left out, like tone-map.
+                    case MatrixGroup.Deinterlace when result.Outcome != ProbeOutcome.Skipped:
+                        deinterlace[result.Codec is { } family && family != cell.Cell.InputCodec ? family : cell.Key] = result.Outcome;
+                        break;
+                    case MatrixGroup.Subtitles:
+                        subtitles[cell.Key] = result.Outcome;
                         break;
                     default:
                         break;
@@ -411,7 +428,12 @@ public sealed class ProbeEngine : IDisposable
             }
         }
 
-        run.Backends.Add(new BackendReport(candidate.Type, candidate.Device, BackendVerdict.Viable, tier, decode, encode, tonemap, string.Empty));
+        if (candidate.Type is HwType.qsv or HwType.vaapi)
+        {
+            run.Findings.AddRange(LowPowerAdvice.Findings(candidate.Type, candidate.Device, encode, run.Host.Os, inContainer, EnableGuc()));
+        }
+
+        run.Backends.Add(new BackendReport(candidate.Type, candidate.Device, BackendVerdict.Viable, tier, decode, encode, tonemap, deinterlace, subtitles, string.Empty));
     }
 
     /// <summary>Builds, runs and classifies one cell under the probe gate.</summary>
@@ -425,11 +447,19 @@ public sealed class ProbeEngine : IDisposable
     private async Task<ProbeResult> RunCellAsync(Run run, DeviceCandidate candidate, IArgumentSource source, MatrixCell cell, ProbeStage stage, CancellationToken cancellationToken)
     {
         var inContainer = run.Host.Container is not null;
-        var fixture = run.Fixtures.GetValueOrDefault(cell.Fixture.FileName);
-        if (fixture?.Status != FixtureStatus.Available)
+
+        // A burn-in cell needs its subtitle file's path before arguments can be generated.
+        var probeCell = cell.Cell;
+        if (cell.SubtitleFixture is { } subtitleSpec)
         {
-            var outcome = fixture?.Status == FixtureStatus.Untested ? ProbeOutcome.Untested : ProbeOutcome.Skipped;
-            return Add(run, Record(candidate, cell, stage, outcome, null, fixture?.Reason ?? $"No {cell.Fixture.FileName} fixture.", null));
+            var subtitle = run.Fixtures.GetValueOrDefault(subtitleSpec.FileName);
+            if (subtitle?.Status != FixtureStatus.Available)
+            {
+                var missing = subtitle?.Status == FixtureStatus.Untested ? ProbeOutcome.Untested : ProbeOutcome.Skipped;
+                return Add(run, Record(candidate, cell, stage, missing, null, subtitle?.Reason ?? $"No {subtitleSpec.FileName} fixture.", null));
+            }
+
+            probeCell = probeCell with { SubtitlePath = subtitle.Path };
         }
 
         var result = await _gate.RunAsync(
@@ -438,7 +468,7 @@ public sealed class ProbeEngine : IDisposable
                 ProbeArguments args;
                 try
                 {
-                    args = source.Build(candidate.Type, candidate.Device.Length == 0 ? null : candidate.Device, cell.Cell);
+                    args = source.Build(candidate.Type, candidate.Device.Length == 0 ? null : candidate.Device, probeCell);
                 }
                 catch (ArgumentConstructionException ex)
                 {
@@ -468,13 +498,32 @@ public sealed class ProbeEngine : IDisposable
                     return Record(candidate, cell, stage, ProbeOutcome.Skipped, null, $"Jellyfin emits no hardware tone-map for this backend and build (filters:{args.FilterArgs}).", null);
                 }
 
+                if (cell.Group == MatrixGroup.Deinterlace && args.HardwareDeinterlacer is null)
+                {
+                    return Record(candidate, cell, stage, ProbeOutcome.Skipped, null, $"Jellyfin deinterlaces on the CPU for this backend and build (filters:{args.FilterArgs}).", null);
+                }
+
+                // Checked after asking Jellyfin: a codec it won't hardware-decode needs no clip to say so.
+                var fixture = run.Fixtures.GetValueOrDefault(cell.Fixture.FileName);
+                if (fixture?.Status != FixtureStatus.Available)
+                {
+                    var missing = fixture?.Status == FixtureStatus.Untested ? ProbeOutcome.Untested : ProbeOutcome.Skipped;
+                    return Record(candidate, cell, stage, missing, null, fixture?.Reason ?? $"No {cell.Fixture.FileName} fixture.", null);
+                }
+
                 var commandLine = ProbeCommandLine.Build(args, fixture.Path!, MatrixCatalog.Frames);
                 var invocation = new FfmpegInvocation(run.Options.Ffmpeg.Path, commandLine, args.Environment, run.Options.ProbeTimeout);
                 var ran = await _runner.RunAsync(invocation, ct);
                 var outcome = ran.Status == FfmpegRunStatus.LaunchFailed
                     ? ProbeOutcome.DeviceUnavailable
                     : VerdictEvaluator.Evaluate(ran, new ProbeExpectation(MatrixCatalog.Frames, StderrMarkers.HardwareFrames(candidate.Type)));
-                return Record(candidate, cell, stage, outcome, ran, Hints.For(outcome, candidate.Type, run.Host.Os, inContainer), commandLine);
+                var hint = cell.Cell.LowPower && outcome != ProbeOutcome.Pass
+                    ? LowPowerAdvice.Remedy(run.Host.Os, inContainer, EnableGuc())
+                    : Hints.For(outcome, candidate.Type, run.Host.Os, inContainer);
+                var recorded = Record(candidate, cell, stage, outcome, ran, hint, commandLine);
+
+                // The deinterlace column is keyed by the hardware filter family that did the work.
+                return cell.Group == MatrixGroup.Deinterlace ? recorded with { Codec = args.HardwareDeinterlacer } : recorded;
             },
             cancellationToken);
 

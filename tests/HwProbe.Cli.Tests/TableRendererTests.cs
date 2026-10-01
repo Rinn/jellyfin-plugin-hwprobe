@@ -28,8 +28,10 @@ public sealed class TableRendererTests
                     new Dictionary<string, ProbeOutcome> { ["h264"] = ProbeOutcome.Pass, ["av1"] = ProbeOutcome.CodecUnsupported, ["vc1"] = ProbeOutcome.Untested },
                     new Dictionary<string, ProbeOutcome> { ["h264"] = ProbeOutcome.Pass },
                     new Dictionary<string, ProbeOutcome>(),
+                    new Dictionary<string, ProbeOutcome> { ["vaapi"] = ProbeOutcome.Pass },
+                    new Dictionary<string, ProbeOutcome> { ["text"] = ProbeOutcome.Pass },
                     string.Empty),
-                new BackendReport(HwType.nvenc, "0", BackendVerdict.NotPresent, PipelineTier.Unknown, new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), "ffmpeg has CUDA but no NVIDIA device was found."),
+                new BackendReport(HwType.nvenc, "0", BackendVerdict.NotPresent, PipelineTier.Unknown, new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), "ffmpeg has CUDA but no NVIDIA device was found."),
             ],
             [new Finding(FindingSeverity.Warn, "legacy-copyback", "vaapi is on the copy-back path; install intel-opencl-icd.")],
             []);
@@ -40,9 +42,9 @@ public sealed class TableRendererTests
             host    linux 6.8.0 (docker)
             build   not built: amf
 
-            TYPE   DEVICE               VERDICT     TIER            DECODE        ENCODE  TONEMAP
-            vaapi  /dev/dri/renderD128  Viable      LegacyCopyBack  1/2 (no av1)  1/1     -
-            nvenc  0                    NotPresent  -               -             -       -
+            TYPE   DEVICE               VERDICT     TIER            DECODE        ENCODE  TONEMAP  DEINTERLACE  SUBTITLES
+            vaapi  /dev/dri/renderD128  Viable      LegacyCopyBack  1/2 (no av1)  1/1     -        1/1          1/1
+            nvenc  0                    NotPresent  -               -             -       -        -            -
 
             nvenc 0: ffmpeg has CUDA but no NVIDIA device was found.
 

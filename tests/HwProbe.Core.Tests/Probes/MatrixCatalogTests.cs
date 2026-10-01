@@ -1,0 +1,85 @@
+using Jellyfin.Plugin.HwProbe.Core.Model;
+using Jellyfin.Plugin.HwProbe.Core.Probes;
+using Xunit;
+
+namespace Jellyfin.Plugin.HwProbe.Core.Tests.Probes;
+
+/// <summary>Which cells each backend gets, matching Jellyfin's transcoding settings.</summary>
+[Trait("Category", "Unit")]
+public sealed class MatrixCatalogTests
+{
+    private static readonly string[] _decodeKeys =
+    [
+        "h264", "hevc", "mpeg2video", "vc1", "vp8", "vp9", "av1",
+        "hevc_10bit", "vp9_10bit", "hevc_rext_10bit", "hevc_rext_12bit", "av1_10bit",
+    ];
+
+    /// <summary>Every backend but v4l2m2m decodes every option in Jellyfin's list.</summary>
+    /// <param name="type">The backend.</param>
+    [Theory]
+    [InlineData(HwType.vaapi)]
+    [InlineData(HwType.qsv)]
+    [InlineData(HwType.nvenc)]
+    [InlineData(HwType.videotoolbox)]
+    public void DecodeCellsMatchJellyfinOptions(HwType type)
+    {
+        var keys = Keys(type, MatrixGroup.Decode).Where(k => !k.EndsWith("_qsvdecoder", StringComparison.Ordinal));
+
+        Assert.Equal(_decodeKeys.Order(StringComparer.Ordinal), keys.Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>Only QSV repeats the decode cells with "Prefer OS native decoders" off.</summary>
+    [Fact]
+    public void OnlyQsvTestsQsvDecoders()
+    {
+        var qsv = MatrixCatalog.For(HwType.qsv).Where(c => c.Key.EndsWith("_qsvdecoder", StringComparison.Ordinal)).ToList();
+
+        Assert.Equal(_decodeKeys.Length, qsv.Count);
+        Assert.All(qsv, c => Assert.False(c.Cell.PreferNativeDecoder));
+        Assert.DoesNotContain(MatrixCatalog.For(HwType.vaapi), c => !c.Cell.PreferNativeDecoder);
+    }
+
+    /// <summary>Intel backends get both low-power encoders and a VPP tone-map cell; others don't.</summary>
+    /// <param name="type">The backend.</param>
+    /// <param name="intel">Whether it's an Intel path.</param>
+    [Theory]
+    [InlineData(HwType.qsv, true)]
+    [InlineData(HwType.vaapi, true)]
+    [InlineData(HwType.nvenc, false)]
+    [InlineData(HwType.videotoolbox, false)]
+    public void IntelOnlyCells(HwType type, bool intel)
+    {
+        var encode = Keys(type, MatrixGroup.Encode);
+        var tonemap = MatrixCatalog.For(type).Where(c => c.Group == MatrixGroup.Tonemap).ToList();
+
+        Assert.Equal(intel, encode.Contains("h264_lowpower") && encode.Contains("hevc_lowpower"));
+        Assert.Equal(intel, tonemap.Any(c => c.Cell.VppTonemap));
+    }
+
+    /// <summary>Every backend but v4l2m2m gets an interlaced deinterlace cell.</summary>
+    [Fact]
+    public void DeinterlaceCellIsInterlaced()
+    {
+        var cell = Assert.Single(MatrixCatalog.For(HwType.vaapi), c => c.Group == MatrixGroup.Deinterlace);
+
+        Assert.True(cell.Cell.Interlaced);
+        Assert.True(cell.Fixture.Interlaced);
+        Assert.DoesNotContain(MatrixCatalog.For(HwType.v4l2m2m), c => c.Group == MatrixGroup.Deinterlace);
+    }
+
+    /// <summary>RExt cells carry the profile and pixel format Jellyfin checks.</summary>
+    [Fact]
+    public void RextCellsCarryProfileAndPixelFormat()
+    {
+        var rext12 = Assert.Single(MatrixCatalog.For(HwType.qsv), c => c.Key == "hevc_rext_12bit");
+
+        Assert.Equal(("Rext", "yuv444p12le", 12), (rext12.Cell.Profile, rext12.Cell.PixelFormat, rext12.Cell.BitDepth));
+    }
+
+    /// <summary>Returns the keys of one group for a backend.</summary>
+    /// <param name="type">The backend.</param>
+    /// <param name="group">The group.</param>
+    /// <returns>The keys.</returns>
+    private static List<string> Keys(HwType type, MatrixGroup group) =>
+        [.. MatrixCatalog.For(type).Where(c => c.Group == group).Select(c => c.Key)];
+}

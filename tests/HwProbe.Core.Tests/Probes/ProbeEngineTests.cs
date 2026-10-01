@@ -4,6 +4,7 @@ using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
 using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Core.Tests.Devices;
+using Jellyfin.Plugin.HwProbe.Core.Tests.Fixtures;
 using Xunit;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Tests.Probes;
@@ -35,9 +36,11 @@ public sealed class ProbeEngineTests : IDisposable
 
         var backend = Assert.Single(report.Backends);
         Assert.Equal((HwType.videotoolbox, BackendVerdict.Viable, PipelineTier.LegacyCopyBack), (backend.Type, backend.Verdict, backend.Tier));
-        Assert.Equal(ProbeOutcome.Pass, backend.Decode["hevc10"]);
+        Assert.Equal(ProbeOutcome.Pass, backend.Decode["hevc_10bit"]);
         Assert.Equal(ProbeOutcome.Untested, backend.Decode["vc1"]);
         Assert.Equal(ProbeOutcome.Pass, backend.Tonemap["videotoolbox"]);
+        Assert.Equal(ProbeOutcome.Pass, backend.Deinterlace["videotoolbox"]);
+        Assert.Equal(ProbeOutcome.Pass, backend.Subtitles["text"]);
         Assert.Contains(report.Findings, f => f.Code == "legacy-copyback");
         Assert.Equal(CapabilityReport.CurrentSchemaVersion, report.SchemaVersion);
     }
@@ -115,7 +118,7 @@ public sealed class ProbeEngineTests : IDisposable
             ["-version"] = "ffmpeg version 7.1.4-Jellyfin Copyright (c) 2000-2025\n",
             ["-hwaccels"] = "Hardware acceleration methods:\nvaapi\n",
         });
-        using var engine = new ProbeEngine(runner, _arguments, linux, TimeProvider.System, EnvironmentRules.Standalone());
+        using var engine = new ProbeEngine(runner, _arguments, linux, TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
 
         var report = await engine.RunAsync(Options(StopStage.Devices, refresh: true), TestContext.Current.CancellationToken);
 
@@ -137,7 +140,7 @@ public sealed class ProbeEngineTests : IDisposable
         {
             OtherStderr = "Failed to set value 'd3d11va=dx11:0' for option 'init_hw_device': Unknown error occurred\n",
         };
-        using var engine = new ProbeEngine(runner, _arguments, new FakeHostPlatform(HostOs.Windows), TimeProvider.System, EnvironmentRules.Standalone());
+        using var engine = new ProbeEngine(runner, _arguments, new FakeHostPlatform(HostOs.Windows), TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
 
         var report = await engine.RunAsync(Options(StopStage.Devices, refresh: true), TestContext.Current.CancellationToken);
 
@@ -175,6 +178,31 @@ public sealed class ProbeEngineTests : IDisposable
         Assert.DoesNotContain(_runner.Calls, c => c.Contains("-progress", StringComparison.Ordinal) && c.Contains("av1_8bit", StringComparison.Ordinal));
     }
 
+    /// <summary>CPU deinterlacing is left out of the deinterlace column rather than filed under the input codec.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task CpuDeinterlaceIsLeftOut()
+    {
+        _arguments.NoHardwareDeinterlace = true;
+
+        var report = await RunAsync(StopStage.Matrix);
+
+        Assert.Empty(report.Backends[0].Deinterlace);
+        Assert.Equal(ProbeOutcome.Skipped, Assert.Single(report.Probes, p => p.ProbeId.Contains("Deinterlace", StringComparison.Ordinal)).Outcome);
+    }
+
+    /// <summary>A codec Jellyfin won't hardware-decode is CodecUnsupported even with no fixture to test it.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task SoftwareDecodedCodecNeedsNoFixture()
+    {
+        _arguments.SoftwareDecoded.Add("vc1");
+
+        var report = await RunAsync(StopStage.Matrix);
+
+        Assert.Equal(ProbeOutcome.CodecUnsupported, report.Backends[0].Decode["vc1"]);
+    }
+
     /// <summary>Environment overrides from arg generation reach the launched probe.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
@@ -210,7 +238,7 @@ public sealed class ProbeEngineTests : IDisposable
     public async Task OldFfmpegIsUnusable()
     {
         var old = new ScriptedOnly(new() { ["-version"] = "ffmpeg version 4.3 Copyright (c) 2000-2020\n" });
-        using var engine = new ProbeEngine(old, _arguments, new FakeHostPlatform(HostOs.MacOS), TimeProvider.System, EnvironmentRules.Standalone());
+        using var engine = new ProbeEngine(old, _arguments, new FakeHostPlatform(HostOs.MacOS), TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
 
         await Assert.ThrowsAsync<FfmpegUnusableException>(() => engine.RunAsync(Options(StopStage.Matrix, refresh: true), TestContext.Current.CancellationToken));
     }
@@ -224,7 +252,7 @@ public sealed class ProbeEngineTests : IDisposable
     /// <returns>The report.</returns>
     private async Task<CapabilityReport> RunAsync(StopStage stop, bool refresh = false)
     {
-        using var engine = new ProbeEngine(_runner, _arguments, new FakeHostPlatform(HostOs.MacOS) { OsDescription = "macOS 27.0.1" }, TimeProvider.System, EnvironmentRules.Standalone());
+        using var engine = new ProbeEngine(_runner, _arguments, new FakeHostPlatform(HostOs.MacOS) { OsDescription = "macOS 27.0.1" }, TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
         return await engine.RunAsync(Options(stop, refresh), TestContext.Current.CancellationToken);
     }
 
