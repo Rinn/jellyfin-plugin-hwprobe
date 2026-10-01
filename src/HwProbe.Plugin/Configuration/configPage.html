@@ -6,22 +6,32 @@
 </head>
 <body>
     <div id="HwProbeConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-button">
+        <style>
+            #HwProbeConfigPage table { border-collapse: collapse; margin: 0.25em 0 1em; }
+            #HwProbeConfigPage td, #HwProbeConfigPage th { padding: 0.2em 1.5em 0.2em 0; text-align: left; vertical-align: top; }
+            #HwProbeConfigPage th { font-weight: 500; opacity: 0.7; }
+            #HwProbeConfigPage .hwprobe-section { margin-top: 2em; }
+            #HwProbeConfigPage .hwprobe-group td { padding-top: 0.8em; font-weight: 500; opacity: 0.7; }
+            #HwProbeConfigPage .hwprobe-mark { width: 1.2em; font-weight: bold; }
+            #HwProbeConfigPage .hwprobe-on { color: #52b54b; }
+            #HwProbeConfigPage .hwprobe-off { color: #e05555; }
+            #HwProbeConfigPage .hwprobe-none { opacity: 0.5; }
+            #HwProbeConfigPage .hwprobe-reason { opacity: 0.7; }
+            #HwProbeConfigPage .hwprobe-differs { color: #e0a030; font-weight: 500; }
+            #HwProbeConfigPage .hwprobe-tabs button { margin: 0 0.5em 0.5em 0; }
+            #HwProbeConfigPage .hwprobe-tabs button.hwprobe-selected { outline: 2px solid currentColor; }
+            #HwProbeConfigPage details { margin-top: 2em; }
+            #HwProbeConfigPage details li { margin-bottom: 0.5em; }
+        </style>
         <div data-role="content">
             <div class="content-primary">
                 <h2>HwProbe</h2>
-                <p>Tests which hardware transcoding backends and codecs actually work on this server. Run it while nothing is playing.</p>
+                <p>Tests which hardware transcoding options work on this server. Settings are not changed.</p>
                 <button is="emby-button" type="button" id="hwprobeRun" class="raised button-submit block">
                     <span>Run probe</span>
                 </button>
                 <p id="hwprobeStatus"></p>
-                <table id="hwprobeBackends" class="detailTable">
-                    <thead>
-                        <tr><th>Backend</th><th>Device</th><th>Verdict</th><th>Pipeline</th><th>Decode</th><th>Encode</th><th>Tone mapping</th><th>Deinterlace</th><th>Subtitles</th><th>Remedy</th></tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-                <h3>Findings</h3>
-                <ul id="hwprobeFindings"></ul>
+                <div id="hwprobeResults"></div>
             </div>
         </div>
         <script type="text/javascript">
@@ -31,53 +41,238 @@
                 // a brace in the page, scripts included, as a translation key and replaces it.
                 const page = document.querySelector('#HwProbeConfigPage');
                 const statusText = page.querySelector('#hwprobeStatus');
+                const results = page.querySelector('#hwprobeResults');
+                const columns = ['decode', 'encode', 'tonemap', 'deinterlace', 'subtitles'];
                 let pollTimer = null;
+                let report = null;
+                let encoding = null;
+                let selected = null;
 
-                function passed(cells) {
-                    const tested = Object.entries(cells || {}).filter(([, v]) => v !== 'Skipped' && v !== 'Untested');
-                    if (tested.length === 0) {
-                        return '-';
+                // The names on Jellyfin's Hardware acceleration dropdown.
+                const names = {
+                    amf: 'AMD AMF',
+                    nvenc: 'Nvidia NVENC',
+                    qsv: 'Intel Quicksync (QSV)',
+                    vaapi: 'Video Acceleration API (VAAPI)',
+                    rkmpp: 'Rockchip MPP (RKMPP)',
+                    videotoolbox: 'Apple VideoToolBox',
+                    v4l2m2m: 'Video4Linux2 (V4L2)'
+                };
+                const tiers = {
+                    FullOpencl: 'Full GPU pipeline (OpenCL)',
+                    FullVulkan: 'Full GPU pipeline (Vulkan)',
+                    FullMetal: 'Full GPU pipeline (Metal)',
+                    Limited: 'GPU scaling only, no GPU tone mapping',
+                    LegacyCopyBack: 'Copy-back: filters run on the CPU'
+                };
+                const verdicts = {
+                    NotPresent: 'No device found',
+                    PermissionDenied: 'No permission to open the device',
+                    DevicePresentPipelineBroken: 'Device found, test transcode failed',
+                    Untested: 'Not tested'
+                };
+                const notes = {
+                    'opencl-unavailable': 'OpenCL unavailable: OpenCL tone mapping fails',
+                    'legacy-copyback': 'Copy-back pipeline: filters run on the CPU',
+                    'vulkan-interop-unprobed': 'Vulkan interop not tested',
+                    'unvalidated-backend': 'Not validated on real hardware'
+                };
+
+                function el(tag, text, className) {
+                    const node = document.createElement(tag);
+                    if (text !== undefined && text !== null) {
+                        node.textContent = text;
                     }
-                    const failed = tested.filter(([, v]) => v !== 'Pass').map(([k]) => k);
-                    return (tested.length - failed.length) + '/' + tested.length + (failed.length ? ' (no ' + failed.join(', ') + ')' : '');
+                    if (className) {
+                        node.className = className;
+                    }
+                    return node;
                 }
 
-                function cell(row, text) {
-                    const td = document.createElement('td');
-                    td.textContent = text;
-                    row.appendChild(td);
+                function row(table, cells) {
+                    const tr = el('tr');
+                    for (const c of cells) {
+                        tr.appendChild(c instanceof Node ? c : el('td', c));
+                    }
+                    table.appendChild(tr);
+                    return tr;
                 }
 
-                function renderReport(report) {
-                    const body = page.querySelector('#hwprobeBackends tbody');
-                    body.replaceChildren();
-                    for (const b of report.backends) {
-                        const row = document.createElement('tr');
-                        cell(row, b.type);
-                        cell(row, b.device || '-');
-                        cell(row, b.verdict);
-                        cell(row, b.verdict === 'Viable' ? b.tier : '-');
-                        cell(row, passed(b.decode));
-                        cell(row, passed(b.encode));
-                        cell(row, passed(b.tonemap));
-                        cell(row, passed(b.deinterlace));
-                        cell(row, passed(b.subtitles));
-                        cell(row, b.hint || '');
-                        body.appendChild(row);
+                function section(title) {
+                    const div = el('div', null, 'hwprobe-section');
+                    div.appendChild(el('h3', title));
+                    results.appendChild(div);
+                    return div;
+                }
+
+                function groupRow(table, title) {
+                    row(table, [el('td'), el('td', title)]).className = 'hwprobe-group';
+                }
+
+                function mark(state) {
+                    if (state === 'TurnOn') {
+                        return el('td', '✓', 'hwprobe-mark hwprobe-on');
+                    }
+                    return state === 'LeaveOff' ? el('td', '✗', 'hwprobe-mark hwprobe-off') : el('td', '–', 'hwprobe-mark hwprobe-none');
+                }
+
+                // The server's current value for a setting key, or undefined when unknown.
+                function current(setting) {
+                    if (!encoding) {
+                        return undefined;
+                    }
+                    const prefix = 'HardwareDecodingCodecs:';
+                    if (setting.indexOf(prefix) === 0) {
+                        return (encoding.HardwareDecodingCodecs || []).indexOf(setting.substring(prefix.length)) !== -1;
+                    }
+                    return encoding[setting];
+                }
+
+                function currentCell(advice, compare) {
+                    const value = compare ? current(advice.setting) : undefined;
+                    if (value === undefined || advice.state === 'NotTested') {
+                        return el('td');
+                    }
+                    const differs = value !== (advice.state === 'TurnOn');
+                    return el('td', (value ? 'On' : 'Off') + (differs ? ' (differs)' : ''), differs ? 'hwprobe-differs' : 'hwprobe-reason');
+                }
+
+                function outcomeRow(table, label, outcome) {
+                    const state = outcome === 'Pass' ? 'TurnOn' : (outcome ? 'LeaveOff' : 'NotTested');
+                    const reason = outcome === 'Pass' ? '' : (outcome ? 'Test failed' : 'Not tested');
+                    row(table, [mark(state), label, el('td', reason, 'hwprobe-reason'), el('td')]);
+                }
+
+                function firstOutcome(cells) {
+                    const values = Object.values(cells || {});
+                    return values.indexOf('Pass') !== -1 ? 'Pass' : values[0];
+                }
+
+                function renderSettings(container, viable) {
+                    container.replaceChildren();
+                    if (viable.length > 1) {
+                        const tabs = el('div', null, 'hwprobe-tabs');
+                        for (const b of viable) {
+                            const button = el('button', names[b.type] || b.type, b === selected ? 'hwprobe-selected' : '');
+                            button.type = 'button';
+                            button.addEventListener('click', () => { selected = b; renderSettings(container, viable); });
+                            tabs.appendChild(button);
+                        }
+                        container.appendChild(tabs);
                     }
 
-                    const findings = page.querySelector('#hwprobeFindings');
-                    findings.replaceChildren();
-                    for (const f of report.findings) {
-                        const li = document.createElement('li');
-                        li.textContent = f.severity + ': ' + f.message;
-                        findings.appendChild(li);
+                    const compare = !!encoding && encoding.HardwareAccelerationType === selected.type;
+                    const table = el('table');
+                    row(table, [el('th'), el('th', 'Option'), el('th', 'Result'), el('th', compare ? 'Current' : '')]);
+                    let group = null;
+                    for (const a of selected.settings || []) {
+                        if (a.section !== group) {
+                            group = a.section;
+                            groupRow(table, group);
+                        }
+                        row(table, [mark(a.state), a.label, el('td', a.note, 'hwprobe-reason'), currentCell(a, compare)]);
                     }
+                    groupRow(table, 'Also tested');
+                    outcomeRow(table, 'Hardware deinterlacing', firstOutcome(selected.deinterlace));
+                    outcomeRow(table, 'Subtitle burn-in', firstOutcome(selected.subtitles));
+                    container.appendChild(table);
+                }
+
+                function renderDetails(r) {
+                    const details = el('details');
+                    details.appendChild(el('summary', 'Test details'));
+
+                    const table = el('table');
+                    row(table, [el('th', 'Backend'), el('th', 'Device'), el('th', 'Column'), el('th', 'Test'), el('th', 'Result')]);
+                    for (const b of r.backends) {
+                        for (const column of columns) {
+                            for (const [key, outcome] of Object.entries(b[column] || {})) {
+                                row(table, [b.type, b.device || '-', column, key, outcome]);
+                            }
+                        }
+                    }
+                    details.appendChild(table);
+
+                    const remedies = el('ul');
+                    for (const b of r.backends.filter(x => x.hint)) {
+                        remedies.appendChild(el('li', (names[b.type] || b.type) + ': ' + b.hint));
+                    }
+                    for (const f of r.findings) {
+                        remedies.appendChild(el('li', f.message));
+                    }
+                    if (remedies.children.length) {
+                        details.appendChild(el('h4', 'Remedies and findings'));
+                        details.appendChild(remedies);
+                    }
+                    return details;
+                }
+
+                function renderNotes() {
+                    // Low-power findings are already in the settings list.
+                    const grouped = {};
+                    for (const f of report.findings.filter(x => x.code.indexOf('lowpower') === -1)) {
+                        const backend = f.message.split(' ')[0].replace(':', '');
+                        (grouped[f.code] = grouped[f.code] || { finding: f, backends: [] }).backends.push(names[backend] || backend);
+                    }
+                    const codes = Object.keys(grouped);
+                    if (!codes.length) {
+                        return;
+                    }
+                    const list = el('ul');
+                    for (const code of codes) {
+                        const g = grouped[code];
+                        const text = (notes[code] || g.finding.message) + ' (' + g.backends.join(', ') + ')';
+                        list.appendChild(el('li', text, g.finding.severity === 'Warn' ? 'hwprobe-differs' : ''));
+                    }
+                    section('Notes').appendChild(list);
+                }
+
+                function render() {
+                    results.replaceChildren();
+                    if (!report) {
+                        return;
+                    }
+
+                    const viable = report.backends.filter(b => b.verdict === 'Viable');
+                    const available = section('Available');
+                    if (viable.length === 0) {
+                        available.appendChild(el('p', 'None'));
+                    } else {
+                        const table = el('table');
+                        for (const b of viable) {
+                            row(table, [names[b.type] || b.type, b.device || '-', tiers[b.tier] || '']);
+                        }
+                        available.appendChild(table);
+
+                        if (!selected || viable.indexOf(selected) === -1) {
+                            selected = viable.find(b => encoding && b.type === encoding.HardwareAccelerationType) || viable[0];
+                        }
+                        const container = el('div');
+                        section('Transcoding settings').appendChild(container);
+                        renderSettings(container, viable);
+                    }
+
+                    const table = el('table');
+                    for (const b of report.backends.filter(x => x.verdict !== 'Viable')) {
+                        row(table, [names[b.type] || b.type, el('td', verdicts[b.verdict] || b.verdict, 'hwprobe-reason')]);
+                    }
+                    const notBuilt = Object.entries(report.stageA.types || {}).filter(([, s]) => s === 'NotBuilt').map(([t]) => names[t] || t);
+                    if (notBuilt.length) {
+                        row(table, [notBuilt.join(', '), el('td', 'Not in this ffmpeg build', 'hwprobe-reason')]);
+                    }
+                    if (table.children.length) {
+                        section('Unavailable').appendChild(table);
+                    }
+
+                    renderNotes();
+                    results.appendChild(renderDetails(report));
                 }
 
                 function loadReport() {
-                    return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Report'), dataType: 'json' })
-                        .then(renderReport, () => { statusText.textContent = 'No probe has run yet.'; });
+                    const config = ApiClient.getNamedConfiguration('encoding').then(c => { encoding = c; }, () => { encoding = null; });
+                    const data = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Report'), dataType: 'json' })
+                        .then(r => { report = r; }, () => { report = null; statusText.textContent = 'No probe has run yet.'; });
+                    return Promise.all([config, data]).then(render);
                 }
 
                 function loadStatus() {
@@ -94,7 +289,7 @@
 
                 page.querySelector('#hwprobeRun').addEventListener('click', () => {
                     ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Run') })
-                        .then(loadStatus, (r) => { statusText.textContent = 'Could not start: a probe is running or a session is transcoding.'; });
+                        .then(loadStatus, () => { statusText.textContent = 'Could not start: a probe is running or a session is transcoding.'; });
                 });
 
                 page.addEventListener('pageshow', loadStatus);

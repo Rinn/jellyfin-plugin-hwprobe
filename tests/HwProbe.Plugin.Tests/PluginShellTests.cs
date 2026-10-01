@@ -86,7 +86,7 @@ public sealed class PluginShellTests : IDisposable
         Assert.NotNull(stream);
     }
 
-    /// <summary>The configuration page shows every per-codec column of the report.</summary>
+    /// <summary>The configuration page shows every per-codec column of the report, and the settings advice.</summary>
     [Fact]
     public void ConfigPageShowsEveryColumn()
     {
@@ -100,7 +100,8 @@ public sealed class PluginShellTests : IDisposable
             .ToList();
 
         Assert.Equal(5, columns.Count);
-        Assert.All(columns, c => Assert.Contains($"passed(b.{c})", page, StringComparison.Ordinal));
+        Assert.All(columns, c => Assert.Contains($"'{c}'", page, StringComparison.Ordinal));
+        Assert.Contains("selected.settings", page, StringComparison.Ordinal);
     }
 
     /// <summary>The page has no "${", which jellyfin-web's translateHtml would replace with a translation lookup.</summary>
