@@ -19,7 +19,7 @@
             #HwProbeConfigPage .hwprobe-off { color: #e05555; }
             #HwProbeConfigPage .hwprobe-none { opacity: 0.5; }
             #HwProbeConfigPage .hwprobe-reason { opacity: 0.7; }
-            #HwProbeConfigPage .hwprobe-differs { color: #e0a030; font-weight: 500; }
+            #HwProbeConfigPage .hwprobe-warn { color: #e0a030; font-weight: 500; }
             #HwProbeConfigPage .hwprobe-tabs button { margin: 0 0.5em 0.75em 0; padding: 0.4em 1em; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 0.2em; background: transparent; color: inherit; font: inherit; cursor: pointer; }
             #HwProbeConfigPage .hwprobe-tabs button.hwprobe-selected { background: #00a4dc; border-color: #00a4dc; color: #fff; }
             #HwProbeConfigPage details { margin-top: 2em; }
@@ -46,6 +46,7 @@
                 const columns = ['decode', 'encode', 'tonemap', 'deinterlace', 'subtitles'];
                 let pollTimer = null;
                 let report = null;
+                // Only used to open the configured backend's settings first.
                 let encoding = null;
                 let selected = null;
 
@@ -144,27 +145,6 @@
                     return state === 'LeaveOff' ? el('td', '✗', 'hwprobe-mark hwprobe-off') : el('td', '–', 'hwprobe-mark hwprobe-none');
                 }
 
-                // The server's current value for a setting key, or undefined when unknown.
-                function current(setting) {
-                    if (!encoding) {
-                        return undefined;
-                    }
-                    const prefix = 'HardwareDecodingCodecs:';
-                    if (setting.indexOf(prefix) === 0) {
-                        return (encoding.HardwareDecodingCodecs || []).indexOf(setting.substring(prefix.length)) !== -1;
-                    }
-                    return encoding[setting];
-                }
-
-                function currentCell(advice, compare) {
-                    const value = compare ? current(advice.setting) : undefined;
-                    if (value === undefined || advice.state === 'NotTested') {
-                        return el('td');
-                    }
-                    const differs = value !== (advice.state === 'TurnOn');
-                    return el('td', (value ? 'On' : 'Off') + (differs ? ' (differs)' : ''), differs ? 'hwprobe-differs' : 'hwprobe-reason');
-                }
-
                 function outcomeRow(table, label, outcome) {
                     const state = outcome === 'Pass' ? 'TurnOn' : (outcome ? 'LeaveOff' : 'NotTested');
                     const reason = outcome === 'Pass' ? '' : (outcome ? 'Test failed' : 'Not tested');
@@ -189,16 +169,15 @@
                         container.appendChild(tabs);
                     }
 
-                    const compare = !!encoding && encoding.HardwareAccelerationType === selected.type;
                     const table = el('table');
-                    row(table, [el('th'), el('th', 'Option'), el('th', 'Result'), el('th', compare ? 'Current' : ''), el('th', 'Fix')]);
+                    row(table, [el('th'), el('th', 'Option'), el('th', 'Result'), el('th', 'Fix')]);
                     let group = null;
                     for (const a of selected.settings || []) {
                         if (a.section !== group) {
                             group = a.section;
                             groupRow(table, group);
                         }
-                        row(table, [mark(a.state), a.label, el('td', a.note, 'hwprobe-reason'), currentCell(a, compare), fixCell(a.fix)]);
+                        row(table, [mark(a.state), a.label, el('td', a.note, 'hwprobe-reason'), fixCell(a.fix)]);
                     }
                     groupRow(table, 'Also tested');
                     outcomeRow(table, 'Hardware deinterlacing', firstOutcome(selected.deinterlace));
@@ -238,7 +217,7 @@
                     row(table, [el('th', 'Note'), el('th', 'Backends'), el('th', 'Fix')]);
                     for (const code of codes) {
                         const g = grouped[code];
-                        row(table, [el('td', notes[code] || g.finding.message, g.finding.severity === 'Warn' ? 'hwprobe-differs' : ''), g.backends.join(', '), fixCell(g.finding.fix)]);
+                        row(table, [el('td', notes[code] || g.finding.message, g.finding.severity === 'Warn' ? 'hwprobe-warn' : ''), g.backends.join(', '), fixCell(g.finding.fix)]);
                     }
                     section('Notes').appendChild(table);
                 }
