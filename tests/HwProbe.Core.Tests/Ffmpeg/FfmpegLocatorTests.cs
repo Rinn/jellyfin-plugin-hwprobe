@@ -13,9 +13,9 @@ public sealed class FfmpegLocatorTests
     {
         var locator = Create(
             env: new() { ["JELLYFIN_FFMPEG"] = "/env/ffmpeg", ["PATH"] = "/bin" },
-            files: ["/cli/ffmpeg", "/env/ffmpeg", "/usr/lib/jellyfin-ffmpeg/ffmpeg", "/bin/ffmpeg"]);
+            files: [Full("/cli/ffmpeg"), Full("/env/ffmpeg"), "/usr/lib/jellyfin-ffmpeg/ffmpeg", Path.Combine("/bin", "ffmpeg")]);
 
-        Assert.Equal(new FfmpegLocation("/cli/ffmpeg", FfmpegSource.CommandLine), locator.Locate("/cli/ffmpeg"));
+        Assert.Equal(new FfmpegLocation(Full("/cli/ffmpeg"), FfmpegSource.CommandLine), locator.Locate("/cli/ffmpeg"));
     }
 
     /// <summary>The environment variable wins when no command-line path is given.</summary>
@@ -24,9 +24,9 @@ public sealed class FfmpegLocatorTests
     {
         var locator = Create(
             env: new() { ["JELLYFIN_FFMPEG"] = "/env/ffmpeg" },
-            files: ["/env/ffmpeg", "/usr/lib/jellyfin-ffmpeg/ffmpeg"]);
+            files: [Full("/env/ffmpeg"), "/usr/lib/jellyfin-ffmpeg/ffmpeg"]);
 
-        Assert.Equal(new FfmpegLocation("/env/ffmpeg", FfmpegSource.EnvironmentVariable), locator.Locate(null));
+        Assert.Equal(new FfmpegLocation(Full("/env/ffmpeg"), FfmpegSource.EnvironmentVariable), locator.Locate(null));
     }
 
     /// <summary>A missing command-line binary throws instead of falling through.</summary>
@@ -71,9 +71,9 @@ public sealed class FfmpegLocatorTests
     {
         var locator = Create(
             env: new() { ["PATH"] = "/a::/b:/c" },
-            files: ["/b/ffmpeg", "/c/ffmpeg"]);
+            files: [Path.Combine("/b", "ffmpeg"), Path.Combine("/c", "ffmpeg")]);
 
-        Assert.Equal(new FfmpegLocation("/b/ffmpeg", FfmpegSource.SystemPath), locator.Locate(null));
+        Assert.Equal(new FfmpegLocation(Path.Combine("/b", "ffmpeg"), FfmpegSource.SystemPath), locator.Locate(null));
     }
 
     /// <summary>Windows uses the semicolon separator and the .exe suffix.</summary>
@@ -107,6 +107,11 @@ public sealed class FfmpegLocatorTests
 
         Assert.Equal(new FfmpegLocation(expected, FfmpegSource.CommandLine), locator.Locate("tools/ffmpeg"));
     }
+
+    /// <summary>Resolves a path the way the locator does on the machine running the tests.</summary>
+    /// <param name="path">A Unix-style test path.</param>
+    /// <returns>The absolute path, e.g. <c>D:\cli\ffmpeg</c> on Windows.</returns>
+    private static string Full(string path) => Path.GetFullPath(path);
 
     /// <summary>Builds a locator over a fake environment and filesystem.</summary>
     /// <param name="env">Environment variables visible to the locator.</param>
