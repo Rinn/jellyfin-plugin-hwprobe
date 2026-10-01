@@ -15,4 +15,11 @@ public sealed record FixtureSpec(
     bool IsHdr10,
     string? RequiredEncoder,
     string EncodeArguments,
-    string? UntestedReason);
+    string? UntestedReason)
+{
+    /// <summary>Gets the pixel format Jellyfin's <c>MediaStream.PixelFormat</c> reports, or null for 4:2:0 at <see cref="BitDepth"/>.</summary>
+    public string? PixelFormat { get; init; }
+
+    /// <summary>Gets the profile Jellyfin's <c>MediaStream.Profile</c> reports, e.g. <c>Rext</c>, or null.</summary>
+    public string? Profile { get; init; }
+}

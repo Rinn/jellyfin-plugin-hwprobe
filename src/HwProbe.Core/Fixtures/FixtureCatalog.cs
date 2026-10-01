@@ -27,6 +27,29 @@ public static class FixtureCatalog
     /// <summary>Gets the 8-bit VP9 clip.</summary>
     public static FixtureSpec Vp9 { get; } = new("vp9_8bit.webm", "vp9", 8, false, "libvpx-vp9", $"{Source} -c:v libvpx-vp9 -pix_fmt yuv420p", null);
 
+    /// <summary>Gets the 10-bit VP9 clip (profile 2).</summary>
+    public static FixtureSpec Vp910 { get; } = new("vp9_10bit.webm", "vp9", 10, false, "libvpx-vp9", $"{Source} -c:v libvpx-vp9 -pix_fmt yuv420p10le", null);
+
+    /// <summary>Gets the VP8 clip.</summary>
+    public static FixtureSpec Vp8 { get; } = new("vp8.webm", "vp8", 8, false, "libvpx", $"{Source} -c:v libvpx -pix_fmt yuv420p", null);
+
+    /// <summary>Gets the 10-bit HEVC range-extension clip (4:2:2), Jellyfin's "HEVC RExt 8/10bit".</summary>
+    public static FixtureSpec HevcRext10 { get; } = new("hevc_rext_10bit.mp4", "hevc", 10, false, "libx265", $"{Source} -c:v libx265 -pix_fmt yuv422p10le", null)
+    {
+        PixelFormat = "yuv422p10le",
+        Profile = "Rext",
+    };
+
+    /// <summary>Gets the 12-bit HEVC range-extension clip (4:4:4), Jellyfin's "HEVC RExt 12bit".</summary>
+    public static FixtureSpec HevcRext12 { get; } = new("hevc_rext_12bit.mp4", "hevc", 12, false, "libx265", $"{Source} -c:v libx265 -pix_fmt yuv444p12le", null)
+    {
+        PixelFormat = "yuv444p12le",
+        Profile = "Rext",
+    };
+
+    /// <summary>Gets the 10-bit AV1 clip.</summary>
+    public static FixtureSpec Av110 { get; } = new("av1_10bit.mp4", "av1", 10, false, "libsvtav1", $"{Source} -c:v libsvtav1 -pix_fmt yuv420p10le", null);
+
     /// <summary>Gets the 8-bit AV1 clip.</summary>
     public static FixtureSpec Av1 { get; } = new("av1_8bit.mp4", "av1", 8, false, "libsvtav1", $"{Source} -c:v libsvtav1 -pix_fmt yuv420p", null);
 
@@ -37,5 +60,5 @@ public static class FixtureCatalog
     public static FixtureSpec Vc1 { get; } = new("vc1.wmv", "vc1", 8, false, null, string.Empty, "No free VC-1 encoder exists; needs a checked-in sample.");
 
     /// <summary>Gets every fixture, including ones that can never be generated.</summary>
-    public static IReadOnlyList<FixtureSpec> All { get; } = [H264, Hevc, Hevc10, Hdr10, Vp9, Av1, Mpeg2, Vc1];
+    public static IReadOnlyList<FixtureSpec> All { get; } = [H264, Hevc, Hevc10, HevcRext10, HevcRext12, Hdr10, Vp8, Vp9, Vp910, Av1, Av110, Mpeg2, Vc1];
 }

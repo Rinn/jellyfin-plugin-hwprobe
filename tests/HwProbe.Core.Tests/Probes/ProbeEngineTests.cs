@@ -35,7 +35,7 @@ public sealed class ProbeEngineTests : IDisposable
 
         var backend = Assert.Single(report.Backends);
         Assert.Equal((HwType.videotoolbox, BackendVerdict.Viable, PipelineTier.LegacyCopyBack), (backend.Type, backend.Verdict, backend.Tier));
-        Assert.Equal(ProbeOutcome.Pass, backend.Decode["hevc10"]);
+        Assert.Equal(ProbeOutcome.Pass, backend.Decode["hevc_10bit"]);
         Assert.Equal(ProbeOutcome.Untested, backend.Decode["vc1"]);
         Assert.Equal(ProbeOutcome.Pass, backend.Tonemap["videotoolbox"]);
         Assert.Contains(report.Findings, f => f.Code == "legacy-copyback");

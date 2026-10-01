@@ -22,7 +22,7 @@ public sealed class ReportStoreTests : IDisposable
         Assert.Contains("\"schemaVersion\": 1", json, StringComparison.Ordinal);
         Assert.Contains("\"verdict\": \"Viable\"", json, StringComparison.Ordinal);
         Assert.Contains("\"type\": \"qsv\"", json, StringComparison.Ordinal);
-        Assert.Contains("\"hevc10\": \"Pass\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"hevc_10bit\": \"Pass\"", json, StringComparison.Ordinal);
         Assert.NotNull(back);
         Assert.Equal(json, ReportStore.Serialize(back));
     }
@@ -69,7 +69,7 @@ public sealed class ReportStoreTests : IDisposable
                 "/dev/dri/renderD128",
                 BackendVerdict.Viable,
                 PipelineTier.FullOpencl,
-                new Dictionary<string, ProbeOutcome> { ["h264"] = ProbeOutcome.Pass, ["hevc10"] = ProbeOutcome.Pass },
+                new Dictionary<string, ProbeOutcome> { ["h264"] = ProbeOutcome.Pass, ["hevc_10bit"] = ProbeOutcome.Pass },
                 new Dictionary<string, ProbeOutcome> { ["h264_lowpower"] = ProbeOutcome.Pass },
                 new Dictionary<string, ProbeOutcome> { ["opencl"] = ProbeOutcome.Pass },
                 string.Empty),

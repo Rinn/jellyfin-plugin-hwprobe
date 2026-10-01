@@ -29,7 +29,7 @@ public static class SyntheticJob
             Codec = cell.InputCodec,
             BitDepth = cell.BitDepth,
             Profile = cell.Profile,
-            PixelFormat = cell.BitDepth > 8 ? "yuv420p10le" : "yuv420p",
+            PixelFormat = cell.PixelFormat ?? (cell.BitDepth > 8 ? "yuv420p10le" : "yuv420p"),
             Width = Width,
             Height = Height,
             AverageFrameRate = 25,

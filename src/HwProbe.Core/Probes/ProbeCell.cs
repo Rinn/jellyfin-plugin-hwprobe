@@ -16,6 +16,9 @@ public sealed record ProbeCell(
     /// <summary>Gets the source profile as ffprobe reports it, e.g. <c>Main 10</c>.</summary>
     public string? Profile { get; init; }
 
+    /// <summary>Gets the stream pixel format, or null for 4:2:0 at <see cref="BitDepth"/>.</summary>
+    public string? PixelFormat { get; init; }
+
     /// <summary>Gets the source colour transfer, e.g. <c>smpte2084</c> for HDR10.</summary>
     public string? ColorTransfer { get; init; }
 

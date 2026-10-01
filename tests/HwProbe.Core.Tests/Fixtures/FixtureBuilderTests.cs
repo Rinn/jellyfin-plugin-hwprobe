@@ -54,7 +54,7 @@ public sealed class FixtureBuilderTests : IDisposable
         var results = await BuildAsync(withoutX265);
 
         var hevc = results.Where(r => r.Spec.RequiredEncoder == "libx265").ToList();
-        Assert.Equal(3, hevc.Count);
+        Assert.Equal(5, hevc.Count);
         Assert.All(hevc, r => Assert.Equal(FixtureStatus.Skipped, r.Status));
         Assert.DoesNotContain(_runner.Invocations, i => i.Arguments.Contains("libx265", StringComparison.Ordinal));
     }
