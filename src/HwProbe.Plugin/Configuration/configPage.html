@@ -832,7 +832,7 @@
                         const rate = x.frameRate || (test && test.FrameRate);
                         const speed = x.fps && rate ? (x.fps / rate).toFixed(1) + '\u00d7' : '-';
                         const fps = x.fps ? String(Math.round(x.fps)) : '-';
-                        row(table, [x.variant ? '' : (x.label || (test ? test.Label : x.test)), x.variant || '', streamsText(x), speed, fps, x.variant ? changeText(x.fps, baseFps) : '', el('td', x.note || '', 'hwprobe-reason')]);
+                        row(table, [x.variant ? '' : (x.label || (test ? test.Label : x.test)), x.variant || '', streamsText(x), speed, fps, x.variant ? speedChange(x.fps, baseFps) : '', el('td', x.note || '', 'hwprobe-reason')]);
                     }
                     div.appendChild(table);
                     const credits = new Map();
@@ -864,7 +864,7 @@
                     return x.capped ? x.streams + '+' : '\u2248' + x.streams;
                 }
 
-                function changeText(fps, baseFps) {
+                function speedChange(fps, baseFps) {
                     if (!fps || !baseFps) {
                         return '-';
                     }

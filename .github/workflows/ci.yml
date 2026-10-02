@@ -36,6 +36,9 @@ jobs:
       - name: Check formatting
         if: runner.os == 'Linux'
         run: dotnet format --verify-no-changes
+      - name: Check the plugin page script
+        if: runner.os == 'Linux'
+        run: sh scripts/check-page.sh
       - name: Test
         run: dotnet test --no-build
 
