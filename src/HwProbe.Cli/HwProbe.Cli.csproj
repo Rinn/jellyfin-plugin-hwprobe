@@ -4,6 +4,8 @@
     <AssemblyName>Jellyfin.Plugin.HwProbe.Cli</AssemblyName>
     <RootNamespace>Jellyfin.Plugin.HwProbe.Cli</RootNamespace>
     <OutputType>Exe</OutputType>
+    <!-- Set here rather than with -p, which would also reach the referenced libraries and change their restore. -->
+    <PublishSingleFile>true</PublishSingleFile>
   </PropertyGroup>
 
   <ItemGroup>
