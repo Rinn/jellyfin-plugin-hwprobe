@@ -14,14 +14,8 @@ public sealed record SpeedTest(string Key, string Label, FixtureSpec? Fixture, f
     /// <summary>Gets the output codec, or null for a decode-only test.</summary>
     public string? OutputCodec { get; init; }
 
-    /// <summary>Gets the output height the client asks for; the width follows at 16:9.</summary>
-    public int OutputHeight { get; init; }
-
     /// <summary>Gets the video bitrate the client asks for, in bits per second.</summary>
     public int Bitrate { get; init; }
-
-    /// <summary>Gets the lowest and highest bitrates jellyfin-web offers for <see cref="OutputHeight"/>.</summary>
-    public (int Low, int High) BitrateRange { get; init; }
 
     /// <summary>Gets a value indicating whether the source is HDR10 and tone-mapped.</summary>
     public bool Tonemap { get; init; }

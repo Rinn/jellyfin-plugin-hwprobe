@@ -127,20 +127,31 @@ public sealed class ArgumentSource : IArgumentSource
         RefuseForeignWrites(type, effects);
 
         var encoder = _helper.GetVideoEncoder(state, options);
-        int? scaledWidth = null;
+        int? outputWidth = null;
         if (cell.FullQuality)
         {
             // As StreamingHelpers.GetStreamingState sets them for a real request (v12.1).
             state.OutputVideoBitrate = _helper.GetVideoBitrateParamValue(state.BaseRequest, state.VideoStream, state.OutputVideoCodec);
             state.OutputAudioBitrate = _helper.GetAudioBitrateParam(null, state.OutputAudioCodec, state.AudioStream, state.OutputAudioChannels);
 
-            // The server lowers the size a bitrate can carry, from the H.264-equivalent bitrate (StreamingHelpers.GetStreamingState, v12.1).
-            if (state.OutputVideoBitrate is { } bitrate && cell.MaxWidth is { } requested)
+            // The server picks the size from the bitrate and codec, as StreamingHelpers.GetStreamingState does (v12.1).
+            if (state.OutputVideoBitrate is { } bitrate)
             {
-                var resolution = ResolutionNormalizer.Normalize(state.VideoStream?.BitRate, bitrate, EncodingHelper.ScaleBitrate(bitrate, state.OutputVideoCodec, "h264"), state.BaseRequest.MaxWidth, state.BaseRequest.MaxHeight, state.TargetFramerate);
-                state.BaseRequest.MaxWidth = resolution.MaxWidth;
-                state.BaseRequest.MaxHeight = resolution.MaxHeight;
-                scaledWidth = resolution.MaxWidth < requested ? resolution.MaxWidth : null;
+                var request = state.BaseRequest;
+                var notRequested = request.Width is null && request.Height is null && request.MaxWidth is null && request.MaxHeight is null;
+                if (notRequested && request.VideoBitRate is { } asked && state.VideoStream?.BitRate is { } source && asked >= source)
+                {
+                    request.MaxWidth = state.VideoStream.Width;
+                    request.MaxHeight = state.VideoStream.Height;
+                }
+                else
+                {
+                    var resolution = ResolutionNormalizer.Normalize(state.VideoStream?.BitRate, bitrate, EncodingHelper.ScaleBitrate(bitrate, state.OutputVideoCodec, "h264"), request.MaxWidth, request.MaxHeight, state.TargetFramerate);
+                    request.MaxWidth = resolution.MaxWidth;
+                    request.MaxHeight = resolution.MaxHeight;
+                }
+
+                outputWidth = request.MaxWidth;
             }
         }
 
@@ -225,7 +236,7 @@ public sealed class ArgumentSource : IArgumentSource
             HardwareEncoder = !string.Equals(encoder, softwareEncoder, StringComparison.Ordinal),
             HardwareTonemap = !string.Equals(filterArgs, withoutTonemap, StringComparison.Ordinal),
             HardwareDeinterlacer = cell.Interlaced ? HardwareDeinterlacer(state, options, filterArgs) : null,
-            ScaledWidth = scaledWidth,
+            OutputWidth = outputWidth,
         };
     }
 

@@ -46,7 +46,7 @@ internal sealed class HwProbeCommand
 
     private readonly Option<SpeedComparison> _speedCompare = new("--speed-compare")
     {
-        Description = "Also measure with one setting changed: vbr, preset, quality, bitrate, deinterlace, paths, subtitles; comma-separated.",
+        Description = "Also measure with one setting changed: vbr, preset, quality, deinterlace, paths, subtitles; comma-separated.",
         CustomParser = ParseComparisons,
     };
 
@@ -186,11 +186,10 @@ internal sealed class HwProbeCommand
                 "VBR" => SpeedComparison.AudioVbr,
                 "PRESET" => SpeedComparison.Preset,
                 "QUALITY" => SpeedComparison.Quality,
-                "BITRATE" => SpeedComparison.Bitrate,
                 "DEINTERLACE" => SpeedComparison.Deinterlace,
                 "PATHS" => SpeedComparison.Paths,
                 "SUBTITLES" => SpeedComparison.Subtitles,
-                _ => Error<SpeedComparison>(result, $"Unknown comparison '{name}'. Expected: vbr, preset, quality, bitrate, deinterlace, paths, subtitles."),
+                _ => Error<SpeedComparison>(result, $"Unknown comparison '{name}'. Expected: vbr, preset, quality, deinterlace, paths, subtitles."),
             };
         }
 

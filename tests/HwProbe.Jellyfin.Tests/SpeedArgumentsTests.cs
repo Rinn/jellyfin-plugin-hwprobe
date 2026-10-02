@@ -34,22 +34,21 @@ public sealed class SpeedArgumentsTests
         Assert.Equal(" -i file:\"/c/a.mkv\"", args.InputArgument);
     }
 
-    /// <summary>The size kept or lowered for a bitrate as the server does it: H.264 at 6 Mbps carries 720p, not 1080p; HEVC needs less.</summary>
+    /// <summary>The size comes from the bitrate and codec as the server picks it: H.264 needs more than 6 Mbps for 1080p, HEVC doesn't.</summary>
     /// <param name="codec">The output codec.</param>
     /// <param name="bitrate">The bitrate asked for.</param>
-    /// <param name="scaled">The width it's lowered to, or null when 1080p is kept.</param>
+    /// <param name="width">The width the output is limited to.</param>
     [Theory]
-    [InlineData("h264", 8_000_000, null)]
+    [InlineData("h264", 8_000_000, 1920)]
     [InlineData("h264", 6_000_000, 1280)]
-    [InlineData("hevc", 6_000_000, null)]
-    public void BitrateLimitsTheSize(string codec, int bitrate, int? scaled)
+    [InlineData("hevc", 6_000_000, 1920)]
+    [InlineData("h264", 1_500_000, 1280)]
+    [InlineData("h264", 720_000, 960)]
+    public void BitrateSetsTheSize(string codec, int bitrate, int width)
     {
-        var cell = _cell with { OutputCodec = codec, MaxWidth = 1920, MaxHeight = 1080, VideoBitrate = bitrate };
+        var args = Build(_cell with { OutputCodec = codec, MaxWidth = null, MaxHeight = null, VideoBitrate = bitrate });
 
-        var args = Build(cell);
-
-        Assert.Equal(scaled, args.ScaledWidth);
-        Assert.Contains(scaled is null ? "1920" : "1280", args.FilterArgs, StringComparison.Ordinal);
+        Assert.Equal(width, args.OutputWidth);
     }
 
     /// <summary>The server's preset and CRF reach the encoder.</summary>

@@ -35,6 +35,9 @@ public sealed record SpeedResult(HwType Type, string Device, string Test, string
     /// <summary>Gets the sample's licence, or null.</summary>
     public Uri? LicenseUrl { get; init; }
 
+    /// <summary>Gets the size Jellyfin makes, e.g. <c>720p</c>, or null for a decode test or when not measured.</summary>
+    public string? OutputSize { get; init; }
+
     /// <summary>Gets a value indicating whether it's planned and not measured yet; only in a running run's results.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool Pending { get; init; }

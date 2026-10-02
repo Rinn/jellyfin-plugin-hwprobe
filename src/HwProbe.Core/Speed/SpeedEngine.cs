@@ -347,9 +347,9 @@ public sealed class SpeedEngine : IDisposable
                     return new SpeedResult(type, device, test.Key, label, null, null, false, $"Not measured: Jellyfin {softwareStep} this in software with this backend.");
                 }
 
-                var note = args.ScaledWidth is { } width
-                    ? $"Jellyfin scales this to {SpeedTestText.Resolution(width, width * 9 / 16, false)} at this bitrate, so it was measured at that size."
-                    : softwareDecode ? "Jellyfin decodes this in software with this backend, then encodes on the GPU." : null;
+                var note = softwareDecode ? "Jellyfin decodes this in software with this backend, then encodes on the GPU." : null;
+                var width = Math.Min(args.OutputWidth ?? test.Width, test.Width);
+                var size = test.DecodeOnly ? null : SpeedTestText.Resolution(width, test.Height * width / test.Width, false);
 
                 string Command(TimeSpan content) => SpeedCommandLine.Build(args, content, test.DecodeOnly, test.StartAt);
 
@@ -370,7 +370,7 @@ public sealed class SpeedEngine : IDisposable
                 }
 
                 var measured = await SpeedMeter.MeasureAsync(LaunchAsync, method, test.FrameRate, !test.DecodeOnly, ct, timeUp);
-                return new SpeedResult(type, device, test.Key, label, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note);
+                return new SpeedResult(type, device, test.Key, label, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note) { OutputSize = size };
             },
             cancellationToken);
 

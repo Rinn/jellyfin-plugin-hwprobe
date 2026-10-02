@@ -9,17 +9,17 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Speed;
 [Trait("Category", "Unit")]
 public sealed class SpeedVariantsTests
 {
-    private const SpeedComparison All = SpeedComparison.AudioVbr | SpeedComparison.Preset | SpeedComparison.Quality | SpeedComparison.Bitrate | SpeedComparison.Deinterlace | SpeedComparison.Paths | SpeedComparison.Subtitles;
+    private const SpeedComparison All = SpeedComparison.AudioVbr | SpeedComparison.Preset | SpeedComparison.Quality | SpeedComparison.Deinterlace | SpeedComparison.Paths | SpeedComparison.Subtitles;
 
     /// <summary>Labels per backend and test with every comparison asked for.</summary>
     /// <param name="type">The backend.</param>
     /// <param name="test">The test key.</param>
     /// <param name="expected">The comparison labels, in order.</param>
     [Theory]
-    [InlineData(HwType.none, "pattern|720p-h264", "Text subtitles burned in|PGS subtitles burned in|VBR audio on|Preset superfast|Preset faster|CRF 18|CRF 28|1.5 Mbps")]
-    [InlineData(HwType.none, "pattern|720p-av1", "Text subtitles burned in|PGS subtitles burned in|VBR audio on|Preset superfast|Preset faster|1.5 Mbps")]
-    [InlineData(HwType.qsv, "pattern-1080i|720p-h264", "Text subtitles burned in|PGS subtitles burned in|VBR audio on|Preset superfast|Preset faster|1.5 Mbps|Double rate|BWDIF|Low power on|QSV decoders")]
-    [InlineData(HwType.vaapi, "pattern-4k-hdr|1080p-h264", "Text subtitles burned in|PGS subtitles burned in|VBR audio on|Preset superfast|Preset faster|6 Mbps|Low power on|VPP tone-mapping on")]
+    [InlineData(HwType.none, "pattern|h264-4mbps", "Text subtitles burned in|PGS subtitles burned in|VBR audio on|Preset superfast|Preset faster|CRF 18|CRF 28")]
+    [InlineData(HwType.none, "pattern|av1-4mbps", "Text subtitles burned in|PGS subtitles burned in|VBR audio on|Preset superfast|Preset faster")]
+    [InlineData(HwType.qsv, "pattern-1080i|h264-4mbps", "Text subtitles burned in|PGS subtitles burned in|VBR audio on|Preset superfast|Preset faster|Double rate|BWDIF|Low power on|QSV decoders")]
+    [InlineData(HwType.vaapi, "pattern-4k-hdr|h264-8mbps", "Text subtitles burned in|PGS subtitles burned in|VBR audio on|Preset superfast|Preset faster|Low power on|VPP tone-mapping on")]
     [InlineData(HwType.nvenc, "pattern-hevc|decode", "cuvid decoders")]
     [InlineData(HwType.videotoolbox, "pattern-hevc|decode", "")]
     public void ComparisonsFollowTheBackend(HwType type, string test, string expected)
@@ -35,7 +35,7 @@ public sealed class SpeedVariantsTests
     [Fact]
     public void BaseCellIsARealRequest()
     {
-        var spec = SpeedCatalog.Find("pattern|720p-h264")!;
+        var spec = SpeedCatalog.Find("pattern|h264-4mbps")!;
         var clips = SpeedVariants.Clips([spec], SpeedComparison.Subtitles).ToDictionary(f => f.FileName, f => "/c/" + f.FileName, StringComparer.Ordinal);
         var cell = SpeedVariants.Base(spec, new SpeedSettings { EncoderPreset = "fast", AudioVbr = true }, clips);
 
@@ -43,7 +43,8 @@ public sealed class SpeedVariantsTests
         Assert.True(cell.Audio);
         Assert.True(cell.AudioVbr);
         Assert.Equal("fast", cell.EncoderPreset);
-        Assert.Equal((1920, 1080, 24f, 1280, 720, 4_000_000), (cell.SourceWidth, cell.SourceHeight, cell.SourceFrameRate, cell.MaxWidth!.Value, cell.MaxHeight!.Value, cell.VideoBitrate!.Value));
+        Assert.Equal((1920, 1080, 24f, 4_000_000), (cell.SourceWidth, cell.SourceHeight, cell.SourceFrameRate, cell.VideoBitrate!.Value));
+        Assert.Equal((null, null), (cell.MaxWidth, cell.MaxHeight));
         Assert.Equal("/c/speed_1080p_h264.mkv", cell.SourcePath);
         Assert.Null(cell.GraphicalSubtitlePath);
         Assert.Equal("/c/speed_pgs_sub.sup", SpeedVariants.For(HwType.none, spec, cell, SpeedComparison.Subtitles, clips).Single(v => v.Label == "PGS subtitles burned in").Cell.GraphicalSubtitlePath);
@@ -58,7 +59,8 @@ public sealed class SpeedVariantsTests
         Assert.All(SpeedCatalog.DefaultVideos, k => Assert.NotNull(SpeedCatalog.FindVideo(k)));
         Assert.All(SpeedCatalog.DefaultOutputs, k => Assert.NotNull(SpeedCatalog.FindOutput(k)));
         Assert.Null(SpeedCatalog.Find("pattern"));
-        Assert.Equal("Test video, H.264 \u2192 720p H.264, 4 Mbps", SpeedCatalog.Find("pattern|720p-h264")!.Label);
+        Assert.Equal("Test video, H.264 \u2192 HEVC, 720 kbps", SpeedCatalog.Find("pattern|hevc-720kbps")!.Label);
+        Assert.Equal((3 * 14) + 1, SpeedCatalog.Outputs.Count);
     }
 
     /// <summary>Every chosen output runs on every chosen video, video by video; the library video needs a file.</summary>
@@ -66,11 +68,11 @@ public sealed class SpeedVariantsTests
     public void OptionsPairVideosWithOutputs()
     {
         var file = new SpeedFile("/m/film.mkv", "Film", TimeSpan.FromMinutes(100), new SpeedFileVideo(0, "hevc", 10, 3840, 2160, 23.976f) { ColorTransfer = "smpte2084" });
-        var options = new SpeedOptions(SpeedMethod.Quick, ["pattern", "library", "nope"], ["720p-h264", "decode"], SpeedComparison.None, new SpeedSettings());
+        var options = new SpeedOptions(SpeedMethod.Quick, ["pattern", "library", "nope"], ["h264-4mbps", "decode"], SpeedComparison.None, new SpeedSettings());
 
-        Assert.Equal(["pattern|720p-h264", "pattern|decode"], options.Resolve().Select(t => t.Key));
+        Assert.Equal(["pattern|h264-4mbps", "pattern|decode"], options.Resolve().Select(t => t.Key));
         var withFile = (options with { File = file }).Resolve();
-        Assert.Equal(["pattern|720p-h264", "pattern|decode", "library|720p-h264", "library|decode"], withFile.Select(t => t.Key));
+        Assert.Equal(["pattern|h264-4mbps", "pattern|decode", "library|h264-4mbps", "library|decode"], withFile.Select(t => t.Key));
         Assert.True(withFile[2].Tonemap);
         Assert.False(withFile[3].Tonemap);
         Assert.Equal(TimeSpan.FromMinutes(10), withFile[2].StartAt);
@@ -83,7 +85,8 @@ public sealed class SpeedVariantsTests
         Assert.Equal("1080p H.264, 24 fps, 5.1 AAC", SpeedTestText.Input(SpeedCatalog.FindVideo("pattern")!));
         Assert.Equal("4K HEVC 10-bit HDR, 24 fps, 5.1 AAC", SpeedTestText.Input(SpeedCatalog.FindVideo("pattern-4k-hdr")!));
         Assert.Equal("1080i H.264, 25 fps, 5.1 AAC", SpeedTestText.Input(SpeedCatalog.FindVideo("pattern-1080i")!));
-        Assert.Equal("720p H.264 at 4 Mbps, stereo AAC, tone-mapped to SDR", SpeedTestText.Output(SpeedCatalog.Find("pattern-4k-hdr|720p-h264")!));
+        Assert.Equal("H.264 at 4 Mbps, stereo AAC, tone-mapped to SDR", SpeedTestText.Output(SpeedCatalog.Find("pattern-4k-hdr|h264-4mbps")!));
+        Assert.Equal("AV1 at 420 kbps, stereo AAC", SpeedTestText.Output(SpeedCatalog.Find("pattern|av1-420kbps")!));
         Assert.Equal("Decoded only, not encoded", SpeedTestText.Output(SpeedCatalog.Find("anime|decode")!));
         Assert.Equal(("Live-action + CGI", "Tears of Steel", "10 MB download"), (SpeedCatalog.FindVideo("live-action")!.Name, SpeedCatalog.FindVideo("live-action")!.Title, SpeedCatalog.FindVideo("live-action")!.Origin));
         Assert.StartsWith("1080p H.264", SpeedTestText.Input(SpeedCatalog.FindVideo("live-action")!), StringComparison.Ordinal);

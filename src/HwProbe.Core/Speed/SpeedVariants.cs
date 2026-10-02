@@ -29,8 +29,6 @@ internal static class SpeedVariants
             SourceWidth = test.Width,
             SourceHeight = test.Height,
             SourceFrameRate = test.FrameRate,
-            MaxWidth = test.DecodeOnly ? null : test.OutputHeight * 16 / 9,
-            MaxHeight = test.DecodeOnly ? null : test.OutputHeight,
             VideoBitrate = test.DecodeOnly ? null : test.Bitrate,
             FullQuality = true,
             VppTonemap = cell.Tonemap && settings.VppTonemap,
@@ -98,14 +96,6 @@ internal static class SpeedVariants
             foreach (var crf in _crfs.Where(c => c != current))
             {
                 yield return (string.Create(CultureInfo.InvariantCulture, $"CRF {crf}"), test.OutputCodec == "hevc" ? cell with { H265Crf = crf } : cell with { H264Crf = crf });
-            }
-        }
-
-        if (transcode && comparisons.HasFlag(SpeedComparison.Bitrate))
-        {
-            foreach (var bitrate in new[] { test.BitrateRange.Low, test.BitrateRange.High }.Where(b => b != test.Bitrate))
-            {
-                yield return (string.Create(CultureInfo.InvariantCulture, $"{bitrate / 1_000_000.0:0.#} Mbps"), cell with { VideoBitrate = bitrate });
             }
         }
 

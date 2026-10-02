@@ -11,7 +11,11 @@ public static class SpeedCatalog
     public static IReadOnlyList<SpeedVideo> Videos { get; } = [.. Catalog.Default.Videos.Select(Video)];
 
     /// <summary>Gets every output, in the order the page lists them.</summary>
-    public static IReadOnlyList<SpeedOutput> Outputs { get; } = [.. Catalog.Default.Outputs.Select(Output)];
+    public static IReadOnlyList<SpeedOutput> Outputs { get; } =
+    [
+        .. Catalog.Default.Codecs.SelectMany(c => Catalog.Default.Qualities.Select(q => new SpeedOutput(Catalog.OutputKey(c, q), c.Name + ", " + q.Name, c.Key, q.Bitrate) { Detail = c.Detail })),
+        new SpeedOutput(Catalog.Default.Decode!.Key, Catalog.Default.Decode.Label, null, 0) { Detail = Catalog.Default.Decode.Detail },
+    ];
 
     /// <summary>Gets the videos chosen when none are asked for.</summary>
     public static IReadOnlyList<string> DefaultVideos => Catalog.Default.DefaultVideos;
@@ -56,9 +60,7 @@ public static class SpeedCatalog
             Credit = video.Credit,
             LicenseUrl = video.LicenseUrl,
             OutputCodec = output.Codec,
-            OutputHeight = output.Height,
             Bitrate = output.Bitrate,
-            BitrateRange = output.BitrateRange,
             Tonemap = hdr && output.Codec is not null,
         };
     }
@@ -115,10 +117,4 @@ public static class SpeedCatalog
             ArticleUrl = video.Sample is null ? null : new Uri(video.Sample.Article),
         };
     }
-
-    /// <summary>Returns a catalog output.</summary>
-    /// <param name="output">The output as the file writes it.</param>
-    /// <returns>The output, with its bitrate range as a pair.</returns>
-    private static SpeedOutput Output(CatalogOutput output) =>
-        new(output.Key, output.Label, output.Codec, output.Height, output.Bitrate, output.BitrateRange is [var low, var high] ? (low, high) : (0, 0)) { Detail = output.Detail };
 }

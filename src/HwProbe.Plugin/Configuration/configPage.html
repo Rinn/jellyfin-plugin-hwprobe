@@ -126,7 +126,11 @@
                 // Null measures with the server's own thread count.
                 let speedThreads = null;
                 let chosenVideos = null;
-                let chosenOutputs = null;
+                // Outputs are every chosen codec at every chosen quality; 'decode' is chosen with the codecs.
+                let chosenCodecs = null;
+                let chosenQualities = null;
+                let speedCodecs = [];
+                let speedQualities = [];
                 let speedItem = null;
                 let libraryVideo = null;
                 let speedHistory = [];
@@ -170,6 +174,8 @@
                     settingLabels = c.Settings;
                     speedVideos = c.Videos;
                     speedOutputs = c.Outputs;
+                    speedCodecs = c.Codecs;
+                    speedQualities = c.Qualities;
                     speedMethod = speedMethod || c.DefaultMethod;
                 }
 
@@ -709,10 +715,20 @@
                     return div;
                 }
 
+                // In codec then quality order, so a video's rows read H.264 8 Mbps, H.264 4 Mbps, HEVC 8 Mbps.
+                function selectedOutputs() {
+                    const keys = speedCodecs.filter(c => chosenCodecs.has(c.Key)).flatMap(c => speedQualities.filter(q => chosenQualities.has(q.Key)).map(q => c.Key + '-' + q.Key));
+                    const decode = speedOutputs.find(o => o.DecodeOnly);
+                    if (decode && chosenCodecs.has(decode.Key)) {
+                        keys.push(decode.Key);
+                    }
+                    return keys.map(k => speedOutputs.find(o => o.Key === k)).filter(o => o);
+                }
+
                 // A rough count for the estimate; the server skips comparisons that don't apply to a backend.
                 function speedRuns(viable) {
                     const videos = allVideos().filter(v => chosenVideos.has(v.Key));
-                    const outputs = speedOutputs.filter(o => chosenOutputs.has(o.Key));
+                    const outputs = selectedOutputs();
                     let runs = 0;
                     for (const hardware of [...viable.map(() => true), false]) {
                         for (const v of videos) {
@@ -722,7 +738,7 @@
                                     runs += hardware && speedCompared.has('Paths') ? 1 : 0;
                                     continue;
                                 }
-                                runs += (speedCompared.has('AudioVbr') ? 1 : 0) + (speedCompared.has('Preset') ? 2 : 0) + (speedCompared.has('Bitrate') ? 1 : 0);
+                                runs += (speedCompared.has('AudioVbr') ? 1 : 0) + (speedCompared.has('Preset') ? 2 : 0);
                                 runs += !hardware && speedCompared.has('Quality') ? 1 : 0;
                                 runs += v.Interlaced && speedCompared.has('Deinterlace') ? 2 : 0;
                                 runs += hardware && speedCompared.has('Paths') ? 2 : 0;
@@ -769,7 +785,9 @@
                 function renderSpeed(container, viable) {
                     if (!chosenVideos) {
                         chosenVideos = new Set(speedVideos.filter(v => v.Default).map(v => v.Key));
-                        chosenOutputs = new Set(speedOutputs.filter(o => o.Default).map(o => o.Key));
+                        const defaults = speedOutputs.filter(o => o.Default).map(o => o.Key);
+                        chosenCodecs = new Set(speedCodecs.filter(c => defaults.some(k => k.startsWith(c.Key + '-'))).map(c => c.Key).concat(defaults.filter(k => speedOutputs.some(o => o.Key === k && o.DecodeOnly))));
+                        chosenQualities = new Set(speedQualities.filter(q => defaults.some(k => k.endsWith('-' + q.Key))).map(q => q.Key));
                     }
 
                     const title = heading(container, 'Results');
@@ -902,7 +920,7 @@
                             return;
                         }
                         const videos = allVideos().filter(v => chosenVideos.has(v.Key)).length;
-                        const outputs = chosenOutputs.size;
+                        const outputs = selectedOutputs().length;
                         const runs = speedRuns(viable);
                         const per = methodSeconds[speedMethod] || [20, 60];
                         const minutes = n => Math.max(1, Math.round(n / 60));
@@ -938,8 +956,12 @@
                     list('Input', null, ['Input', 'Format', 'Source'],
                         speedVideos.map(v => [box(chosenVideos, v.Key, true), v.Name, el('td', v.Input, 'secondaryText'), sourceCell(v)])
                             .concat([[box(chosenVideos, 'library', !!libraryVideo), libraryCell(update), el('td', libraryVideo ? libraryVideo.Input : '', 'secondaryText'), el('td', 'Library', 'secondaryText')]]));
-                    list('Output', 'Every selected output is made from every selected input.', ['Output', 'Details'],
-                        speedOutputs.map(o => [box(chosenOutputs, o.Key, true), o.Label, el('td', o.Detail, 'secondaryText')]));
+                    list('Output', 'Every selected codec at every selected quality is made from every selected input, as a player asks for it.', ['Codec', 'Details'],
+                        speedCodecs.map(c => [box(chosenCodecs, c.Key, true), c.Name, el('td', c.Detail, 'secondaryText')])
+                            .concat(speedOutputs.filter(o => o.DecodeOnly).map(o => [box(chosenCodecs, o.Key, true), o.Label, el('td', o.Detail, 'secondaryText')])));
+                    container.appendChild(el('h3', 'Quality', 'sectionTitle'));
+                    container.appendChild(el('div', 'The player\u2019s quality choices. Jellyfin picks the output size from the quality and codec; the results show it.', 'fieldDescription'));
+                    container.appendChild(chips(speedQualities.map(q => checkbox(q.Name, chosenQualities.has(q.Key), pick(chosenQualities, q.Key)))));
                     list('Variations', 'Each selected variation measures again with one setting changed from the server\u2019s.', ['Setting', 'Measured'],
                         Object.entries(comparisons).map(([key, [name, values]]) => [box(speedCompared, key, true), name, el('td', values, 'secondaryText')]));
 
@@ -964,7 +986,7 @@
                     container.appendChild(el('div', 'A measurement that reaches the limit stops and reports what it measured.', 'fieldDescription'));
 
                     button = action('Measure speed', () => {
-                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, EncodingThreadCount: speedThreads, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: speedOutputs.filter(o => chosenOutputs.has(o.Key)).map(o => o.Key), Comparisons: [...speedCompared], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
+                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, EncodingThreadCount: speedThreads, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Comparisons: [...speedCompared], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
                         ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed'), data: JSON.stringify(body), contentType: 'application/json' })
                             .then(loadStatus, response => (response && response.text ? response.text() : Promise.resolve('')).then(text => {
                                 setMessage('Could not start: ' + (text.replace(/^"|"$/g, '') || 'a probe is running or a session is transcoding.'));
@@ -1083,7 +1105,12 @@
                             table.appendChild(tr);
                         }
                         const best = bestOf(base);
-                        row(table, [el('td', first.output || first.label || key)].concat(base.flatMap(x => cellsFor(x, best, null))));
+                        const label = el('td', first.output || first.label || key);
+                        const sized = base.find(x => x && x.outputSize);
+                        if (sized) {
+                            label.appendChild(el('span', '  ' + sized.outputSize, 'secondaryText hwprobe-small'));
+                        }
+                        row(table, [label].concat(base.flatMap(x => cellsFor(x, best, null))));
 
                         const variants = [...new Set(r.results.filter(x => x.test === key && x.variant).map(x => x.variant))];
                         if (!variants.length) {

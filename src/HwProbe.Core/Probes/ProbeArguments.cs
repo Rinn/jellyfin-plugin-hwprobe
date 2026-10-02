@@ -50,6 +50,6 @@ public sealed record ProbeArguments(
     /// <summary>Gets the hardware filter family that deinterlaces, e.g. <c>vaapi</c>, or null when it's done on the CPU or not at all.</summary>
     public string? HardwareDeinterlacer { get; init; }
 
-    /// <summary>Gets the width Jellyfin lowers the output to for its bitrate, or null when it keeps the size asked for.</summary>
-    public int? ScaledWidth { get; init; }
+    /// <summary>Gets the width Jellyfin limits the output to for its bitrate and codec, or null when it isn't limited.</summary>
+    public int? OutputWidth { get; init; }
 }

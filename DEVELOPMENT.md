@@ -46,7 +46,7 @@ HWPROBE_INSTALL=existing HWPROBE_BASE=http://host:18096 scripts/container-plugin
 `SpeedEngine` measures every chosen output from every chosen video in `SpeedCatalog` (read from `catalog.yaml`; a test is a video|output pair) on each viable backend and software, reporting each result as it finishes. Arguments come from `EncodingHelper` with `ProbeCell.FullQuality` (quality, audio and input arguments, as a real request gets them); the output size then goes through Jellyfin's `ResolutionNormalizer`, as `StreamingHelpers` does, so a bitrate too low for the size is measured at the size Jellyfin would pick, with a note; `SpeedCommandLine` loops the inputs and bounds the run with `-t`. `SpeedMeter` does the counting and is tested without ffmpeg. A library file (`SpeedFile`) comes from the item's media source in the plugin and from ffprobe (`FfprobeFile`) in the CLI, as the `library` video, read from a tenth of the way in. Clips are generated with the server's ffmpeg and cached with the other fixtures; the PGS sample is downloaded from FFmpeg's FATE suite.
 
 ```sh
-hwprobe --speed confirm --speed-videos pattern,live-action --speed-outputs 720p-h264,decode --speed-compare preset,vbr --speed-repeats 2 --speed-time-limit 120 --speed-json speed.json
+hwprobe --speed confirm --speed-videos pattern,live-action --speed-outputs h264-8mbps,hevc-4mbps,decode --speed-compare preset,vbr --speed-repeats 2 --speed-time-limit 120 --speed-json speed.json
 ```
 
 ## Diagnostics zips

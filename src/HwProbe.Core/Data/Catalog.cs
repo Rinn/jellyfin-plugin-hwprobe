@@ -15,6 +15,12 @@ public sealed partial class Catalog
     /// <summary>Gets the catalog compiled into this assembly.</summary>
     public static Catalog Default => _default.Value;
 
+    /// <summary>Gets the video codecs Jellyfin transcodes to, in the page's order.</summary>
+    public required IReadOnlyList<CatalogCodec> Codecs { get; init; }
+
+    /// <summary>Gets the qualities a player offers, highest first.</summary>
+    public required IReadOnlyList<CatalogQuality> Qualities { get; init; }
+
     /// <summary>Gets the speed variations, in the page's order.</summary>
     public required IReadOnlyList<CatalogVariation> Variations { get; init; }
 
@@ -60,8 +66,8 @@ public sealed partial class Catalog
     /// <summary>Gets the videos chosen when none are asked for.</summary>
     internal IReadOnlyList<string> DefaultVideos { get; init; } = [];
 
-    /// <summary>Gets the speed outputs, in the page's order.</summary>
-    internal IReadOnlyList<CatalogOutput> Outputs { get; init; } = [];
+    /// <summary>Gets the decode-only output.</summary>
+    internal CatalogOutput? Decode { get; init; }
 
     /// <summary>Gets the outputs chosen when none are asked for.</summary>
     internal IReadOnlyList<string> DefaultOutputs { get; init; } = [];
@@ -94,6 +100,17 @@ public sealed partial class Catalog
 
         catalog.Check();
         return catalog;
+    }
+
+    /// <summary>Returns the output key for a codec at a quality.</summary>
+    /// <param name="codec">The codec.</param>
+    /// <param name="quality">The quality.</param>
+    /// <returns>e.g. <c>hevc-8mbps</c>.</returns>
+    public static string OutputKey(CatalogCodec codec, CatalogQuality quality)
+    {
+        ArgumentNullException.ThrowIfNull(codec);
+        ArgumentNullException.ThrowIfNull(quality);
+        return codec.Key + "-" + quality.Key;
     }
 
     /// <summary>Expands <c>{name}</c> placeholders from <see cref="Vars"/>, including placeholders inside them.</summary>
@@ -172,10 +189,15 @@ public sealed partial class Catalog
         RequireAll("tiers", Tiers.Keys, PipelineTier.Unknown);
         RequireAll("verdicts", Verdicts.Keys, BackendVerdict.Viable, BackendVerdict.NotBuilt);
         RequireKeys("videos", [.. Videos.Select(v => v.Key), SpeedCatalog.LibraryKey], DefaultVideos);
-        RequireKeys("outputs", [.. Outputs.Select(o => o.Key)], DefaultOutputs);
-        if (Methods.Any(m => m.Seconds.Count != 2) || Outputs.Any(o => o.Codec is not null && o.BitrateRange.Count != 2))
+        if (Decode is null)
         {
-            throw new InvalidDataException("catalog.yaml: method seconds and output bitrate ranges are [low, high].");
+            throw new InvalidDataException("catalog.yaml: decode is missing.");
+        }
+
+        RequireKeys("outputs", [.. Codecs.SelectMany(c => Qualities.Select(q => OutputKey(c, q))), Decode.Key], DefaultOutputs);
+        if (Methods.Any(m => m.Seconds.Count != 2))
+        {
+            throw new InvalidDataException("catalog.yaml: method seconds are [low, high].");
         }
 
         if (Subtitles is null)

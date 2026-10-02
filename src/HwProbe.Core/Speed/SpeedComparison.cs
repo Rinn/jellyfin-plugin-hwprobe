@@ -16,9 +16,6 @@ public enum SpeedComparison
     /// <summary>The software encoders' CRF at 18 and 28.</summary>
     Quality = 4,
 
-    /// <summary>jellyfin-web's lowest and highest bitrate for the output height.</summary>
-    Bitrate = 8,
-
     /// <summary>Double-rate deinterlacing, and BWDIF instead of YADIF.</summary>
     Deinterlace = 16,
 

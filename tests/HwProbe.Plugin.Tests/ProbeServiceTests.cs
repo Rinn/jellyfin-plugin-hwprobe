@@ -105,13 +105,13 @@ public sealed class ProbeServiceTests : IDisposable
             MeasureSpeed = (speed, backends, progress, _) =>
             {
                 (asked, measured) = (speed, backends);
-                var result = new SpeedResult(HwType.none, string.Empty, "pattern|720p-h264", string.Empty, 300, 12, false, null);
+                var result = new SpeedResult(HwType.none, string.Empty, "pattern|h264-8mbps", string.Empty, 300, 12, false, null);
                 progress.Report(new SpeedProgress(1, 1, result));
                 return Task.FromResult(new SpeedReport(DateTimeOffset.UnixEpoch, Reports.Sample().Ffmpeg, speed.Method, [result]));
             },
             ServerSpeedSettings = () => new SpeedSettings { EncoderPreset = "fast" },
         };
-        var request = new SpeedRequest("full", [], [], ["Bitrate", "AudioVbr"]) { Repeats = 2, TimeLimitSeconds = 60, EncodingThreadCount = 4 };
+        var request = new SpeedRequest("full", [], [], ["Preset", "AudioVbr"]) { Repeats = 2, TimeLimitSeconds = 60, EncodingThreadCount = 4 };
 
         Assert.Equal(ProbeRunResult.NoReport, await service.StartSpeedAsync(request, ct));
         await service.RunAsync(ct);
@@ -128,7 +128,7 @@ public sealed class ProbeServiceTests : IDisposable
         await service.Background;
 
         Assert.Equal(Reports.Sample().Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device)), measured);
-        Assert.Equal((SpeedMethod.Full, SpeedComparison.Bitrate | SpeedComparison.AudioVbr, "fast", 4), (asked!.Method, asked.Comparisons, asked.Settings.EncoderPreset, asked.Settings.EncodingThreadCount));
+        Assert.Equal((SpeedMethod.Full, SpeedComparison.Preset | SpeedComparison.AudioVbr, "fast", 4), (asked!.Method, asked.Comparisons, asked.Settings.EncoderPreset, asked.Settings.EncodingThreadCount));
         Assert.Equal((SpeedCatalog.DefaultVideos, SpeedCatalog.DefaultOutputs), (asked.Videos, asked.Outputs));
         Assert.Equal((2, TimeSpan.FromMinutes(1)), (asked.Repeats, asked.TimeLimit!.Value));
         Assert.Null(service.RunningSpeedJson());
@@ -155,10 +155,10 @@ public sealed class ProbeServiceTests : IDisposable
             MeasureSpeed = async (speed, backends, progress, token) =>
             {
                 SpeedResult Planned(string test) => new(HwType.none, string.Empty, test, string.Empty, null, null, false, null) { Pending = true };
-                progress.Report(new SpeedProgress(0, 2, null) { Planned = [Planned("pattern|720p-h264"), Planned("pattern|decode")] });
+                progress.Report(new SpeedProgress(0, 2, null) { Planned = [Planned("pattern|h264-8mbps"), Planned("pattern|decode")] });
                 progress.Report(new SpeedProgress(0, 2, null) { Preparing = "Making Test video, H.264" });
                 progress.Report(new SpeedProgress(0, 2, null));
-                var done = new SpeedResult(HwType.none, string.Empty, "pattern|720p-h264", string.Empty, 300, 12, false, null);
+                var done = new SpeedResult(HwType.none, string.Empty, "pattern|h264-8mbps", string.Empty, 300, 12, false, null);
                 progress.Report(new SpeedProgress(1, 2, done));
                 first.SetResult();
                 await proceed.WaitAsync(token);

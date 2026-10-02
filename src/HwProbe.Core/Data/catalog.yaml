@@ -133,17 +133,33 @@ videos:
 
 defaultVideos: [pattern]
 
-# Every video codec Jellyfin transcodes to (EncodingHelper.GetVideoEncoder: H.264, HEVC, AV1; v12.1), at 720p and 1080p. Bitrates are jellyfin-web's top choices for the height (src/components/qualityOptions.js); the range is its lowest and highest, for the bitrate variation.
-outputs:
-  - { key: 720p-h264, label: "720p H.264, 4 Mbps", codec: h264, height: 720, bitrate: 4000000, bitrateRange: [1500000, 4000000], detail: "Video encoded to 720p H.264, audio to stereo AAC; HDR is tone-mapped" }
-  - { key: 720p-hevc, label: "720p HEVC, 4 Mbps", codec: hevc, height: 720, bitrate: 4000000, bitrateRange: [1500000, 4000000], detail: "Video encoded to 720p HEVC, audio to stereo AAC; HDR is tone-mapped" }
-  - { key: 720p-av1, label: "720p AV1, 4 Mbps", codec: av1, height: 720, bitrate: 4000000, bitrateRange: [1500000, 4000000], detail: "Video encoded to 720p AV1, audio to stereo AAC; HDR is tone-mapped" }
-  - { key: 1080p-h264, label: "1080p H.264, 8 Mbps", codec: h264, height: 1080, bitrate: 8000000, bitrateRange: [6000000, 8000000], detail: "Video encoded to 1080p H.264, audio to stereo AAC; HDR is tone-mapped" }
-  - { key: 1080p-hevc, label: "1080p HEVC, 8 Mbps", codec: hevc, height: 1080, bitrate: 8000000, bitrateRange: [6000000, 8000000], detail: "Video encoded to 1080p HEVC, audio to stereo AAC; HDR is tone-mapped" }
-  - { key: 1080p-av1, label: "1080p AV1, 8 Mbps", codec: av1, height: 1080, bitrate: 8000000, bitrateRange: [6000000, 8000000], detail: "Video encoded to 1080p AV1, audio to stereo AAC; HDR is tone-mapped" }
-  - { key: decode, label: Decode only, detail: "Video decoded, nothing encoded" }
+# Outputs are every codec at every quality, as a player asks for them, plus decoding alone; keys are codec-quality, e.g. hevc-8mbps.
+# Every video codec Jellyfin transcodes to (EncodingHelper.GetVideoEncoder, v12.1).
+codecs:
+  - { key: h264, name: H.264, detail: "Video encoded to H.264, audio to stereo AAC; HDR is tone-mapped" }
+  - { key: hevc, name: HEVC, detail: "Video encoded to HEVC, audio to stereo AAC; HDR is tone-mapped" }
+  - { key: av1, name: AV1, detail: "Video encoded to AV1, audio to stereo AAC; HDR is tone-mapped" }
 
-defaultOutputs: [720p-h264]
+# jellyfin-web's player quality choices (qualityOptions.js getVideoQualityOptions, v12.1). The server picks the output size from the bitrate and codec (StreamingHelpers.GetStreamingState, ResolutionNormalizer).
+qualities:
+  - { key: 120mbps, name: 120 Mbps, bitrate: 120000000 }
+  - { key: 80mbps, name: 80 Mbps, bitrate: 80000000 }
+  - { key: 60mbps, name: 60 Mbps, bitrate: 60000000 }
+  - { key: 40mbps, name: 40 Mbps, bitrate: 40000000 }
+  - { key: 20mbps, name: 20 Mbps, bitrate: 20000000 }
+  - { key: 15mbps, name: 15 Mbps, bitrate: 15000000 }
+  - { key: 10mbps, name: 10 Mbps, bitrate: 10000000 }
+  - { key: 8mbps, name: 8 Mbps, bitrate: 8000000 }
+  - { key: 6mbps, name: 6 Mbps, bitrate: 6000000 }
+  - { key: 4mbps, name: 4 Mbps, bitrate: 4000000 }
+  - { key: 3mbps, name: 3 Mbps, bitrate: 3000000 }
+  - { key: 1.5mbps, name: 1.5 Mbps, bitrate: 1500000 }
+  - { key: 720kbps, name: 720 kbps, bitrate: 720000 }
+  - { key: 420kbps, name: 420 kbps, bitrate: 420000 }
+
+decode: { key: decode, label: Decode only, detail: "Video decoded, nothing encoded" }
+
+defaultOutputs: [h264-8mbps]
 
 subtitles:
   # An ASS subtitle shown for the whole of any run: "hwprobe subtitle burn-in" from 0:00 to 10:00:00, as base64 SRT.
@@ -156,7 +172,6 @@ variations:
   - { key: AudioVbr, name: Enable VBR audio encoding, measured: On and off }
   - { key: Preset, name: Encoder preset, measured: One step faster and one step slower }
   - { key: Quality, name: H.264 and HEVC encoding CRF, measured: 18 and 28 (software encoding only) }
-  - { key: Bitrate, name: Bitrate, measured: Lowest and highest offered for the output resolution }
   - { key: Deinterlace, name: "Double the frame rate when deinterlacing, Deinterlacing method", measured: "On, and BWDIF (interlaced input only)" }
   - { key: Paths, name: "Intel low-power encoders, VPP tone mapping, QSV and NVIDIA decoders", measured: Each switched (where the backend has it) }
   - { key: Subtitles, name: Subtitle burn-in, measured: Text (ASS) and image (PGS) subtitles drawn onto the picture }

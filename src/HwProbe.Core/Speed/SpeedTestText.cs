@@ -44,7 +44,7 @@ public static class SpeedTestText
 
     /// <summary>Describes what a test makes from it.</summary>
     /// <param name="test">The test.</param>
-    /// <returns>e.g. <c>720p H.264 at 4 Mbps, stereo AAC</c>, or that it only decodes.</returns>
+    /// <returns>e.g. <c>H.264 at 4 Mbps, stereo AAC</c>, or that it only decodes.</returns>
     public static string Output(SpeedTest test)
     {
         ArgumentNullException.ThrowIfNull(test);
@@ -53,7 +53,8 @@ public static class SpeedTestText
             return "Decoded only, not encoded";
         }
 
-        List<string> parts = [string.Create(CultureInfo.InvariantCulture, $"{Resolution(test.OutputHeight * 16 / 9, test.OutputHeight, false)} {CodecName(test.OutputCodec!)} at {test.Bitrate / 1_000_000.0:0.#} Mbps")];
+        var rate = test.Bitrate >= 1_000_000 ? string.Create(CultureInfo.InvariantCulture, $"{test.Bitrate / 1_000_000.0:0.#} Mbps") : string.Create(CultureInfo.InvariantCulture, $"{test.Bitrate / 1000} kbps");
+        List<string> parts = [$"{CodecName(test.OutputCodec!)} at {rate}"];
         if (test.SourceAudio is not null)
         {
             parts.Add("stereo AAC");
