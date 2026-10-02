@@ -13,7 +13,8 @@
             #HwProbeConfigPage .hwprobe-section { margin-top: 2em; }
             #HwProbeConfigPage .hwprobe-backends td:first-child, #HwProbeConfigPage .hwprobe-backends th:first-child { width: 18em; }
             #HwProbeConfigPage .hwprobe-backends td:nth-child(2), #HwProbeConfigPage .hwprobe-backends th:nth-child(2) { width: 12em; }
-            #HwProbeConfigPage .hwprobe-group td { padding-top: 0.8em; font-weight: 500; opacity: 0.7; }
+            #HwProbeConfigPage .hwprobe-group td { padding-top: 0.8em; font-weight: 500; }
+            #HwProbeConfigPage .hwprobe-group td:nth-child(2) { opacity: 0.7; }
             #HwProbeConfigPage .hwprobe-mark { width: 1.2em; font-weight: bold; }
             #HwProbeConfigPage .hwprobe-on { color: #52b54b; }
             #HwProbeConfigPage .hwprobe-off { color: #e05555; }
@@ -257,7 +258,12 @@
 
                     const settings = selected.settings || [];
                     const table = el('table');
-                    row(table, [el('th'), el('th', 'Option'), el('th', 'Result'), el('th', 'Fix'), el('th')]);
+                    const everything = configured ? settings.filter(differs) : [];
+                    const header = el('th');
+                    if (everything.length > 1) {
+                        header.appendChild(action('Apply all', () => apply(everything)));
+                    }
+                    row(table, [el('th'), el('th', 'Option'), el('th', 'Result'), el('th', 'Fix'), header]);
                     let group = null;
                     for (const a of settings.filter(x => !x.hidden || differs(x))) {
                         if (a.section !== group) {
@@ -265,7 +271,7 @@
                             const pending = configured ? settings.filter(x => x.section === group && differs(x)) : [];
                             const cell = el('td');
                             if (pending.length > 1) {
-                                cell.appendChild(action('Apply all', () => apply(pending)));
+                                cell.appendChild(action('Apply section', () => apply(pending)));
                             }
                             row(table, [el('td'), el('td', group), el('td'), el('td'), cell]).className = 'hwprobe-group';
                         }
