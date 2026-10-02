@@ -372,20 +372,23 @@
       "Jellyfin.Plugin.HwProbe.Cli": {
         "type": "Project",
         "dependencies": {
-          "Jellyfin.Plugin.HwProbe.Core": "[0.1.0, )",
-          "Jellyfin.Plugin.HwProbe.Jellyfin": "[0.1.0, )",
+          "Jellyfin.Plugin.HwProbe.Core": "[0.0.0, )",
+          "Jellyfin.Plugin.HwProbe.Jellyfin": "[0.0.0, )",
           "System.CommandLine": "[2.0.12, )"
         }
       },
       "Jellyfin.Plugin.HwProbe.Core": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "YamlDotNet": "[18.1.0, )"
+        }
       },
       "Jellyfin.Plugin.HwProbe.Jellyfin": {
         "type": "Project",
         "dependencies": {
           "Jellyfin.Controller": "[12.1.0, )",
           "Jellyfin.Model": "[12.1.0, )",
-          "Jellyfin.Plugin.HwProbe.Core": "[0.1.0, )"
+          "Jellyfin.Plugin.HwProbe.Core": "[0.0.0, )"
         }
       },
       "Jellyfin.Controller": {
@@ -416,6 +419,12 @@
         "requested": "[2.0.12, )",
         "resolved": "2.0.12",
         "contentHash": "FpW672e6qqrTd1EfKqsvUtFZaJWlTlszUR1o8tdakXhkzKbnEZVndtpfd4K3fUPCFcIs9UmcswMyYGJP1zp/rg=="
+      },
+      "YamlDotNet": {
+        "type": "CentralTransitive",
+        "requested": "[18.1.0, )",
+        "resolved": "18.1.0",
+        "contentHash": "5K+9KFg2TdTl7VXv88Qzi/0lqK6JFoNP3lRuImPYGRV7K/QYklDyTrj4+A+KAki1JsQi6qKY+hDyY7d6WRqjrw=="
       }
     }
   }

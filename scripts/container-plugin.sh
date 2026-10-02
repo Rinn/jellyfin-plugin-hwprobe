@@ -61,11 +61,11 @@ trap 'podman rm -f --ignore "$name" "$repo" >/dev/null; podman network rm "$net"
 case "$install" in
     copy)
         mkdir -p "$work/config/plugins/HwProbe_$version"
-        cp "$work"/publish/Jellyfin.Plugin.HwProbe*.dll "$work/config/plugins/HwProbe_$version/"
+        cp "$work"/publish/Jellyfin.Plugin.HwProbe*.dll "$work"/publish/YamlDotNet.dll "$work/config/plugins/HwProbe_$version/"
         ;;
     repository)
         zip="hwprobe-plugin_$version.zip"
-        (cd "$work/publish" && zip -q "$work/repo/$zip" Jellyfin.Plugin.HwProbe*.dll)
+        (cd "$work/publish" && zip -q "$work/repo/$zip" Jellyfin.Plugin.HwProbe*.dll YamlDotNet.dll)
         python3 "$root/scripts/manifest.py" --build-yaml "$root/build.yaml" --zip "$work/repo/$zip" \
             --version "$version" --source-url "http://$repo:8000/$zip" --out "$work/repo/manifest.json"
         podman network create "$net" >/dev/null
@@ -140,7 +140,7 @@ check "ffmpeg source" Server "$(printf "%s" "$report" | json 'j["ffmpeg"]["sourc
 check "backends reported" True "$(printf "%s" "$report" | json 'len(j["backends"]) > 0')"
 curl -sf "$base/HwProbe/Diagnostics" -H "$h" -o "$work/diagnostics.zip"
 check "diagnostics zip" True "$(python3 -c "import sys,zipfile; n=zipfile.ZipFile(sys.argv[1]).namelist(); print('report.json' in n and 'ffmpeg/version.txt' in n and any(x.startswith('stderr/') for x in n))" "$work/diagnostics.zip")"
-check "speed videos listed" True "$(curl -sf "$base/HwProbe/SpeedCatalog" -H "$h" | json 'any(v["Key"] == "pattern" and v["Default"] for v in j["Videos"]) and any(o["Key"] == "decode" for o in j["Outputs"])')"
+check "catalog listed" True "$(curl -sf "$base/HwProbe/Catalog" -H "$h" | json 'any(v["Key"] == "pattern" and v["Default"] for v in j["Videos"]) and any(o["Key"] == "decode" for o in j["Outputs"]) and j["Backends"][0]["Type"] == "amf" and j["Tiers"]["FullOpencl"] != ""')"
 check "speed with an unknown video" 400 "$(code -X POST "$base/HwProbe/Speed" -H "$h" -H 'Content-Type: application/json' -d '{"Method":"Quick","Videos":["nope"],"Outputs":[],"Comparisons":[]}')"
 check "start speed run" 202 "$(code -X POST "$base/HwProbe/Speed" -H "$h" -H 'Content-Type: application/json' -d '{"Method":"Quick","Videos":["pattern"],"Outputs":["decode"],"Comparisons":[]}')"
 state=Running

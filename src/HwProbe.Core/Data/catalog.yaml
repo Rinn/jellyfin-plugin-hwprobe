@@ -1,0 +1,228 @@
+# What the plugin page lists and what a speed run can measure. Compiled into HwProbe.Core and read by Data/Catalog.cs.
+# {name} in ffmpeg arguments expands from vars; {piece} is left for the fixture builder.
+
+vars:
+  quiet: -hide_banner -loglevel error -y
+  audio: -f lavfi -i sine=frequency=440:sample_rate=48000
+  audioOut: -ac 6 -c:a aac -b:a 384k
+  sampleAudio: -c:a aac -ac 2 -b:a 192k
+  hdr10: -color_primaries bt2020 -color_trc smpte2084 -colorspace bt2020nc
+  testSource: "{quiet} -f lavfi -i testsrc2=size=1920x1080:rate=24 {audio} -t 10"
+  x265: -c:v libx265 -preset ultrafast -x265-params log-level=error
+
+# Shared fields, merged into entries below with <<.
+templates:
+  # Clips are 10 s (5 s at 4K), as long as one copy's run, and looped with -stream_loop for longer runs.
+  # Test videos carry 5.1 AAC, as films usually do, so the audio Jellyfin encodes (and its VBR setting) is part of the cost.
+  testVideo: &testVideo
+    frameRate: 24
+    width: 1920
+    height: 1080
+    audio: 5.1 AAC
+  # A 30-second piece of a film on Wikimedia Commons, checked against its pinned hash and encoded the same way for every 1080p sample.
+  sampleVideo: &sampleVideo
+    frameRate: 24
+    width: 1920
+    audio: stereo AAC
+  sampleClip: &sampleClip
+    codec: h264
+    bitDepth: 8
+    encoder: libx264
+    arguments: "{quiet} -i {piece} -t 30 -vf fps=24,scale=1920:-2 -c:v libx264 -preset veryfast -crf 18 -maxrate 10M -bufsize 20M -pix_fmt yuv420p {sampleAudio}"
+    keepAcrossBuilds: true
+
+# Every video, in the order the page lists them; the library video is added from a chosen file.
+videos:
+  - <<: *testVideo
+    key: pattern
+    name: Test video, H.264
+    # veryfast keeps CABAC and B-frames, as real files have.
+    clip: { file: speed_1080p_h264.mkv, codec: h264, bitDepth: 8, encoder: libx264, arguments: "{testSource} -c:v libx264 -preset veryfast -pix_fmt yuv420p {audioOut}" }
+  - <<: *testVideo
+    key: pattern-hevc
+    name: Test video, HEVC
+    clip: { file: speed_1080p_hevc.mkv, codec: hevc, bitDepth: 8, encoder: libx265, arguments: "{testSource} {x265} -pix_fmt yuv420p {audioOut}" }
+  - <<: *testVideo
+    key: pattern-hevc10
+    name: Test video, HEVC 10-bit
+    clip: { file: speed_1080p_hevc10.mkv, codec: hevc, bitDepth: 10, encoder: libx265, arguments: "{testSource} {x265} -pix_fmt yuv420p10le {audioOut}" }
+  - <<: *testVideo
+    key: pattern-vp9
+    name: Test video, VP9
+    clip: { file: speed_1080p_vp9.mkv, codec: vp9, bitDepth: 8, encoder: libvpx-vp9, arguments: "{testSource} -c:v libvpx-vp9 -deadline realtime -cpu-used 8 -row-mt 1 -b:v 4M -pix_fmt yuv420p {audioOut}" }
+  - <<: *testVideo
+    key: pattern-av1
+    name: Test video, AV1
+    # SVT-AV1 runs its C code, as the matrix clips do.
+    clip: { file: speed_1080p_av1.mkv, codec: av1, bitDepth: 8, encoder: libsvtav1, arguments: "{testSource} -c:v libsvtav1 -preset 12 -svtav1-params asm=c -pix_fmt yuv420p {audioOut}" }
+  - <<: *testVideo
+    key: pattern-1080i
+    name: Test video, interlaced
+    frameRate: 25
+    # Top field first.
+    clip: { file: speed_1080i_h264.mkv, codec: h264, bitDepth: 8, encoder: libx264, interlaced: true, arguments: "{quiet} -f lavfi -i testsrc2=size=1920x1080:rate=25 {audio} -t 10 -vf setfield=tff -c:v libx264 -preset veryfast -flags +ildct+ilme -x264-params tff=1 -pix_fmt yuv420p {audioOut}" }
+  - <<: *testVideo
+    key: pattern-4k-hdr
+    name: Test video, 4K HDR
+    width: 3840
+    height: 2160
+    clip: { file: speed_2160p_hdr10.mkv, codec: hevc, bitDepth: 10, hdr10: true, encoder: libx265, arguments: "{quiet} -f lavfi -i testsrc2=size=3840x2160:rate=24 {audio} -t 5 {x265} -pix_fmt yuv420p10le {hdr10} {audioOut}" }
+  - <<: *sampleVideo
+    key: live-action
+    name: Live-action + CGI
+    # Films are wider than 16:9, so the height is after scaling to 1920 wide.
+    height: 858
+    sample:
+      title: Tears of Steel
+      credit: Tears of Steel, Blender Foundation (mango.blender.org), CC BY 3.0, via Wikimedia Commons
+      license: https://creativecommons.org/licenses/by/3.0/
+      source: https://commons.wikimedia.org/wiki/File:Tears_of_Steel_in_4k_-_Official_Blender_Foundation_release.webm
+      article: https://en.wikipedia.org/wiki/Tears_of_Steel
+    # 6:39 to 7:11 of Commons' 1080p VP9 transcode.
+    clip:
+      <<: *sampleClip
+      file: sample_live_action.mkv
+      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/1/10/Tears_of_Steel_in_4k_-_Official_Blender_Foundation_release.webm/Tears_of_Steel_in_4k_-_Official_Blender_Foundation_release.webm.1080p.vp9.webm", headerLength: 530, start: 131614236, length: 9768249, sha256: b3156d91f1c27710e6455b3c5d564875c1ea7b960d7d0c082971a7162bcb81f5 }
+  - <<: *sampleVideo
+    key: digital-animation
+    name: 3D animation
+    height: 818
+    sample:
+      title: Sintel
+      credit: Sintel, Blender Foundation (durian.blender.org), CC BY 3.0, via Wikimedia Commons
+      license: https://creativecommons.org/licenses/by/3.0/
+      source: https://commons.wikimedia.org/wiki/File:Sintel_movie_4K.webm
+      article: https://en.wikipedia.org/wiki/Sintel
+    # 5:30 to 6:03.
+    clip:
+      <<: *sampleClip
+      file: sample_digital_animation.mkv
+      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/f/f1/Sintel_movie_4K.webm/Sintel_movie_4K.webm.1080p.vp9.webm", headerLength: 559, start: 96184958, length: 10681045, sha256: 399ed227a21fd5f9e2431e0eeae6407243fcf545422d18c6ab41dcb667426435 }
+  - <<: *sampleVideo
+    key: anime
+    name: Animation
+    height: 1080
+    sample: &solLevante
+      title: Sol Levante
+      credit: Sol Levante, Netflix and Production I.G, CC BY 4.0, via Wikimedia Commons
+      license: https://creativecommons.org/licenses/by/4.0/
+      source: https://commons.wikimedia.org/wiki/File:Sol_Levante.webm
+      article: https://en.wikipedia.org/wiki/Sol_Levante
+    # 1:31 to 2:01.
+    clip:
+      <<: *sampleClip
+      file: sample_anime.mkv
+      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/4/44/Sol_Levante.webm/Sol_Levante.webm.1080p.vp9.webm", headerLength: 991, start: 45210548, length: 13536666, sha256: a97d4180958b16da1dcd69ec429734b779979003aac6655d0b53ae7db0ff3575 }
+  - <<: *sampleVideo
+    key: anime-4k
+    name: Animation 4K HDR
+    width: 3840
+    height: 2160
+    sample: *solLevante
+    # 1:30 to 2:00 of Commons' 4K HDR10 AV1 copy, encoded to 4K HEVC 10-bit HDR10, as 4K HDR files usually are. The 4K encode is slow on a small CPU.
+    clip:
+      file: sample_anime_4k_hdr10.mkv
+      codec: hevc
+      bitDepth: 10
+      hdr10: true
+      encoder: libx265
+      arguments: "{quiet} -i {piece} -t 30 -vf format=yuv420p10le -c:v libx265 -preset veryfast -crf 18 -x265-params log-level=error:hdr10=1:repeat-headers=1 {hdr10} {sampleAudio}"
+      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/4/44/Sol_Levante.webm", headerLength: 1022, start: 563867512, length: 108468322, sha256: eb5c77933efab30d9a1e09f5c554a3492a4a94623d32bf77fdcba43d70e7462d }
+      generateMinutes: 60
+      keepAcrossBuilds: true
+
+defaultVideos: [pattern]
+
+# Bitrates are jellyfin-web's top choices for the height (src/components/qualityOptions.js); the range is its lowest and highest, for the bitrate variation.
+outputs:
+  - { key: 720p-h264, label: "720p H.264, 4 Mbps", codec: h264, height: 720, bitrate: 4000000, bitrateRange: [1500000, 4000000], detail: "Video encoded to 720p H.264, audio to stereo AAC; HDR is tone-mapped" }
+  - { key: 720p-hevc, label: "720p HEVC, 4 Mbps", codec: hevc, height: 720, bitrate: 4000000, bitrateRange: [1500000, 4000000], detail: "Video encoded to 720p HEVC, audio to stereo AAC; HDR is tone-mapped" }
+  - { key: 720p-av1, label: "720p AV1, 4 Mbps", codec: av1, height: 720, bitrate: 4000000, bitrateRange: [1500000, 4000000], detail: "Video encoded to 720p AV1, audio to stereo AAC; HDR is tone-mapped" }
+  - { key: 1080p-h264, label: "1080p H.264, 8 Mbps", codec: h264, height: 1080, bitrate: 8000000, bitrateRange: [6000000, 8000000], detail: "Video encoded to 1080p H.264, audio to stereo AAC; HDR is tone-mapped" }
+  - { key: decode, label: Decode only, detail: "Video decoded, nothing encoded" }
+
+defaultOutputs: [720p-h264]
+
+subtitles:
+  # An ASS subtitle shown for the whole of any run: "hwprobe subtitle burn-in" from 0:00 to 10:00:00, as base64 SRT.
+  text: { file: speed_subtitles.ass, codec: ass, bitDepth: 8, encoder: ass, arguments: "{quiet} -f srt -i \"data:text/plain;base64,MQowMDowMDowMCwwMDAgLS0+IDEwOjAwOjAwLDAwMApod3Byb2JlIHN1YnRpdGxlIGJ1cm4taW4K\" -c:s ass" }
+  # FFmpeg's PGS sample; ffmpeg has no PGS encoder, so it's downloaded.
+  image: { file: speed_pgs_sub.sup, codec: PGSSUB, bitDepth: 8, download: "https://fate-suite.ffmpeg.org/sub/pgs_sub.sup", sha256: ce6d8ed89cf557e34b90d49c5ce955731935c485b93892f69ab276cfe0c36c27 }
+
+# Variations, keyed by SpeedComparison: Jellyfin's own setting names, and the values measured beside the server's.
+variations:
+  - { key: AudioVbr, name: Enable VBR audio encoding, measured: On and off }
+  - { key: Preset, name: Encoder preset, measured: One step faster and one step slower }
+  - { key: Quality, name: H.264 and HEVC encoding CRF, measured: 18 and 28 (software encoding only) }
+  - { key: Bitrate, name: Bitrate, measured: Lowest and highest offered for the output resolution }
+  - { key: Deinterlace, name: "Double the frame rate when deinterlacing, Deinterlacing method", measured: "On, and BWDIF (interlaced input only)" }
+  - { key: Paths, name: "Intel low-power encoders, VPP tone mapping, QSV and NVIDIA decoders", measured: Each switched (where the backend has it) }
+  - { key: Subtitles, name: Subtitle burn-in, measured: Text (ASS) and image (PGS) subtitles drawn onto the picture }
+
+# Accuracy, keyed by SpeedMethod. Seconds per measurement are from runs on real hosts, for the page's estimate; making or downloading clips adds to the first.
+methods:
+  - { key: Quick, name: Fast, description: "Fast: estimates the stream count from one run", seconds: [10, 30] }
+  - { key: Confirm, name: Standard, description: "Standard: estimates, then checks by running that many at once", seconds: [20, 60] }
+  - { key: Full, name: Thorough, description: "Thorough: runs 1, 2, 4, 8 and 16 at once to find the limit; takes longest", seconds: [50, 120] }
+
+defaultMethod: Confirm
+
+repeats:
+  - { value: 1, label: Measure each once }
+  - { value: 2, label: "Measure each twice, report the median" }
+  - { value: 3, label: "Measure each three times, report the median" }
+
+# Seconds per measurement; no value for no limit.
+timeLimits:
+  - { label: No limit }
+  - { value: 30, label: 30 seconds }
+  - { value: 60, label: 1 minute }
+  - { value: 120, label: 2 minutes }
+  - { value: 300, label: 5 minutes }
+
+# Jellyfin's Hardware acceleration dropdown, in its order and with its names (jellyfin-web transcoding.tsx), keyed by HwType.
+# Jellyfin's ffmpeg leaves out backends for other platforms (AMF needs d3d11va, so Windows only).
+# V4L2 and Rockchip encoders are parts of ARM chips, though x86 jellyfin-ffmpeg includes V4L2.
+backends:
+  - { type: amf, name: AMD AMF, platforms: [windows], platformNote: Windows only }
+  - { type: nvenc, name: Nvidia NVENC, platforms: [linux, windows], platformNote: Windows and Linux only }
+  - { type: qsv, name: Intel Quicksync (QSV), platforms: [linux, windows], platformNote: Windows and Linux only }
+  - { type: vaapi, name: Video Acceleration API (VAAPI), platforms: [linux], platformNote: Linux only }
+  - { type: rkmpp, name: Rockchip MPP (RKMPP), platforms: [linux], platformNote: Linux only, armNote: Rockchip devices only }
+  - { type: videotoolbox, name: Apple VideoToolBox, platforms: [macos], platformNote: macOS only }
+  - { type: v4l2m2m, name: Video4Linux2 (V4L2), platforms: [linux], platformNote: Linux only, armNote: ARM devices only }
+
+# Keyed by PipelineTier.
+tiers:
+  FullOpencl: Full GPU pipeline (OpenCL)
+  FullVulkan: Full GPU pipeline (Vulkan)
+  FullMetal: Full GPU pipeline (Metal)
+  FullCuda: Full GPU pipeline (CUDA)
+  Limited: GPU scaling only, no GPU tone mapping
+  LegacyCopyBack: "Copy-back: filters run on the CPU"
+
+# Keyed by BackendVerdict, for backends that don't work.
+verdicts:
+  NotPresent: No device found
+  PermissionDenied: No permission to open the device
+  DevicePresentPipelineBroken: Device found, test transcode failed
+  Untested: Not tested
+
+# Keyed by the report's finding codes.
+findings:
+  opencl-unavailable: "OpenCL unavailable: OpenCL tone mapping fails"
+  legacy-copyback: "Copy-back pipeline: filters run on the CPU"
+  vulkan-interop-unprobed: Vulkan interop not tested
+  unvalidated-backend: Not validated on real hardware
+
+# The settings a speed run started from, as the results list them; keyed by SpeedSettings property.
+settings:
+  encodingThreadCount: Transcoding threads
+  encoderPreset: Encoder preset
+  crf: CRF
+  audioVbr: VBR audio
+  tonemap: Tone mapping
+  lowPower: Intel low power
+  deinterlace: Deinterlacing
+  preferNativeDecoder: OS native decoders
+  enhancedNvdec: Enhanced NVDEC

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Jellyfin.Plugin.HwProbe.Configuration;
+using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Devices;
 using Jellyfin.Plugin.HwProbe.Core.Diagnostics;
 using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
@@ -378,7 +379,7 @@ public sealed partial class ProbeService : IDisposable
             comparisons |= comparison;
         }
 
-        if (request.Repeats is < 1 or > 3 || request.TimeLimitSeconds is < 10 or > 3600)
+        if (!Catalog.Default.Repeats.Any(o => o.Value == request.Repeats) || !Catalog.Default.TimeLimits.Any(o => o.Value == request.TimeLimitSeconds))
         {
             return null;
         }

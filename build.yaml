@@ -13,5 +13,6 @@ artifacts:
 - "Jellyfin.Plugin.HwProbe.dll"
 - "Jellyfin.Plugin.HwProbe.Core.dll"
 - "Jellyfin.Plugin.HwProbe.Jellyfin.dll"
+- "YamlDotNet.dll"
 changelog: >
   See the release notes.

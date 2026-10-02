@@ -7,10 +7,10 @@ namespace Jellyfin.Plugin.HwProbe.Probing;
 /// <param name="Comparisons">Comparison names: AudioVbr, Preset, Quality, Bitrate, Deinterlace, Paths.</param>
 public sealed record SpeedRequest(string Method, IReadOnlyList<string> Videos, IReadOnlyList<string> Outputs, IReadOnlyList<string> Comparisons)
 {
-    /// <summary>Gets how many times each measurement runs (1 to 3); more than once reports the median.</summary>
+    /// <summary>Gets how many times each measurement runs, one of the catalog's repeats; more than once reports the median.</summary>
     public int Repeats { get; init; } = 1;
 
-    /// <summary>Gets the seconds each measurement may take before it reports what it has (10 to 3600), or null for no limit.</summary>
+    /// <summary>Gets the seconds each measurement may take before it reports what it has, one of the catalog's time limits, or null for no limit.</summary>
     public int? TimeLimitSeconds { get; init; }
 
     /// <summary>Gets the library item the <c>library</c> video reads, or null.</summary>

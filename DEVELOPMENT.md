@@ -5,6 +5,7 @@
 | Path | Contents |
 |---|---|
 | `src/HwProbe.Core` | Probe engine. No Jellyfin dependency. |
+| `src/HwProbe.Core/Data/catalog.yaml` | What the plugin page lists and what a speed run measures: videos and their clips, outputs, variations, accuracies, repeats, time limits, and the labels for backends, tiers, verdicts and findings. Compiled into Core; `Catalog.Parse` refuses a file that leaves out an enum value or uses an unknown placeholder. The page reads it from `HwProbe/Catalog`. |
 | `src/HwProbe.Jellyfin` | Builds ffmpeg commands with Jellyfin's own `EncodingHelper`. |
 | `src/HwProbe.Cli` | The `hwprobe` command-line tool. |
 | `src/HwProbe.Plugin` | The Jellyfin plugin. |
@@ -42,7 +43,7 @@ HWPROBE_INSTALL=existing HWPROBE_BASE=http://host:18096 scripts/container-plugin
 
 ## Speed runs
 
-`SpeedEngine` measures every chosen output from every chosen video in `SpeedCatalog` (a test is a video|output pair) on each viable backend and software, reporting each result as it finishes. Arguments come from `EncodingHelper` with `ProbeCell.FullQuality` (quality, audio and input arguments, as a real request gets them); `SpeedCommandLine` loops the inputs and bounds the run with `-t`. `SpeedMeter` does the counting and is tested without ffmpeg. A library file (`SpeedFile`) comes from the item's media source in the plugin and from ffprobe (`FfprobeFile`) in the CLI, as the `library` video, read from a tenth of the way in. Clips are generated with the server's ffmpeg and cached with the other fixtures; the PGS sample is downloaded from FFmpeg's FATE suite.
+`SpeedEngine` measures every chosen output from every chosen video in `SpeedCatalog` (read from `catalog.yaml`; a test is a video|output pair) on each viable backend and software, reporting each result as it finishes. Arguments come from `EncodingHelper` with `ProbeCell.FullQuality` (quality, audio and input arguments, as a real request gets them); `SpeedCommandLine` loops the inputs and bounds the run with `-t`. `SpeedMeter` does the counting and is tested without ffmpeg. A library file (`SpeedFile`) comes from the item's media source in the plugin and from ffprobe (`FfprobeFile`) in the CLI, as the `library` video, read from a tenth of the way in. Clips are generated with the server's ffmpeg and cached with the other fixtures; the PGS sample is downloaded from FFmpeg's FATE suite.
 
 ```sh
 hwprobe --speed confirm --speed-videos pattern,live-action --speed-outputs 720p-h264,decode --speed-compare preset,vbr --speed-repeats 2 --speed-time-limit 120 --speed-json speed.json

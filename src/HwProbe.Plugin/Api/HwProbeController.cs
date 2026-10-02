@@ -79,12 +79,11 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
         var other => Problem($"Unexpected result {other}."),
     };
 
-    /// <summary>Returns every video and output a speed run can use, for the page's choices.</summary>
-    /// <returns>The videos and outputs.</returns>
-    [HttpGet("SpeedCatalog")]
+    /// <summary>Returns everything the page lists: speed videos, outputs and choices, and the labels for backends and results.</summary>
+    /// <returns>The catalog.</returns>
+    [HttpGet("Catalog")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public ActionResult<SpeedCatalogInfo> SpeedCatalog() =>
-        Ok(new SpeedCatalogInfo([.. Core.Speed.SpeedCatalog.Videos.Select(SpeedVideoInfo.From)], [.. Core.Speed.SpeedCatalog.Outputs.Select(SpeedOutputInfo.From)]));
+    public ActionResult<CatalogInfo> Catalog() => Ok(CatalogInfo.From(Core.Data.Catalog.Default));
 
     /// <summary>Describes a library item's file as a speed run video.</summary>
     /// <param name="itemId">The movie or episode.</param>

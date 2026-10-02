@@ -120,7 +120,7 @@
                 // While a speed run goes, its results so far; shown in place of the saved run.
                 let speedLive = null;
                 let speedProgress = null;
-                let speedMethod = 'Confirm';
+                let speedMethod = null;
                 let speedRepeats = 1;
                 let speedTimeLimit = null;
                 let chosenVideos = null;
@@ -133,56 +133,41 @@
                 // The current Speed section's estimate; one listener calls it, however often the section is redrawn.
                 let speedUpdate = () => {};
                 const speedCompared = new Set();
-                // The server's method names, shown by how much they check.
-                const methods = {
-                    Quick: ['Fast', 'Fast: estimates the stream count from one run'],
-                    Confirm: ['Standard', 'Standard: estimates, then checks by running that many at once'],
-                    Full: ['Thorough', 'Thorough: runs 1, 2, 4, 8 and 16 at once to find the limit; takes longest']
-                };
+                // Labels and choices from the server's catalog (catalog.yaml in HwProbe.Core), filled in by loadReport.
+                let methods = {};
+                let methodSeconds = {};
+                let comparisons = {};
+                let repeatOptions = [];
+                let timeLimitOptions = [];
+                let names = {};
+                let order = [];
+                let platforms = {};
+                let armOnly = {};
+                let tiers = {};
+                let verdicts = {};
+                let notes = {};
+                let settingLabels = {};
                 const methodName = m => (methods[m] || [m])[0];
-                // Jellyfin's own setting names, and the values measured beside the server's.
-                const comparisons = {
-                    AudioVbr: ['Enable VBR audio encoding', 'On and off'],
-                    Preset: ['Encoder preset', 'One step faster and one step slower'],
-                    Quality: ['H.264 and HEVC encoding CRF', '18 and 28 (software encoding only)'],
-                    Bitrate: ['Bitrate', 'Lowest and highest offered for the output resolution'],
-                    Deinterlace: ['Double the frame rate when deinterlacing, Deinterlacing method', 'On, and BWDIF (interlaced input only)'],
-                    Paths: ['Intel low-power encoders, VPP tone mapping, QSV and NVIDIA decoders', 'Each switched (where the backend has it)'],
-                    Subtitles: ['Subtitle burn-in', 'Text (ASS) and image (PGS) subtitles drawn onto the picture']
-                };
-
-                // The names and order of Jellyfin's Hardware acceleration dropdown.
-                const names = {
-                    amf: 'AMD AMF',
-                    nvenc: 'Nvidia NVENC',
-                    qsv: 'Intel Quicksync (QSV)',
-                    vaapi: 'Video Acceleration API (VAAPI)',
-                    rkmpp: 'Rockchip MPP (RKMPP)',
-                    videotoolbox: 'Apple VideoToolBox',
-                    v4l2m2m: 'Video4Linux2 (V4L2)'
-                };
-                const order = Object.keys(names);
                 const byDropdown = (a, b) => order.indexOf(a.type) - order.indexOf(b.type);
-                const tiers = {
-                    FullOpencl: 'Full GPU pipeline (OpenCL)',
-                    FullVulkan: 'Full GPU pipeline (Vulkan)',
-                    FullMetal: 'Full GPU pipeline (Metal)',
-                    FullCuda: 'Full GPU pipeline (CUDA)',
-                    Limited: 'GPU scaling only, no GPU tone mapping',
-                    LegacyCopyBack: 'Copy-back: filters run on the CPU'
-                };
-                const verdicts = {
-                    NotPresent: 'No device found',
-                    PermissionDenied: 'No permission to open the device',
-                    DevicePresentPipelineBroken: 'Device found, test transcode failed',
-                    Untested: 'Not tested'
-                };
-                const notes = {
-                    'opencl-unavailable': 'OpenCL unavailable: OpenCL tone mapping fails',
-                    'legacy-copyback': 'Copy-back pipeline: filters run on the CPU',
-                    'vulkan-interop-unprobed': 'Vulkan interop not tested',
-                    'unvalidated-backend': 'Not validated on real hardware'
-                };
+
+                function useCatalog(c) {
+                    methods = Object.fromEntries(c.Methods.map(m => [m.Key, [m.Name, m.Description]]));
+                    methodSeconds = Object.fromEntries(c.Methods.map(m => [m.Key, m.Seconds]));
+                    comparisons = Object.fromEntries(c.Variations.map(v => [v.Key, [v.Name, v.Measured]]));
+                    repeatOptions = c.Repeats.map(o => [o.Value, o.Label]);
+                    timeLimitOptions = c.TimeLimits.map(o => [o.Value === undefined || o.Value === null ? '' : o.Value, o.Label]);
+                    names = Object.fromEntries(c.Backends.map(b => [b.Type, b.Name]));
+                    order = c.Backends.map(b => b.Type);
+                    platforms = Object.fromEntries(c.Backends.map(b => [b.Type, [b.Platforms, b.PlatformNote]]));
+                    armOnly = Object.fromEntries(c.Backends.filter(b => b.ArmNote).map(b => [b.Type, b.ArmNote]));
+                    tiers = c.Tiers;
+                    verdicts = c.Verdicts;
+                    notes = c.Findings;
+                    settingLabels = c.Settings;
+                    speedVideos = c.Videos;
+                    speedOutputs = c.Outputs;
+                    speedMethod = speedMethod || c.DefaultMethod;
+                }
 
                 function el(tag, text, className) {
                     const node = document.createElement(tag);
@@ -242,26 +227,12 @@
                     return table;
                 }
 
-                // Jellyfin's ffmpeg leaves out backends for other platforms (AMF needs d3d11va, so Windows only).
-                const platforms = {
-                    videotoolbox: [['macos'], 'macOS only'],
-                    amf: [['windows'], 'Windows only'],
-                    rkmpp: [['linux'], 'Linux only'],
-                    vaapi: [['linux'], 'Linux only'],
-                    v4l2m2m: [['linux'], 'Linux only'],
-                    qsv: [['linux', 'windows'], 'Windows and Linux only'],
-                    nvenc: [['linux', 'windows'], 'Windows and Linux only'],
-                };
-
                 function notBuilt(type) {
                     const platform = platforms[type];
                     return (platform && platform[0].indexOf(report.host.os) === -1 ? platform[1] : null)
                         || wrongArchitecture(type)
                         || 'Not built into ffmpeg';
                 }
-
-                // V4L2 and Rockchip encoders are parts of ARM chips, though x86 jellyfin-ffmpeg includes V4L2.
-                const armOnly = { v4l2m2m: 'ARM devices only', rkmpp: 'Rockchip devices only' };
 
                 function wrongArchitecture(type) {
                     const arch = report.host.architecture || 'unknown';
@@ -915,8 +886,7 @@
                         const videos = allVideos().filter(v => chosenVideos.has(v.Key)).length;
                         const outputs = chosenOutputs.size;
                         const runs = speedRuns(viable);
-                        // Seconds per measurement by accuracy, from runs on real hosts; generating or downloading clips adds to the first run.
-                        const per = { Quick: [10, 30], Confirm: [20, 60], Full: [50, 120] }[speedMethod] || [20, 60];
+                        const per = methodSeconds[speedMethod] || [20, 60];
                         const minutes = n => Math.max(1, Math.round(n / 60));
                         const cap = n => speedTimeLimit ? Math.min(n, speedTimeLimit) : n;
                         const low = minutes(runs * cap(per[0] * speedRepeats));
@@ -967,8 +937,8 @@
                         select.addEventListener('change', () => { onChange(select.value); update(); });
                     };
                     options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });
-                    options('Repeats', [[1, 'Measure each once'], [2, 'Measure each twice, report the median'], [3, 'Measure each three times, report the median']], speedRepeats, v => { speedRepeats = Number(v); });
-                    options('Time limit per measurement', [['', 'No limit'], [30, '30 seconds'], [60, '1 minute'], [120, '2 minutes'], [300, '5 minutes']], speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); });
+                    options('Repeats', repeatOptions, speedRepeats, v => { speedRepeats = Number(v); });
+                    options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); });
                     container.appendChild(el('div', 'A measurement that reaches the limit stops and reports what it measured.', 'fieldDescription'));
 
                     button = action('Measure speed', () => {
@@ -1149,16 +1119,16 @@
                 function settingsRows(t) {
                     const onOff = on => on ? 'On' : 'Off';
                     return [
-                        ['Transcoding threads', t.encodingThreadCount > 0 ? String(t.encodingThreadCount) : 'Automatic'],
-                        ['Encoder preset', t.encoderPreset || 'Auto (veryfast)'],
-                        ['CRF', 'H.264 ' + t.h264Crf + ', HEVC ' + t.h265Crf],
-                        ['VBR audio', onOff(t.audioVbr)],
-                        ['Tone mapping', onOff(t.tonemap) + (t.vppTonemap ? ', VPP' : '')],
-                        ['Intel low power', 'H.264 ' + onOff(t.lowPowerH264) + ', HEVC ' + onOff(t.lowPowerHevc)],
-                        ['Deinterlacing', (t.bwdif ? 'BWDIF' : 'YADIF') + (t.doubleRate ? ', double rate' : '')],
-                        ['OS native decoders', onOff(t.preferNativeDecoder)],
-                        ['Enhanced NVDEC', onOff(t.enhancedNvdec)]
-                    ];
+                        ['encodingThreadCount', t.encodingThreadCount > 0 ? String(t.encodingThreadCount) : 'Automatic'],
+                        ['encoderPreset', t.encoderPreset || 'Auto (veryfast)'],
+                        ['crf', 'H.264 ' + t.h264Crf + ', HEVC ' + t.h265Crf],
+                        ['audioVbr', onOff(t.audioVbr)],
+                        ['tonemap', onOff(t.tonemap) + (t.vppTonemap ? ', VPP' : '')],
+                        ['lowPower', 'H.264 ' + onOff(t.lowPowerH264) + ', HEVC ' + onOff(t.lowPowerHevc)],
+                        ['deinterlace', (t.bwdif ? 'BWDIF' : 'YADIF') + (t.doubleRate ? ', double rate' : '')],
+                        ['preferNativeDecoder', onOff(t.preferNativeDecoder)],
+                        ['enhancedNvdec', onOff(t.enhancedNvdec)]
+                    ].map(([key, value]) => [settingLabels[key] || key, value]);
                 }
 
                 function streamsText(x) {
@@ -1216,13 +1186,12 @@
                         .then(h => { history = h || []; }, () => { history = []; });
                     const pending = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/RestartRequired'), dataType: 'json' })
                         .then(r => { restartRequired = r === true; }, () => { restartRequired = false; });
-                    const tests = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedCatalog'), dataType: 'json' })
-                        .then(c => { speedVideos = c.Videos || []; speedOutputs = c.Outputs || []; }, () => { speedVideos = []; speedOutputs = []; });
+                    const catalog = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Catalog'), dataType: 'json' }).then(useCatalog, () => {});
                     const speed = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Speed'), dataType: 'json' })
                         .then(r => { speedReport = r; speedViewing = null; }, () => { speedReport = null; speedViewing = null; });
                     const runs = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedHistory'), dataType: 'json' })
                         .then(h => { speedHistory = h || []; }, () => { speedHistory = []; });
-                    return Promise.all([config, server, data, changes, pending, tests, speed, runs]).then(() => { renderChange(); render(); });
+                    return Promise.all([config, server, data, changes, pending, catalog, speed, runs]).then(() => { renderChange(); render(); });
                 }
 
                 // jellyfin-web keeps a loaded plugin page until the browser reloads, so after an update this tab could
