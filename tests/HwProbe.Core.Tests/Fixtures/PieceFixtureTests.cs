@@ -33,6 +33,24 @@ public sealed class PieceFixtureTests : IDisposable
         Assert.Equal(2, downloader.Calls);
     }
 
+    /// <summary>A piece with no encode is the clip itself, cached with its manifest; nothing is run.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task PieceWithoutEncodeIsTheClip()
+    {
+        var downloader = new ScriptedDownloader(_file);
+        var spec = Spec(Convert.ToHexStringLower(SHA256.HashData([.. _file[..10], .. _file[500..600]]))) with { FileName = "sample.webm", EncodeArguments = string.Empty, RequiredEncoder = null };
+
+        var result = await BuildAsync(spec, downloader);
+
+        Assert.Equal(FixtureStatus.Available, result.Status);
+        var saved = await File.ReadAllBytesAsync(result.Path!, TestContext.Current.CancellationToken);
+        Assert.Equal(_file[..10].Concat(_file[500..600]), saved);
+        Assert.Empty(_runner.Invocations);
+        await BuildAsync(spec, downloader);
+        Assert.Equal(2, downloader.Calls);
+    }
+
     /// <summary>A clip that copies another reads it from the same cache directory, as <c>{clip:name}</c>.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

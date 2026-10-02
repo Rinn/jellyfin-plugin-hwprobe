@@ -226,7 +226,7 @@ public sealed partial class Catalog
         {
             var unknown = Placeholder().Matches(Expand(clip.Arguments)).Select(m => m.Groups[1].Value).Where(n => n != "piece" || clip.Piece is null).ToList();
             var hash = clip.Piece?.Sha256 ?? clip.Sha256;
-            var made = clip.Arguments.Length > 0 || clip.Download is not null;
+            var made = clip.Arguments.Length > 0 || clip.Download is not null || clip.Piece is not null;
             if (unknown.Count > 0 || (hash is not null && !Sha256().IsMatch(hash)) || (clip.Download is not null && clip.Sha256 is null) || !made)
             {
                 throw new InvalidDataException($"catalog.yaml: {clip.File} needs arguments or a download with a lowercase SHA-256, and no unknown placeholders ({string.Join(", ", unknown)}).");

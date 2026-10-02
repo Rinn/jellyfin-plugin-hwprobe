@@ -21,15 +21,13 @@ public sealed class CatalogTests
         Assert.Equal("Live-action + CGI", SpeedCatalog.FindVideo("live-action")!.Name);
     }
 
-    /// <summary>Placeholders expand, including ones inside other placeholders, and the fixture builder's ({clip:…}, {piece}) are left.</summary>
+    /// <summary>Placeholders expand, including ones inside other placeholders, and the fixture builder's {clip:…} is left.</summary>
     [Fact]
     public void ArgumentsExpand()
     {
         var pattern = SpeedCatalog.FindVideo("pattern")!.Fixture!.EncodeArguments;
-        var sample = SpeedCatalog.FindVideo("anime")!.Fixture!.EncodeArguments;
 
         Assert.Equal("-hide_banner -loglevel error -y -f lavfi -i testsrc2=size=1920x1080:rate=24 -i {clip:speed_audio_51.mka} -t 10 -c:v libx264 -preset medium -pix_fmt yuv420p -map 0:v -map 1:a -c:a copy", pattern);
-        Assert.Contains("-i {piece} ", sample, StringComparison.Ordinal);
     }
 
     /// <summary>A file that leaves out an enum value, misspells a field or uses an unknown placeholder is refused.</summary>

@@ -93,7 +93,8 @@ public sealed class SpeedVariantsTests
         Assert.Equal("AV1 at 420 kbps, stereo AAC", SpeedTestText.Output(SpeedCatalog.Find("pattern|av1-420kbps")!));
         Assert.Equal("Decoded only, not encoded", SpeedTestText.Output(SpeedCatalog.Find("anime|decode")!));
         Assert.Equal(("Live-action + CGI", "Tears of Steel", "2 MB download"), (SpeedCatalog.FindVideo("live-action")!.Name, SpeedCatalog.FindVideo("live-action")!.Title, SpeedCatalog.FindVideo("live-action")!.Origin));
-        Assert.StartsWith("1080p H.264", SpeedTestText.Input(SpeedCatalog.FindVideo("live-action")!), StringComparison.Ordinal);
+        Assert.Equal("1080p VP9, 24 fps, stereo Opus", SpeedTestText.Input(SpeedCatalog.FindVideo("live-action")!));
+        Assert.Equal(("av1", 12, "Professional"), (SpeedCatalog.FindVideo("anime-4k")!.Fixture!.Codec, SpeedCatalog.FindVideo("anime-4k")!.Fixture!.BitDepth, SpeedCatalog.FindVideo("anime-4k")!.Fixture!.Profile));
     }
 
     /// <summary>A speed report round-trips through JSON with string enums.</summary>

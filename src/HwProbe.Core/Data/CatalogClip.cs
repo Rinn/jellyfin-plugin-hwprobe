@@ -36,6 +36,18 @@ internal sealed class CatalogClip
     /// <summary>Gets a longer time limit for making the clip, in minutes, or null.</summary>
     public int? GenerateMinutes { get; init; }
 
+    /// <summary>Gets the pixel format Jellyfin reports when it isn't 4:2:0 at the bit depth, or null.</summary>
+    public string? PixelFormat { get; init; }
+
+    /// <summary>Gets the profile Jellyfin reports, e.g. <c>Professional</c>, or null.</summary>
+    public string? Profile { get; init; }
+
+    /// <summary>Gets the audio codec as Jellyfin reports it, or null for 5.1 AAC.</summary>
+    public string? AudioCodec { get; init; }
+
+    /// <summary>Gets the audio channel count, or null for 5.1 AAC's six.</summary>
+    public int? AudioChannels { get; init; }
+
     /// <summary>Gets a value indicating whether the clip is kept across ffmpeg builds.</summary>
     public bool KeepAcrossBuilds { get; init; }
 }

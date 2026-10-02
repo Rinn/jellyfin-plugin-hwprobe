@@ -6,7 +6,6 @@ vars:
   # The test videos copy one 5.1 AAC track, made once.
   audio: "-i {clip:speed_audio_51.mka}"
   audioOut: -map 0:v -map 1:a -c:a copy
-  sampleAudio: -c:a aac -ac 2 -b:a 192k
   hdr10: -color_primaries bt2020 -color_trc smpte2084 -colorspace bt2020nc
   testSource: "{quiet} -f lavfi -i testsrc2=size=1920x1080:rate=24 {audio} -t 10"
   x265: -c:v libx265 -preset medium -x265-params log-level=error
@@ -20,16 +19,15 @@ templates:
     width: 1920
     height: 1080
     audio: 5.1 AAC
-  # A 10-second piece of a film on Wikimedia Commons, checked against its pinned hash and encoded the same way for every 1080p sample.
   sampleVideo: &sampleVideo
     frameRate: 24
     width: 1920
-    audio: stereo AAC
+  # A 10-second piece of a film on Wikimedia Commons, checked against its pinned hash and measured as downloaded.
   sampleClip: &sampleClip
-    codec: h264
+    codec: vp9
     bitDepth: 8
-    encoder: libx264
-    arguments: "{quiet} -i {piece} -t 10 -vf fps=24,scale=1920:-2 -c:v libx264 -preset medium -crf 18 -maxrate 10M -bufsize 20M -pix_fmt yuv420p {sampleAudio}"
+    audioCodec: opus
+    audioChannels: 2
     keepAcrossBuilds: true
 
 # The 5.1 AAC track every test video copies, made once (a 440 Hz tone).
@@ -73,8 +71,9 @@ videos:
   - <<: *sampleVideo
     key: live-action
     name: Live-action + CGI
-    # Films are wider than 16:9, so the height is after scaling to 1920 wide.
+    # Films are wider than 16:9.
     height: 858
+    audio: stereo Opus
     sample:
       title: Tears of Steel
       credit: Tears of Steel, Blender Foundation (mango.blender.org), CC BY 3.0, via Wikimedia Commons
@@ -84,54 +83,59 @@ videos:
     # 6:39 to 6:49 of Commons' 1080p VP9 transcode.
     clip:
       <<: *sampleClip
-      file: sample_live_action.mkv
+      file: sample_live_action.webm
       piece: { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/1/10/Tears_of_Steel_in_4k_-_Official_Blender_Foundation_release.webm/Tears_of_Steel_in_4k_-_Official_Blender_Foundation_release.webm.1080p.vp9.webm", headerLength: 530, start: 131614236, length: 2131288, sha256: 0da88a6b1572b095bac20cb490485652feee5ab7fc45e82438174871ce657e96 }
   - <<: *sampleVideo
     key: digital-animation
     name: 3D animation
     height: 818
+    audio: 5.1 Opus
     sample:
       title: Sintel
       credit: Sintel, Blender Foundation (durian.blender.org), CC BY 3.0, via Wikimedia Commons
       license: https://creativecommons.org/licenses/by/3.0/
       source: https://commons.wikimedia.org/wiki/File:Sintel_movie_4K.webm
       article: https://en.wikipedia.org/wiki/Sintel
-    # 5:30 to 5:40.
+    # 5:30 to 5:42; pieces end on a keyframe.
     clip:
       <<: *sampleClip
-      file: sample_digital_animation.mkv
+      file: sample_digital_animation.webm
+      audioChannels: 6
       piece: { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/f/f1/Sintel_movie_4K.webm/Sintel_movie_4K.webm.1080p.vp9.webm", headerLength: 559, start: 96184958, length: 5440342, sha256: b9b721186ca9cb06bb1b1d961566b56e9f355a7b55df4ba37ab4c55529901902 }
   - <<: *sampleVideo
     key: anime
     name: Animation
     height: 1080
+    audio: stereo Opus
     sample: &solLevante
       title: Sol Levante
       credit: Sol Levante, Netflix and Production I.G, CC BY 4.0, via Wikimedia Commons
       license: https://creativecommons.org/licenses/by/4.0/
       source: https://commons.wikimedia.org/wiki/File:Sol_Levante.webm
       article: https://en.wikipedia.org/wiki/Sol_Levante
-    # 1:31 to 1:41.
+    # 1:31 to 1:43.
     clip:
       <<: *sampleClip
-      file: sample_anime.mkv
+      file: sample_anime.webm
       piece: { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/4/44/Sol_Levante.webm/Sol_Levante.webm.1080p.vp9.webm", headerLength: 991, start: 45210548, length: 5534544, sha256: b922a2619a09f50e4e07ea31a083000c5d0b87ee789a36cf7673e8a4385ef5e5 }
   - <<: *sampleVideo
     key: anime-4k
     name: Animation 4K HDR
     width: 3840
     height: 2160
+    audio: stereo Opus
     sample: *solLevante
-    # 1:30 to 1:40 of Commons' 4K HDR10 AV1 copy, encoded to 4K HEVC 10-bit HDR10, as 4K HDR files usually are.
+    # 1:30 to 1:40 of Commons' 4K HDR10 AV1 copy: Professional profile, 4:4:4 12-bit, which GPUs don't decode.
     clip:
-      file: sample_anime_4k_hdr10.mkv
-      codec: hevc
-      bitDepth: 10
+      file: sample_anime_4k_hdr10.webm
+      codec: av1
+      bitDepth: 12
       hdr10: true
-      encoder: libx265
-      arguments: "{quiet} -i {piece} -t 10 -vf format=yuv420p10le -c:v libx265 -preset medium -crf 18 -x265-params log-level=error:hdr10=1:repeat-headers=1 {hdr10} {sampleAudio}"
+      pixelFormat: yuv444p12le
+      profile: Professional
+      audioCodec: opus
+      audioChannels: 2
       piece: { url: "https://upload.wikimedia.org/wikipedia/commons/4/44/Sol_Levante.webm", headerLength: 1022, start: 563867512, length: 41717413, sha256: fec256fda981bccd45a3af3cdb7b1aec69ea1c24bee7d5ae0884c55e8ed0e29d }
-      generateMinutes: 10
       keepAcrossBuilds: true
 
 defaultVideos: [pattern]

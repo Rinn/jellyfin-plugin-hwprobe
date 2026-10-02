@@ -100,6 +100,10 @@ public static class SpeedCatalog
             Piece = clip.Piece is not { } piece ? null : new FixturePiece(new Uri(piece.Url), piece.HeaderLength, piece.Start, piece.Length, piece.Sha256),
             GenerateTimeout = clip.GenerateMinutes is { } minutes ? TimeSpan.FromMinutes(minutes) : null,
             KeepAcrossBuilds = clip.KeepAcrossBuilds,
+            PixelFormat = clip.PixelFormat,
+            Profile = clip.Profile,
+            AudioCodec = clip.AudioCodec,
+            AudioChannels = clip.AudioChannels,
         };
 
     /// <summary>Returns a catalog video.</summary>

@@ -193,6 +193,18 @@ public sealed partial class FixtureBuilder
             return new FixtureResult(spec, FixtureStatus.Available, path, null);
         }
 
+        // A piece with no encode is the clip itself.
+        if (spec.Piece is { } exact && spec.EncodeArguments.Length == 0)
+        {
+            if (await FetchPieceAsync(spec, exact, path, cancellationToken) is { } missing)
+            {
+                return missing;
+            }
+
+            await File.WriteAllTextAsync(path + ManifestSuffix, await DescribeAsync(path, spec, cancellationToken), cancellationToken);
+            return new FixtureResult(spec, FixtureStatus.Available, path, null);
+        }
+
         string? piece = null;
         if (spec.Piece is { } wanted)
         {
