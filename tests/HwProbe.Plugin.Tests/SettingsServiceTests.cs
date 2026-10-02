@@ -28,7 +28,7 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.False(_harness.Service.RestartRequired);
         Assert.Equal(
             [
-                new AppliedChange("HardwareDecodingCodecs:hevc", "false", "true") { Label = "HEVC" },
+                new AppliedChange("HardwareDecodingCodecs:hevc", "false", "true") { Label = "Hardware decoding: HEVC" },
                 new AppliedChange("AllowAv1Encoding", "true", "false") { Label = "Allow encoding in AV1 format" },
             ],
             result.Changes);
@@ -188,14 +188,14 @@ public sealed class SettingsServiceTests : IDisposable
 
         Assert.Equal(ApplyOutcome.Applied, revert.Outcome);
         Assert.Equal(["h264"], _harness.Saved.HardwareDecodingCodecs);
-        Assert.Contains("AllowAv1Encoding", revert.Reason, StringComparison.Ordinal);
+        Assert.Contains("Allow encoding in AV1 format", revert.Reason, StringComparison.Ordinal);
         Assert.Equal(ApplyOutcome.NothingToRevert, (await _harness.Service.RevertAsync("admin", ct)).Outcome);
 
         var history = await _harness.Service.HistoryAsync(ct);
         Assert.Equal([HistoryKind.Apply, HistoryKind.Revert], history.Select(e => e.Kind));
         Assert.NotNull(history[0].RevertedUtc);
         Assert.Equal("admin", history[0].User);
-        Assert.Equal("HEVC", history[0].Changes[0].Label);
+        Assert.Equal("Hardware decoding: HEVC", history[0].Changes[0].Label);
     }
 
     /// <inheritdoc/>

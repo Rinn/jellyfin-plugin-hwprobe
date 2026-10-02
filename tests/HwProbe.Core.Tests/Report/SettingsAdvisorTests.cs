@@ -281,8 +281,9 @@ public sealed class SettingsAdvisorTests
     /// <param name="setting">The setting key.</param>
     /// <param name="label">Its label.</param>
     [Theory]
-    [InlineData("HardwareDecodingCodecs:hevc", "HEVC")]
-    [InlineData("HardwareDecodingCodecs:mpeg4", "MPEG4")]
+    [InlineData("HardwareDecodingCodecs:hevc", "Hardware decoding: HEVC")]
+    [InlineData("HardwareDecodingCodecs:mpeg4", "Hardware decoding: MPEG4")]
+    [InlineData("EnableDecodingColorDepth10Hevc", "Hardware decoding: HEVC 10bit")]
     [InlineData("EnableEnhancedNvdecDecoder", "Enable enhanced NVDEC decoder")]
     [InlineData("EnableVideoToolboxTonemapping", "Enable VideoToolbox Tone mapping")]
     [InlineData("DeinterlaceMethod:bwdif", "Deinterlacing method: BWDIF")]

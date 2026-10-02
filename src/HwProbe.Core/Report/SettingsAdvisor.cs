@@ -35,7 +35,7 @@ public static class SettingsAdvisor
             var row = new BackendReport(type, string.Empty, BackendVerdict.Viable, PipelineTier.Unknown, new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), deinterlace, new Dictionary<string, ProbeOutcome>(), string.Empty);
             foreach (var advice in For(row, new AdviceContext(HostOs.Linux, InContainer: false, OpenclUnavailable: false)))
             {
-                labels.TryAdd(advice.Setting, advice.Section == TrickplaySection ? "Trickplay: " + advice.Label : advice.Label);
+                labels.TryAdd(advice.Setting, Qualified(advice));
             }
         }
 
@@ -71,7 +71,7 @@ public static class SettingsAdvisor
 
     /// <summary>Returns the label the settings list gives a setting key, e.g. <c>HEVC</c> for <c>HardwareDecodingCodecs:hevc</c>.</summary>
     /// <param name="setting">The setting key.</param>
-    /// <returns>The label, with <c>Trickplay: </c> before trickplay options; null for a key the advisor never gives.</returns>
+    /// <returns>The label, with <c>Trickplay: </c> or <c>Hardware decoding: </c> before options a bare label wouldn't place; null for a key the advisor never gives.</returns>
     public static string? LabelFor(string setting) => _labels.Value.GetValueOrDefault(setting);
 
     /// <summary>Returns advice for every option Jellyfin's Transcoding page shows for this backend.</summary>
@@ -211,6 +211,14 @@ public static class SettingsAdvisor
             ? keyFrames with { State = SettingState.Optional, Note = "Works with hardware decoding; faster, less accurate timing" }
             : keyFrames;
     }
+
+    /// <summary>Names an option outside the settings list, where its heading isn't there to place it.</summary>
+    /// <param name="advice">The advice.</param>
+    /// <returns>The label, prefixed for trickplay options and for codecs and bit depths in the decoding list.</returns>
+    private static string Qualified(SettingAdvice advice) =>
+        advice.Section == TrickplaySection ? "Trickplay: " + advice.Label
+        : advice.Setting.StartsWith("HardwareDecodingCodecs:", StringComparison.Ordinal) || advice.Setting.StartsWith("EnableDecodingColorDepth", StringComparison.Ordinal) ? "Hardware decoding: " + advice.Label
+        : advice.Label;
 
     /// <summary>Builds advice from one test's outcome.</summary>
     /// <param name="section">The page heading.</param>
