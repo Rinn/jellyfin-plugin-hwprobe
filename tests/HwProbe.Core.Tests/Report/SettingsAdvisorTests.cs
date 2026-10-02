@@ -127,7 +127,7 @@ public sealed class SettingsAdvisorTests
         var advice = SettingsAdvisor.For(_apolloLakeQsv with { Tonemap = tonemap }, _docker with { OpenclUnavailable = true });
 
         var lowPower = Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerHevcHwEncoder").Fix!;
-        Assert.Equal("Enable HuC firmware", lowPower.Action);
+        Assert.Equal("Gen 11+: Enable HuC firmware", lowPower.Action);
         Assert.EndsWith("#configure-and-verify-lp-mode-on-linux", lowPower.Url!.ToString(), StringComparison.Ordinal);
         Assert.Equal(Hints.OpenclFix(inContainer: true), Assert.Single(advice, a => a.Setting == "EnableTonemapping").Fix);
         Assert.Null(Assert.Single(advice, a => a.Setting == "EnableVppTonemapping").Fix);
@@ -148,8 +148,8 @@ public sealed class SettingsAdvisorTests
 
         var advice = SettingsAdvisor.For(_apolloLakeQsv with { Encode = encode }, _docker with { IntelLowPower = support });
 
-        Assert.Equal(h264Fix, Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerH264HwEncoder").Fix is not null);
-        Assert.Equal(hevcFix, Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerHevcHwEncoder").Fix is not null);
+        Assert.Equal(h264Fix ? "Gen 9+: Enable HuC firmware" : null, Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerH264HwEncoder").Fix?.Action);
+        Assert.Equal(hevcFix ? "Gen 11+: Enable HuC firmware" : null, Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerHevcHwEncoder").Fix?.Action);
     }
 
     /// <summary>Each backend gets the options its Transcoding page shows, and a backend that doesn't work gets none.</summary>
