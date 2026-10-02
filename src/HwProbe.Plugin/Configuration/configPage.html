@@ -5,61 +5,48 @@
     <title>HwProbe</title>
 </head>
 <body>
-    <div id="HwProbeConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-button">
+    <div id="HwProbeConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-button,emby-checkbox,emby-select,emby-input">
         <style>
+            /* Layout only: colours, buttons, inputs and panels come from jellyfin-web's theme classes. */
             #HwProbeConfigPage table { border-collapse: collapse; margin: 0.25em 0 1em; }
             #HwProbeConfigPage td, #HwProbeConfigPage th { padding: 0.2em 1.5em 0.2em 0; text-align: left; vertical-align: middle; height: 1.8em; }
+            #HwProbeConfigPage th { font-weight: 500; }
             #HwProbeConfigPage .hwprobe-scroll { overflow-x: auto; }
-            #HwProbeConfigPage th { font-weight: 500; opacity: 0.7; }
             #HwProbeConfigPage .hwprobe-backends td:nth-child(2), #HwProbeConfigPage .hwprobe-backends th:nth-child(2) { width: 18em; }
             #HwProbeConfigPage .hwprobe-backends td:nth-child(3), #HwProbeConfigPage .hwprobe-backends th:nth-child(3) { width: 12em; }
             #HwProbeConfigPage .hwprobe-group td { padding-top: 0.8em; font-weight: 500; }
-            #HwProbeConfigPage .hwprobe-group td:nth-child(2) { opacity: 0.7; }
-            #HwProbeConfigPage .hwprobe-mark { width: 1.2em; font-weight: bold; }
-            #HwProbeConfigPage .hwprobe-on { color: #52b54b; }
-            #HwProbeConfigPage .hwprobe-off { color: #e05555; }
-            #HwProbeConfigPage .hwprobe-none { opacity: 0.5; }
-            #HwProbeConfigPage .hwprobe-reason { opacity: 0.7; }
-            #HwProbeConfigPage .hwprobe-warn { color: #e0a030; font-weight: 500; }
-            #HwProbeConfigPage .hwprobe-tabs button { margin: 0 0.5em 0.75em 0; padding: 0.4em 1em; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 0.2em; background: transparent; color: inherit; font: inherit; cursor: pointer; }
-            #HwProbeConfigPage .hwprobe-tabs button.hwprobe-selected { background: #00a4dc; border-color: #00a4dc; color: #fff; }
-            #HwProbeConfigPage .hwprobe-change { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em; margin: 0 0 0.5em; }
-            #HwProbeConfigPage .hwprobe-disclosure { padding: 0; border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+            #HwProbeConfigPage .hwprobe-mark { width: 1.5em; }
+            #HwProbeConfigPage .hwprobe-mark .material-icons, #HwProbeConfigPage .hwprobe-card .material-icons { font-size: 1.2em; vertical-align: middle; }
             #HwProbeConfigPage .hwprobe-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
-            #HwProbeConfigPage .hwprobe-change-list { margin: 0 0 1em 1em; }
+            #HwProbeConfigPage .hwprobe-tabbar { margin-bottom: 1em; }
+            #HwProbeConfigPage .hwprobe-card { padding: 0.8em 1em; margin: 0 0 1.5em; }
+            #HwProbeConfigPage .hwprobe-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5em 1em; margin: 0.2em 0; }
+            #HwProbeConfigPage .hwprobe-row.hwprobe-start { justify-content: flex-start; }
+            #HwProbeConfigPage .hwprobe-card .infoBanner { margin: 0.5em 0; }
+            #HwProbeConfigPage .hwprobe-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em 1em; margin: 1.5em 0 0.3em; }
+            #HwProbeConfigPage .hwprobe-heading h2 { margin: 0; }
+            #HwProbeConfigPage .hwprobe-heading .selectContainer { margin: 0; flex: 1 1 16em; max-width: 28em; }
+            #HwProbeConfigPage .hwprobe-change { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em; }
+            #HwProbeConfigPage .hwprobe-change-list { margin: 0 0 0.5em 1em; }
             #HwProbeConfigPage .hwprobe-change-list table { margin: 0.2em 0 0; }
             #HwProbeConfigPage .hwprobe-arrow { display: inline-block; width: 1em; }
-            #HwProbeConfigPage .hwprobe-action { padding: 0 0.6em; line-height: 1.5; border: 1px solid #00a4dc; border-radius: 0.2em; background: transparent; color: #00a4dc; font: inherit; font-size: 0.9em; white-space: nowrap; cursor: pointer; }
-            #HwProbeConfigPage .hwprobe-action:disabled { opacity: 0.5; cursor: default; }
-            #HwProbeConfigPage .hwprobe-action.hwprobe-danger { border-color: #c62828; color: #c62828; font-weight: bold; }
-            #HwProbeConfigPage .hwprobe-card { border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 0.4em; padding: 0.8em 1em; margin: 0.5em 0 1.5em; background: rgba(255, 255, 255, 0.03); }
-            #HwProbeConfigPage .hwprobe-card-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5em 1em; margin: 0.2em 0; }
-            #HwProbeConfigPage .hwprobe-card-title { font-size: 1.15em; }
-            #HwProbeConfigPage .hwprobe-card p { margin: 0.3em 0; }
-            #HwProbeConfigPage .hwprobe-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em 1em; margin: 2em 0 0.3em; }
-            #HwProbeConfigPage .hwprobe-heading h3 { margin: 0; }
-            #HwProbeConfigPage .hwprobe-fold { margin-top: 1em; }
-            #HwProbeConfigPage .hwprobe-fold summary { cursor: pointer; padding: 0.3em 0; font-weight: 500; }
-            #HwProbeConfigPage select, #HwProbeConfigPage input[type=search] { font: inherit; color: inherit; background: transparent; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 0.2em; padding: 0.15em 0.4em; }
-            #HwProbeConfigPage select { max-width: 100%; }
-            #HwProbeConfigPage select option { color: #000; }
-            #HwProbeConfigPage .hwprobe-chips { display: flex; flex-wrap: wrap; gap: 0.4em; }
-            #HwProbeConfigPage .hwprobe-chip { display: inline-flex; align-items: center; gap: 0.3em; padding: 0.15em 0.7em; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 1em; cursor: pointer; white-space: nowrap; font-size: 0.95em; }
-            #HwProbeConfigPage .hwprobe-chip:has(input:checked) { border-color: #00a4dc; background: rgba(0, 164, 220, 0.2); }
-            #HwProbeConfigPage .hwprobe-chip input { margin: 0; }
-            #HwProbeConfigPage .hwprobe-setup th { width: 7em; vertical-align: top; padding-top: 0.4em; }
-            #HwProbeConfigPage .hwprobe-setup td { padding-bottom: 0.5em; }
+            #HwProbeConfigPage .hwprobe-disclosure { padding: 0; border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+            #HwProbeConfigPage .hwprobe-choices { display: flex; flex-wrap: wrap; gap: 0 1.5em; }
+            #HwProbeConfigPage .hwprobe-choices .emby-checkbox-label { width: auto; margin-right: 1.5em; }
+            #HwProbeConfigPage .hwprobe-fold > summary { display: flex; align-items: center; gap: 0.3em; cursor: pointer; list-style: none; }
+            #HwProbeConfigPage .hwprobe-fold > summary::-webkit-details-marker { display: none; }
+            #HwProbeConfigPage .hwprobe-fold > summary .sectionTitle { margin: 0.5em 0; }
+            #HwProbeConfigPage .hwprobe-fold[open] > summary .material-icons { transform: rotate(90deg); }
+            #HwProbeConfigPage .hwprobe-setup { width: 100%; }
+            #HwProbeConfigPage .hwprobe-setup th { width: 7em; vertical-align: top; padding-top: 0.6em; }
+            #HwProbeConfigPage .hwprobe-setup .inputContainer, #HwProbeConfigPage .hwprobe-setup .selectContainer { margin: 0; max-width: 28em; }
             #HwProbeConfigPage .hwprobe-matrix td, #HwProbeConfigPage .hwprobe-matrix th { padding-right: 2em; }
             #HwProbeConfigPage .hwprobe-matrix .hwprobe-num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
             #HwProbeConfigPage .hwprobe-best { font-weight: bold; }
-            #HwProbeConfigPage .hwprobe-variant td:first-child { padding-left: 1.2em; opacity: 0.8; }
-            #HwProbeConfigPage .hwprobe-small { font-size: 0.85em; opacity: 0.7; }
+            #HwProbeConfigPage .hwprobe-variant td:first-child { padding-left: 1.2em; }
+            #HwProbeConfigPage .hwprobe-small { font-size: 0.85em; }
+            #HwProbeConfigPage .hwprobe-inline { margin: 0 0 0 0.5em; padding: 0.2em 0.8em; }
             #HwProbeConfigPage sup { font-size: 0.7em; }
-            /* Below about 336px the settings table only fits if "Apply section" may take two lines. */
-            @media (max-width: 21em) {
-                #HwProbeConfigPage .hwprobe-action { white-space: normal; }
-            }
-
             /* Phones: let columns size to their content and wrap, so nothing runs off the screen. */
             @media (max-width: 40em) {
                 #HwProbeConfigPage td, #HwProbeConfigPage th { padding-right: 0.5em; }
@@ -70,13 +57,13 @@
         <div data-role="content">
             <div class="content-primary">
                 <h2>HwProbe</h2>
-                <div class="hwprobe-tabs" role="tablist">
-                    <button type="button" role="tab" id="hwprobeTabProbe" aria-controls="hwprobeProbeTab" aria-selected="true" class="hwprobe-selected">Probe</button>
-                    <button type="button" role="tab" id="hwprobeTabSpeed" aria-controls="hwprobeSpeedTab" aria-selected="false">Speed</button>
+                <div class="emby-tabs-slider hwprobe-tabbar" role="tablist">
+                    <button is="emby-button" type="button" role="tab" id="hwprobeTabProbe" aria-controls="hwprobeProbeTab" aria-selected="true" class="emby-tab-button emby-button emby-tab-button-active"><div class="emby-button-foreground">Probe</div></button>
+                    <button is="emby-button" type="button" role="tab" id="hwprobeTabSpeed" aria-controls="hwprobeSpeedTab" aria-selected="false" class="emby-tab-button emby-button"><div class="emby-button-foreground">Speed</div></button>
                 </div>
-                <p id="hwprobeMessage" class="hwprobe-warn"></p>
+                <div id="hwprobeMessage" class="infoBanner" hidden></div>
                 <div id="hwprobeProbeTab" role="tabpanel" aria-labelledby="hwprobeTabProbe">
-                    <div id="hwprobeCard" class="hwprobe-card"></div>
+                    <div id="hwprobeCard" class="paperList hwprobe-card"></div>
                     <div id="hwprobeResults"></div>
                 </div>
                 <div id="hwprobeSpeedTab" role="tabpanel" aria-labelledby="hwprobeTabSpeed" hidden></div>
@@ -92,21 +79,27 @@
                 const card = page.querySelector('#hwprobeCard');
                 const messageText = page.querySelector('#hwprobeMessage');
                 // Kept across renders: the status updates while a run polls, without redrawing the page.
-                const statusText = el('span', null, 'hwprobe-reason');
-                const speedStatus = el('span', null, 'hwprobe-reason');
+                const statusText = el('span', null, 'secondaryText');
+                const speedStatus = el('span', null, 'secondaryText');
                 const changeText = el('div');
                 const runButton = action('Run probe', () => {
                     ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Run') })
-                        .then(loadStatus, () => { messageText.textContent = 'Could not start: a probe is running or a session is transcoding.'; runButton.disabled = false; });
-                });
+                        .then(loadStatus, () => { setMessage('Could not start: a probe is running or a session is transcoding.'); runButton.disabled = false; });
+                }, 'raised button-submit');
                 let running = false;
+
+                // The banner is a themed panel, so it's hidden while empty.
+                function setMessage(text) {
+                    messageText.textContent = text || '';
+                    messageText.hidden = !text;
+                }
                 const speedTab = page.querySelector('#hwprobeSpeedTab');
                 const tabs = [['#hwprobeTabProbe', '#hwprobeProbeTab'], ['#hwprobeTabSpeed', '#hwprobeSpeedTab']].map(([b, p]) => [page.querySelector(b), page.querySelector(p)]);
                 for (const [button] of tabs) {
                     button.addEventListener('click', () => {
                         for (const [b, panel] of tabs) {
                             const on = b === button;
-                            b.classList.toggle('hwprobe-selected', on);
+                            b.classList.toggle('emby-tab-button-active', on);
                             b.setAttribute('aria-selected', String(on));
                             panel.hidden = !on;
                         }
@@ -202,17 +195,29 @@
 
                 function heading(container, title) {
                     const div = el('div', null, 'hwprobe-heading');
-                    div.appendChild(el('h3', title));
+                    div.appendChild(el('h2', title, 'sectionTitle'));
                     container.appendChild(div);
                     return div;
                 }
 
+                // A collapsible section with Jellyfin's heading style; emby-collapse isn't loaded on plugin pages.
                 function fold(container, title, open) {
                     const details = el('details', null, 'hwprobe-fold');
                     details.open = !!open;
-                    details.appendChild(el('summary', title));
+                    const summary = el('summary');
+                    summary.appendChild(icon('chevron_right'));
+                    summary.appendChild(el('h3', title, 'sectionTitle'));
+                    details.appendChild(summary);
                     container.appendChild(details);
                     return details;
+                }
+
+                // A themed select with its label; returns the select.
+                function themedSelect(container, label) {
+                    const box = jf('<div class="selectContainer"><label class="selectLabel"></label><select is="emby-select" class="emby-select-withcolor emby-select"></select></div>');
+                    box.firstElementChild.textContent = label;
+                    container.appendChild(box);
+                    return box.lastElementChild;
                 }
 
                 // Working and not, in one layout: backend, device, status. Green works, red failed, grey doesn't apply here.
@@ -221,7 +226,7 @@
                     row(table, [el('th'), el('th', 'Backend'), el('th', 'Device'), el('th', 'Status')]);
                     for (const [type, device, status, fix, state] of rows) {
                         const markCell = state === 'works' ? spokenMark('TurnOn', 'Works') : state === 'failed' ? spokenMark('LeaveOff', 'Failed') : spokenMark('NotTested', 'Not available');
-                        row(table, [markCell, names[type] || type, breakable(device || '-'), resultCell(status, fix, state === 'works' ? '' : 'hwprobe-reason')]);
+                        row(table, [markCell, names[type] || type, breakable(device || '-'), resultCell(status, fix, state === 'works' ? '' : 'secondaryText')]);
                     }
                     return table;
                 }
@@ -289,12 +294,10 @@
                     row(table, [el('td'), el('td', title)]).className = 'hwprobe-group';
                 }
 
-                // A mark with a word for screen readers in place of the glyph, which they'd read as "check mark".
+                // A mark with a word for screen readers, since the icon is hidden from them.
                 function spokenMark(state, word) {
                     const td = mark(state);
-                    const glyph = el('span', td.textContent);
-                    glyph.setAttribute('aria-hidden', 'true');
-                    td.replaceChildren(glyph, el('span', word, 'hwprobe-sr'));
+                    td.appendChild(el('span', word, 'hwprobe-sr'));
                     return td;
                 }
 
@@ -302,17 +305,23 @@
                     return spokenMark(on ? 'TurnOn' : 'LeaveOff', on ? 'On' : 'Off');
                 }
 
+                // Material icons, which jellyfin-web loads; the name is the icon.
+                function icon(name) {
+                    const span = el('span', null, 'material-icons ' + name);
+                    span.setAttribute('aria-hidden', 'true');
+                    return span;
+                }
+
                 function mark(state) {
-                    if (state === 'TurnOn' || state === 'Optional') {
-                        return el('td', '✓', 'hwprobe-mark hwprobe-on');
-                    }
-                    return state === 'LeaveOff' ? el('td', '✗', 'hwprobe-mark hwprobe-off') : el('td', '–', 'hwprobe-mark hwprobe-none');
+                    const td = el('td', null, 'hwprobe-mark');
+                    td.appendChild(icon(state === 'TurnOn' || state === 'Optional' ? 'check' : state === 'LeaveOff' ? 'close' : 'remove'));
+                    return td;
                 }
 
                 function outcomeRow(table, label, outcome) {
                     const state = outcome === 'Pass' ? 'TurnOn' : (outcome ? 'LeaveOff' : 'NotTested');
                     const reason = outcome === 'Pass' ? '' : (outcome ? 'Test failed' : 'Not tested');
-                    row(table, [mark(state), label, el('td', reason, 'hwprobe-reason'), el('td')]);
+                    row(table, [mark(state), label, el('td', reason, 'secondaryText'), el('td')]);
                 }
 
                 function firstOutcome(cells) {
@@ -320,9 +329,17 @@
                     return values.indexOf('Pass') !== -1 ? 'Pass' : values[0];
                 }
 
-                function action(text, onClick) {
-                    const button = el('button', text, 'hwprobe-action');
-                    button.type = 'button';
+                // Built from markup so jellyfin-web's element polyfill upgrades it (registerElement keys on the is attribute).
+                function jf(html) {
+                    const template = document.createElement('template');
+                    template.innerHTML = html;
+                    return template.content.firstElementChild;
+                }
+
+                // A theme button: flat by default, 'raised button-submit' for the main action, 'raised button-delete' for a risky one.
+                function action(text, onClick, kind) {
+                    const button = jf('<button is="emby-button" type="button" class="emby-button hwprobe-inline ' + (kind || 'button-flat') + '"><span></span></button>');
+                    button.firstElementChild.textContent = text;
                     button.addEventListener('click', () => {
                         button.disabled = true;
                         onClick();
@@ -362,17 +379,17 @@
                 }
 
                 function post(path, body) {
-                    messageText.textContent = '';
+                    setMessage('');
                     const request = { type: 'POST', url: ApiClient.getUrl(path), dataType: 'json' };
                     if (body) {
                         request.data = JSON.stringify(body);
                         request.contentType = 'application/json';
                     }
                     return ApiClient.ajax(request).then(result => {
-                        messageText.textContent = result.Reason || '';
+                        setMessage(result.Reason || '');
                     }, response => (response && response.json ? response.json() : Promise.resolve({})).then(
-                        result => { messageText.textContent = (result && result.Reason) || 'The change was refused.'; },
-                        () => { messageText.textContent = 'The change was refused.'; })).then(loadReport);
+                        result => { setMessage((result && result.Reason) || 'The change was refused.'); },
+                        () => { setMessage('The change was refused.'); })).then(loadReport);
                 }
 
                 function apply(advice) {
@@ -384,7 +401,7 @@
                 function waitForServer(deadline) {
                     const retry = () => {
                         if (Date.now() > deadline) {
-                            messageText.textContent = 'Jellyfin didn\'t come back. Reload the page.';
+                            setMessage('Jellyfin didn\'t come back. Reload the page.');
                             return;
                         }
                         setTimeout(() => waitForServer(deadline), 2000);
@@ -395,15 +412,15 @@
                                 retry();
                                 return;
                             }
-                            messageText.textContent = '';
+                            setMessage('');
                             loadStatus();
                         }, retry);
                 }
 
                 function restart() {
-                    messageText.textContent = 'Restarting…';
+                    setMessage('Restarting…');
                     ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('System/Restart') })
-                        .then(() => waitForServer(Date.now() + 180000), () => { messageText.textContent = 'Restart failed.'; });
+                        .then(() => waitForServer(Date.now() + 180000), () => { setMessage('Restart failed.'); });
                 }
 
                 // Whether the last change's list is open, kept across re-renders of the same entry.
@@ -446,20 +463,20 @@
 
                     const list = el('div', null, 'hwprobe-change-list');
                     list.id = 'hwprobeChangeList';
-                    list.appendChild(el('div', nothing ? 'Every setting was changed since; nothing to revert.' : 'Revert sets:', 'hwprobe-reason'));
+                    list.appendChild(el('div', nothing ? 'Every setting was changed since; nothing to revert.' : 'Revert sets:', 'secondaryText'));
                     const table = el('table');
                     for (const r of rows) {
                         const c = r.change;
                         // The server labels every setting it knows; the key is a last resort.
                         const label = c.Label || c.Setting;
                         if (r.kept) {
-                            row(table, [spokenMark('NotTested', 'Skipped'), label, el('td', 'Changed since, left as is', 'hwprobe-reason')]);
+                            row(table, [spokenMark('NotTested', 'Skipped'), label, el('td', 'Changed since, left as is', 'secondaryText')]);
                             continue;
                         }
                         const flag = c.OldValue === 'true' || c.OldValue === 'false';
                         const value = flag ? el('td') : el('td', valueText(c.Setting, c.OldValue));
                         if (r.unknown) {
-                            value.appendChild(el('span', (flag ? '' : ' ') + '(current value unknown)', 'hwprobe-reason'));
+                            value.appendChild(el('span', (flag ? '' : ' ') + '(current value unknown)', 'secondaryText'));
                         }
                         row(table, [flag ? flagMark(c.OldValue === 'true') : el('td'), label, value]);
                     }
@@ -499,8 +516,7 @@
 
                 function restartPrompt() {
                     const pending = el('p', 'Backend changed; Jellyfin needs a restart. ');
-                    const button = action('Restart Jellyfin', restart);
-                    button.classList.add('hwprobe-danger');
+                    const button = action('Restart Jellyfin', restart, 'raised button-delete');
                     pending.appendChild(button);
                     return pending;
                 }
@@ -513,7 +529,7 @@
                         || report.backends.some(b => b.verdict === 'Untested' && isConfigured(b))) {
                         return;
                     }
-                    const warning = el('p', null, 'hwprobe-warn');
+                    const warning = el('div', null, 'infoBanner');
                     warning.appendChild(document.createTextNode('Didn\u2019t work in the last probe; transcodes that use it can fail. '));
                     warning.appendChild(action('Switch to None', () => post('HwProbe/UseBackend', { Type: 'none', Device: '' })));
                     container.appendChild(warning);
@@ -521,9 +537,9 @@
 
                 function renderSettings(container, viable, title) {
                     container.replaceChildren();
-                    title.replaceChildren(el('h3', 'Settings'));
+                    title.replaceChildren(el('h2', 'Settings', 'sectionTitle'));
                     if (viable.length > 1) {
-                        const pick = el('select');
+                        const pick = themedSelect(title, 'Backend');
                         viable.forEach((b, i) => {
                             const option = el('option', (names[b.type] || b.type) + (viable.filter(o => o.type === b.type).length > 1 ? ' ' + b.device : ''));
                             option.value = String(i);
@@ -531,14 +547,13 @@
                             pick.appendChild(option);
                         });
                         pick.addEventListener('change', () => { selected = viable[Number(pick.value)]; renderSettings(container, viable, title); });
-                        title.appendChild(pick);
                     } else {
-                        title.appendChild(el('span', names[selected.type] || selected.type, 'hwprobe-reason'));
+                        title.appendChild(el('span', names[selected.type] || selected.type, 'secondaryText'));
                     }
 
                     const configured = isConfigured(selected);
                     if (!configured) {
-                        title.appendChild(el('span', 'Not the configured backend', 'hwprobe-reason'));
+                        title.appendChild(el('span', 'Not the configured backend', 'secondaryText'));
                         title.appendChild(action('Use this backend', () => post('HwProbe/UseBackend', { Type: selected.type, Device: selected.device })));
                     }
 
@@ -565,7 +580,7 @@
                         if (configured && differs(a)) {
                             cell.appendChild(action('Apply', () => apply([a])));
                         }
-                        row(table, [mark(a.state), a.label, resultCell(a.note, a.fix, 'hwprobe-reason'), cell]);
+                        row(table, [mark(a.state), a.label, resultCell(a.note, a.fix, 'secondaryText'), cell]);
                     }
                     groupRow(table, 'Also tested');
                     outcomeRow(table, 'Hardware deinterlacing', firstOutcome(selected.deinterlace));
@@ -606,7 +621,7 @@
                     row(table, [el('th', 'Note'), el('th', 'Backends')]);
                     for (const code of codes) {
                         const g = grouped[code];
-                        row(table, [resultCell(notes[code] || g.finding.message, g.finding.fix, g.finding.severity === 'Warn' ? 'hwprobe-warn' : ''), g.backends.join(', ')]);
+                        row(table, [resultCell(notes[code] || g.finding.message, g.finding.fix, ''), g.backends.join(', ')]);
                     }
                     fold(results, 'Notes (' + codes.length + ')').appendChild(table);
                 }
@@ -615,8 +630,8 @@
                 function renderCard(viable) {
                     card.replaceChildren();
                     const type = encoding && encoding.HardwareAccelerationType;
-                    const top = el('div', null, 'hwprobe-card-row');
-                    const title = el('div', null, 'hwprobe-card-title');
+                    const top = el('div', null, 'hwprobe-row');
+                    const title = el('div');
                     if (!encoding) {
                         title.textContent = 'Hardware acceleration: unknown (Jellyfin\u2019s settings didn\u2019t load)';
                     } else if (!type || type === 'none') {
@@ -626,19 +641,21 @@
                         const device = type === 'vaapi' ? encoding.VaapiDevice : (type === 'qsv' ? encoding.QsvDevice : '');
                         title.appendChild(document.createTextNode('Hardware acceleration: ' + (names[type] || type) + (device ? ' ' + device : '') + '  '));
                         if (entry && entry.verdict === 'Viable') {
-                            title.appendChild(el('span', '\u2713 works', 'hwprobe-on'));
-                            title.appendChild(el('span', '  ' + (tiers[entry.tier] || ''), 'hwprobe-reason'));
+                            title.appendChild(icon('check'));
+                            title.appendChild(document.createTextNode(' works  '));
+                            title.appendChild(el('span', tiers[entry.tier] || '', 'secondaryText'));
                         } else if (entry) {
-                            title.appendChild(el('span', '\u2717 ' + (verdicts[entry.verdict] || entry.verdict), 'hwprobe-off'));
+                            title.appendChild(icon('close'));
+                            title.appendChild(document.createTextNode(' ' + (verdicts[entry.verdict] || entry.verdict)));
                         } else if (report) {
-                            title.appendChild(el('span', 'not tested', 'hwprobe-reason'));
+                            title.appendChild(el('span', 'not tested', 'secondaryText'));
                         }
                     }
                     top.appendChild(title);
                     runButton.disabled = running;
                     top.appendChild(runButton);
                     card.appendChild(top);
-                    const state = el('div', null, 'hwprobe-card-row');
+                    const state = el('div', null, 'hwprobe-row');
                     state.appendChild(statusText);
                     card.appendChild(state);
                     if (report) {
@@ -657,8 +674,8 @@
                     speedViable = viable;
                     speedTab.replaceChildren();
                     if (!report) {
-                        results.appendChild(el('p', 'No results yet. Run a probe while nothing is playing; the first run takes a few minutes.', 'hwprobe-reason'));
-                        speedTab.appendChild(el('p', 'Run a probe first: speed is measured on the backends it finds working.', 'hwprobe-reason'));
+                        results.appendChild(el('p', 'No results yet. Run a probe while nothing is playing; the first run takes a few minutes.', 'secondaryText'));
+                        speedTab.appendChild(el('p', 'Run a probe first: speed is measured on the backends it finds working.', 'secondaryText'));
                         return;
                     }
 
@@ -690,18 +707,16 @@
                 }
 
                 function checkbox(text, checked, onChange) {
-                    const label = el('label', null, 'hwprobe-chip');
-                    const input = el('input');
-                    input.type = 'checkbox';
+                    const label = jf('<label class="emby-checkbox-label"><input type="checkbox" is="emby-checkbox"><span></span></label>');
+                    const input = label.firstElementChild;
                     input.checked = checked;
                     input.addEventListener('change', () => onChange(input.checked));
-                    label.appendChild(input);
-                    label.appendChild(document.createTextNode(text));
+                    label.lastElementChild.textContent = text;
                     return label;
                 }
 
                 function chips(items) {
-                    const div = el('div', null, 'hwprobe-chips');
+                    const div = el('div', null, 'hwprobe-choices');
                     for (const item of items) {
                         div.appendChild(item);
                     }
@@ -767,13 +782,13 @@
 
                 // Clips and samples are kept so later runs don't make or download them again.
                 function renderCache() {
-                    const line = el('p', null, 'hwprobe-reason');
+                    const line = el('p', null, 'secondaryText');
                     const show = () => ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Cache'), dataType: 'json' }).then(c => {
                         line.replaceChildren(document.createTextNode('Cache: ' + sizeText(c.Bytes) + ' in ' + c.Files + ' file' + (c.Files === 1 ? '' : 's') + ' (test clips, samples) '));
                         if (c.Files > 0) {
                             line.appendChild(action('Delete', () => {
                                 ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('HwProbe/Cache') })
-                                    .then(show, () => { messageText.textContent = 'Could not delete: a probe or speed run is using the cache.'; show(); });
+                                    .then(show, () => { setMessage('Could not delete: a probe or speed run is using the cache.'); show(); });
                             }));
                         }
                     }, () => { line.textContent = ''; });
@@ -790,17 +805,14 @@
                 // Searches movies and episodes through Jellyfin's own Items API; the server describes the chosen file.
                 function renderLibraryPicker() {
                     const div = el('div');
-                    const search = el('input');
-                    search.type = 'search';
-                    search.placeholder = 'Movie or episode';
-                    search.title = 'Read from where it\u2019s stored; network storage can slow it.';
+                    const box = jf('<div class="inputContainer"><input is="emby-input" type="search"><div class="fieldDescription">Read from where it\u2019s stored; network storage can slow it.</div></div>');
+                    const search = box.firstElementChild;
+                    search.setAttribute('label', 'Movie or episode');
                     search.value = speedItem ? speedItem.Name : '';
-                    div.appendChild(search);
-                    const found = el('div', null, 'hwprobe-chips');
-                    found.style.marginTop = '0.4em';
+                    div.appendChild(box);
+                    const found = el('div', null, 'hwprobe-choices');
                     div.appendChild(found);
-                    const fileChoices = el('div', null, 'hwprobe-chips');
-                    fileChoices.style.marginTop = '0.4em';
+                    const fileChoices = el('div', null, 'hwprobe-choices');
                     div.appendChild(fileChoices);
                     const showFileTests = () => {
                         fileChoices.replaceChildren(...speedFileTests.map(t => checkbox(chipName(t), speedChosen.has(t.Key), on => {
@@ -822,7 +834,7 @@
                             }
                             showFileTests();
                             results.dispatchEvent(new Event('hwprobe-speed-changed'));
-                        }, () => { messageText.textContent = 'That item has no local video file to measure.'; });
+                        }, () => { setMessage('That item has no local video file to measure.'); });
                     };
                     let timer = null;
                     search.addEventListener('input', () => {
@@ -850,7 +862,7 @@
 
                     const title = heading(container, 'Results');
                     if (speedHistory.length) {
-                        const runs = el('select');
+                        const runs = themedSelect(title, 'Run');
                         for (const h of speedHistory) {
                             const option = el('option', new Date(h.GeneratedUtc).toLocaleString() + ' \u00b7 ' + h.Method.toLowerCase() + ' \u00b7 ' + h.Tests + ' test' + (h.Tests === 1 ? '' : 's') + (h.Current ? '' : ' (another HwProbe or ffmpeg)'));
                             option.value = h.Id;
@@ -865,13 +877,12 @@
                                 renderSpeed(speedTab, speedViable);
                             });
                         });
-                        title.appendChild(runs);
                     }
                     title.appendChild(speedStatus);
                     if (speedReport) {
                         container.appendChild(speedMatrix(speedReport));
                     } else {
-                        container.appendChild(el('p', 'No speed runs yet.', 'hwprobe-reason'));
+                        container.appendChild(el('p', 'No speed runs yet.', 'secondaryText'));
                     }
 
                     renderSpeedSetup(fold(container, 'New measurement', !speedReport), viable);
@@ -892,42 +903,37 @@
                         chip.title = text;
                         return chip;
                     }))));
-                    const methodChips = el('div', null, 'hwprobe-chips');
+                    const methodCell = el('td');
+                    const method = themedSelect(methodCell, 'Method');
                     for (const [key, text] of Object.entries(methods)) {
-                        const label = el('label', null, 'hwprobe-chip');
-                        label.title = text;
-                        const input = el('input');
-                        input.type = 'radio';
-                        input.name = 'hwprobeSpeedMethod';
-                        input.checked = key === speedMethod;
-                        input.addEventListener('change', () => { speedMethod = key; });
-                        label.appendChild(input);
-                        label.appendChild(document.createTextNode(key));
-                        methodChips.appendChild(label);
+                        const option = el('option', text);
+                        option.value = key;
+                        option.selected = key === speedMethod;
+                        method.appendChild(option);
                     }
-                    line('Method', cell(methodChips));
+                    method.addEventListener('change', () => { speedMethod = method.value; });
+                    row(table, [el('th'), methodCell]);
                     container.appendChild(table);
 
-                    const estimate = el('span', null, 'hwprobe-reason');
+                    const estimate = el('span', null, 'secondaryText');
                     const button = action('Measure speed', () => {
                         const body = { Method: speedMethod, Tests: allSpeedTests().filter(t => speedChosen.has(t.Key)).map(t => t.Key), Comparisons: [...speedCompared], ItemId: speedItem ? speedItem.Id : null };
                         ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed'), data: JSON.stringify(body), contentType: 'application/json' })
                             .then(loadStatus, response => (response && response.text ? response.text() : Promise.resolve('')).then(text => {
-                                messageText.textContent = 'Could not start: ' + (text.replace(/^"|"$/g, '') || 'a probe is running or a session is transcoding.');
+                                setMessage('Could not start: ' + (text.replace(/^"|"$/g, '') || 'a probe is running or a session is transcoding.'));
                                 button.disabled = false;
                             }));
-                    });
+                    }, 'raised button-submit');
                     const update = () => {
                         const runs = speedRuns(viable);
                         estimate.textContent = 'Up to ' + runs + ' measurement' + (runs === 1 ? '' : 's') + ', 10 to 60 s each';
                         button.disabled = runs === 0 || running;
                     };
-                    const go = el('div', null, 'hwprobe-card-row');
-                    go.style.justifyContent = 'flex-start';
+                    const go = el('div', null, 'hwprobe-row hwprobe-start');
                     go.appendChild(button);
                     go.appendChild(estimate);
                     container.appendChild(go);
-                    container.appendChild(el('p', 'Best results: idle server, nothing else heavy running, laptops on power, run twice.', 'hwprobe-reason'));
+                    container.appendChild(el('p', 'Best results: idle server, nothing else heavy running, laptops on power, run twice.', 'secondaryText'));
                     container.appendChild(renderCache());
                     update();
                     speedUpdate = update;
@@ -964,13 +970,13 @@
 
                     // The run selector names the run; without one, say when it was measured.
                     if (!speedHistory.length) {
-                        div.appendChild(el('p', 'Measured ' + new Date(r.generatedUtc).toLocaleString() + ', ' + r.method.toLowerCase() + ' method', 'hwprobe-reason'));
+                        div.appendChild(el('p', 'Measured ' + new Date(r.generatedUtc).toLocaleString() + ', ' + r.method.toLowerCase() + ' method', 'secondaryText'));
                     }
                     if (r.settings) {
                         const used = fold(div, 'Settings used');
                         const table = el('table');
                         for (const [label, value] of settingsRows(r.settings)) {
-                            row(table, [label, el('td', value, 'hwprobe-reason')]);
+                            row(table, [label, el('td', value, 'secondaryText')]);
                         }
                         used.appendChild(table);
                     }
@@ -999,7 +1005,7 @@
                         parts.push(speed ? speed.toFixed(1) + '\u00d7' : '\u2013');
                         td.textContent = parts.join(' \u00b7 ');
                         if (baseline && speed) {
-                            td.appendChild(el('span', ' ' + speedChange(x.fps, baseline.fps), 'hwprobe-small'));
+                            td.appendChild(el('span', ' ' + speedChange(x.fps, baseline.fps), 'hwprobe-small secondaryText'));
                         }
                         const n = footnote(x.note);
                         if (n) {
@@ -1061,8 +1067,8 @@
                     scroll.appendChild(table);
                     div.appendChild(scroll);
 
-                    footnotes.forEach((note, i) => div.appendChild(el('p', (i + 1) + ' ' + note, 'hwprobe-small')));
-                    div.appendChild(el('p', 'Streams: transcodes kept at real time at once. Speed: one alone, as a multiple of real time; hover for fps. Bold: most streams, then fastest. Test-pattern clips encode faster than real video.', 'hwprobe-small'));
+                    footnotes.forEach((note, i) => div.appendChild(el('p', (i + 1) + ' ' + note, 'hwprobe-small secondaryText')));
+                    div.appendChild(el('p', 'Streams: transcodes kept at real time at once. Speed: one alone, as a multiple of real time; hover for fps. Bold: most streams, then fastest. Test-pattern clips encode faster than real video.', 'hwprobe-small secondaryText'));
 
                     const credits = new Map();
                     for (const x of r.results) {
@@ -1072,7 +1078,7 @@
                         }
                     }
                     if (credits.size) {
-                        const line = el('p', 'Samples: ', 'hwprobe-small');
+                        const line = el('p', 'Samples: ', 'hwprobe-small secondaryText');
                         [...credits].forEach(([credit, url], i) => {
                             line.appendChild(document.createTextNode((i ? '; ' : '') + credit + ' ('));
                             const link = el('a', 'licence', 'button-link');
@@ -1121,8 +1127,8 @@
 
                 function renderReporting() {
                     const div = el('div');
-                    div.appendChild(el('p', 'The report and every ffmpeg log of the last probe, to attach to a GitHub issue.', 'hwprobe-reason'));
-                    div.appendChild(el('p', 'Not anonymised: holds file paths and this server\u2019s user and host names. Check before sharing.', 'hwprobe-warn'));
+                    div.appendChild(el('p', 'The report and every ffmpeg log of the last probe, to attach to a GitHub issue.', 'secondaryText'));
+                    div.appendChild(el('div', 'Not anonymised: holds file paths and this server\u2019s user and host names. Check before sharing.', 'infoBanner'));
                     const buttons = el('p');
                     const download = action('Download diagnostics', () => {
                         // ApiClient.ajax returns the raw response for a non-JSON request, with the session's token sent.
@@ -1134,7 +1140,7 @@
                                 a.download = 'hwprobe-diagnostics.zip';
                                 a.click();
                                 setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-                            }, () => { messageText.textContent = 'Could not download diagnostics: run a probe first.'; })
+                            }, () => { setMessage('Could not download diagnostics: run a probe first.'); })
                             .then(() => { download.disabled = false; });
                     });
                     buttons.appendChild(download);
@@ -1173,8 +1179,8 @@
                     return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Status'), dataType: 'json' }).then(s => {
                         loadedVersion = loadedVersion || s.HwProbeVersion;
                         if (s.HwProbeVersion && s.HwProbeVersion !== loadedVersion) {
-                            messageText.replaceChildren(document.createTextNode('HwProbe was updated. Reload the page to see the new version. '));
-                            messageText.appendChild(action('Reload', () => location.reload()));
+                            setMessage('HwProbe was updated. Reload the page to see the new version. ');
+                            messageText.appendChild(action('Reload', () => location.reload(), 'raised'));
                         }
                         running = s.State === 'Running';
                         runButton.disabled = running;
