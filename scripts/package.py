@@ -52,8 +52,8 @@ def write_gzip(path, source):
             out.write(f.read())
 
 
-def version():
-    """The version from Directory.Build.props."""
+def default_version():
+    """The placeholder version from Directory.Build.props, used when --version isn't given."""
     props = open(os.path.join(ROOT, "Directory.Build.props"), encoding="utf-8").read()
     match = re.search(r"<Version>([^<]+)</Version>", props)
     if not match:
@@ -65,6 +65,7 @@ def main():
     """Publishes and packs into --out."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", required=True, help="Directory for the archives.")
+    parser.add_argument("--version", help="Three-part version, e.g. 1.2.3 (a release passes its tag). Default: Directory.Build.props.")
     parser.add_argument("--work", default=os.path.join(ROOT, "artifacts", "package"), help="Scratch directory for publish output.")
     args = parser.parse_args()
 
@@ -72,9 +73,13 @@ def main():
     work = os.path.abspath(args.work)
     os.makedirs(out, exist_ok=True)
     epoch = source_date_epoch()
-    plugin_zip = f"hwprobe-plugin_{version()}.0.zip"
+    version = args.version or default_version()
+    if not re.fullmatch(r"\d+\.\d+\.\d+", version):
+        sys.exit(f"version {version!r} must look like 1.2.3")
+    stamp = f"-p:Version={version}"
+    plugin_zip = f"hwprobe-plugin_{version}.0.zip"
 
-    run("dotnet", "publish", "src/HwProbe.Plugin", "-c", "Release", "-o", os.path.join(work, "plugin"))
+    run("dotnet", "publish", "src/HwProbe.Plugin", "-c", "Release", stamp, "-o", os.path.join(work, "plugin"))
     plugin = os.path.join(work, "plugin")
     dlls = [(n, os.path.join(plugin, n)) for n in os.listdir(plugin) if n.startswith("Jellyfin.Plugin.HwProbe") and n.endswith(".dll")]
     write_zip(os.path.join(out, plugin_zip), dlls, epoch)
@@ -82,7 +87,7 @@ def main():
     # Single-file and self-contained are set in the CLI project, so they don't reach the libraries' restore.
     for rid in CLI_RIDS:
         target = os.path.join(work, "cli", rid)
-        run("dotnet", "publish", "src/HwProbe.Cli", "-c", "Release", "-r", rid, "--self-contained", "-o", target)
+        run("dotnet", "publish", "src/HwProbe.Cli", "-c", "Release", "-r", rid, "--self-contained", stamp, "-o", target)
         if rid.startswith("win"):
             write_zip(os.path.join(out, f"hwprobe-{rid}.zip"), [("hwprobe.exe", os.path.join(target, "Jellyfin.Plugin.HwProbe.Cli.exe"))], epoch)
         else:

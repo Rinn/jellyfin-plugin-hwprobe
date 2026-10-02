@@ -29,17 +29,13 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
 
-      - name: Check the tag matches the version
+      # The tag is the only source of the version; every build below is stamped with it.
+      - name: Read the version from the tag
         id: version
         run: |
           version="${TAG#v}"
           if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
             echo "::error::Tag '$TAG' must look like v1.2.3"; exit 1
-          fi
-          yaml="$(sed -n 's/^version: "\(.*\)"/\1/p' build.yaml)"
-          props="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)"
-          if [ "$yaml" != "$version.0" ] || [ "$props" != "$version" ]; then
-            echo "::error::Tag $TAG needs build.yaml version $version.0 and Directory.Build.props Version $version; found $yaml and $props"; exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
@@ -50,7 +46,7 @@ jobs:
 
       # The SDK ad-hoc signs osx-arm64 executables on Linux too (checked with codesign on macOS).
       - name: Package
-        run: python3 scripts/package.py --out artifacts/dist
+        run: python3 scripts/package.py --version "${{ steps.version.outputs.version }}" --out artifacts/dist
 
       - name: Attach to the release
         env:

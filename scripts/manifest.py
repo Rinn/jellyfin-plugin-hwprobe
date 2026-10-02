@@ -20,7 +20,7 @@ def read_build_yaml(path):
     """Parses the subset of YAML that build.yaml uses: quoted scalars, folded (>) blocks and lists."""
     fields, key, folded, items = {}, None, None, None
     for number, line in enumerate(open(path, encoding="utf-8").read().splitlines(), 1):
-        if line.strip() in ("", "---"):
+        if line.strip() in ("", "---") or line.startswith("#"):
             continue
         if folded is not None and line.startswith("  ") and not line.startswith("- "):
             folded.append(line.strip())

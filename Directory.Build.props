@@ -13,8 +13,9 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <IsPackable>false</IsPackable>
 
-    <!-- One version for every assembly; the release workflow checks the tag and build.yaml against it. -->
-    <Version>0.1.0</Version>
+    <!-- One version for every assembly. 0.0.0 marks a local or CI build; the release workflow sets the
+         real version from the tag with -p:Version. -->
+    <Version>0.0.0</Version>
 
     <!-- Reproducible builds: same source and SDK give byte-identical assemblies. CI also normalises
          source paths, and restores only what the committed lock files allow. -->
