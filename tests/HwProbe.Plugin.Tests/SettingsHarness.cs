@@ -28,10 +28,13 @@ internal sealed class SettingsHarness : IDisposable
             _ => Task.FromResult<CapabilityReport?>(Report),
             () => Probing,
             () => EncoderPath,
-            Path.Combine(_directory, "history.json"),
+            HistoryPath,
             TimeProvider.System,
             NullLogger.Instance);
     }
+
+    /// <summary>Gets where the history is kept.</summary>
+    public string HistoryPath => Path.Combine(_directory, "history.json");
 
     /// <summary>Gets the service under test.</summary>
     public SettingsService Service { get; }

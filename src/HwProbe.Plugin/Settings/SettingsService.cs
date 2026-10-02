@@ -126,7 +126,8 @@ public sealed class SettingsService : IDisposable
                 }
 
                 var values = changes.Select(c => (c.Setting, EncodingSettings.Format(c.Value))).ToList();
-                return await WriteAsync(options, values, HistoryKind.Apply, user, cancellationToken);
+                var labels = changes.ToDictionary(c => c.Setting, c => SettingsAdvisor.LabelFor(c.Setting) ?? c.Setting, StringComparer.Ordinal);
+                return await WriteAsync(options, values, HistoryKind.Apply, user, cancellationToken, labels: labels);
             },
             cancellationToken);
     }
@@ -197,10 +198,11 @@ public sealed class SettingsService : IDisposable
             },
             cancellationToken);
 
-    /// <summary>Returns the history, oldest first.</summary>
+    /// <summary>Returns the history, oldest first, with labels filled in for changes recorded without one.</summary>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The entries.</returns>
-    public async Task<IReadOnlyList<HistoryEntry>> HistoryAsync(CancellationToken cancellationToken) => await ReadHistoryAsync(cancellationToken);
+    public async Task<IReadOnlyList<HistoryEntry>> HistoryAsync(CancellationToken cancellationToken) =>
+        [.. (await ReadHistoryAsync(cancellationToken)).Select(e => e with { Changes = [.. e.Changes.Select(c => c with { Label = c.Label ?? SettingsAdvisor.LabelFor(c.Setting) })] })];
 
     /// <inheritdoc/>
     public void Dispose() => _gate.Dispose();
@@ -287,8 +289,9 @@ public sealed class SettingsService : IDisposable
     /// <param name="user">The admin making the change.</param>
     /// <param name="cancellationToken">Cancels the history write.</param>
     /// <param name="history">The history to append to, when the caller already changed it; null to read it.</param>
+    /// <param name="labels">The options' labels by key, recorded with each change; null when there are none.</param>
     /// <returns>The applied result.</returns>
-    private async Task<ApplyResult> WriteAsync(ServerSettings options, IReadOnlyList<(string Setting, string Value)> values, HistoryKind kind, string user, CancellationToken cancellationToken, List<HistoryEntry>? history = null)
+    private async Task<ApplyResult> WriteAsync(ServerSettings options, IReadOnlyList<(string Setting, string Value)> values, HistoryKind kind, string user, CancellationToken cancellationToken, List<HistoryEntry>? history = null, IReadOnlyDictionary<string, string>? labels = null)
     {
         List<AppliedChange> changed = [];
         foreach (var (setting, value) in values)
@@ -297,7 +300,7 @@ public sealed class SettingsService : IDisposable
             if (old != value)
             {
                 options.Write(setting, value);
-                changed.Add(new AppliedChange(setting, old, value));
+                changed.Add(new AppliedChange(setting, old, value) { Label = labels?.GetValueOrDefault(setting) });
             }
         }
 

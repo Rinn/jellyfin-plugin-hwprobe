@@ -312,7 +312,7 @@
                     for (const c of last.Changes) {
                         // Revert leaves a setting that was changed again since; the server skips it too.
                         const kept = currentText(c.Setting) !== undefined && currentText(c.Setting) !== c.NewValue;
-                        row(table, [settingLabel(c.Setting), valueText(c.Setting, kept ? currentText(c.Setting) : c.NewValue), kept ? el('td', 'Changed since, kept', 'hwprobe-reason') : valueText(c.Setting, c.OldValue)]);
+                        row(table, [c.Label || settingLabel(c.Setting), valueText(c.Setting, kept ? currentText(c.Setting) : c.NewValue), kept ? el('td', 'Changed since, kept', 'hwprobe-reason') : valueText(c.Setting, c.OldValue)]);
                     }
                     details.appendChild(table);
                     changeText.appendChild(details);
@@ -324,7 +324,7 @@
                     QsvDevice: 'QSV device',
                 };
 
-                // The label from the latest advice, so it reads as on the settings list.
+                // For changes recorded without a label: the label from the latest advice, else a plain name.
                 function settingLabel(setting) {
                     for (const b of (report && report.backends) || []) {
                         const a = (b.settings || []).find(x => x.setting === setting);

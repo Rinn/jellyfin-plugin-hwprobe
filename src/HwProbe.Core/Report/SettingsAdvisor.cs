@@ -25,6 +25,23 @@ public static class SettingsAdvisor
     private const string NotSupported = "Not supported by this GPU";
     private const string NotTested = "Not tested";
 
+    // Every label the advisor gives, gathered from advice for a backend of each type with no results.
+    private static readonly Lazy<Dictionary<string, string>> _labels = new(() =>
+    {
+        Dictionary<string, string> labels = new(StringComparer.Ordinal);
+        var deinterlace = new Dictionary<string, ProbeOutcome> { ["any_bwdif"] = ProbeOutcome.Untested };
+        foreach (var type in Enum.GetValues<HwType>().Where(t => t != HwType.none))
+        {
+            var row = new BackendReport(type, string.Empty, BackendVerdict.Viable, PipelineTier.Unknown, new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), deinterlace, new Dictionary<string, ProbeOutcome>(), string.Empty);
+            foreach (var advice in For(row, new AdviceContext(HostOs.Linux, InContainer: false, OpenclUnavailable: false)))
+            {
+                labels.TryAdd(advice.Setting, advice.Section == TrickplaySection ? "Trickplay: " + advice.Label : advice.Label);
+            }
+        }
+
+        return labels;
+    });
+
     // codecs.ts CODECS: the decoding checkboxes and the backends that show each one.
     private static readonly (string Label, string Codec, HwType[] Types)[] _codecs =
     [
@@ -51,6 +68,11 @@ public static class SettingsAdvisor
         ("HEVC RExt 8/10bit", "EnableDecodingColorDepth10HevcRext", ["hevc_rext_10bit", "hevc_rext_444_10bit"], _rextTypes),
         ("HEVC RExt 12bit", "EnableDecodingColorDepth12HevcRext", ["hevc_rext_12bit", "hevc_rext_422_12bit"], _rextTypes),
     ];
+
+    /// <summary>Returns the label the settings list gives a setting key, e.g. <c>HEVC</c> for <c>HardwareDecodingCodecs:hevc</c>.</summary>
+    /// <param name="setting">The setting key.</param>
+    /// <returns>The label, with <c>Trickplay: </c> before trickplay options; null for a key the advisor never gives.</returns>
+    public static string? LabelFor(string setting) => _labels.Value.GetValueOrDefault(setting);
 
     /// <summary>Returns advice for every option Jellyfin's Transcoding page shows for this backend.</summary>
     /// <param name="backend">The backend's results.</param>
