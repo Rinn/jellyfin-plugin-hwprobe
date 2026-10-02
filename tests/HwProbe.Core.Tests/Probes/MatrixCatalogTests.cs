@@ -103,6 +103,16 @@ public sealed class MatrixCatalogTests
     public void BwdifCellWhereTheMethodMatters(HwType type, bool bwdif) =>
         Assert.Equal(bwdif, MatrixCatalog.For(type).Any(c => c.Group == MatrixGroup.Deinterlace && c.Cell.Bwdif && c.Cell.Interlaced));
 
+    /// <summary>v4l2m2m only encodes, in each format Jellyfin can pick its encoder for, from a software decode.</summary>
+    [Fact]
+    public void V4l2EncodesEveryFormat()
+    {
+        var cells = MatrixCatalog.For(HwType.v4l2m2m);
+
+        Assert.Equal(["h264", "hevc", "av1"], cells.Select(c => c.Key));
+        Assert.All(cells, c => Assert.Equal((MatrixGroup.Encode, false), (c.Group, c.Cell.HardwareDecode)));
+    }
+
     /// <summary>Every backend but v4l2m2m gets an interlaced deinterlace cell.</summary>
     [Fact]
     public void DeinterlaceCellIsInterlaced()

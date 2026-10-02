@@ -23,8 +23,9 @@ public static class MatrixCatalog
     {
         if (type == HwType.v4l2m2m)
         {
-            // Encoder-only upstream: software decode, h264_v4l2m2m encode.
-            return [Encode(FixtureCatalog.H264, H264, hardwareDecode: false)];
+            // Encoder-only upstream: software decode, then the v4l2m2m encoder. The HEVC and AV1 ones back
+            // "Allow encoding in HEVC/AV1 format" (EncodingHelper.GetH26xOrAv1Encoder maps v4l2m2m too).
+            return [Encode(FixtureCatalog.H264, H264, hardwareDecode: false), Encode(FixtureCatalog.H264, "hevc", hardwareDecode: false), Encode(FixtureCatalog.H264, "av1", hardwareDecode: false)];
         }
 
         // One decode cell per Jellyfin "Enable hardware decoding for" option (EncodingOptions.HardwareDecodingCodecs

@@ -1,0 +1,262 @@
+# Observed: Raspberry Pi Model B (bcm2835-codec, gpu_mem=128), Raspberry Pi OS ffmpeg 7.1.5. Jellyfin's v4l2m2m command; exit 0, 10 frames.
+# ffmpeg -hide_banner -v debug -nostats -progress pipe:1 -i h264_8bit.mp4 -frames:v 10 -vf "setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,format=yuv420p" -c:v h264_v4l2m2m -an -f null -
+Splitting the commandline.
+Reading option '-hide_banner' ... matched as option 'hide_banner' (do not show program banner) with argument '1'.
+Reading option '-v' ... matched as option 'v' (set logging level) with argument 'debug'.
+Reading option '-nostats' ... matched as option 'stats' (print progress report during encoding) with argument 0.
+Reading option '-progress' ... matched as option 'progress' (write program-readable progress information) with argument 'pipe:1'.
+Reading option '-i' ... matched as input url with argument 'h264_8bit.mp4'.
+Reading option '-frames:v' ... matched as option 'frames' (set the number of frames to output) with argument '10'.
+Reading option '-vf' ... matched as option 'vf' (alias for -filter:v (apply filters to video streams)) with argument 'setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,format=yuv420p'.
+Reading option '-c:v' ... matched as option 'c' (select encoder/decoder ('copy' to copy stream without reencoding)) with argument 'h264_v4l2m2m'.
+Reading option '-an' ... matched as option 'an' (disable audio) with argument '1'.
+Reading option '-f' ... matched as option 'f' (force container format (auto-detected otherwise)) with argument 'null'.
+Reading option '-' ... matched as output url.
+Finished splitting the commandline.
+Parsing a group of options: global .
+Applying option hide_banner (do not show program banner) with argument 1.
+Applying option v (set logging level) with argument debug.
+Applying option nostats (print progress report during encoding) with argument 0.
+Applying option progress (write program-readable progress information) with argument pipe:1.
+[pipe @ 0x15e98e0] Setting default whitelist 'crypto,data'
+Successfully parsed a group of options.
+Parsing a group of options: input url h264_8bit.mp4.
+Successfully parsed a group of options.
+Opening an input file: h264_8bit.mp4.
+[AVFormatContext @ 0x161cb90] Opening 'h264_8bit.mp4' for reading
+[file @ 0x161ce60] Setting default whitelist 'file,crypto,data'
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x161cb90] Format mov,mp4,m4a,3gp,3g2,mj2 probed with size=2048 and score=100
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x161cb90] ISO: File Type Major Brand: isom
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x161cb90] Unknown dref type 0x206c7275 size 12
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x161cb90] Processing st: 0, edit list 0 - media time: 1024, duration: 12800
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x161cb90] Offset DTS by 1024 to make first pts zero.
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x161cb90] Setting codecpar->delay to 2 for stream st: 0
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x161cb90] Before avformat_find_stream_info() pos: 93602 bytes read:33895 seeks:1 nb_streams:1
+[h264 @ 0x161d500] nal_unit_type: 7(SPS), nal_ref_idc: 3
+[h264 @ 0x161d500] Decoding VUI
+[h264 @ 0x161d500] nal_unit_type: 8(PPS), nal_ref_idc: 3
+[h264 @ 0x161d500] nal_unit_type: 7(SPS), nal_ref_idc: 3
+[h264 @ 0x161d500] Decoding VUI
+[h264 @ 0x161d500] nal_unit_type: 8(PPS), nal_ref_idc: 3
+[h264 @ 0x161d500] nal_unit_type: 6(SEI), nal_ref_idc: 0
+[h264 @ 0x161d500] nal_unit_type: 5(IDR), nal_ref_idc: 3
+[h264 @ 0x161d500] Format yuv420p chosen by get_format().
+[h264 @ 0x161d500] Reinit context to 640x368, pix_fmt: yuv420p
+[h264 @ 0x161d500] no picture 
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x161cb90] All info found
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x161cb90] After avformat_find_stream_info() pos: 8958 bytes read:66663 seeks:2 frames:1
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'h264_8bit.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.7.103
+  Duration: 00:00:01.00, start: 0.000000, bitrate: 748 kb/s
+  Stream #0:0[0x1](und), 1, 1/12800: Video: h264 (High), 1 reference frame (avc1 / 0x31637661), yuv420p(progressive, left), 640x360 [SAR 1:1 DAR 16:9], 0/1, 739 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+      Metadata:
+        handler_name    : VideoHandler
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.19.101 libx264
+Successfully opened the file.
+Parsing a group of options: output url -.
+Applying option frames:v (set the number of frames to output) with argument 10.
+Applying option vf (alias for -filter:v (apply filters to video streams)) with argument setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,format=yuv420p.
+Applying option c:v (select encoder/decoder ('copy' to copy stream without reencoding)) with argument h264_v4l2m2m.
+Applying option an (disable audio) with argument 1.
+Applying option f (force container format (auto-detected otherwise)) with argument null.
+Successfully parsed a group of options.
+Opening an output file: -.
+[out#0/null @ 0x161d540] No explicit maps, mapping streams automatically...
+[vost#0:0/h264_v4l2m2m @ 0x16925e0] Created video stream from input stream 0:0
+[AVFilterGraph @ 0x1692d20] Setting 'color_primaries' to value 'bt709'
+[AVFilterGraph @ 0x1692d20] Setting 'color_trc' to value 'bt709'
+[AVFilterGraph @ 0x1692d20] Setting 'colorspace' to value 'bt709'
+[AVFilterGraph @ 0x1692d20] Setting 'pix_fmts' to value 'yuv420p'
+detected 1 logical cores
+[h264 @ 0x1691a40] nal_unit_type: 7(SPS), nal_ref_idc: 3
+[h264 @ 0x1691a40] Decoding VUI
+[h264 @ 0x1691a40] nal_unit_type: 8(PPS), nal_ref_idc: 3
+Successfully opened the file.
+Stream mapping:
+  Stream #0:0 -> #0:0 (h264 (native) -> h264 (h264_v4l2m2m))
+[vost#0:0/h264_v4l2m2m @ 0x16925e0] Starting thread...
+[vf#0:0 @ 0x1692ca0] Starting thread...
+[vist#0:0/h264 @ 0x1622870] [dec:h264 @ 0x16917d0] Starting thread...
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x1611f30] Starting thread...
+[h264 @ 0x1691a40] nal_unit_type: 6(SEI), nal_ref_idc: 0
+[h264 @ 0x1691a40] nal_unit_type: 5(IDR), nal_ref_idc: 3
+[h264 @ 0x1691a40] Format yuv420p chosen by get_format().
+[h264 @ 0x1691a40] Reinit context to 640x368, pix_fmt: yuv420p
+[h264 @ 0x1691a40] no picture 
+Press [q] to stop, [?] for help
+[h264 @ 0x1691a40] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[h264 @ 0x1691a40] no picture 
+[h264 @ 0x1691a40] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[AVFilterGraph @ 0xa9301a10] Setting 'color_primaries' to value 'bt709'
+[AVFilterGraph @ 0xa9301a10] Setting 'color_trc' to value 'bt709'
+[AVFilterGraph @ 0xa9301a10] Setting 'colorspace' to value 'bt709'
+[AVFilterGraph @ 0xa9301a10] Setting 'pix_fmts' to value 'yuv420p'
+[graph -1 input from stream 0:0 @ 0xa9302190] Setting 'video_size' to value '640x360'
+[graph -1 input from stream 0:0 @ 0xa9302190] Setting 'pix_fmt' to value '0'
+[graph -1 input from stream 0:0 @ 0xa9302190] Setting 'time_base' to value '1/12800'
+[graph -1 input from stream 0:0 @ 0xa9302190] Setting 'pixel_aspect' to value '1/1'
+[graph -1 input from stream 0:0 @ 0xa9302190] Setting 'colorspace' to value '2'
+[graph -1 input from stream 0:0 @ 0xa9302190] Setting 'range' to value '0'
+[graph -1 input from stream 0:0 @ 0xa9302190] Setting 'frame_rate' to value '25/1'
+[graph -1 input from stream 0:0 @ 0xa9302190] w:640 h:360 pixfmt:yuv420p tb:1/12800 fr:25/1 sar:1/1 csp:unknown range:unknown
+[h264 @ 0x1691a40] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[format @ 0xa93026f0] Setting 'color_ranges' to value 'tv'
+[AVFilterGraph @ 0xa9301a10] query_formats: 5 queried, 12 merged, 0 already done, 0 delayed
+[graph -1 input from stream 0:0 @ 0xa9302190] video frame properties congruent with link at pts_time: 0
+[h264_v4l2m2m @ 0x1692820]  <<< v4l2_encode_init: fmt=0/-1
+[h264_v4l2m2m @ 0x1692820] probing device /dev/video31
+[h264_v4l2m2m @ 0x1692820] driver 'bcm2835-codec' on card 'bcm2835-codec-encode_image' in mplane mode
+[h264_v4l2m2m @ 0x1692820] v4l2 capture format not supported
+[h264_v4l2m2m @ 0x1692820] probing device /dev/video18
+[h264_v4l2m2m @ 0x1692820] driver 'bcm2835-codec' on card 'bcm2835-codec-image_fx' in mplane mode
+[h264_v4l2m2m @ 0x1692820] v4l2 capture format not supported
+[h264_v4l2m2m @ 0x1692820] probing device /dev/video12
+[h264_v4l2m2m @ 0x1692820] driver 'bcm2835-codec' on card 'bcm2835-codec-isp' in mplane mode
+[h264_v4l2m2m @ 0x1692820] v4l2 capture format not supported
+[h264_v4l2m2m @ 0x1692820] probing device /dev/video11
+[h264_v4l2m2m @ 0x1692820] driver 'bcm2835-codec' on card 'bcm2835-codec-encode' in mplane mode
+[h264_v4l2m2m @ 0x1692820] Using device /dev/video11
+[h264_v4l2m2m @ 0x1692820] driver 'bcm2835-codec' on card 'bcm2835-codec-encode' in mplane mode
+[h264_v4l2m2m @ 0x1692820] requesting formats: output=YU12/yuv420p capture=H264/none
+[h264 @ 0x1691a40] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[h264_v4l2m2m @ 0x1692820] output: YU12 04 buffers initialized: 0640x0360, sizeimage 00345600, bytesperline 00000640
+[h264_v4l2m2m @ 0x1692820] capture: H264 08 buffers initialized: 0640x0360, sizeimage 00524288, bytesperline 00000000
+[h264_v4l2m2m @ 0x1692820] Encoder: number of B-frames = 0
+[h264_v4l2m2m @ 0x1692820] Encoder: header mode = 0
+[h264_v4l2m2m @ 0x1692820] Encoder: bit rate = 200000
+[h264_v4l2m2m @ 0x1692820] Failed to set frame level rate control: Invalid argument
+[h264_v4l2m2m @ 0x1692820] Encoder: gop size = 12
+[h264_v4l2m2m @ 0x1692820] Encoder Context: id (27), profile (-99), frame rate(25/1), number b-frames (0), gop size (12), bit rate (200000), qmin (-1), qmax (-1)
+[h264_v4l2m2m @ 0x1692820] Encoder: minimum video quantizer scale = 0
+[h264_v4l2m2m @ 0x1692820] Encoder: maximum video quantizer scale = 51
+Output #0, null, to 'pipe:':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.7.103
+  Stream #0:0(und), 0, 1/25: Video: h264, 1 reference frame, yuv420p(tv, bt709, progressive, left), 640x360 [SAR 1:1 DAR 16:9], 0/1, q=2-31, 200 kb/s, 25 fps, 25 tbn (default)
+      Metadata:
+        handler_name    : VideoHandler
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.19.101 h264_v4l2m2m
+[out#0/null @ 0x161d540] Starting thread...
+[out#0/null @ 0x161d540] sq: send 0 ts 0.04
+[out#0/null @ 0x161d540] sq: receive 0 ts 0.04 queue head 0 ts 0.04
+[out#0/null @ 0x161d540] sq: send 0 ts 0.08
+[out#0/null @ 0x161d540] sq: receive 0 ts 0.08 queue head 0 ts 0.08
+[out#0/null @ 0x161d540] sq: send 0 ts 0.12
+[out#0/null @ 0x161d540] sq: receive 0 ts 0.12 queue head 0 ts 0.12
+[h264_v4l2m2m @ 0x1692820] --- output pre VIDIOC_QBUF: index 0, ts=-519170816.000000 count=0
+[h264_v4l2m2m @ 0x1692820] --- output VIDIOC_QBUF: index 0, ts=-519170816.000000 count=0
+[h264 @ 0x1691a40] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[h264_v4l2m2m @ 0x1692820] output set status ON OK
+[h264_v4l2m2m @ 0x1692820] --- capture VIDIOC_QBUF: index 0, ts=-1456417224.000000 count=0
+[h264_v4l2m2m @ 0x1692820] --- capture VIDIOC_QBUF: index 1, ts=-1456417224.000000 count=0
+[h264_v4l2m2m @ 0x1692820] --- capture VIDIOC_QBUF: index 2, ts=-1456417224.000000 count=0
+[h264_v4l2m2m @ 0x1692820] --- capture VIDIOC_QBUF: index 3, ts=-1456417224.000000 count=0
+[h264_v4l2m2m @ 0x1692820] --- capture VIDIOC_QBUF: index 4, ts=-1456417224.000000 count=0
+[h264_v4l2m2m @ 0x1692820] --- capture VIDIOC_QBUF: index 5, ts=-1456417224.000000 count=0
+[h264_v4l2m2m @ 0x1692820] --- capture VIDIOC_QBUF: index 6, ts=-1456417224.000000 count=0
+[h264_v4l2m2m @ 0x1692820] --- capture VIDIOC_QBUF: index 7, ts=-1456417224.000000 count=0
+[h264_v4l2m2m @ 0x1692820] capture set status ON OK
+[h264_v4l2m2m @ 0x1692820] Pkt tracking failure: pts=-9223372036854775808, track[0]=0
+[h264_v4l2m2m @ 0x1692820] capture: Buffer requeue
+[h264_v4l2m2m @ 0x1692820] --- capture VIDIOC_QBUF: index 0, ts=-1456405200.000000 count=0
+[h264_v4l2m2m @ 0x1692820] capture: Buffer requeue
+[h264_v4l2m2m @ 0x1692820] --- capture VIDIOC_QBUF: index 1, ts=-1456404144.000000 count=0
+[h264_v4l2m2m @ 0x1692820] --- output pre VIDIOC_QBUF: index 0, ts=-519170816.000000 count=0
+[h264_v4l2m2m @ 0x1692820] --- output VIDIOC_QBUF: index 0, ts=-519170816.000000 count=0
+[h264_v4l2m2m @ 0x1692820] --- output pre VIDIOC_QBUF: index 1, ts=-519170816.000000 count=0
+[h264_v4l2m2m @ 0x1692820] --- output VIDIOC_QBUF: index 1, ts=-519170816.000000 count=0
+[h264_v4l2m2m @ 0x1692820] capture: Buffer requeue
+[h264_v4l2m2m @ 0x1692820] --- capture VIDIOC_QBUF: index 2, ts=-1456403088.000000 count=0
+[out#0/null @ 0x161d540] sq: send 0 ts 0.16
+[out#0/null @ 0x161d540] sq: receive 0 ts 0.16 queue head 0 ts 0.16
+[h264_v4l2m2m @ 0x1692820] --- output pre VIDIOC_QBUF: index 0, ts=-519170816.000000 count=0
+[h264 @ 0x1691a40] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[h264_v4l2m2m @ 0x1692820] --- output VIDIOC_QBUF: index 0, ts=-519170816.000000 count=0
+[h264_v4l2m2m @ 0x1692820] capture: Buffer requeue
+[h264_v4l2m2m @ 0x1692820] --- capture VIDIOC_QBUF: index 3, ts=-1456402032.000000 count=0
+[out#0/null @ 0x161d540] sq: send 0 ts 0.2
+[out#0/null @ 0x161d540] sq: receive 0 ts 0.2 queue head 0 ts 0.2
+[h264_v4l2m2m @ 0x1692820] --- output pre VIDIOC_QBUF: index 0, ts=-519170816.000000 count=0
+[h264_v4l2m2m @ 0x1692820] --- output VIDIOC_QBUF: index 0, ts=-519170816.000000 count=0
+[h264_v4l2m2m @ 0x1692820] capture: Buffer requeue
+[h264 @ 0x1691a40] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[h264_v4l2m2m @ 0x1692820] --- capture VIDIOC_QBUF: index 4, ts=-1456400976.000000 count=0
+[out#0/null @ 0x161d540] sq: send 0 ts 0.24
+[out#0/null @ 0x161d540] sq: receive 0 ts 0.24 queue head 0 ts 0.24
+[h264 @ 0x1691a40] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[h264_v4l2m2m @ 0x1692820] --- output pre VIDIOC_QBUF: index 0, ts=-519170816.000000 count=0
+[h264_v4l2m2m @ 0x1692820] --- output VIDIOC_QBUF: index 0, ts=-519170816.000000 count=0
+[h264_v4l2m2m @ 0x1692820] capture: Buffer requeue
+[h264_v4l2m2m @ 0x1692820] --- capture VIDIOC_QBUF: index 5, ts=-1456399920.000000 count=0
+[out#0/null @ 0x161d540] sq: send 0 ts 0.28
+[out#0/null @ 0x161d540] sq: receive 0 ts 0.28 queue head 0 ts 0.28
+[h264_v4l2m2m @ 0x1692820] --- output pre VIDIOC_QBUF: index 0, ts=-519170816.000000 count=0
+[h264_v4l2m2m @ 0x1692820] --- output VIDIOC_QBUF: index 0, ts=-519170816.000000 count=0
+[h264_v4l2m2m @ 0x1692820] capture: Buffer requeue
+[h264_v4l2m2m @ 0x1692820] --- capture VIDIOC_QBUF: index 6, ts=-1456398864.000000 count=0
+[h264 @ 0x1691a40] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[out#0/null @ 0x161d540] sq: send 0 ts 0.32
+[out#0/null @ 0x161d540] sq: receive 0 ts 0.32 queue head 0 ts 0.32
+[h264_v4l2m2m @ 0x1692820] --- output pre VIDIOC_QBUF: index 0, ts=-519170816.000000 count=0
+[h264 @ 0x1691a40] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[h264_v4l2m2m @ 0x1692820] --- output VIDIOC_QBUF: index 0, ts=-519170816.000000 count=0
+[h264_v4l2m2m @ 0x1692820] capture: Buffer requeue
+[h264_v4l2m2m @ 0x1692820] --- capture VIDIOC_QBUF: index 7, ts=-1456397808.000000 count=0
+[out#0/null @ 0x161d540] sq: send 0 ts 0.36
+[out#0/null @ 0x161d540] sq: receive 0 ts 0.36 queue head 0 ts 0.36
+[h264_v4l2m2m @ 0x1692820] --- output pre VIDIOC_QBUF: index 0, ts=-519170816.000000 count=0
+[h264 @ 0x1691a40] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[h264_v4l2m2m @ 0x1692820] --- output VIDIOC_QBUF: index 0, ts=-519170816.000000 count=0
+[h264_v4l2m2m @ 0x1692820] capture: Buffer requeue
+[h264_v4l2m2m @ 0x1692820] --- capture VIDIOC_QBUF: index 0, ts=-1456405200.000000 count=0
+[out#0/null @ 0x161d540] sq: send 0 ts 0.4
+[out#0/null @ 0x161d540] sq: 0 frames_max 10 reached
+[out#0/null @ 0x161d540] sq: finish 0; head ts 0.4
+[out#0/null @ 0x161d540] sq: finish queue
+[out#0/null @ 0x161d540] sq: receive 0 ts 0.4 queue head 0 ts 0.4
+[h264_v4l2m2m @ 0x1692820] --- output pre VIDIOC_QBUF: index 0, ts=-519170816.000000 count=0
+[h264 @ 0x1691a40] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[vf#0:0 @ 0x1692ca0] All consumers returned EOF
+[out#0/null @ 0x161d540] sq: 0 EOF
+[out#0/null @ 0x161d540] sq: finish queue
+[vf#0:0 @ 0x1692ca0] Terminating thread with return code 0 (success)
+[h264_v4l2m2m @ 0x1692820] --- output VIDIOC_QBUF: index 0, ts=-519170816.000000 count=0
+[vost#0:0/h264_v4l2m2m @ 0x16925e0] Encoder thread received EOF
+[h264_v4l2m2m @ 0x1692820] capture: Buffer requeue
+[h264_v4l2m2m @ 0x1692820] --- capture VIDIOC_QBUF: index 1, ts=-1456404144.000000 count=0
+[h264_v4l2m2m @ 0x1692820] Buffer empty - reQ
+[h264_v4l2m2m @ 0x1692820] capture: Buffer requeue
+[h264_v4l2m2m @ 0x1692820] --- capture VIDIOC_QBUF: index 2, ts=-1456403088.000000 count=0
+[h264_v4l2m2m @ 0x1692820] --- capture VIDIOC_QBUF: index 3, ts=0.000000 count=0
+[h264_v4l2m2m @ 0x1692820] Dq event 2
+[vost#0:0/h264_v4l2m2m @ 0x16925e0] Terminating thread with return code 0 (success)
+[out#0/null @ 0x161d540] All streams finished
+[out#0/null @ 0x161d540] Terminating thread with return code 0 (success)
+[vist#0:0/h264 @ 0x1622870] [dec:h264 @ 0x16917d0] Decoder returned EOF, finishing
+[vist#0:0/h264 @ 0x1622870] All consumers of this stream are done
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x1611f30] All consumers are done
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x1611f30] Terminating thread with return code 0 (success)
+[vist#0:0/h264 @ 0x1622870] [dec:h264 @ 0x16917d0] Terminating thread with return code 0 (success)
+[out#0/null @ 0x161d540] Output file #0 (pipe:):
+[out#0/null @ 0x161d540]   Output stream #0:0 (video): 10 frames encoded; 10 packets muxed (11288 bytes); 
+[out#0/null @ 0x161d540]   Total: 10 packets (11288 bytes) muxed
+[out#0/null @ 0x161d540] video:11KiB audio:0KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+frame=   10 fps=0.0 q=-0.0 Lsize=N/A time=00:00:00.36 bitrate=N/A speed=0.372x    
+[AVIOContext @ 0x161ca20] Statistics: 359 bytes written, 0 seeks, 2 writeouts
+[h264_v4l2m2m @ 0x1692820] V4L2 Codec end
+[h264_v4l2m2m @ 0x1692820] output set status OFF OK
+[h264_v4l2m2m @ 0x1692820] capture set status OFF OK
+[h264_v4l2m2m @ 0x1692820] V4L2 Context destroyed
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x1611f30] Input file #0 (h264_8bit.mp4):
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x1611f30]   Input stream #0:0 (video): 22 packets read (83042 bytes); 11 frames decoded; 0 decode errors; 
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x1611f30]   Total: 22 packets (83042 bytes) demuxed
+[AVIOContext @ 0x1624f10] Statistics: 127449 bytes read, 2 seeks
