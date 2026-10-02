@@ -5,9 +5,7 @@ targetAbi: "12.1.0.0"
 framework: "net10.0"
 overview: "Tests which hardware transcoding options work on a Jellyfin server"
 description: >
-  Runs short test transcodes for each hardware acceleration option on the Transcoding page.
-  Shows which ones work and how to fix the ones that don't. Results can be applied to
-  Jellyfin's settings and reverted.
+  Runs short test transcodes for each hardware acceleration option on the Transcoding page. Shows which ones work and how to fix the ones that don't. Results can be applied to Jellyfin's settings and reverted.
 category: "General"
 owner: "Rinn"
 artifacts:
