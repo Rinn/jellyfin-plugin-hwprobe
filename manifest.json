@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.2.6.0",
+        "changelog": "Probe no longer starts during playback right after a client logs in again; the scheduled task no longer fails when the server is busy.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.2.6/hwprobe-plugin_0.2.6.0.zip",
+        "checksum": "3fec6a47088490de662cadde5adf6378",
+        "timestamp": "2026-10-02T08:02:14Z"
+      },
+      {
         "version": "0.2.4.0",
         "changelog": "HwProbe in the dashboard sidebar; plugin icon and catalog image.",
         "targetAbi": "12.1.0.0",
