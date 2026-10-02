@@ -188,13 +188,18 @@ public sealed class FixtureBuilder
         return generated.Status == FixtureStatus.Available ? generated : await OrDownloadAsync(spec, generated, cancellationToken);
     }
 
-    /// <summary>Falls back to the spec's pinned sample when the clip couldn't be generated.</summary>
+    /// <summary>Falls back to the bundled copy, then the pinned sample, when the clip couldn't be generated.</summary>
     /// <param name="spec">The fixture.</param>
     /// <param name="failure">Why it couldn't be generated.</param>
     /// <param name="cancellationToken">Cancels the download.</param>
-    /// <returns>The downloaded sample, or the original failure with the download's reason added.</returns>
+    /// <returns>The bundled or downloaded clip, or the original failure with the download's reason added.</returns>
     private async Task<FixtureResult> OrDownloadAsync(FixtureSpec spec, FixtureResult failure, CancellationToken cancellationToken)
     {
+        if (spec.Bundled)
+        {
+            return await ExtractBundledAsync(spec, failure, cancellationToken);
+        }
+
         if (spec.DownloadUrl is not { } url)
         {
             return failure;
@@ -202,6 +207,40 @@ public sealed class FixtureBuilder
 
         var downloaded = await DownloadAsync(spec, url, cancellationToken);
         return downloaded.Status == FixtureStatus.Available ? downloaded : failure with { Reason = $"{failure.Reason}; download: {downloaded.Reason}" };
+    }
+
+    /// <summary>Writes the bundled copy of a clip to the download cache, checking its pinned hash.</summary>
+    /// <param name="spec">The fixture.</param>
+    /// <param name="failure">Why it couldn't be generated.</param>
+    /// <param name="cancellationToken">Cancels the write.</param>
+    /// <returns>Available, or the original failure when the bundled copy is missing or doesn't match.</returns>
+    private async Task<FixtureResult> ExtractBundledAsync(FixtureSpec spec, FixtureResult failure, CancellationToken cancellationToken)
+    {
+        await using var resource = typeof(FixtureBuilder).Assembly.GetManifestResourceStream("Fixtures." + spec.FileName);
+        if (resource is null)
+        {
+            return failure with { Reason = $"{failure.Reason}; no bundled copy of {spec.FileName}" };
+        }
+
+        using var buffer = new MemoryStream();
+        await resource.CopyToAsync(buffer, cancellationToken);
+        var bytes = buffer.ToArray();
+        var hash = Convert.ToHexStringLower(SHA256.HashData(bytes));
+        if (hash != spec.Sha256)
+        {
+            return failure with { Reason = $"{failure.Reason}; bundled {spec.FileName} has SHA-256 {hash}, not the pinned {spec.Sha256}" };
+        }
+
+        var path = Path.Combine(_downloadDirectory, spec.Sha256 + Path.GetExtension(spec.FileName));
+        if (!File.Exists(path))
+        {
+            Directory.CreateDirectory(_downloadDirectory);
+            var partial = path + ".partial";
+            await File.WriteAllBytesAsync(partial, bytes, cancellationToken);
+            File.Move(partial, path, overwrite: true);
+        }
+
+        return new FixtureResult(spec, FixtureStatus.Available, path, null);
     }
 
     /// <summary>Returns a cached downloaded fixture, or downloads it and checks its pinned hash.</summary>

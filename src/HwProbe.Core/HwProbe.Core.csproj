@@ -9,4 +9,8 @@
     <InternalsVisibleTo Include="Jellyfin.Plugin.HwProbe.Core.Tests" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/Bundled/*" LogicalName="Fixtures.%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

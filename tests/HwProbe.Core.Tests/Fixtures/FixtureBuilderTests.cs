@@ -55,7 +55,8 @@ public sealed class FixtureBuilderTests : IDisposable
 
         var hevc = results.Where(r => r.Spec.RequiredEncoder == "libx265").ToList();
         Assert.Equal(7, hevc.Count);
-        Assert.All(hevc, r => Assert.Equal(FixtureStatus.Skipped, r.Status));
+        Assert.All(hevc.Where(r => !r.Spec.Bundled), r => Assert.Equal(FixtureStatus.Skipped, r.Status));
+        Assert.All(hevc.Where(r => r.Spec.Bundled), r => Assert.Equal(FixtureStatus.Available, r.Status));
         Assert.DoesNotContain(_runner.Invocations, i => i.Arguments.Contains("libx265", StringComparison.Ordinal));
     }
 
@@ -131,7 +132,11 @@ public sealed class FixtureBuilderTests : IDisposable
         var h264 = failed.Single(r => r.Spec.FileName == "h264_8bit.mp4");
         Assert.Equal(FixtureStatus.Failed, h264.Status);
         Assert.Contains("Unknown encoder", h264.Reason, StringComparison.Ordinal);
-        Assert.Empty(Directory.EnumerateFiles(_root, "*", SearchOption.AllDirectories));
+
+        // Only bundled copies, which don't depend on the encode, are written.
+        var downloads = Path.DirectorySeparatorChar + "downloads" + Path.DirectorySeparatorChar;
+        Assert.DoesNotContain(Directory.EnumerateFiles(_root, "*", SearchOption.AllDirectories), f => !f.Contains(downloads, StringComparison.Ordinal));
+        Assert.All(failed.Where(r => r.Spec.Bundled), r => Assert.Equal(FixtureStatus.Available, r.Status));
 
         _runner.ExitCode = 0;
         _runner.Invocations.Clear();
@@ -179,6 +184,21 @@ public sealed class FixtureBuilderTests : IDisposable
             var output = EncodingRunner.OutputPath(i);
             Assert.Contains(".partial.", Path.GetFileName(output), StringComparison.Ordinal);
         });
+    }
+
+    /// <summary>Every bundled clip ships in the assembly and matches its pinned hash.</summary>
+    [Fact]
+    public void BundledClipsMatchTheirPins()
+    {
+        var bundled = FixtureCatalog.All.Where(f => f.Bundled).ToList();
+
+        Assert.NotEmpty(bundled);
+        foreach (var spec in bundled)
+        {
+            using var resource = typeof(FixtureBuilder).Assembly.GetManifestResourceStream("Fixtures." + spec.FileName);
+            Assert.NotNull(resource);
+            Assert.Equal(spec.Sha256, Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(resource)));
+        }
     }
 
     /// <inheritdoc/>

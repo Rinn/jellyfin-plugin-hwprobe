@@ -58,6 +58,12 @@ GITHUB_ACTIONS=true python3 scripts/package.py --version 1.2.3 --out dist
 shasum -a 256 dist/*
 ```
 
+## Test clips
+
+HwProbe makes its test clips with the server's ffmpeg. When a clip can't be made, it uses a copy bundled in the plugin, or downloads a sample.
+
+- Bundled, for clips with no public sample: HEVC RExt 4:4:4 10-bit, 4:2:2 12-bit and 4:4:4 12-bit, and AV1 10-bit. `scripts/make-bundled-fixtures.sh` remakes them; put the hashes it prints in `FixtureCatalog`.
+
 ## Network access
 
 HwProbe only downloads test clips from FFmpeg's FATE sample suite, each pinned by SHA-256 and cached.

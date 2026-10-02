@@ -10,7 +10,7 @@ public sealed class MatrixCatalogTests
 {
     private static readonly string[] _decodeKeys =
     [
-        "h264", "hevc", "mpeg2video", "vc1", "vp8", "vp9", "av1",
+        "h264", "hevc", "mpeg1video", "mpeg2video", "mpeg4", "vc1", "vp8", "vp9", "av1",
         "hevc_10bit", "vp9_10bit", "hevc_rext_10bit", "hevc_rext_444_10bit", "hevc_rext_12bit", "hevc_rext_422_12bit", "av1_10bit",
     ];
 

@@ -28,10 +28,11 @@ public static class MatrixCatalog
         }
 
         // One decode cell per Jellyfin "Enable hardware decoding for" option (EncodingOptions.HardwareDecodingCodecs
-        // and the EnableDecodingColorDepth* switches), plus 10-bit AV1, which the AV1 option also covers.
+        // and the EnableDecodingColorDepth* switches), plus 10-bit AV1, which the AV1 option also covers, and the RExt
+        // formats each RExt option covers.
         FixtureSpec[] decoded =
         [
-            FixtureCatalog.H264, FixtureCatalog.Hevc, FixtureCatalog.Mpeg2, FixtureCatalog.Vc1, FixtureCatalog.Vp8, FixtureCatalog.Vp9,
+            FixtureCatalog.H264, FixtureCatalog.Hevc, FixtureCatalog.Mpeg1, FixtureCatalog.Mpeg2, FixtureCatalog.Mpeg4, FixtureCatalog.Vc1, FixtureCatalog.Vp8, FixtureCatalog.Vp9,
             FixtureCatalog.Av1, FixtureCatalog.Hevc10, FixtureCatalog.Vp910, FixtureCatalog.HevcRext10, FixtureCatalog.HevcRext10Yuv444, FixtureCatalog.HevcRext12, FixtureCatalog.HevcRext12Yuv422, FixtureCatalog.Av110,
         ];
 
