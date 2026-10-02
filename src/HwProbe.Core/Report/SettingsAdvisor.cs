@@ -102,10 +102,10 @@ public static class SettingsAdvisor
             var huc = context.Os == HostOs.Linux ? new Uri(LowPowerAdvice.GuideUrl) : null;
             advice.Add(WithFix(
                 Advise(EncodingSection, "EnableIntelLowPowerH264HwEncoder", "Enable Intel Low-Power H.264 hardware encoder", Cell(backend.Encode, "h264_lowpower"), NotUsedByDriver),
-                huc is null || context.IntelLowPower == LowPowerSupport.None ? null : new Fix("Enable HuC firmware", huc)));
+                huc is null || context.IntelLowPower == LowPowerSupport.None ? null : new Fix("Enable the HuC firmware", huc)));
             advice.Add(WithFix(
                 Advise(EncodingSection, "EnableIntelLowPowerHevcHwEncoder", "Enable Intel Low-Power HEVC hardware encoder", Cell(backend.Encode, "hevc_lowpower"), NotUsedByDriver),
-                huc is null || context.IntelLowPower != LowPowerSupport.Unknown ? null : new Fix("Gen 11+: enable HuC firmware", huc)));
+                huc is null || context.IntelLowPower != LowPowerSupport.Unknown ? null : new Fix("Enable the HuC firmware", huc)));
         }
 
         advice.Add(Advise(FormatSection, "AllowHevcEncoding", "Allow encoding in HEVC format", Cell(backend.Encode, "hevc")));

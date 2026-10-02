@@ -127,7 +127,7 @@ public sealed class SettingsAdvisorTests
         var advice = SettingsAdvisor.For(_apolloLakeQsv with { Tonemap = tonemap }, _docker with { OpenclUnavailable = true });
 
         var lowPower = Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerHevcHwEncoder").Fix!;
-        Assert.Equal("Gen 11+: enable HuC firmware", lowPower.Action);
+        Assert.Equal("Enable the HuC firmware", lowPower.Action);
         Assert.EndsWith("#configure-and-verify-lp-mode-on-linux", lowPower.Url!.ToString(), StringComparison.Ordinal);
         Assert.Equal(Hints.OpenclFix(inContainer: true), Assert.Single(advice, a => a.Setting == "EnableTonemapping").Fix);
         Assert.Null(Assert.Single(advice, a => a.Setting == "EnableVppTonemapping").Fix);

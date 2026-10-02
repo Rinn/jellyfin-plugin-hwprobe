@@ -56,10 +56,10 @@ public sealed class HintsTests
     /// <param name="action">The expected action, or null for no fix.</param>
     /// <param name="link">The expected link.</param>
     [Theory]
-    [InlineData(BackendVerdict.NotPresent, HwType.nvenc, true, "NVIDIA GPU present? Run with --gpus all", "https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/nvidia/#official-docker")]
-    [InlineData(BackendVerdict.NotPresent, HwType.qsv, true, "GPU present? Pass --device /dev/dri", "https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/intel/#official-docker")]
-    [InlineData(BackendVerdict.NotPresent, HwType.vaapi, true, "GPU present? Pass --device /dev/dri", "https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/")]
-    [InlineData(BackendVerdict.PermissionDenied, HwType.qsv, false, "usermod -aG render jellyfin", "https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/intel/#configure-on-linux-host")]
+    [InlineData(BackendVerdict.NotPresent, HwType.nvenc, true, "Pass the GPU to the container (--gpus all)", "https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/nvidia/#official-docker")]
+    [InlineData(BackendVerdict.NotPresent, HwType.qsv, true, "Pass the GPU to the container (--device /dev/dri)", "https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/intel/#official-docker")]
+    [InlineData(BackendVerdict.NotPresent, HwType.vaapi, true, "Pass the GPU to the container (--device /dev/dri)", "https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/")]
+    [InlineData(BackendVerdict.PermissionDenied, HwType.qsv, false, "Add jellyfin to the render group (usermod)", "https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/intel/#configure-on-linux-host")]
     [InlineData(BackendVerdict.NotPresent, HwType.nvenc, false, null, null)]
     [InlineData(BackendVerdict.NotPresent, HwType.v4l2m2m, true, null, null)]
     [InlineData(BackendVerdict.DevicePresentPipelineBroken, HwType.qsv, true, null, null)]
