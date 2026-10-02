@@ -42,9 +42,9 @@ public sealed class PluginShellTests : IDisposable
         using var busy = Service(transcoding: true, _ => Task.FromResult(Reports.Sample()));
         using var settings = new SettingsHarness();
 
-        Assert.IsType<AcceptedResult>(new HwProbeController(idle, settings.Service).Run());
-        Assert.IsType<ConflictObjectResult>(new HwProbeController(idle, settings.Service).Run());
-        Assert.IsType<ConflictObjectResult>(new HwProbeController(busy, settings.Service).Run());
+        Assert.IsType<AcceptedResult>(await new HwProbeController(idle, settings.Service).RunAsync(TestContext.Current.CancellationToken));
+        Assert.IsType<ConflictObjectResult>(await new HwProbeController(idle, settings.Service).RunAsync(TestContext.Current.CancellationToken));
+        Assert.IsType<ConflictObjectResult>(await new HwProbeController(busy, settings.Service).RunAsync(TestContext.Current.CancellationToken));
         release.Release();
 
         // The started probe writes its report in the background; cleanup must not race it.
@@ -79,6 +79,18 @@ public sealed class PluginShellTests : IDisposable
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => task.ExecuteAsync(new Progress<double>(), TestContext.Current.CancellationToken));
         Assert.Equal("no ffmpeg", ex.Message);
         Assert.Empty(task.GetDefaultTriggers());
+    }
+
+    /// <summary>A busy server is a skip: the task completes instead of failing.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task TaskSkipsWhenBusy()
+    {
+        using var service = Service(transcoding: true, _ => Task.FromResult(Reports.Sample()));
+
+        await new HardwareProbeTask(service).ExecuteAsync(new Progress<double>(), TestContext.Current.CancellationToken);
+
+        Assert.Null(service.Status.LastCompletedUtc);
     }
 
     /// <summary>The configuration page is embedded where GetPages points.</summary>
@@ -128,5 +140,5 @@ public sealed class PluginShellTests : IDisposable
     /// <param name="probe">The probe.</param>
     /// <returns>The service.</returns>
     private ProbeService Service(bool transcoding, Func<CancellationToken, Task<CapabilityReport>> probe) =>
-        new(probe, () => transcoding, Path.Combine(_directory, $"{Guid.NewGuid():N}.json"), TimeProvider.System, NullLogger.Instance);
+        new(probe, () => transcoding, Path.Combine(_directory, $"{Guid.NewGuid():N}.json"), TimeProvider.System, TimeSpan.Zero, NullLogger.Instance);
 }
