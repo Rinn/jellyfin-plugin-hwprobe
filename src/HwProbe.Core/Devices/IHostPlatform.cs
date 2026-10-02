@@ -12,6 +12,9 @@ public interface IHostPlatform
     /// <summary>Gets the OS version as reported by the runtime.</summary>
     Version OsVersion { get; }
 
+    /// <summary>Gets the CPU architecture, e.g. <c>x64</c> or <c>arm64</c>.</summary>
+    string Architecture { get; }
+
     /// <summary>Reports whether a file exists.</summary>
     /// <param name="path">Absolute path.</param>
     /// <returns>True if the file exists.</returns>

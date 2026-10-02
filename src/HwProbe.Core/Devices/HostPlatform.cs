@@ -19,6 +19,17 @@ public sealed class HostPlatform : IHostPlatform
     public Version OsVersion => Environment.OSVersion.Version;
 
     /// <inheritdoc/>
+    public string Architecture => RuntimeInformation.OSArchitecture switch
+    {
+        System.Runtime.InteropServices.Architecture.X64 => "x64",
+        System.Runtime.InteropServices.Architecture.X86 => "x86",
+        System.Runtime.InteropServices.Architecture.Arm64 => "arm64",
+        System.Runtime.InteropServices.Architecture.Arm => "arm",
+        System.Runtime.InteropServices.Architecture.Armv6 => "armv6",
+        var other => other.ToString(),
+    };
+
+    /// <inheritdoc/>
     public bool FileExists(string path) => File.Exists(path);
 
     /// <inheritdoc/>

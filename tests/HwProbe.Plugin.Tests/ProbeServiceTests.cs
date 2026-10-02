@@ -29,6 +29,42 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Null(service.Status.LastError);
     }
 
+    /// <summary>A report saved by another HwProbe version, such as before an update, isn't shown.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task ReportFromAnotherVersionIsCleared()
+    {
+        using var service = Create(_ => Task.FromResult(Reports.Sample() with { HwProbeVersion = "0.0.1.0" }), transcoding: false);
+        await service.RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Null(await service.LatestJsonAsync(TestContext.Current.CancellationToken));
+
+        // Left for the next probe to overwrite; deleting it on read could race a probe that's saving.
+        Assert.True(File.Exists(Path.Combine(_directory, "latest.json")));
+    }
+
+    /// <summary>A report from another ffmpeg path or version isn't shown; the same version in another form is.</summary>
+    /// <param name="path">The server's ffmpeg path now.</param>
+    /// <param name="version">The server's ffmpeg version now, or null when unreadable.</param>
+    /// <param name="kept">Whether the report is kept.</param>
+    /// <returns>A task representing the test.</returns>
+    [Theory]
+    [InlineData("/usr/lib/jellyfin-ffmpeg/ffmpeg", "8.1.2", true)]
+    [InlineData("/usr/lib/jellyfin-ffmpeg/ffmpeg", "8.1.2.0", true)]
+    [InlineData("/usr/lib/jellyfin-ffmpeg/ffmpeg", null, true)]
+    [InlineData("/usr/lib/jellyfin-ffmpeg/ffmpeg", "8.1.3", false)]
+    [InlineData("/usr/bin/ffmpeg", "8.1.2", false)]
+    public async Task ReportFromAnotherFfmpegIsCleared(string path, string? version, bool kept)
+    {
+        using var service = new ProbeService(_ => Task.FromResult(Reports.Sample()), () => false, Path.Combine(_directory, "latest.json"), TimeProvider.System, TimeSpan.Zero, NullLogger.Instance)
+        {
+            CurrentFfmpeg = () => (path, version is null ? null : Version.Parse(version)),
+        };
+        await service.RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(kept, await service.LatestJsonAsync(TestContext.Current.CancellationToken) is not null);
+    }
+
     /// <summary>Nothing runs while a session is transcoding.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

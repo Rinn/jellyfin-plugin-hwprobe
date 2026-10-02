@@ -14,8 +14,13 @@ public sealed class HostInfoReaderTests
         var host = new FakeHostPlatform(HostOs.Linux);
         host.Files["/proc/sys/kernel/osrelease"] = "6.8.0-45-generic\n";
 
-        Assert.Equal(new HostInfo(HostOs.Linux, "6.8.0-45-generic", null), new HostInfoReader(host).Read());
+        Assert.Equal(new HostInfo(HostOs.Linux, "6.8.0-45-generic", null) { Architecture = "x64" }, new HostInfoReader(host).Read());
     }
+
+    /// <summary>The CPU architecture comes from the platform.</summary>
+    [Fact]
+    public void ArchitectureFromPlatform() =>
+        Assert.Equal("arm64", new HostInfoReader(new FakeHostPlatform(HostOs.Linux) { Architecture = "arm64" }).Read().Architecture);
 
     /// <summary>An unreadable osrelease yields unknown, not an exception.</summary>
     [Fact]
@@ -44,7 +49,7 @@ public sealed class HostInfoReaderTests
         var host = new FakeHostPlatform(HostOs.Windows) { OsVersion = new Version(10, 0, 22631, 0) };
         host.Files["/.dockerenv"] = string.Empty;
 
-        Assert.Equal(new HostInfo(HostOs.Windows, "10.0.22631.0", null), new HostInfoReader(host).Read());
+        Assert.Equal(new HostInfo(HostOs.Windows, "10.0.22631.0", null) { Architecture = "x64" }, new HostInfoReader(host).Read());
     }
 
     /// <summary>Container markers and cgroup contents map to runtime names.</summary>

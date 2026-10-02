@@ -21,6 +21,9 @@ internal sealed class FakeHostPlatform : IHostPlatform
     /// <inheritdoc/>
     public Version OsVersion { get; init; } = new(0, 0);
 
+    /// <inheritdoc/>
+    public string Architecture { get; init; } = "x64";
+
     /// <summary>Gets file contents by path; a null value means the file exists but is unreadable.</summary>
     public Dictionary<string, string?> Files { get; } = [];
 

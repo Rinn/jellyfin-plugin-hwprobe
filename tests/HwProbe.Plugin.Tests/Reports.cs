@@ -17,5 +17,8 @@ internal static class Reports
         new StageASummary([], new Dictionary<HwType, BuildStatus>(), new Dictionary<string, bool>()),
         [new BackendReport(HwType.vaapi, "/dev/dri/renderD128", BackendVerdict.Viable, PipelineTier.FullOpencl, new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), string.Empty)],
         [],
-        []);
+        [])
+    {
+        HwProbeVersion = CapabilityReport.CurrentHwProbeVersion,
+    };
 }

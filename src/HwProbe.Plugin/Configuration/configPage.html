@@ -134,7 +134,7 @@
                 const platforms = {
                     videotoolbox: [['macos'], 'macOS only'],
                     amf: [['windows'], 'Windows only'],
-                    rkmpp: [[], 'Rockchip devices only'],
+                    rkmpp: [['linux'], 'Linux only'],
                     vaapi: [['linux'], 'Linux only'],
                     v4l2m2m: [['linux'], 'Linux only'],
                     qsv: [['linux', 'windows'], 'Windows and Linux only'],
@@ -143,7 +143,18 @@
 
                 function notBuilt(type) {
                     const platform = platforms[type];
-                    return wrongVendor(type) || (platform && platform[0].indexOf(report.host.os) === -1 ? platform[1] : 'Not built into ffmpeg');
+                    return wrongVendor(type)
+                        || (platform && platform[0].indexOf(report.host.os) === -1 ? platform[1] : null)
+                        || wrongArchitecture(type)
+                        || 'Not built into ffmpeg';
+                }
+
+                // V4L2 and Rockchip encoders are parts of ARM chips, though x86 jellyfin-ffmpeg includes V4L2.
+                const armOnly = { v4l2m2m: 'ARM devices only', rkmpp: 'Rockchip devices only' };
+
+                function wrongArchitecture(type) {
+                    const arch = report.host.architecture || 'unknown';
+                    return armOnly[type] && arch !== 'unknown' && arch.indexOf('arm') !== 0 ? armOnly[type] : null;
                 }
 
                 // From the host's PCI display controllers, listed even without a driver and seen from containers too;
@@ -411,8 +422,8 @@
                     }
 
                     const unavailable = report.backends.filter(b => b.verdict !== 'Viable')
-                        .map(b => b.verdict === 'NotPresent' && wrongVendor(b.type)
-                            ? [b.type, '', wrongVendor(b.type)]
+                        .map(b => b.verdict === 'NotPresent' && (wrongVendor(b.type) || wrongArchitecture(b.type))
+                            ? [b.type, '', wrongVendor(b.type) || wrongArchitecture(b.type)]
                             : [b.type, b.verdict === 'NotPresent' ? '' : b.device, verdicts[b.verdict] || b.verdict, b.fix])
                         .concat(Object.entries(report.stageA.types || {}).filter(([, s]) => s === 'NotBuilt').map(([t]) => [t, '', notBuilt(t)]))
                         .sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
@@ -428,7 +439,7 @@
                     const config = ApiClient.getNamedConfiguration('encoding').then(c => { encoding = c; }, () => { encoding = null; });
                     const server = ApiClient.getServerConfiguration().then(c => { trickplay = c.TrickplayOptions || null; }, () => { trickplay = null; });
                     const data = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Report'), dataType: 'json' })
-                        .then(r => { report = r; }, () => { report = null; statusText.textContent = 'No probe has run yet.'; });
+                        .then(r => { report = r; }, () => { report = null; statusText.textContent = 'No results yet.'; });
                     const changes = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/History'), dataType: 'json' })
                         .then(h => { history = h || []; }, () => { history = []; });
                     const pending = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/RestartRequired'), dataType: 'json' })
