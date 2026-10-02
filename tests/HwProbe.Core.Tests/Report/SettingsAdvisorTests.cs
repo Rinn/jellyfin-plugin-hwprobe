@@ -60,7 +60,7 @@ public sealed class SettingsAdvisorTests
                 "Enable hardware encoding", "Enable Intel Low-Power H.264 hardware encoder", "Enable Intel Low-Power HEVC hardware encoder",
                 "Allow encoding in HEVC format", "Allow encoding in AV1 format",
                 "Enable Tone mapping", "Enable VPP Tone mapping",
-                "Enable hardware decoding", "Enable hardware accelerated MJPEG encoding",
+                "Enable hardware decoding", "Enable hardware accelerated MJPEG encoding", "Only generate images from key frames",
             ],
             labels);
     }
@@ -185,9 +185,9 @@ public sealed class SettingsAdvisorTests
         Assert.Equal((SettingState.LeaveOff, "Not used with this backend"), (advice.State, advice.Note));
     }
 
-    /// <summary>Key-frame-only trickplay is flagged only where it would turn hardware decoding off.</summary>
+    /// <summary>Key-frame-only trickplay is flagged where it would turn hardware decoding off, and optional where its test passes.</summary>
     [Fact]
-    public void KeyFrameOnlyFlaggedWhereItDropsHardwareDecoding()
+    public void KeyFrameOnlyFollowsItsTestAndTheDecoder()
     {
         const string Setting = "Trickplay:EnableKeyFrameOnlyExtraction";
         var qsvOnly = new Dictionary<string, ProbeOutcome>(_apolloLakeQsv.Decode) { ["vc1"] = U, ["vc1_qsvdecoder"] = P };
@@ -198,8 +198,11 @@ public sealed class SettingsAdvisorTests
         // With no cuvid results, enhanced NVDEC isn't tested, so key frames may drop to software.
         var nvenc = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Type = HwType.nvenc }, _docker), a => a.Setting == Setting);
 
-        Assert.DoesNotContain(native, a => a.Setting == Setting);
-        Assert.DoesNotContain(SettingsAdvisor.For(_apolloLakeQsv with { Type = HwType.vaapi }, _docker), a => a.Setting == Setting);
+        var passed = new Dictionary<string, ProbeOutcome>(_apolloLakeQsv.Decode) { ["h264_keyframes"] = P };
+        var optional = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Type = HwType.vaapi, Decode = passed }, _docker), a => a.Setting == Setting);
+
+        Assert.Equal(SettingState.NotTested, Assert.Single(native, a => a.Setting == Setting).State);
+        Assert.Equal((SettingState.Optional, "Works with hardware decoding; faster, less accurate timing"), (optional.State, optional.Note));
         Assert.Equal((SettingState.LeaveOff, "Turns off hardware decoding with this backend"), (qsvDecoders.State, qsvDecoders.Note));
         Assert.Equal((SettingState.LeaveOff, "Turns off hardware decoding with this backend"), (nvenc.State, nvenc.Note));
     }

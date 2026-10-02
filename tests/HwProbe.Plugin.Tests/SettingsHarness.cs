@@ -73,6 +73,7 @@ internal sealed class SettingsHarness : IDisposable
                 new("Encoding format options", "AllowAv1Encoding", "Allow encoding in AV1 format", SettingState.LeaveOff, "Not supported by this GPU"),
                 new("Tone mapping", "EnableTonemapping", "Enable Tone mapping", SettingState.NotTested, "Not tested"),
                 new("Trickplay", "Trickplay:EnableHwAcceleration", "Enable hardware decoding", SettingState.TurnOn, string.Empty),
+                new("Trickplay", "Trickplay:EnableKeyFrameOnlyExtraction", "Only generate images from key frames", SettingState.Optional, "Works with hardware decoding; faster, less accurate timing"),
             ],
         };
         return Reports.Sample() with

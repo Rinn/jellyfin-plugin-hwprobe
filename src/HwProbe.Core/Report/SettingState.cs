@@ -11,4 +11,7 @@ public enum SettingState
 
     /// <summary>No test covered the option.</summary>
     NotTested,
+
+    /// <summary>The test passed, but turning the option on is a preference, not a hardware question.</summary>
+    Optional,
 }

@@ -145,6 +145,14 @@ public static class FixtureCatalog
         Sha256 = "5fcd265fd9f9bdd0d3179340b4c4532f1422ca5e5d97741c7481b84cb5dc122f",
     };
 
+    /// <summary>Gets an H.264 clip with a key frame every second frame, for trickplay's key-frame-only decoding.</summary>
+    public static FixtureSpec H264KeyFrames { get; } = new("h264_keyframes.mp4", "h264", 8, false, "libx264", $"{Source} -c:v libx264 -g 2 -pix_fmt yuv420p", null)
+    {
+        Key = "h264_keyframes",
+        Bundled = true,
+        Sha256 = "d273d8ac623117c4df7af159fe2f437628a1f76802fe9d2d3f29c34e367652f9",
+    };
+
     /// <summary>Gets the MPEG-4 Part 2 clip, from ffmpeg's built-in encoder.</summary>
     public static FixtureSpec Mpeg4 { get; } = new("mpeg4.mp4", "mpeg4", 8, false, "mpeg4", $"{Source} -c:v mpeg4", null);
 
@@ -166,7 +174,7 @@ public static class FixtureCatalog
     };
 
     /// <summary>Gets every fixture, including ones that can never be generated.</summary>
-    public static IReadOnlyList<FixtureSpec> All { get; } = [H264, H264Interlaced, SubtitlesAss, Hevc, Hevc10, HevcRext10, HevcRext10Yuv444, HevcRext12, HevcRext12Yuv422, Hdr10, Vp8, Vp9, Vp910, Av1, Av110, Mpeg1, Mpeg2, Mpeg4, Vc1];
+    public static IReadOnlyList<FixtureSpec> All { get; } = [H264, H264Interlaced, SubtitlesAss, Hevc, Hevc10, HevcRext10, HevcRext10Yuv444, HevcRext12, HevcRext12Yuv422, Hdr10, Vp8, Vp9, Vp910, Av1, Av110, Mpeg1, Mpeg2, Mpeg4, Vc1, H264KeyFrames];
 
     /// <summary>Returns the URL of a FATE sample.</summary>
     /// <param name="path">The sample's path in the suite.</param>

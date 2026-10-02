@@ -179,7 +179,14 @@ public static class SettingsAdvisor
             || (type == HwType.amf && context.Os != HostOs.Windows))
         {
             yield return new(TrickplaySection, KeyFrameSetting, KeyFrameLabel, SettingState.LeaveOff, SoftwareNote);
+            yield break;
         }
+
+        // Faster but less accurate timing, so a pass only says it's safe to choose.
+        var keyFrames = Advise(TrickplaySection, KeyFrameSetting, KeyFrameLabel, Cell(backend.Decode, "h264_keyframes"));
+        yield return keyFrames.State == SettingState.TurnOn
+            ? keyFrames with { State = SettingState.Optional, Note = "Works with hardware decoding; faster, less accurate timing" }
+            : keyFrames;
     }
 
     /// <summary>Builds advice from one test's outcome.</summary>

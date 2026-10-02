@@ -23,7 +23,7 @@ public sealed class MatrixCatalogTests
     [InlineData(HwType.videotoolbox)]
     public void DecodeCellsMatchJellyfinOptions(HwType type)
     {
-        var keys = Keys(type, MatrixGroup.Decode).Where(k => !k.EndsWith("_qsvdecoder", StringComparison.Ordinal) && !k.EndsWith("_cuvid", StringComparison.Ordinal));
+        var keys = Keys(type, MatrixGroup.Decode).Where(k => !k.EndsWith("_qsvdecoder", StringComparison.Ordinal) && !k.EndsWith("_cuvid", StringComparison.Ordinal) && k != "h264_keyframes");
 
         Assert.Equal(_decodeKeys.Order(StringComparer.Ordinal), keys.Order(StringComparer.Ordinal));
     }

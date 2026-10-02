@@ -133,6 +133,17 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.False(_harness.SavedTrickplay.EnableHwAcceleration);
     }
 
+    /// <summary>An optional option can be turned on, but an untested one can't.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task OptionalCanBeTurnedOn()
+    {
+        var result = await ApplyAsync(("Trickplay:EnableKeyFrameOnlyExtraction", true));
+
+        Assert.Equal(ApplyOutcome.Applied, result.Outcome);
+        Assert.True(_harness.SavedTrickplay.EnableKeyFrameOnlyExtraction);
+    }
+
     /// <summary>Revert restores the last apply, leaves settings changed since, and then has nothing left.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

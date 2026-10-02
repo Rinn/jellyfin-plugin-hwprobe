@@ -172,6 +172,12 @@ public sealed class ArgumentSource : IArgumentSource
         var lowPower = cell.LowPower
             && _helper.GetVideoQualityParam(state, encoder, options, EncoderPreset.veryfast).Contains(LowPowerArg, StringComparison.Ordinal);
 
+        // MediaEncoder.ExtractVideoImagesOnIntervalAccelerated puts this before the hwaccel arguments.
+        if (cell.KeyFramesOnly)
+        {
+            inputArgs = "-skip_frame nokey " + inputArgs;
+        }
+
         return new ProbeArguments(inputArgs, filterArgs, encoder, childEnvironment)
         {
             EncoderArgs = lowPower ? " " + LowPowerArg : string.Empty,

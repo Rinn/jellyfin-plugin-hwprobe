@@ -54,6 +54,9 @@ public static class MatrixCatalog
             cells.AddRange(decoded.Select(f => new MatrixCell(MatrixGroup.Decode, Key(f) + "_qsvdecoder", f, Cell(f, H264, hardwareDecode: true) with { PreferNativeDecoder = false })));
         }
 
+        // Trickplay's "Only generate images from key frames" skips non-key frames in the hardware decoder.
+        cells.Add(new(MatrixGroup.Decode, FixtureCatalog.H264KeyFrames.Key!, FixtureCatalog.H264KeyFrames, Cell(FixtureCatalog.H264KeyFrames, H264, hardwareDecode: true) with { KeyFramesOnly = true }));
+
         if (type == HwType.nvenc)
         {
             // "Enable enhanced NVDEC decoder" only changes NVENC: off means the cuvid decoders.

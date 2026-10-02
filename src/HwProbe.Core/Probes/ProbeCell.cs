@@ -28,6 +28,9 @@ public sealed record ProbeCell(
     /// <summary>Gets a value indicating whether Jellyfin's "Enable enhanced NVDEC decoder" is on (its default); off means the cuvid decoders.</summary>
     public bool EnhancedNvdec { get; init; } = true;
 
+    /// <summary>Gets a value indicating whether only key frames are decoded, as trickplay's key-frame-only extraction does.</summary>
+    public bool KeyFramesOnly { get; init; }
+
     /// <summary>Gets a value indicating whether the deinterlacing method is BWDIF rather than YADIF, Jellyfin's default.</summary>
     public bool Bwdif { get; init; }
 

@@ -119,7 +119,7 @@ public sealed class SettingsService : IDisposable
                 foreach (var change in changes)
                 {
                     var advice = backend.Settings.FirstOrDefault(a => a.Setting == change.Setting);
-                    if (advice is null || advice.State == SettingState.NotTested || change.Value != (advice.State == SettingState.TurnOn))
+                    if (advice is null || advice.State == SettingState.NotTested || change.Value != (advice.State is SettingState.TurnOn or SettingState.Optional))
                     {
                         return Refuse($"{change.Setting} = {EncodingSettings.Format(change.Value)} doesn't match the last probe.");
                     }

@@ -150,7 +150,7 @@
                 }
 
                 function mark(state) {
-                    if (state === 'TurnOn') {
+                    if (state === 'TurnOn' || state === 'Optional') {
                         return el('td', '✓', 'hwprobe-mark hwprobe-on');
                     }
                     return state === 'LeaveOff' ? el('td', '✗', 'hwprobe-mark hwprobe-off') : el('td', '–', 'hwprobe-mark hwprobe-none');
@@ -197,7 +197,7 @@
 
                 function differs(advice) {
                     const value = current(advice.setting);
-                    return advice.state !== 'NotTested' && typeof value === 'boolean' && value !== (advice.state === 'TurnOn');
+                    return advice.state !== 'NotTested' && typeof value === 'boolean' && value !== (advice.state === 'TurnOn' || advice.state === 'Optional');
                 }
 
                 function isConfigured(backend) {
@@ -223,7 +223,7 @@
                 }
 
                 function apply(advice) {
-                    return post('HwProbe/Apply', advice.map(a => ({ Setting: a.setting, Value: a.state === 'TurnOn' })));
+                    return post('HwProbe/Apply', advice.map(a => ({ Setting: a.setting, Value: a.state === 'TurnOn' || a.state === 'Optional' })));
                 }
 
                 // The old server can still answer for a moment after the restart request, so wait until the
