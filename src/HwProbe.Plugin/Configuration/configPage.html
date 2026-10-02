@@ -147,7 +147,8 @@
                     Quality: ['H.264 and HEVC encoding CRF', '18 and 28 (software encoding only)'],
                     Bitrate: ['Bitrate', 'Lowest and highest offered for the output resolution'],
                     Deinterlace: ['Double the frame rate when deinterlacing, Deinterlacing method', 'On, and BWDIF (interlaced input only)'],
-                    Paths: ['Intel low-power encoders, VPP tone mapping, QSV and NVIDIA decoders', 'Each switched (where the backend has it)']
+                    Paths: ['Intel low-power encoders, VPP tone mapping, QSV and NVIDIA decoders', 'Each switched (where the backend has it)'],
+                    Subtitles: ['Subtitle burn-in', 'Text (ASS) and image (PGS) subtitles drawn onto the picture']
                 };
 
                 // The names and order of Jellyfin's Hardware acceleration dropdown.
@@ -750,6 +751,7 @@
                                 runs += !hardware && speedCompared.has('Quality') ? 1 : 0;
                                 runs += v.Interlaced && speedCompared.has('Deinterlace') ? 2 : 0;
                                 runs += hardware && speedCompared.has('Paths') ? 2 : 0;
+                                runs += speedCompared.has('Subtitles') ? 2 : 0;
                             }
                         }
                     }
@@ -880,12 +882,16 @@
                         td.textContent = v.Origin;
                         return td;
                     }
-                    const link = el('a', v.Title, 'button-link');
-                    link.href = v.SourceUrl;
-                    link.target = '_blank';
-                    link.rel = 'noopener noreferrer';
-                    td.appendChild(link);
-                    td.appendChild(document.createTextNode(', ' + v.Origin + ' from Wikimedia Commons'));
+                    const external = (text, url) => {
+                        const a = el('a', text, 'button-link');
+                        a.href = url;
+                        a.target = '_blank';
+                        a.rel = 'noopener noreferrer';
+                        return a;
+                    };
+                    td.appendChild(external(v.Title, v.ArticleUrl));
+                    td.appendChild(document.createTextNode(', ' + v.Origin + ' from '));
+                    td.appendChild(external('Wikimedia Commons', v.SourceUrl));
                     const credit = el('div', v.Credit.substring(v.Title.length + 2).replace(/, via Wikimedia Commons$/, '') + ' (', 'hwprobe-small');
                     const licence = el('a', 'licence', 'button-link');
                     licence.href = v.LicenseUrl;

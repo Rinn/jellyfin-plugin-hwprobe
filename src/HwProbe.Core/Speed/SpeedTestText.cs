@@ -69,11 +69,6 @@ public static class SpeedTestText
             parts.Add("deinterlaced");
         }
 
-        if (test.TextSubtitles is not null || test.ImageSubtitles is not null)
-        {
-            parts.Add(test.TextSubtitles is not null ? "text subtitles burned in" : "PGS subtitles burned in");
-        }
-
         return string.Join(", ", parts);
     }
 

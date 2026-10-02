@@ -13,7 +13,8 @@ namespace Jellyfin.Plugin.HwProbe.Api;
 /// <param name="LicenseUrl">The sample's licence, or null.</param>
 /// <param name="SourceUrl">The page the sample comes from, or null.</param>
 /// <param name="Title">The sample's title, or null.</param>
-public sealed record SpeedVideoInfo(string Key, string Name, string Input, string Origin, bool Interlaced, bool Default, string? Credit, Uri? LicenseUrl, Uri? SourceUrl, string? Title)
+/// <param name="ArticleUrl">The Wikipedia article about the film, or null.</param>
+public sealed record SpeedVideoInfo(string Key, string Name, string Input, string Origin, bool Interlaced, bool Default, string? Credit, Uri? LicenseUrl, Uri? SourceUrl, string? Title, Uri? ArticleUrl)
 {
     /// <summary>Returns the page's view of a video.</summary>
     /// <param name="video">The video.</param>
@@ -22,6 +23,6 @@ public sealed record SpeedVideoInfo(string Key, string Name, string Input, strin
     {
         ArgumentNullException.ThrowIfNull(video);
         var interlaced = video.File?.Video.Interlaced ?? video.Fixture?.Interlaced ?? false;
-        return new(video.Key, video.Name, SpeedTestText.Input(video), video.Origin, interlaced, SpeedCatalog.DefaultVideos.Contains(video.Key), video.Credit, video.LicenseUrl, video.SourceUrl, video.Title);
+        return new(video.Key, video.Name, SpeedTestText.Input(video), video.Origin, interlaced, SpeedCatalog.DefaultVideos.Contains(video.Key), video.Credit, video.LicenseUrl, video.SourceUrl, video.Title, video.ArticleUrl);
     }
 }

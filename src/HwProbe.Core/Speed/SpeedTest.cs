@@ -26,12 +26,6 @@ public sealed record SpeedTest(string Key, string Label, FixtureSpec? Fixture, f
     /// <summary>Gets a value indicating whether the source is HDR10 and tone-mapped.</summary>
     public bool Tonemap { get; init; }
 
-    /// <summary>Gets a text subtitle clip to burn in, or null.</summary>
-    public FixtureSpec? TextSubtitles { get; init; }
-
-    /// <summary>Gets an image subtitle clip to burn in, or null.</summary>
-    public FixtureSpec? ImageSubtitles { get; init; }
-
     /// <summary>Gets a short name for the test's source, e.g. <c>Test pattern</c> or <c>Live action: Tears of Steel</c>; the key when unset.</summary>
     public string? Name { get; init; }
 

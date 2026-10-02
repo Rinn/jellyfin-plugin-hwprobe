@@ -23,7 +23,7 @@ internal static class SpeedVariants
         ArgumentNullException.ThrowIfNull(test);
         ArgumentNullException.ThrowIfNull(settings);
         var output = test.OutputCodec ?? "h264";
-        var cell = test.File is { } file ? FromFile(file, test, output, settings, clips) : FromClip(test, output, clips);
+        var cell = test.File is { } file ? FromFile(file, test, output, settings) : FromClip(test, output, clips);
         return cell with
         {
             SourceWidth = test.Width,
@@ -58,10 +58,25 @@ internal static class SpeedVariants
     /// <param name="test">The test.</param>
     /// <param name="cell">The base cell.</param>
     /// <param name="comparisons">The comparisons asked for.</param>
+    /// <param name="clips">Clip paths by file name, for burned-in subtitles; a missing clip skips its comparison.</param>
     /// <returns>Each comparison's label and cell.</returns>
-    public static IEnumerable<(string Label, ProbeCell Cell)> For(HwType type, SpeedTest test, ProbeCell cell, SpeedComparison comparisons)
+    public static IEnumerable<(string Label, ProbeCell Cell)> For(HwType type, SpeedTest test, ProbeCell cell, SpeedComparison comparisons, IReadOnlyDictionary<string, string> clips)
     {
+        ArgumentNullException.ThrowIfNull(clips);
         var transcode = !test.DecodeOnly;
+        if (transcode && comparisons.HasFlag(SpeedComparison.Subtitles))
+        {
+            if (clips.TryGetValue(SpeedCatalog.TextSubtitles.FileName, out var text))
+            {
+                yield return ("Text subtitles burned in", cell with { SubtitlePath = text });
+            }
+
+            if (clips.TryGetValue(SpeedCatalog.ImageSubtitles.FileName, out var image))
+            {
+                yield return ("PGS subtitles burned in", cell with { GraphicalSubtitlePath = image });
+            }
+        }
+
         if (transcode && comparisons.HasFlag(SpeedComparison.AudioVbr))
         {
             yield return (cell.AudioVbr ? "VBR audio off" : "VBR audio on", cell with { AudioVbr = !cell.AudioVbr });
@@ -129,9 +144,19 @@ internal static class SpeedVariants
 
     /// <summary>Returns every clip a set of tests needs.</summary>
     /// <param name="tests">The tests.</param>
+    /// <param name="comparisons">The comparisons asked for; subtitles need their clips.</param>
     /// <returns>The clips, each once.</returns>
-    public static IReadOnlyList<FixtureSpec> Clips(IEnumerable<SpeedTest> tests) =>
-        [.. tests.SelectMany(t => new[] { t.Fixture, t.TextSubtitles, t.ImageSubtitles }).OfType<FixtureSpec>().DistinctBy(f => f.FileName, StringComparer.Ordinal)];
+    public static IReadOnlyList<FixtureSpec> Clips(IEnumerable<SpeedTest> tests, SpeedComparison comparisons)
+    {
+        var all = tests.Select(t => t.Fixture).ToList();
+        if (comparisons.HasFlag(SpeedComparison.Subtitles))
+        {
+            all.Add(SpeedCatalog.TextSubtitles);
+            all.Add(SpeedCatalog.ImageSubtitles);
+        }
+
+        return [.. all.OfType<FixtureSpec>().DistinctBy(f => f.FileName, StringComparer.Ordinal)];
+    }
 
     /// <summary>Describes a generated clip.</summary>
     /// <param name="test">The test.</param>
@@ -153,8 +178,6 @@ internal static class SpeedVariants
             Tonemap = test.Tonemap,
             Audio = !test.DecodeOnly,
             SourcePath = clips[fixture.FileName],
-            SubtitlePath = test.TextSubtitles is { } text ? clips[text.FileName] : null,
-            GraphicalSubtitlePath = test.ImageSubtitles is { } image ? clips[image.FileName] : null,
         };
     }
 
@@ -163,9 +186,8 @@ internal static class SpeedVariants
     /// <param name="test">The test.</param>
     /// <param name="output">The output codec.</param>
     /// <param name="settings">The settings, for whether HDR is tone-mapped.</param>
-    /// <param name="clips">Clip paths by file name, for burned-in subtitles.</param>
     /// <returns>The cell, before the other settings.</returns>
-    private static ProbeCell FromFile(SpeedFile file, SpeedTest test, string output, SpeedSettings settings, IReadOnlyDictionary<string, string> clips)
+    private static ProbeCell FromFile(SpeedFile file, SpeedTest test, string output, SpeedSettings settings)
     {
         var video = file.Video;
         return new ProbeCell(video.Codec, video.BitDepth, output, HardwareDecode: true, HardwareEncode: true)
@@ -184,8 +206,6 @@ internal static class SpeedVariants
             AudioChannels = file.Audio?.Channels ?? 2,
             SourcePath = file.Path,
             MediaSourceId = file.MediaSourceId,
-            SubtitlePath = test.TextSubtitles is { } text ? clips[text.FileName] : null,
-            GraphicalSubtitlePath = test.ImageSubtitles is { } image ? clips[image.FileName] : null,
         };
     }
 }

@@ -80,10 +80,10 @@ public sealed class SpeedEngine : IDisposable
 
         var host = new HostInfoReader(_platform).Read();
         var tests = speed.Resolve();
-        var clips = await BuildClipsAsync(options, caps, tests, cancellationToken);
+        var clips = await BuildClipsAsync(options, caps, tests, speed.Comparisons, cancellationToken);
 
         List<(HwType Type, string Device)> measured = [.. backends.Where(b => b.Type != HwType.none), (HwType.none, string.Empty)];
-        var total = measured.Sum(b => tests.Sum(t => 1 + (MissingClip(t, clips) is null ? SpeedVariants.For(b.Type, t, SpeedVariants.Base(t, speed.Settings, Placeholders(t)), speed.Comparisons).Count() : 0)));
+        var total = measured.Sum(b => tests.Sum(t => 1 + (MissingClip(t, clips) is null ? SpeedVariants.For(b.Type, t, SpeedVariants.Base(t, speed.Settings, Placeholders(t)), speed.Comparisons, Paths(clips)).Count() : 0)));
         var done = 0;
         string? stopped = null;
         List<SpeedResult> results = [];
@@ -105,7 +105,7 @@ public sealed class SpeedEngine : IDisposable
 
                 var missing = MissingClip(test, clips);
                 var cell = missing is null ? SpeedVariants.Base(test, speed.Settings, Paths(clips)) : null;
-                List<(string Label, ProbeCell? Cell)> runs = [(string.Empty, cell), .. cell is null ? [] : SpeedVariants.For(type, test, cell, speed.Comparisons).Select(v => (v.Label, (ProbeCell?)v.Cell))];
+                List<(string Label, ProbeCell? Cell)> runs = [(string.Empty, cell), .. cell is null ? [] : SpeedVariants.For(type, test, cell, speed.Comparisons, Paths(clips)).Select(v => (v.Label, (ProbeCell?)v.Cell))];
                 string? baseCommand = null;
                 foreach (var (label, variant) in runs)
                 {
@@ -146,7 +146,7 @@ public sealed class SpeedEngine : IDisposable
     /// <param name="clips">Every clip built.</param>
     /// <returns>The reason, or null.</returns>
     private static string? MissingClip(SpeedTest test, Dictionary<string, FixtureResult> clips) =>
-        SpeedVariants.Clips([test]).Select(f => clips[f.FileName]).FirstOrDefault(c => c.Status != FixtureStatus.Available) is { } missing
+        SpeedVariants.Clips([test], SpeedComparison.None).Select(f => clips[f.FileName]).FirstOrDefault(c => c.Status != FixtureStatus.Available) is { } missing
             ? $"No {missing.Spec.FileName} clip: {missing.Reason}"
             : null;
 
@@ -160,17 +160,18 @@ public sealed class SpeedEngine : IDisposable
     /// <param name="test">The test.</param>
     /// <returns>Each clip's file name, as its own path.</returns>
     private static Dictionary<string, string> Placeholders(SpeedTest test) =>
-        SpeedVariants.Clips([test]).ToDictionary(f => f.FileName, f => f.FileName, StringComparer.Ordinal);
+        SpeedVariants.Clips([test], SpeedComparison.None).ToDictionary(f => f.FileName, f => f.FileName, StringComparer.Ordinal);
 
     /// <summary>Makes or downloads the clips the tests need.</summary>
     /// <param name="options">Cache locations and timeouts.</param>
     /// <param name="caps">Build capabilities, for the software encoders.</param>
     /// <param name="tests">The tests.</param>
+    /// <param name="comparisons">The comparisons, for the subtitle clips.</param>
     /// <param name="cancellationToken">Cancels generation.</param>
     /// <returns>Each clip by file name.</returns>
-    private async Task<Dictionary<string, FixtureResult>> BuildClipsAsync(EngineOptions options, FfmpegCapabilities caps, IReadOnlyList<SpeedTest> tests, CancellationToken cancellationToken)
+    private async Task<Dictionary<string, FixtureResult>> BuildClipsAsync(EngineOptions options, FfmpegCapabilities caps, IReadOnlyList<SpeedTest> tests, SpeedComparison comparisons, CancellationToken cancellationToken)
     {
-        var clips = SpeedVariants.Clips(tests);
+        var clips = SpeedVariants.Clips(tests, comparisons);
         var key = Fingerprint.Compute(new FingerprintInputs(options.Ffmpeg.Path, caps.VersionLine, null, null, null, null, null, null));
         Dictionary<string, FixtureResult> built = new(StringComparer.Ordinal);
         foreach (var group in clips.GroupBy(c => c.KeepAcrossBuilds))

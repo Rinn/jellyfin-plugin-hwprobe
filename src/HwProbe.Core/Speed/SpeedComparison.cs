@@ -24,4 +24,7 @@ public enum SpeedComparison
 
     /// <summary>Intel low-power encoding, VPP tone-mapping, and the QSV and NVIDIA decoder choices.</summary>
     Paths = 32,
+
+    /// <summary>Text (ASS) and image (PGS) subtitles burned into the picture.</summary>
+    Subtitles = 64,
 }

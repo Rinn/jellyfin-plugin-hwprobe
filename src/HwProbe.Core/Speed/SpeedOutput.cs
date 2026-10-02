@@ -11,7 +11,4 @@ public sealed record SpeedOutput(string Key, string Label, string? Codec, int He
 {
     /// <summary>Gets what's made, for the page, e.g. <c>Video re-encoded to 720p, audio to stereo AAC</c>.</summary>
     public string Detail { get; init; } = string.Empty;
-
-    /// <summary>Gets the subtitles burned in: <c>text</c>, <c>image</c>, or null for none.</summary>
-    public string? Subtitles { get; init; }
 }

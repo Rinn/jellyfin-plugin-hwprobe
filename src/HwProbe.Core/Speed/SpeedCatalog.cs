@@ -130,10 +130,10 @@ public static class SpeedCatalog
         Pattern("pattern-av1", "Test video, AV1", Av1At1080, null),
         Pattern("pattern-1080i", "Test video, interlaced", H264At1080i, Surround) with { FrameRate = 25 },
         Pattern("pattern-4k-hdr", "Test video, 4K HDR", Hdr10At2160, Surround) with { Width = 3840, Height = 2160 },
-        Sample("live-action", "Live action", LiveAction, 858, "Tears of Steel, Blender Foundation (mango.blender.org), CC BY 3.0, via Wikimedia Commons", _ccBy3, "Tears_of_Steel_in_4k_-_Official_Blender_Foundation_release.webm"),
-        Sample("digital-animation", "3D animation", DigitalAnimation, 818, "Sintel, Blender Foundation (durian.blender.org), CC BY 3.0, via Wikimedia Commons", _ccBy3, "Sintel_movie_4K.webm"),
-        Sample("anime", "Animation", Anime, 1080, "Sol Levante, Netflix and Production I.G, CC BY 4.0, via Wikimedia Commons", _ccBy4, "Sol_Levante.webm"),
-        Sample("anime-4k", "Animation 4K HDR", Anime4k, 2160, "Sol Levante, Netflix and Production I.G, CC BY 4.0, via Wikimedia Commons", _ccBy4, "Sol_Levante.webm") with { Width = 3840 },
+        Sample("live-action", "Live action", LiveAction, 858, "Tears of Steel, Blender Foundation (mango.blender.org), CC BY 3.0, via Wikimedia Commons", _ccBy3, "Tears_of_Steel_in_4k_-_Official_Blender_Foundation_release.webm", "Tears_of_Steel"),
+        Sample("digital-animation", "3D animation", DigitalAnimation, 818, "Sintel, Blender Foundation (durian.blender.org), CC BY 3.0, via Wikimedia Commons", _ccBy3, "Sintel_movie_4K.webm", "Sintel"),
+        Sample("anime", "Animation", Anime, 1080, "Sol Levante, Netflix and Production I.G, CC BY 4.0, via Wikimedia Commons", _ccBy4, "Sol_Levante.webm", "Sol_Levante"),
+        Sample("anime-4k", "Animation 4K HDR", Anime4k, 2160, "Sol Levante, Netflix and Production I.G, CC BY 4.0, via Wikimedia Commons", _ccBy4, "Sol_Levante.webm", "Sol_Levante") with { Width = 3840 },
     ];
 
     /// <summary>Gets every output, in the order the page lists them.</summary>
@@ -144,8 +144,6 @@ public static class SpeedCatalog
         new("720p-hevc", "720p HEVC, 4 Mbps", "hevc", 720, 4_000_000, (1_500_000, 4_000_000)) { Detail = Encoded("720p", "HEVC") },
         new("720p-av1", "720p AV1, 4 Mbps", "av1", 720, 4_000_000, (1_500_000, 4_000_000)) { Detail = Encoded("720p", "AV1") },
         new("1080p-h264", "1080p H.264, 8 Mbps", "h264", 1080, 8_000_000, (6_000_000, 8_000_000)) { Detail = Encoded("1080p", "H.264") },
-        new("720p-h264-text", "720p H.264, 4 Mbps, text subtitles", "h264", 720, 4_000_000, (1_500_000, 4_000_000)) { Subtitles = "text", Detail = Encoded("720p", "H.264") + ", ASS subtitles burned into the picture" },
-        new("720p-h264-pgs", "720p H.264, 4 Mbps, PGS subtitles", "h264", 720, 4_000_000, (1_500_000, 4_000_000)) { Subtitles = "image", Detail = Encoded("720p", "H.264") + ", PGS subtitles burned into the picture" },
         new("decode", "Decode only", null, 0, 0, (0, 0)) { Detail = "Video decoded, nothing encoded" },
     ];
 
@@ -190,8 +188,6 @@ public static class SpeedCatalog
             Bitrate = output.Bitrate,
             BitrateRange = output.BitrateRange,
             Tonemap = hdr && output.Codec is not null,
-            TextSubtitles = output.Subtitles == "text" ? TextSubtitles : null,
-            ImageSubtitles = output.Subtitles == "image" ? ImageSubtitles : null,
         };
     }
 
@@ -238,9 +234,10 @@ public static class SpeedCatalog
     /// <param name="credit">The credit its licence requires.</param>
     /// <param name="license">Its licence.</param>
     /// <param name="commonsFile">Its file name on Wikimedia Commons, whose page has the credit and licence.</param>
+    /// <param name="article">Its English Wikipedia article.</param>
     /// <returns>The video.</returns>
-    private static SpeedVideo Sample(string key, string name, FixtureSpec fixture, int height, string credit, Uri license, string commonsFile) =>
-        new(key, name, fixture, 24, 1920, height) { Audio = Stereo, Origin = Megabytes(fixture) + " download", Credit = credit, LicenseUrl = license, Title = credit[..credit.IndexOf(',', StringComparison.Ordinal)], SourceUrl = new Uri("https://commons.wikimedia.org/wiki/File:" + commonsFile) };
+    private static SpeedVideo Sample(string key, string name, FixtureSpec fixture, int height, string credit, Uri license, string commonsFile, string article) =>
+        new(key, name, fixture, 24, 1920, height) { Audio = Stereo, Origin = Megabytes(fixture) + " download", Credit = credit, LicenseUrl = license, Title = credit[..credit.IndexOf(',', StringComparison.Ordinal)], SourceUrl = new Uri("https://commons.wikimedia.org/wiki/File:" + commonsFile), ArticleUrl = new Uri("https://en.wikipedia.org/wiki/" + article) };
 
     /// <summary>A 30-second piece of a film on Wikimedia Commons, checked against its pinned hash and encoded the same way for every 1080p sample.</summary>
     /// <param name="fileName">The cached file name.</param>
