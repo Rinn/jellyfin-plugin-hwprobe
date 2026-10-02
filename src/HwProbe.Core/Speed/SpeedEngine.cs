@@ -70,14 +70,6 @@ public sealed class SpeedEngine : IDisposable
         ArgumentNullException.ThrowIfNull(speed);
         ArgumentNullException.ThrowIfNull(backends);
 
-        var ffmpeg = options.Ffmpeg.Path;
-        var caps = await new FfmpegCapabilityProbe(_runner, options.ProbeTimeout).ProbeAsync(ffmpeg, cancellationToken);
-        if (caps.Validation != FfmpegValidation.Valid)
-        {
-            throw new FfmpegUnusableException($"{ffmpeg}: {caps.Validation}.");
-        }
-
-        var host = new HostInfoReader(_platform).Read();
         var tests = speed.Resolve();
         List<(HwType Type, string Device)> measured = [.. backends.Where(b => b.Type != HwType.none), (HwType.none, string.Empty)];
 
@@ -88,6 +80,14 @@ public sealed class SpeedEngine : IDisposable
         {
             Planned = [.. plan.SelectMany(b => b.Tests.SelectMany(t => t.Labels.Select(label => Describe(t.Test, new SpeedResult(b.Type, b.Device, t.Test.Key, label, null, null, false, null) { Pending = true }))))],
         });
+
+        var host = new HostInfoReader(_platform).Read();
+        var ffmpeg = options.Ffmpeg.Path;
+        var caps = await new FfmpegCapabilityProbe(_runner, options.ProbeTimeout).ProbeAsync(ffmpeg, cancellationToken);
+        if (caps.Validation != FfmpegValidation.Valid)
+        {
+            throw new FfmpegUnusableException($"{ffmpeg}: {caps.Validation}.");
+        }
 
         var done = 0;
         var cancelled = false;
