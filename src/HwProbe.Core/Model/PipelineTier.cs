@@ -20,4 +20,7 @@ public enum PipelineTier
 
     /// <summary>Not resolved.</summary>
     Unknown,
+
+    /// <summary>NVENC with CUDA filters: decode, scale, tonemap and overlay stay on the GPU.</summary>
+    FullCuda,
 }

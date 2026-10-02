@@ -9,6 +9,8 @@
         <style>
             #HwProbeConfigPage table { border-collapse: collapse; margin: 0.25em 0 1em; }
             #HwProbeConfigPage td, #HwProbeConfigPage th { padding: 0.2em 1.5em 0.2em 0; text-align: left; vertical-align: middle; height: 1.8em; }
+            #HwProbeConfigPage table { max-width: 100%; }
+            #HwProbeConfigPage td { overflow-wrap: anywhere; }
             #HwProbeConfigPage th { font-weight: 500; opacity: 0.7; }
             #HwProbeConfigPage .hwprobe-section { margin-top: 2em; }
             #HwProbeConfigPage .hwprobe-backends td:first-child, #HwProbeConfigPage .hwprobe-backends th:first-child { width: 18em; }
@@ -30,9 +32,15 @@
             #HwProbeConfigPage .hwprobe-change-list { margin: 0 0 1em 1em; }
             #HwProbeConfigPage .hwprobe-change-list table { margin: 0.2em 0 0; }
             #HwProbeConfigPage .hwprobe-arrow { display: inline-block; width: 1em; }
-            #HwProbeConfigPage .hwprobe-action { padding: 0 0.6em; line-height: 1.5; border: 1px solid #00a4dc; border-radius: 0.2em; background: transparent; color: #00a4dc; font: inherit; font-size: 0.9em; cursor: pointer; }
+            #HwProbeConfigPage .hwprobe-action { padding: 0 0.6em; line-height: 1.5; border: 1px solid #00a4dc; border-radius: 0.2em; background: transparent; color: #00a4dc; font: inherit; font-size: 0.9em; white-space: nowrap; cursor: pointer; }
             #HwProbeConfigPage .hwprobe-action:disabled { opacity: 0.5; cursor: default; }
             #HwProbeConfigPage .hwprobe-action.hwprobe-danger { border-color: #c62828; color: #c62828; font-weight: bold; }
+            /* Phones: let columns size to their content and wrap, so nothing runs off the screen. */
+            @media (max-width: 40em) {
+                #HwProbeConfigPage td, #HwProbeConfigPage th { padding-right: 0.75em; }
+                #HwProbeConfigPage .hwprobe-backends td:first-child, #HwProbeConfigPage .hwprobe-backends th:first-child,
+                #HwProbeConfigPage .hwprobe-backends td:nth-child(2), #HwProbeConfigPage .hwprobe-backends th:nth-child(2) { width: auto; }
+            }
         </style>
         <div data-role="content">
             <div class="content-primary">
@@ -83,6 +91,7 @@
                     FullOpencl: 'Full GPU pipeline (OpenCL)',
                     FullVulkan: 'Full GPU pipeline (Vulkan)',
                     FullMetal: 'Full GPU pipeline (Metal)',
+                    FullCuda: 'Full GPU pipeline (CUDA)',
                     Limited: 'GPU scaling only, no GPU tone mapping',
                     LegacyCopyBack: 'Copy-back: filters run on the CPU'
                 };
