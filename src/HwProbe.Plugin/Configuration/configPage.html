@@ -9,8 +9,7 @@
         <style>
             #HwProbeConfigPage table { border-collapse: collapse; margin: 0.25em 0 1em; }
             #HwProbeConfigPage td, #HwProbeConfigPage th { padding: 0.2em 1.5em 0.2em 0; text-align: left; vertical-align: middle; height: 1.8em; }
-            #HwProbeConfigPage table { max-width: 100%; }
-            #HwProbeConfigPage td { overflow-wrap: anywhere; }
+            #HwProbeConfigPage .hwprobe-scroll { overflow-x: auto; }
             #HwProbeConfigPage th { font-weight: 500; opacity: 0.7; }
             #HwProbeConfigPage .hwprobe-section { margin-top: 2em; }
             #HwProbeConfigPage .hwprobe-backends td:first-child, #HwProbeConfigPage .hwprobe-backends th:first-child { width: 18em; }
@@ -484,7 +483,10 @@
                             }
                         }
                     }
-                    details.appendChild(table);
+                    // Five columns of ids and outcomes don't fit a phone, and breaking them mid-word reads worse than scrolling.
+                    const scroll = el('div', null, 'hwprobe-scroll');
+                    scroll.appendChild(table);
+                    details.appendChild(scroll);
                     return details;
                 }
 

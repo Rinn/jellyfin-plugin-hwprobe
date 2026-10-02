@@ -15,6 +15,9 @@ internal sealed class EngineRunner : IFfmpegRunner
     /// <summary>Gets or sets the response for device-open and probe launches.</summary>
     public Func<FfmpegInvocation, FfmpegRunResult> Probe { get; set; } = _ => Exited(0, 10, string.Empty);
 
+    /// <summary>Gets or sets an edit to a recorded capability query's output, by arguments, e.g. to drop a filter.</summary>
+    public Func<string, string, string>? EditCapabilities { get; set; }
+
     /// <summary>Gets every launch's arguments, in order.</summary>
     public List<string> Calls { get; } = [];
 
@@ -49,6 +52,7 @@ internal sealed class EngineRunner : IFfmpegRunner
             return Probe(invocation);
         }
 
-        return await _stageA.RunAsync(invocation, cancellationToken);
+        var recorded = await _stageA.RunAsync(invocation, cancellationToken);
+        return EditCapabilities is null ? recorded : recorded with { Stdout = EditCapabilities(invocation.Arguments, recorded.Stdout) };
     }
 }

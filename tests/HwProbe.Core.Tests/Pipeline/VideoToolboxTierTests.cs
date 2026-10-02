@@ -22,7 +22,8 @@ public sealed class VideoToolboxTierTests
         HashSet<string> homebrew = ["yadif_videotoolbox", "scale_vt", "transpose_vt"];
 
         Assert.Equal(PipelineTier.LegacyCopyBack, VideoToolboxTier.Resolve(h => h == "videotoolbox", homebrew.Contains));
-        Assert.Equal(["overlay_videotoolbox", "tonemap_videotoolbox", "alphasrc"], VideoToolboxTier.MissingFilters(homebrew.Contains));
+        Assert.Equal(["overlay_videotoolbox", "tonemap_videotoolbox", "alphasrc"], VideoToolboxTier.MissingFilters(h => h == "videotoolbox", homebrew.Contains));
+        Assert.Equal(["the videotoolbox hwaccel"], VideoToolboxTier.MissingFilters(_ => false, _all.Contains));
     }
 
     /// <summary>Any single missing filter, or the hwaccel, drops to copy-back.</summary>

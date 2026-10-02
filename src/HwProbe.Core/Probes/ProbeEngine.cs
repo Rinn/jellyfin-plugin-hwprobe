@@ -405,8 +405,8 @@ public sealed class ProbeEngine : IDisposable
             // VideoToolbox and CUDA only drop to copy-back for a build missing filters; Intel and AMD for OpenCL.
             var missing = candidate.Type switch
             {
-                HwType.videotoolbox => VideoToolboxTier.MissingFilters(run.Caps.SupportsFilter),
-                HwType.nvenc => CudaTier.Missing(run.Caps.SupportsFilter, run.Caps.SupportsFilterWithOption),
+                HwType.videotoolbox => VideoToolboxTier.MissingFilters(run.Caps.SupportsHwaccel, run.Caps.SupportsFilter),
+                HwType.nvenc => CudaTier.Missing(run.Caps.SupportsHwaccel, run.Caps.SupportsFilter, run.Caps.SupportsFilterWithOption),
                 _ => null,
             };
             var remedy = missing is null

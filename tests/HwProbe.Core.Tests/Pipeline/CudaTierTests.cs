@@ -18,7 +18,7 @@ public sealed class CudaTierTests
 
     /// <summary>Any single missing filter, option or the hwaccel drops to copy-back, and is named.</summary>
     /// <param name="missing">The absent filter or option, or <c>hwaccel</c>.</param>
-    /// <param name="named">How the finding names it, or null when nothing is listed.</param>
+    /// <param name="named">How the finding names it.</param>
     [Theory]
     [InlineData("yadif_cuda", "yadif_cuda")]
     [InlineData("overlay_cuda", "overlay_cuda")]
@@ -26,13 +26,14 @@ public sealed class CudaTierTests
     [InlineData("alphasrc", "alphasrc")]
     [InlineData("ScaleCudaFormat", "scale_cuda (format)")]
     [InlineData("TonemapCudaName", "tonemap_cuda (tonemap name)")]
-    [InlineData("hwaccel", null)]
-    public void AnyGapIsLegacy(string missing, string? named)
+    [InlineData("hwaccel", "the cuda hwaccel")]
+    public void AnyGapIsLegacy(string missing, string named)
     {
+        bool Hwaccel(string h) => h == "cuda" && missing != "hwaccel";
         bool Filter(string f) => _filters.Contains(f) && f != missing;
         bool Option(string o) => _options.Contains(o) && o != missing;
 
-        Assert.Equal(PipelineTier.LegacyCopyBack, CudaTier.Resolve(h => h == "cuda" && missing != "hwaccel", Filter, Option));
-        Assert.Equal(named is null ? [] : [named], CudaTier.Missing(Filter, Option));
+        Assert.Equal(PipelineTier.LegacyCopyBack, CudaTier.Resolve(Hwaccel, Filter, Option));
+        Assert.Equal([named], CudaTier.Missing(Hwaccel, Filter, Option));
     }
 }

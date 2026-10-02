@@ -17,20 +17,22 @@ public static class CudaTier
     /// <returns><see cref="PipelineTier.FullCuda"/>, or <see cref="PipelineTier.LegacyCopyBack"/> when anything is missing.</returns>
     public static PipelineTier Resolve(Func<string, bool> hwaccel, Func<string, bool> filter, Func<string, bool> filterOption)
     {
-        ArgumentNullException.ThrowIfNull(hwaccel);
-        return Missing(filter, filterOption).Count == 0 && hwaccel("cuda") ? PipelineTier.FullCuda : PipelineTier.LegacyCopyBack;
+        return Missing(hwaccel, filter, filterOption).Count == 0 ? PipelineTier.FullCuda : PipelineTier.LegacyCopyBack;
     }
 
     /// <summary>Lists what the build lacks for the CUDA pipeline.</summary>
+    /// <param name="hwaccel">Whether the build has a hwaccel.</param>
     /// <param name="filter">Whether the build has a filter.</param>
     /// <param name="filterOption">Whether a filter option check passed, by key.</param>
-    /// <returns>Missing filters, and filters missing an option as <c>filter (option)</c>.</returns>
-    public static IReadOnlyList<string> Missing(Func<string, bool> filter, Func<string, bool> filterOption)
+    /// <returns>The hwaccel, missing filters, and filters missing an option as <c>filter (option)</c>.</returns>
+    public static IReadOnlyList<string> Missing(Func<string, bool> hwaccel, Func<string, bool> filter, Func<string, bool> filterOption)
     {
+        ArgumentNullException.ThrowIfNull(hwaccel);
         ArgumentNullException.ThrowIfNull(filter);
         ArgumentNullException.ThrowIfNull(filterOption);
         return
         [
+            .. hwaccel("cuda") ? [] : new[] { "the cuda hwaccel" },
             .. _requiredFilters.Where(f => !filter(f)),
             .. _requiredOptions.Where(o => !filterOption(o)).Select(o => o == "ScaleCudaFormat" ? "scale_cuda (format)" : "tonemap_cuda (tonemap name)"),
         ];

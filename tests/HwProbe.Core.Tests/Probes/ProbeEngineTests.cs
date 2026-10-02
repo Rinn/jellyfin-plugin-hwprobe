@@ -45,6 +45,39 @@ public sealed class ProbeEngineTests : IDisposable
         Assert.Equal(CapabilityReport.CurrentSchemaVersion, report.SchemaVersion);
     }
 
+    /// <summary>NVENC with every CUDA filter Jellyfin needs keeps the job on the GPU; without alphasrc it's copy-back, naming it.</summary>
+    /// <param name="dropAlphasrc">Whether the recorded build's filter list loses alphasrc.</param>
+    /// <returns>A task representing the test.</returns>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NvencTierFollowsCudaFilters(bool dropAlphasrc)
+    {
+        var runner = new EngineRunner("jellyfin-8.1.3-windows-x64")
+        {
+            // Adapter 0 opens; the others don't, which ends the enumeration.
+            Probe = i => i.Arguments.StartsWith("-v verbose", StringComparison.Ordinal) && !i.Arguments.Contains("cuda=cu:0", StringComparison.Ordinal)
+                ? EngineRunner.Exited(1, null, "Device creation failed: -1.\n")
+                : EngineRunner.Exited(0, 10, "[h264 @ 0x1] Format cuda chosen by get_format().\n"),
+            EditCapabilities = (arguments, stdout) => dropAlphasrc && arguments.Contains("-filters", StringComparison.Ordinal)
+                ? string.Join('\n', stdout.Split('\n').Where(l => !l.Contains(" alphasrc ", StringComparison.Ordinal)))
+                : stdout,
+        };
+        using var engine = new ProbeEngine(runner, _arguments, new FakeHostPlatform(HostOs.Windows), TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
+
+        var report = await engine.RunAsync(Options(StopStage.Matrix, refresh: true) with { Types = new HashSet<HwType> { HwType.nvenc } }, TestContext.Current.CancellationToken);
+
+        var nvenc = Assert.Single(report.Backends, b => b.Type == HwType.nvenc);
+        Assert.Equal(dropAlphasrc ? PipelineTier.LegacyCopyBack : PipelineTier.FullCuda, nvenc.Tier);
+        var copyBack = report.Findings.SingleOrDefault(f => f.Code == "legacy-copyback");
+        Assert.Equal(dropAlphasrc, copyBack is not null);
+        if (copyBack is not null)
+        {
+            Assert.Contains("lacks alphasrc; use jellyfin-ffmpeg for the CUDA pipeline", copyBack.Message, StringComparison.Ordinal);
+            Assert.Equal("Use jellyfin-ffmpeg", copyBack.Fix?.Action);
+        }
+    }
+
     /// <summary>A device that won't open is NotPresent after one probe, with nothing further launched.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
