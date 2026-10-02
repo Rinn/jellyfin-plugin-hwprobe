@@ -12,4 +12,7 @@ public sealed record SettingAdvice(string Section, string Setting, string Label,
 {
     /// <summary>Gets a short fix for an option that could work after a change on the host, when there is one.</summary>
     public Fix? Fix { get; init; }
+
+    /// <summary>Gets a value indicating whether the Transcoding page doesn't show this option for the backend, so it can't be unticked there.</summary>
+    public bool Hidden { get; init; }
 }

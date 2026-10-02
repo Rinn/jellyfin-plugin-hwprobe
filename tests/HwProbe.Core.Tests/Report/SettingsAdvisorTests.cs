@@ -50,7 +50,7 @@ public sealed class SettingsAdvisorTests
     [Fact]
     public void ListsEveryQsvOptionInPageOrder()
     {
-        var labels = SettingsAdvisor.For(_apolloLakeQsv, _docker).Select(a => a.Label);
+        var labels = SettingsAdvisor.For(_apolloLakeQsv, _docker).Where(a => !a.Hidden).Select(a => a.Label);
 
         Assert.Equal(
             [
@@ -107,6 +107,16 @@ public sealed class SettingsAdvisorTests
         Assert.Equal(SettingState.NotTested, Assert.Single(advice, a => a.Setting == "HardwareDecodingCodecs:h264").State);
     }
 
+    /// <summary>Codecs the Transcoding page doesn't show for the backend are hidden and left off.</summary>
+    [Fact]
+    public void HiddenCodecsAreLeftOff()
+    {
+        var hidden = SettingsAdvisor.For(_apolloLakeQsv, _docker).Where(a => a.Hidden).ToList();
+
+        Assert.Equal(["HardwareDecodingCodecs:mpeg1video", "HardwareDecodingCodecs:mpeg4"], hidden.Select(a => a.Setting));
+        Assert.All(hidden, a => Assert.Equal(SettingState.LeaveOff, a.State));
+    }
+
     /// <summary>Failed options that a host change could fix carry a short fix with a documentation link.</summary>
     [Fact]
     public void ActionableFailuresCarryFixes()
@@ -127,8 +137,8 @@ public sealed class SettingsAdvisorTests
     [Fact]
     public void OptionsDependOnBackend()
     {
-        var nvenc = SettingsAdvisor.For(_apolloLakeQsv with { Type = HwType.nvenc }, _docker).Select(a => a.Setting).ToList();
-        var videotoolbox = SettingsAdvisor.For(_apolloLakeQsv with { Type = HwType.videotoolbox }, _docker).Select(a => a.Setting).ToList();
+        var nvenc = SettingsAdvisor.For(_apolloLakeQsv with { Type = HwType.nvenc }, _docker).Where(a => !a.Hidden).Select(a => a.Setting).ToList();
+        var videotoolbox = SettingsAdvisor.For(_apolloLakeQsv with { Type = HwType.videotoolbox }, _docker).Where(a => !a.Hidden).Select(a => a.Setting).ToList();
 
         Assert.Contains("HardwareDecodingCodecs:mpeg4", nvenc);
         Assert.DoesNotContain("EnableIntelLowPowerH264HwEncoder", nvenc);

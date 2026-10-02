@@ -66,6 +66,12 @@ public static class SettingsAdvisor
             advice.Add(Advise(DecodingSection, "HardwareDecodingCodecs:" + codec, label, Cell(backend.Decode, codec)));
         }
 
+        // Left enabled by another backend, these stay in the saved list with no checkbox to clear them.
+        foreach (var (label, codec, _) in _codecs.Where(c => !c.Types.Contains(type)))
+        {
+            advice.Add(new SettingAdvice(DecodingSection, "HardwareDecodingCodecs:" + codec, label, SettingState.LeaveOff, "Not used with this backend") { Hidden = true });
+        }
+
         foreach (var (label, setting, cell, _) in _depthOptions.Where(o => o.Types.Contains(type)))
         {
             advice.Add(Advise(DecodingSection, setting, label, Cell(backend.Decode, cell)));

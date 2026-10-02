@@ -259,7 +259,7 @@
                     const table = el('table');
                     row(table, [el('th'), el('th', 'Option'), el('th', 'Result'), el('th', 'Fix'), el('th')]);
                     let group = null;
-                    for (const a of settings) {
+                    for (const a of settings.filter(x => !x.hidden || differs(x))) {
                         if (a.section !== group) {
                             group = a.section;
                             const pending = configured ? settings.filter(x => x.section === group && differs(x)) : [];
