@@ -24,7 +24,13 @@
             #HwProbeConfigPage .hwprobe-tabs button { margin: 0 0.5em 0.75em 0; padding: 0.4em 1em; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 0.2em; background: transparent; color: inherit; font: inherit; cursor: pointer; }
             #HwProbeConfigPage .hwprobe-tabs button.hwprobe-selected { background: #00a4dc; border-color: #00a4dc; color: #fff; }
             #HwProbeConfigPage details { margin-top: 2em; }
-            #HwProbeConfigPage .hwprobe-action { padding: 0 0.6em; line-height: 1.5; font-size: 0.9em; border: 1px solid #00a4dc; border-radius: 0.2em; background: transparent; color: #00a4dc; font: inherit; cursor: pointer; }
+            #HwProbeConfigPage .hwprobe-change { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em; margin: 0 0 0.5em; }
+            #HwProbeConfigPage .hwprobe-disclosure { padding: 0; border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+            #HwProbeConfigPage .hwprobe-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+            #HwProbeConfigPage .hwprobe-change-list { margin: 0 0 1em 1em; }
+            #HwProbeConfigPage .hwprobe-change-list table { margin: 0.2em 0 0; }
+            #HwProbeConfigPage .hwprobe-arrow { display: inline-block; width: 1em; }
+            #HwProbeConfigPage .hwprobe-action { padding: 0 0.6em; line-height: 1.5; border: 1px solid #00a4dc; border-radius: 0.2em; background: transparent; color: #00a4dc; font: inherit; font-size: 0.9em; cursor: pointer; }
             #HwProbeConfigPage .hwprobe-action:disabled { opacity: 0.5; cursor: default; }
             #HwProbeConfigPage .hwprobe-action.hwprobe-danger { border-color: #c62828; color: #c62828; font-weight: bold; }
         </style>
@@ -190,6 +196,19 @@
                     row(table, [el('td'), el('td', title)]).className = 'hwprobe-group';
                 }
 
+                // A mark with a word for screen readers in place of the glyph, which they'd read as "check mark".
+                function spokenMark(state, word) {
+                    const td = mark(state);
+                    const glyph = el('span', td.textContent);
+                    glyph.setAttribute('aria-hidden', 'true');
+                    td.replaceChildren(glyph, el('span', word, 'hwprobe-sr'));
+                    return td;
+                }
+
+                function flagMark(on) {
+                    return spokenMark(on ? 'TurnOn' : 'LeaveOff', on ? 'On' : 'Off');
+                }
+
                 function mark(state) {
                     if (state === 'TurnOn' || state === 'Optional') {
                         return el('td', '✓', 'hwprobe-mark hwprobe-on');
@@ -220,11 +239,11 @@
 
                 // The server's current value for a setting key, or undefined when unknown.
                 function current(setting) {
-                    if (!encoding) {
-                        return undefined;
-                    }
                     if (setting.indexOf('Trickplay:') === 0) {
                         return trickplay ? trickplay[setting.substring('Trickplay:'.length)] : undefined;
+                    }
+                    if (!encoding) {
+                        return undefined;
                     }
                     if (setting === 'DeinterlaceMethod:bwdif') {
                         return encoding.DeinterlaceMethod === 'bwdif';
@@ -294,45 +313,76 @@
                         .then(() => waitForServer(Date.now() + 180000), () => { messageText.textContent = 'Restart failed.'; });
                 }
 
+                // Whether the last change's list is open, kept across re-renders of the same entry.
+                let changeOpen = false;
+                let changeShown = null;
+
                 function renderChange() {
                     changeText.replaceChildren();
                     const last = history.filter(e => e.Kind !== 'Revert' && !e.RevertedUtc).pop();
                     if (!last) {
                         return;
                     }
-                    const line = el('p', 'Last change: ' + new Date(last.TimeUtc).toLocaleString() + ' ');
-                    line.appendChild(action('Revert', () => post('HwProbe/Revert')));
+                    if (changeShown !== last.TimeUtc) {
+                        changeOpen = false;
+                        changeShown = last.TimeUtc;
+                    }
+
+                    // Revert leaves a setting that was changed again since; the server skips it too. An unknown current
+                    // value (settings failed to load) is shown as such rather than guessed.
+                    const rows = last.Changes.map(c => {
+                        const now = currentText(c.Setting);
+                        return { change: c, unknown: now === undefined, kept: now !== undefined && now !== c.NewValue };
+                    });
+                    const nothing = rows.every(r => r.kept);
+
+                    // A disclosure button beside Revert rather than a summary around it: buttons can't nest, and a
+                    // details element would widen with its table and push Revert along.
+                    const line = el('div', null, 'hwprobe-change');
+                    const toggle = el('button', null, 'hwprobe-disclosure');
+                    toggle.type = 'button';
+                    toggle.setAttribute('aria-controls', 'hwprobeChangeList');
+                    const arrow = el('span', null, 'hwprobe-arrow');
+                    arrow.setAttribute('aria-hidden', 'true');
+                    toggle.appendChild(arrow);
+                    toggle.appendChild(document.createTextNode('Last change: ' + new Date(last.TimeUtc).toLocaleString()));
+                    line.appendChild(toggle);
+                    // With every setting changed since, Revert would change nothing; it only clears the entry.
+                    line.appendChild(action(nothing ? 'Dismiss' : 'Revert', () => post('HwProbe/Revert')));
                     changeText.appendChild(line);
 
-                    const details = el('details');
-                    const count = last.Changes.length;
-                    details.appendChild(el('summary', count + (count === 1 ? ' setting' : ' settings')));
+                    const list = el('div', null, 'hwprobe-change-list');
+                    list.id = 'hwprobeChangeList';
+                    list.appendChild(el('div', nothing ? 'Every setting was changed since; nothing to revert.' : 'Revert sets:', 'hwprobe-reason'));
                     const table = el('table');
-                    row(table, [el('th', 'Option'), el('th', 'Now'), el('th', 'After revert')]);
-                    for (const c of last.Changes) {
-                        // Revert leaves a setting that was changed again since; the server skips it too.
-                        const kept = currentText(c.Setting) !== undefined && currentText(c.Setting) !== c.NewValue;
-                        row(table, [c.Label || settingLabel(c.Setting), valueText(c.Setting, kept ? currentText(c.Setting) : c.NewValue), kept ? el('td', 'Changed since, kept', 'hwprobe-reason') : valueText(c.Setting, c.OldValue)]);
-                    }
-                    details.appendChild(table);
-                    changeText.appendChild(details);
-                }
-
-                const settingNames = {
-                    HardwareAccelerationType: 'Hardware acceleration',
-                    VaapiDevice: 'VA-API device',
-                    QsvDevice: 'QSV device',
-                };
-
-                // For changes recorded without a label: the label from the latest advice, else a plain name.
-                function settingLabel(setting) {
-                    for (const b of (report && report.backends) || []) {
-                        const a = (b.settings || []).find(x => x.setting === setting);
-                        if (a) {
-                            return a.section === 'Trickplay' ? 'Trickplay: ' + a.label : a.label;
+                    for (const r of rows) {
+                        const c = r.change;
+                        // The server labels every setting it knows; the key is a last resort.
+                        const label = c.Label || c.Setting;
+                        if (r.kept) {
+                            row(table, [spokenMark('NotTested', 'Skipped'), label, el('td', 'Changed since, left as is', 'hwprobe-reason')]);
+                            continue;
                         }
+                        const flag = c.OldValue === 'true' || c.OldValue === 'false';
+                        const value = flag ? el('td') : el('td', valueText(c.Setting, c.OldValue));
+                        if (r.unknown) {
+                            value.appendChild(el('span', (flag ? '' : ' ') + '(current value unknown)', 'hwprobe-reason'));
+                        }
+                        row(table, [flag ? flagMark(c.OldValue === 'true') : el('td'), label, value]);
                     }
-                    return settingNames[setting] || setting;
+                    list.appendChild(table);
+                    changeText.appendChild(list);
+
+                    function show() {
+                        list.style.display = changeOpen ? '' : 'none';
+                        arrow.textContent = changeOpen ? '▾' : '▸';
+                        toggle.setAttribute('aria-expanded', String(changeOpen));
+                    }
+                    toggle.addEventListener('click', () => {
+                        changeOpen = !changeOpen;
+                        show();
+                    });
+                    show();
                 }
 
                 // The current value in the form history entries store it, or undefined when unknown.
@@ -351,7 +401,7 @@
                     if (setting === 'HardwareAccelerationType') {
                         return value === 'none' ? 'None' : (names[value] || value);
                     }
-                    return value || '-';
+                    return value || 'Not set';
                 }
 
                 function renderSettings(container, viable) {

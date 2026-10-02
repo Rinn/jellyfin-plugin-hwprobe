@@ -25,17 +25,23 @@ public static class SettingsAdvisor
     private const string NotSupported = "Not supported by this GPU";
     private const string NotTested = "Not tested";
 
-    // Every label the advisor gives, gathered from advice for a backend of each type with no results.
+    // Every label the advisor gives, gathered from advice for a backend of each type with no results, plus the
+    // backend and device settings that "Use this backend" changes.
     private static readonly Lazy<Dictionary<string, string>> _labels = new(() =>
     {
-        Dictionary<string, string> labels = new(StringComparer.Ordinal);
+        Dictionary<string, string> labels = new(StringComparer.Ordinal)
+        {
+            ["HardwareAccelerationType"] = "Hardware acceleration",
+            ["VaapiDevice"] = "VA-API device",
+            ["QsvDevice"] = "QSV device",
+        };
         var deinterlace = new Dictionary<string, ProbeOutcome> { ["any_bwdif"] = ProbeOutcome.Untested };
         foreach (var type in Enum.GetValues<HwType>().Where(t => t != HwType.none))
         {
             var row = new BackendReport(type, string.Empty, BackendVerdict.Viable, PipelineTier.Unknown, new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), deinterlace, new Dictionary<string, ProbeOutcome>(), string.Empty);
             foreach (var advice in For(row, new AdviceContext(HostOs.Linux, InContainer: false, OpenclUnavailable: false)))
             {
-                labels.TryAdd(advice.Setting, advice.Section == TrickplaySection ? "Trickplay: " + advice.Label : advice.Label);
+                labels.TryAdd(advice.Setting, Qualified(advice));
             }
         }
 
@@ -69,9 +75,9 @@ public static class SettingsAdvisor
         ("HEVC RExt 12bit", "EnableDecodingColorDepth12HevcRext", ["hevc_rext_12bit", "hevc_rext_422_12bit"], _rextTypes),
     ];
 
-    /// <summary>Returns the label the settings list gives a setting key, e.g. <c>HEVC</c> for <c>HardwareDecodingCodecs:hevc</c>.</summary>
+    /// <summary>Returns the label for a setting HwProbe can change, e.g. <c>Hardware decoding: HEVC</c> for <c>HardwareDecodingCodecs:hevc</c>.</summary>
     /// <param name="setting">The setting key.</param>
-    /// <returns>The label, with <c>Trickplay: </c> before trickplay options; null for a key the advisor never gives.</returns>
+    /// <returns>The settings list's label, prefixed where a bare one wouldn't place it, or a name for the backend and device settings; null for any other key.</returns>
     public static string? LabelFor(string setting) => _labels.Value.GetValueOrDefault(setting);
 
     /// <summary>Returns advice for every option Jellyfin's Transcoding page shows for this backend.</summary>
@@ -211,6 +217,14 @@ public static class SettingsAdvisor
             ? keyFrames with { State = SettingState.Optional, Note = "Works with hardware decoding; faster, less accurate timing" }
             : keyFrames;
     }
+
+    /// <summary>Names an option outside the settings list, where its heading isn't there to place it.</summary>
+    /// <param name="advice">The advice.</param>
+    /// <returns>The label, prefixed for trickplay options and for codecs and bit depths in the decoding list.</returns>
+    private static string Qualified(SettingAdvice advice) =>
+        advice.Section == TrickplaySection ? "Trickplay: " + advice.Label
+        : advice.Setting.StartsWith("HardwareDecodingCodecs:", StringComparison.Ordinal) || advice.Setting.StartsWith("EnableDecodingColorDepth", StringComparison.Ordinal) ? "Hardware decoding: " + advice.Label
+        : advice.Label;
 
     /// <summary>Builds advice from one test's outcome.</summary>
     /// <param name="section">The page heading.</param>
