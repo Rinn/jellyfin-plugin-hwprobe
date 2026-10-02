@@ -323,7 +323,7 @@ public sealed class SpeedEngine : IDisposable
                 }
                 catch (Exception ex) when (ex is ArgumentConstructionException or UnsafeProbeException)
                 {
-                    return new SpeedResult(type, device, test.Key, label, null, null, false, test.DecodeOnly ? "Jellyfin decodes this in software." : ex.Message);
+                    return new SpeedResult(type, device, test.Key, label, null, null, false, test.DecodeOnly ? "Not measured: Jellyfin decodes this in software with this backend." : ex.Message);
                 }
                 catch (NotSupportedException)
                 {
@@ -331,11 +331,16 @@ public sealed class SpeedEngine : IDisposable
                     return new SpeedResult(type, device, test.Key, label, null, null, false, "Burning in a file's own text subtitles needs Jellyfin; measure it from the plugin.");
                 }
 
-                // Software decodes and encodes everything, so only a hardware backend can fall back.
-                var note = type == HwType.none ? null
-                    : args.Hwaccel is null && args.HardwareDecoder is null ? "Jellyfin decodes this in software."
-                    : !test.DecodeOnly && !args.HardwareEncoder ? "Jellyfin encodes this in software."
+                // A hardware column shows only work done on the GPU; software is measured in its own column.
+                var softwareStep = type == HwType.none ? null
+                    : args.Hwaccel is null && args.HardwareDecoder is null ? "decodes"
+                    : !test.DecodeOnly && !args.HardwareEncoder ? "encodes"
                     : null;
+                if (softwareStep is not null)
+                {
+                    return new SpeedResult(type, device, test.Key, label, null, null, false, $"Not measured: Jellyfin {softwareStep} this in software with this backend.");
+                }
+
                 string Command(TimeSpan content) => SpeedCommandLine.Build(args, content, test.DecodeOnly, test.StartAt);
 
                 var command = Command(SpeedMeter.Content);
@@ -355,7 +360,7 @@ public sealed class SpeedEngine : IDisposable
                 }
 
                 var measured = await SpeedMeter.MeasureAsync(LaunchAsync, method, test.FrameRate, !test.DecodeOnly, ct, timeUp);
-                return new SpeedResult(type, device, test.Key, label, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note);
+                return new SpeedResult(type, device, test.Key, label, measured.Fps, measured.Streams, measured.Capped, measured.Note);
             },
             cancellationToken);
 

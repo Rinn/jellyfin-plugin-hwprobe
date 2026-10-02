@@ -123,6 +123,8 @@
                 let speedMethod = null;
                 let speedRepeats = 1;
                 let speedTimeLimit = null;
+                // Null measures with the server's own thread count.
+                let speedThreads = null;
                 let chosenVideos = null;
                 let chosenOutputs = null;
                 let speedItem = null;
@@ -138,6 +140,7 @@
                 let methodSeconds = {};
                 let comparisons = {};
                 let repeatOptions = [];
+                let threadOptions = [];
                 let timeLimitOptions = [];
                 let names = {};
                 let order = [];
@@ -155,6 +158,7 @@
                     methodSeconds = Object.fromEntries(c.Methods.map(m => [m.Key, m.Seconds]));
                     comparisons = Object.fromEntries(c.Variations.map(v => [v.Key, [v.Name, v.Measured]]));
                     repeatOptions = c.Repeats.map(o => [o.Value, o.Label]);
+                    threadOptions = c.Threads.map(o => [o.Value, o.Label]);
                     timeLimitOptions = c.TimeLimits.map(o => [o.Value === undefined || o.Value === null ? '' : o.Value, o.Label]);
                     names = Object.fromEntries(c.Backends.map(b => [b.Type, b.Name]));
                     order = c.Backends.map(b => b.Type);
@@ -939,7 +943,7 @@
                     list('Variations', 'Each selected variation measures again with one setting changed from the server\u2019s.', ['Setting', 'Measured'],
                         Object.entries(comparisons).map(([key, [name, values]]) => [box(speedCompared, key, true), name, el('td', values, 'secondaryText')]));
 
-                    container.appendChild(el('h3', 'Accuracy and time', 'sectionTitle'));
+                    container.appendChild(el('h3', 'Settings', 'sectionTitle'));
                     const options = (label, values, current, onChange) => {
                         const select = themedSelect(container, label);
                         for (const [value, text] of values) {
@@ -950,13 +954,17 @@
                         }
                         select.addEventListener('change', () => { onChange(select.value); update(); });
                     };
+                    const serverThreads = encoding ? threadOptions.find(([value]) => value === encoding.EncodingThreadCount) : null;
+                    options('Transcoding thread count', [['', 'Server setting' + (serverThreads ? ' (' + serverThreads[1] + ')' : '')]].concat(threadOptions), speedThreads === null ? '' : speedThreads, v => { speedThreads = v === '' ? null : Number(v); });
+                    container.appendChild(el('div', 'The most CPU threads each transcode uses, as Jellyfin\u2019s Transcoding thread count setting.', 'fieldDescription'));
+                    container.appendChild(el('h3', 'Accuracy and time', 'sectionTitle'));
                     options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });
                     options('Repeats', repeatOptions, speedRepeats, v => { speedRepeats = Number(v); });
                     options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); });
                     container.appendChild(el('div', 'A measurement that reaches the limit stops and reports what it measured.', 'fieldDescription'));
 
                     button = action('Measure speed', () => {
-                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: speedOutputs.filter(o => chosenOutputs.has(o.Key)).map(o => o.Key), Comparisons: [...speedCompared], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
+                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, EncodingThreadCount: speedThreads, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: speedOutputs.filter(o => chosenOutputs.has(o.Key)).map(o => o.Key), Comparisons: [...speedCompared], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
                         ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed'), data: JSON.stringify(body), contentType: 'application/json' })
                             .then(loadStatus, response => (response && response.text ? response.text() : Promise.resolve('')).then(text => {
                                 setMessage('Could not start: ' + (text.replace(/^"|"$/g, '') || 'a probe is running or a session is transcoding.'));

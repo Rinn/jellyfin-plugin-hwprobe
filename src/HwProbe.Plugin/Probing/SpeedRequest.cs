@@ -13,6 +13,9 @@ public sealed record SpeedRequest(string Method, IReadOnlyList<string> Videos, I
     /// <summary>Gets the seconds each measurement may take before it reports what it has, one of the catalog's time limits, or null for no limit.</summary>
     public int? TimeLimitSeconds { get; init; }
 
+    /// <summary>Gets the transcoding thread count to measure with, one of the catalog's, or null for the server's setting.</summary>
+    public int? EncodingThreadCount { get; init; }
+
     /// <summary>Gets the library item the <c>library</c> video reads, or null.</summary>
     public Guid? ItemId { get; init; }
 }

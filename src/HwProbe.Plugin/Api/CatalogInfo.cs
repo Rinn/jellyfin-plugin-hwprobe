@@ -11,6 +11,7 @@ namespace Jellyfin.Plugin.HwProbe.Api;
 /// <param name="Methods">The speed accuracies.</param>
 /// <param name="DefaultMethod">The accuracy chosen first.</param>
 /// <param name="Repeats">The repeat counts offered.</param>
+/// <param name="Threads">Jellyfin's transcoding thread counts.</param>
 /// <param name="TimeLimits">The time limits per measurement offered, in seconds.</param>
 /// <param name="Backends">The backends, in the order of Jellyfin's dropdown.</param>
 /// <param name="Tiers">The pipeline tiers' descriptions.</param>
@@ -24,6 +25,7 @@ public sealed record CatalogInfo(
     IReadOnlyList<CatalogMethod> Methods,
     SpeedMethod DefaultMethod,
     IReadOnlyList<CatalogOption> Repeats,
+    IReadOnlyList<CatalogOption> Threads,
     IReadOnlyList<CatalogOption> TimeLimits,
     IReadOnlyList<CatalogBackend> Backends,
     IReadOnlyDictionary<PipelineTier, string> Tiers,
@@ -44,6 +46,7 @@ public sealed record CatalogInfo(
             catalog.Methods,
             catalog.DefaultMethod,
             catalog.Repeats,
+            catalog.Threads,
             catalog.TimeLimits,
             catalog.Backends,
             catalog.Tiers,

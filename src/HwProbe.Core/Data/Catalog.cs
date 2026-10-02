@@ -27,6 +27,9 @@ public sealed partial class Catalog
     /// <summary>Gets the repeat counts offered.</summary>
     public required IReadOnlyList<CatalogOption> Repeats { get; init; }
 
+    /// <summary>Gets Jellyfin's transcoding thread counts.</summary>
+    public required IReadOnlyList<CatalogOption> Threads { get; init; }
+
     /// <summary>Gets the time limits per measurement offered, in seconds.</summary>
     public required IReadOnlyList<CatalogOption> TimeLimits { get; init; }
 

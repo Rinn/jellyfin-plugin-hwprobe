@@ -172,6 +172,27 @@ repeats:
   - { value: 2, label: "Measure each twice, report the median" }
   - { value: 3, label: "Measure each three times, report the median" }
 
+# Jellyfin's Transcoding thread count choices (jellyfin-web transcoding.tsx, v12.1). EncodingHelper.GetNumberOfThreads treats Auto (-1) and Max (0) alike: ffmpeg picks (v12.1).
+threads:
+  - { value: -1, label: Auto }
+  - { value: 1, label: "1" }
+  - { value: 2, label: "2" }
+  - { value: 3, label: "3" }
+  - { value: 4, label: "4" }
+  - { value: 5, label: "5" }
+  - { value: 6, label: "6" }
+  - { value: 7, label: "7" }
+  - { value: 8, label: "8" }
+  - { value: 9, label: "9" }
+  - { value: 10, label: "10" }
+  - { value: 11, label: "11" }
+  - { value: 12, label: "12" }
+  - { value: 13, label: "13" }
+  - { value: 14, label: "14" }
+  - { value: 15, label: "15" }
+  - { value: 16, label: "16" }
+  - { value: 0, label: Max }
+
 # Seconds per measurement; no value for no limit.
 timeLimits:
   - { label: No limit }

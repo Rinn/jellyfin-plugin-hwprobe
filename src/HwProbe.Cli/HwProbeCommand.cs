@@ -1,4 +1,5 @@
 using System.CommandLine;
+using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
 using Jellyfin.Plugin.HwProbe.Core.Speed;
@@ -50,6 +51,8 @@ internal sealed class HwProbeCommand
     };
 
     private readonly Option<string?> _speedFile = new("--speed-file") { Description = "A video file to measure with --speed, as the library video." };
+    private readonly Option<int?> _speedThreads = new("--speed-threads") { Description = "Transcoding thread count for speed runs, as Jellyfin's setting: -1 or 0 lets ffmpeg choose (the default), or 1 to 16." };
+
     private readonly Option<int> _speedRepeats = new("--speed-repeats") { Description = "Run each speed measurement 1 to 3 times and report the median.", DefaultValueFactory = _ => 1 };
     private readonly Option<int?> _speedTimeLimit = new("--speed-time-limit") { Description = "Seconds each speed measurement may take before it reports what it has." };
     private readonly Option<string?> _speedJson = new("--speed-json") { Description = "Also write the speed report to this file." };
@@ -77,6 +80,13 @@ internal sealed class HwProbeCommand
                 r.AddError("--speed-repeats must be 1, 2 or 3.");
             }
         });
+        _speedThreads.Validators.Add(r =>
+        {
+            if (r.GetValueOrDefault<int?>() is { } threads && !Catalog.Default.Threads.Any(o => o.Value == threads))
+            {
+                r.AddError("--speed-threads must be -1, 0 or 1 to 16.");
+            }
+        });
         _speedTimeLimit.Validators.Add(r =>
         {
             if (r.GetValueOrDefault<int?>() is <= 0)
@@ -87,7 +97,7 @@ internal sealed class HwProbeCommand
 
         Root = new RootCommand("Device-verified hardware transcode detection for Jellyfin.")
         {
-            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _speed, _speedVideos, _speedOutputs, _speedCompare, _speedFile, _speedRepeats, _speedTimeLimit, _speedJson, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
+            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _speed, _speedVideos, _speedOutputs, _speedCompare, _speedFile, _speedRepeats, _speedThreads, _speedTimeLimit, _speedJson, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
         };
     }
 
@@ -214,7 +224,7 @@ internal sealed class HwProbeCommand
     /// <param name="method">The chosen method.</param>
     /// <returns>The options.</returns>
     private SpeedOptions SpeedFrom(ParseResult result, SpeedMethod method) =>
-        new(method, result.GetValue(_speedVideos)!, result.GetValue(_speedOutputs)!, result.GetValue(_speedCompare), new SpeedSettings())
+        new(method, result.GetValue(_speedVideos)!, result.GetValue(_speedOutputs)!, result.GetValue(_speedCompare), new SpeedSettings { EncodingThreadCount = result.GetValue(_speedThreads) ?? -1 })
         {
             Repeats = result.GetValue(_speedRepeats),
             TimeLimit = result.GetValue(_speedTimeLimit) is { } seconds ? TimeSpan.FromSeconds(seconds) : null,

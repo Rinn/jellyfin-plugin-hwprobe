@@ -204,7 +204,9 @@ public sealed partial class ProbeService : IDisposable
         List<(HwType, string)> backends = [.. report.Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device))];
         _speedCancel = new CancellationTokenSource();
         _speedPause = new SpeedPause(_time);
-        _background = Task.Run(() => RunSpeedHeldAsync(measure, speed with { Settings = ServerSpeedSettings(), Pause = _speedPause }, backends, _speedCancel.Token), CancellationToken.None);
+        var settings = ServerSpeedSettings();
+        settings = request.EncodingThreadCount is { } threads ? settings with { EncodingThreadCount = threads } : settings;
+        _background = Task.Run(() => RunSpeedHeldAsync(measure, speed with { Settings = settings, Pause = _speedPause }, backends, _speedCancel.Token), CancellationToken.None);
         return ProbeRunResult.Started;
     }
 
@@ -448,7 +450,7 @@ public sealed partial class ProbeService : IDisposable
             comparisons |= comparison;
         }
 
-        if (!Catalog.Default.Repeats.Any(o => o.Value == request.Repeats) || !Catalog.Default.TimeLimits.Any(o => o.Value == request.TimeLimitSeconds))
+        if (!Catalog.Default.Repeats.Any(o => o.Value == request.Repeats) || !Catalog.Default.TimeLimits.Any(o => o.Value == request.TimeLimitSeconds) || (request.EncodingThreadCount is { } threads && !Catalog.Default.Threads.Any(o => o.Value == threads)))
         {
             return null;
         }
