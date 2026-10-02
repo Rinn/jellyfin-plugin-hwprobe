@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.3.0.0",
+        "changelog": "Advice for trickplay hardware decoding, MJPEG encoding and key-frame-only extraction, enhanced NVDEC and BWDIF deinterlacing; notes now say when Jellyfin, not the GPU, uses software; HEVC RExt tested in 4:2:2 and 4:4:4; NVIDIA and V4L2 confirmed on real hardware.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.3.0/hwprobe-plugin_0.3.0.0.zip",
+        "checksum": "ef04e64064583b556945c2726e4b213d",
+        "timestamp": "2026-10-02T10:20:50Z"
+      },
+      {
         "version": "0.2.6.0",
         "changelog": "Probe no longer starts during playback right after a client logs in again; the scheduled task no longer fails when the server is busy.",
         "targetAbi": "12.1.0.0",
@@ -68,7 +76,7 @@
       }
     ],
     "name": "HwProbe",
-    "description": "Runs short test transcodes for each hardware acceleration option on the Transcoding page. Shows which ones work and how to fix the ones that don't. Results can be applied to Jellyfin's settings and reverted.",
+    "description": "Runs short test transcodes for each hardware acceleration option on the Transcoding and Trickplay pages. Shows which ones work and how to fix the ones that don't. Results can be applied to Jellyfin's settings and reverted.",
     "overview": "Tests which hardware transcoding options work on a Jellyfin server",
     "owner": "Rinn",
     "category": "General",
