@@ -49,10 +49,13 @@ public sealed class ProbeService : IDisposable
             logger)
     {
         ArgumentNullException.ThrowIfNull(files);
+        ArgumentNullException.ThrowIfNull(mediaEncoder);
+        ArgumentNullException.ThrowIfNull(paths);
         CurrentFfmpeg = () => (mediaEncoder.EncoderPath, mediaEncoder.EncoderVersion);
         MeasureSpeed = (speed, backends, progress, ct) => RunSpeedEngineAsync(arguments, mediaEncoder, paths, baseline, speed, backends, progress, ct);
         ServerSpeedSettings = () => SettingsFrom(config.GetEncodingOptions());
         FindFile = files.Find;
+        FixturesDirectory = ServerEngineOptions(mediaEncoder, paths).FixturesDirectory;
     }
 
     /// <summary>Initializes a new instance of the <see cref="ProbeService"/> class with injected behaviour.</summary>
@@ -83,6 +86,9 @@ public sealed class ProbeService : IDisposable
 
     /// <summary>Gets the speed run, or null when this service can't measure speed.</summary>
     internal Func<SpeedOptions, IReadOnlyCollection<(HwType Type, string Device)>, IProgress<(int Done, int Total)>, CancellationToken, Task<SpeedReport>>? MeasureSpeed { get; init; }
+
+    /// <summary>Gets where probes and speed runs cache their clips, or null when unknown.</summary>
+    internal string? FixturesDirectory { get; init; }
 
     /// <summary>Gets the lookup from a library item to its file.</summary>
     internal Func<Guid, SpeedFile?> FindFile { get; init; } = _ => null;
@@ -235,6 +241,44 @@ public sealed class ProbeService : IDisposable
         var latest = ReportStore.Deserialize(json);
         var bundled = await DiagnosticsBundle.ReadReportAsync(bytes, cancellationToken);
         return bundled is not null && bundled.GeneratedUtc == latest?.GeneratedUtc ? bytes : null;
+    }
+
+    /// <summary>Returns the size of the test clips and samples cached for probes and speed runs.</summary>
+    /// <returns>Bytes and files; zero when nothing is cached.</returns>
+    public CacheSize FixtureCacheSize()
+    {
+        if (FixturesDirectory is not { } directory || !Directory.Exists(directory))
+        {
+            return new CacheSize(0, 0);
+        }
+
+        var files = new DirectoryInfo(directory).EnumerateFiles("*", SearchOption.AllDirectories).ToList();
+        return new CacheSize(files.Sum(f => f.Length), files.Count);
+    }
+
+    /// <summary>Deletes the cached clips and samples; the next probe or speed run makes or downloads them again.</summary>
+    /// <param name="cancellationToken">Cancels waiting.</param>
+    /// <returns>False when a probe or speed run is using them.</returns>
+    public async Task<bool> PurgeFixtureCacheAsync(CancellationToken cancellationToken)
+    {
+        if (!await _gate.WaitAsync(0, cancellationToken))
+        {
+            return false;
+        }
+
+        try
+        {
+            if (FixturesDirectory is { } directory && Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+
+            return true;
+        }
+        finally
+        {
+            _gate.Release();
+        }
     }
 
     /// <inheritdoc/>

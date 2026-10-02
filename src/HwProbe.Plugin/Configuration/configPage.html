@@ -646,6 +646,32 @@
                     return runs;
                 }
 
+                function sizeText(bytes) {
+                    const units = ['bytes', 'KB', 'MB', 'GB'];
+                    let i = 0;
+                    while (bytes >= 1000 && i < units.length - 1) {
+                        bytes /= 1000;
+                        i++;
+                    }
+                    return (i === 0 ? bytes : bytes.toFixed(bytes < 10 ? 1 : 0)) + ' ' + units[i];
+                }
+
+                // Clips and samples are kept so later runs don't make or download them again.
+                function renderCache() {
+                    const line = el('p', null, 'hwprobe-reason');
+                    const show = () => ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Cache'), dataType: 'json' }).then(c => {
+                        line.replaceChildren(document.createTextNode('Cached test clips and samples: ' + sizeText(c.Bytes) + ' in ' + c.Files + ' file' + (c.Files === 1 ? '' : 's') + '. '));
+                        if (c.Files > 0) {
+                            line.appendChild(action('Delete', () => {
+                                ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('HwProbe/Cache') })
+                                    .then(show, () => { messageText.textContent = 'Could not delete: a probe or speed run is using the cache.'; show(); });
+                            }));
+                        }
+                    }, () => { line.textContent = ''; });
+                    show();
+                    return line;
+                }
+
                 function allSpeedTests() {
                     return speedTests.concat(speedFileTests);
                 }
@@ -749,6 +775,7 @@
                     buttons.appendChild(button);
                     container.appendChild(buttons);
                     container.appendChild(estimate);
+                    container.appendChild(renderCache());
                     update();
                     results.addEventListener('hwprobe-speed-changed', update);
 
@@ -804,9 +831,24 @@
                         row(table, [x.variant ? '' : (x.label || (test ? test.Label : x.test)), x.variant || '', streamsText(x), speed, fps, x.variant ? changeText(x.fps, baseFps) : '', el('td', x.note || '', 'hwprobe-reason')]);
                     }
                     div.appendChild(table);
-                    const credits = [...new Set(r.results.map(x => x.credit || (tests[x.test] && tests[x.test].Credit)).filter(c => c))];
-                    if (credits.length) {
-                        div.appendChild(el('p', 'Samples: ' + credits.join('; ') + '.', 'hwprobe-reason'));
+                    const credits = new Map();
+                    for (const x of r.results) {
+                        const credit = x.credit || (tests[x.test] && tests[x.test].Credit);
+                        if (credit) {
+                            credits.set(credit, x.licenseUrl || (tests[x.test] && tests[x.test].LicenseUrl));
+                        }
+                    }
+                    if (credits.size) {
+                        const line = el('p', 'Samples: ', 'hwprobe-reason');
+                        [...credits].forEach(([credit, url], i) => {
+                            line.appendChild(document.createTextNode((i ? '; ' : '') + credit + ' ('));
+                            const link = el('a', 'licence', 'button-link');
+                            link.href = url;
+                            link.target = '_blank';
+                            line.appendChild(link);
+                            line.appendChild(document.createTextNode(')'));
+                        });
+                        div.appendChild(line);
                     }
                     return div;
                 }

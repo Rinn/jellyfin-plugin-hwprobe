@@ -35,6 +35,9 @@ public sealed record SpeedTest(string Key, string Label, FixtureSpec? Fixture, f
     /// <summary>Gets the credit a sample's licence requires, or null.</summary>
     public string? Credit { get; init; }
 
+    /// <summary>Gets the sample's licence, or null.</summary>
+    public Uri? LicenseUrl { get; init; }
+
     /// <summary>Gets the real file the test runs on, or null for a generated clip.</summary>
     public SpeedFile? File { get; init; }
 

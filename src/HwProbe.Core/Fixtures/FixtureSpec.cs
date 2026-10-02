@@ -44,4 +44,10 @@ public sealed record FixtureSpec(
 
     /// <summary>Gets a longer time limit for generating this clip, or null for the builder's.</summary>
     public TimeSpan? GenerateTimeout { get; init; }
+
+    /// <summary>Gets a value indicating whether the clip is kept across ffmpeg builds, for downloads too large to repeat.</summary>
+    public bool KeepAcrossBuilds { get; init; }
+
+    /// <summary>Gets a pinned piece of a large file to download and check first; <see cref="EncodeArguments"/> reads it as <c>{piece}</c>.</summary>
+    public FixturePiece? Piece { get; init; }
 }

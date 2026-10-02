@@ -95,6 +95,21 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     public ActionResult<IReadOnlyList<SpeedTestInfo>> SpeedFileTests([FromQuery] Guid itemId) =>
         service.FindFile(itemId) is { } file ? Ok(Core.Speed.SpeedFileTests.For(file).Select(SpeedTestInfo.From).ToList()) : NotFound();
 
+    /// <summary>Returns the size of the cached test clips and samples.</summary>
+    /// <returns>Bytes and files.</returns>
+    [HttpGet("Cache")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<CacheSize> Cache() => service.FixtureCacheSize();
+
+    /// <summary>Deletes the cached test clips and samples.</summary>
+    /// <param name="cancellationToken">Cancels waiting.</param>
+    /// <returns>204 when deleted; 409 while a probe or speed run uses them.</returns>
+    [HttpDelete("Cache")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult> PurgeCacheAsync(CancellationToken cancellationToken) =>
+        await service.PurgeFixtureCacheAsync(cancellationToken) ? NoContent() : Conflict("A probe or speed run is using the cache.");
+
     /// <summary>Returns the latest speed report.</summary>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The speed report JSON, or 404 when none was measured with this HwProbe and ffmpeg.</returns>

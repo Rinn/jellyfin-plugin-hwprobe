@@ -140,6 +140,41 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Null(await service.LatestSpeedJsonAsync(TestContext.Current.CancellationToken));
     }
 
+    /// <summary>The clip cache reports its size, and is deleted only when nothing is using it.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task CacheIsSizedAndPurged()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var fixtures = Path.Combine(_directory, "fixtures");
+        Directory.CreateDirectory(Path.Combine(fixtures, "samples"));
+        await File.WriteAllBytesAsync(Path.Combine(fixtures, "samples", "a.mkv"), new byte[1500], ct);
+        using var release = new SemaphoreSlim(0);
+        using var service = new ProbeService(
+            async c =>
+            {
+                await release.WaitAsync(c);
+                return Reports.Sample();
+            },
+            () => false,
+            Path.Combine(_directory, "latest.json"),
+            TimeProvider.System,
+            TimeSpan.Zero,
+            NullLogger.Instance)
+        {
+            FixturesDirectory = fixtures,
+        };
+
+        Assert.Equal(new CacheSize(1500, 1), service.FixtureCacheSize());
+        var probe = service.RunAsync(ct);
+        Assert.False(await service.PurgeFixtureCacheAsync(ct));
+        release.Release();
+        await probe;
+
+        Assert.True(await service.PurgeFixtureCacheAsync(ct));
+        Assert.Equal(new CacheSize(0, 0), service.FixtureCacheSize());
+    }
+
     /// <summary>Nothing runs while a session is transcoding.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

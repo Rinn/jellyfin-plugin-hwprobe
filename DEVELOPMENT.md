@@ -98,8 +98,9 @@ HwProbe only downloads test clips from FFmpeg's FATE sample suite, each pinned b
   - `vp8-test-vectors-r1/vp80-00-comprehensive-001.ivf`
 - Only for the PGS subtitle speed test: `sub/pgs_sub.sup`. ffmpeg has no PGS encoder.
 
-Speed samples, only when chosen, each a 30-second segment read with HTTP range requests and encoded the same way (1080p 24 fps H.264, CRF 18 capped at 10 Mbps, stereo AAC). They can't be pinned by hash, since the encode depends on the ffmpeg version.
+Speed samples, only when chosen: a pinned piece of each file (its WebM header and about 30 seconds of whole clusters, two range requests), checked by SHA-256 before ffmpeg reads it (`FixturePiece`). The 1080p ones are encoded the same way (24 fps H.264, CRF 18 capped at 10 Mbps, stereo AAC); the 4K one to HEVC 10-bit HDR10 at CRF 18. The encode is cached and the piece deleted. Tests never download them. To re-pin after Wikimedia re-encodes a file, find the cluster offsets around the wanted time and hash the header plus those bytes.
 
-- Wikimedia Commons 1080p VP9 transcodes: Tears of Steel (CC BY 3.0), Sintel (CC BY 3.0), Sol Levante (CC BY 4.0). Requests carry a descriptive User-Agent, as Wikimedia asks.
-- Netflix Open Content (`s3.amazonaws.com/download.opencontent.netflix.com`, CC BY 4.0): the Sol Levante HDR10 ProRes master and its 5.1 IMF audio, encoded to 4K HEVC 10-bit HDR10. About 4.3 GB per segment.
+- Wikimedia Commons 1080p VP9 transcodes: Tears of Steel (CC BY 3.0), Sintel (CC BY 3.0), Sol Levante (CC BY 4.0).
+- Wikimedia Commons' 4K HDR10 AV1 copy of Sol Levante, encoded to 4K HEVC 10-bit HDR10 (about 108 MB).
+- Requests carry a descriptive User-Agent, as Wikimedia asks. Samples are cached apart from the ffmpeg build, so an ffmpeg update doesn't fetch them again.
   - `av1-test-vectors/av1-1-b8-02-allintra.ivf`

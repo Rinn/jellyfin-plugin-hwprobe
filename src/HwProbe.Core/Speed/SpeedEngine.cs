@@ -12,6 +12,9 @@ namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 /// <summary>Measures how fast each working backend, and software, runs the chosen transcodes.</summary>
 public sealed class SpeedEngine : IDisposable
 {
+    // Samples are downloads; keyed apart from the ffmpeg build so an ffmpeg update doesn't fetch them again.
+    private const string SamplesCacheKey = "samples";
+
     // A single copy is expected to take about Content; this leaves room for slow hosts, whose fps comes from the frames reached.
     private static readonly TimeSpan _singleTimeout = TimeSpan.FromSeconds(30);
 
@@ -96,7 +99,7 @@ public sealed class SpeedEngine : IDisposable
                     var result = source is null ? new SpeedResult(type, device, test.Key, label, null, null, false, "The device didn't open.")
                         : variant is null ? new SpeedResult(type, device, test.Key, label, null, null, false, missing)
                         : await MeasureAsync(options, speed.Method, source, type, device, test, label, variant, baseCommand, c => baseCommand ??= c, cancellationToken);
-                    results.Add(result with { Label = test.Label, FrameRate = test.FrameRate, Credit = test.Credit });
+                    results.Add(result with { Label = test.Label, FrameRate = test.FrameRate, Credit = test.Credit, LicenseUrl = test.LicenseUrl });
                     progress?.Report((++done, total));
                 }
             }
@@ -141,10 +144,19 @@ public sealed class SpeedEngine : IDisposable
     /// <returns>Each clip by file name.</returns>
     private async Task<Dictionary<string, FixtureResult>> BuildClipsAsync(EngineOptions options, FfmpegCapabilities caps, IReadOnlyList<SpeedTest> tests, CancellationToken cancellationToken)
     {
-        var builder = new FixtureBuilder(_runner, options.Ffmpeg.Path, options.FixturesDirectory, options.FixtureTimeout, FixtureDownloader, SpeedVariants.Clips(tests), null);
+        var clips = SpeedVariants.Clips(tests);
         var key = Fingerprint.Compute(new FingerprintInputs(options.Ffmpeg.Path, caps.VersionLine, null, null, null, null, null, null));
-        var built = await builder.BuildAsync(key, caps.Encoders, cancellationToken);
-        return built.ToDictionary(f => f.Spec.FileName, StringComparer.Ordinal);
+        Dictionary<string, FixtureResult> built = new(StringComparer.Ordinal);
+        foreach (var group in clips.GroupBy(c => c.KeepAcrossBuilds))
+        {
+            var builder = new FixtureBuilder(_runner, options.Ffmpeg.Path, options.FixturesDirectory, options.FixtureTimeout, FixtureDownloader, [.. group], null);
+            foreach (var clip in await builder.BuildAsync(group.Key ? SamplesCacheKey : key, caps.Encoders, cancellationToken))
+            {
+                built[clip.Spec.FileName] = clip;
+            }
+        }
+
+        return built;
     }
 
     /// <summary>Opens a backend's device for its traits, as the probe does.</summary>

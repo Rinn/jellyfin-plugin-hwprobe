@@ -8,7 +8,8 @@ namespace Jellyfin.Plugin.HwProbe.Api;
 /// <param name="Default">Whether it's chosen when the page first loads.</param>
 /// <param name="FrameRate">The source frame rate, so fps can be shown as a multiple of real time.</param>
 /// <param name="Credit">The credit a sample's licence requires, or null.</param>
-public sealed record SpeedTestInfo(string Key, string Label, bool DecodeOnly, bool Interlaced, bool Default, float FrameRate, string? Credit)
+/// <param name="LicenseUrl">The sample's licence, or null.</param>
+public sealed record SpeedTestInfo(string Key, string Label, bool DecodeOnly, bool Interlaced, bool Default, float FrameRate, string? Credit, Uri? LicenseUrl)
 {
     /// <summary>Returns the page's view of a test.</summary>
     /// <param name="test">The test.</param>
@@ -16,6 +17,6 @@ public sealed record SpeedTestInfo(string Key, string Label, bool DecodeOnly, bo
     public static SpeedTestInfo From(Core.Speed.SpeedTest test)
     {
         ArgumentNullException.ThrowIfNull(test);
-        return new(test.Key, test.Label, test.DecodeOnly, test.Interlaced, Core.Speed.SpeedCatalog.Default.Contains(test.Key), test.FrameRate, test.Credit);
+        return new(test.Key, test.Label, test.DecodeOnly, test.Interlaced, Core.Speed.SpeedCatalog.Default.Contains(test.Key), test.FrameRate, test.Credit, test.LicenseUrl);
     }
 }

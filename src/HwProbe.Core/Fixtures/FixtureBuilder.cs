@@ -184,8 +184,67 @@ public sealed class FixtureBuilder
             return new FixtureResult(spec, FixtureStatus.Available, path, null);
         }
 
-        var generated = await GenerateAsync(spec, path, cancellationToken);
+        string? piece = null;
+        if (spec.Piece is { } wanted)
+        {
+            piece = path + ".piece.webm";
+            if (await FetchPieceAsync(spec, wanted, piece, cancellationToken) is { } failure)
+            {
+                return failure;
+            }
+        }
+
+        var generated = await GenerateAsync(spec, path, piece, cancellationToken);
+        if (piece is not null)
+        {
+            // The encode is cached; the piece is only its source.
+            DeleteIfExists(piece);
+        }
+
         return generated.Status == FixtureStatus.Available ? generated : await OrDownloadAsync(spec, generated, cancellationToken);
+    }
+
+    /// <summary>Downloads a pinned piece of a large file in two requests and checks its hash.</summary>
+    /// <param name="spec">The fixture made from it.</param>
+    /// <param name="piece">The piece.</param>
+    /// <param name="path">Where to save it.</param>
+    /// <param name="cancellationToken">Cancels the download.</param>
+    /// <returns>Null when it's saved; otherwise why the fixture can't be made.</returns>
+    private async Task<FixtureResult?> FetchPieceAsync(FixtureSpec spec, FixturePiece piece, string path, CancellationToken cancellationToken)
+    {
+        byte[] header;
+        byte[] body;
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(spec.GenerateTimeout ?? _timeout);
+            header = await _downloader.DownloadRangeAsync(piece.Url, 0, piece.HeaderLength, timeout.Token);
+            body = await _downloader.DownloadRangeAsync(piece.Url, piece.Start, piece.Length, timeout.Token);
+        }
+        catch (HttpRequestException ex)
+        {
+            return new FixtureResult(spec, FixtureStatus.Untested, null, $"could not download {piece.Url}: {ex.Message}");
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return new FixtureResult(spec, FixtureStatus.Untested, null, $"downloading {piece.Url} timed out");
+        }
+
+        var hash = Convert.ToHexStringLower(SHA256.HashData([.. header, .. body]));
+        if (hash != piece.Sha256)
+        {
+            // The host may have re-encoded the file; a changed piece isn't used.
+            return new FixtureResult(spec, FixtureStatus.Untested, null, $"the piece of {piece.Url} has SHA-256 {hash}, not the pinned {piece.Sha256}");
+        }
+
+        await using (var file = File.Create(path + ".partial"))
+        {
+            await file.WriteAsync(header, cancellationToken);
+            await file.WriteAsync(body, cancellationToken);
+        }
+
+        File.Move(path + ".partial", path, overwrite: true);
+        return null;
     }
 
     /// <summary>Falls back to the bundled copy, then the pinned sample, when the clip couldn't be generated.</summary>
@@ -308,9 +367,10 @@ public sealed class FixtureBuilder
     /// <summary>Encodes a fixture to a temp name, then moves it into place and writes its manifest.</summary>
     /// <param name="spec">The fixture.</param>
     /// <param name="path">Final cached path.</param>
+    /// <param name="piece">The downloaded piece the encode reads, or null.</param>
     /// <param name="cancellationToken">Cancels generation.</param>
     /// <returns>The fixture's state.</returns>
-    private async Task<FixtureResult> GenerateAsync(FixtureSpec spec, string path, CancellationToken cancellationToken)
+    private async Task<FixtureResult> GenerateAsync(FixtureSpec spec, string path, string? piece, CancellationToken cancellationToken)
     {
         // Keep the extension so ffmpeg still infers the container.
         var partial = Path.ChangeExtension(path, ".partial" + Path.GetExtension(path));
@@ -319,7 +379,8 @@ public sealed class FixtureBuilder
         DeleteIfExists(partial);
 
         var timeout = spec.GenerateTimeout ?? _timeout;
-        var result = await EncodeAsync(spec.EncodeArguments, partial, timeout, cancellationToken);
+        var arguments = piece is null ? spec.EncodeArguments : spec.EncodeArguments.Replace("{piece}", $"\"{piece}\"", StringComparison.Ordinal);
+        var result = await EncodeAsync(arguments, partial, timeout, cancellationToken);
         if (result is not null && spec.FallbackArguments is not null)
         {
             var fallback = await EncodeAsync(spec.FallbackArguments, partial, timeout, cancellationToken);

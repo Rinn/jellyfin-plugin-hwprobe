@@ -51,7 +51,7 @@ internal static class SpeedRenderer
             text.Append(string.Join("  ", row.Select((cell, i) => cell.PadRight(widths[i]))).TrimEnd()).Append('\n');
         }
 
-        var credits = report.Results.Select(r => r.Credit).OfType<string>().Distinct(StringComparer.Ordinal).ToList();
+        var credits = report.Results.Where(r => r.Credit is not null).Select(r => $"{r.Credit} ({r.LicenseUrl})").Distinct(StringComparer.Ordinal).ToList();
         if (credits.Count > 0)
         {
             text.Append(CultureInfo.InvariantCulture, $"\nsamples: {string.Join("; ", credits)}\n");

@@ -21,4 +21,7 @@ public sealed record SpeedResult(HwType Type, string Device, string Test, string
 
     /// <summary>Gets the credit a sample's licence requires, or null.</summary>
     public string? Credit { get; init; }
+
+    /// <summary>Gets the sample's licence, or null.</summary>
+    public Uri? LicenseUrl { get; init; }
 }

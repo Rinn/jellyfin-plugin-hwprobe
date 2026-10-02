@@ -40,7 +40,7 @@ To share results, especially from AMD, Rockchip or other hardware HwProbe hasn't
 
 - Nothing is sent anywhere.
 - The diagnostics zip is only downloaded when you ask for it. It holds the report and every ffmpeg log from the last probe, including file paths and the server's user and host names. Check it before sharing.
-- Speed samples are only downloaded when chosen: from Wikimedia Commons, and the 4K anime sample (about 4.3 GB) from Netflix Open Content.
+- Speed samples are only downloaded when chosen, from Wikimedia Commons: about 10 to 110 MB each, as each one's label says, and checked against a pinned hash. The page shows the cache's size and can delete it.
 - Test clips may be downloaded from [FFmpeg's sample suite](https://fate-suite.ffmpeg.org/) when they can't be made on the server. Each is downloaded once and checked against a pinned hash.
 
 ## Status
