@@ -197,10 +197,11 @@ public sealed class SettingsService : IDisposable
             },
             cancellationToken);
 
-    /// <summary>Returns the history, oldest first.</summary>
+    /// <summary>Returns the history, oldest first, with labels filled in for changes recorded without one.</summary>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The entries.</returns>
-    public async Task<IReadOnlyList<HistoryEntry>> HistoryAsync(CancellationToken cancellationToken) => await ReadHistoryAsync(cancellationToken);
+    public async Task<IReadOnlyList<HistoryEntry>> HistoryAsync(CancellationToken cancellationToken) =>
+        [.. (await ReadHistoryAsync(cancellationToken)).Select(e => e with { Changes = [.. e.Changes.Select(c => c with { Label = c.Label ?? SettingsAdvisor.LabelFor(c.Setting) })] })];
 
     /// <inheritdoc/>
     public void Dispose() => _gate.Dispose();
@@ -297,7 +298,7 @@ public sealed class SettingsService : IDisposable
             if (old != value)
             {
                 options.Write(setting, value);
-                changed.Add(new AppliedChange(setting, old, value));
+                changed.Add(new AppliedChange(setting, old, value) { Label = SettingsAdvisor.LabelFor(setting) });
             }
         }
 

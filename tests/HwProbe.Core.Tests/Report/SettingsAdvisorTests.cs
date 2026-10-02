@@ -276,4 +276,19 @@ public sealed class SettingsAdvisorTests
 
         Assert.Equal((state, note), (advice.State, advice.Note));
     }
+
+    /// <summary>Every option the advisor gives has a label to name it by, including ones only some backends show.</summary>
+    /// <param name="setting">The setting key.</param>
+    /// <param name="label">Its label.</param>
+    [Theory]
+    [InlineData("HardwareDecodingCodecs:hevc", "HEVC")]
+    [InlineData("HardwareDecodingCodecs:mpeg4", "MPEG4")]
+    [InlineData("EnableEnhancedNvdecDecoder", "Enable enhanced NVDEC decoder")]
+    [InlineData("EnableVideoToolboxTonemapping", "Enable VideoToolbox Tone mapping")]
+    [InlineData("DeinterlaceMethod:bwdif", "Deinterlacing method: BWDIF")]
+    [InlineData("Trickplay:EnableHwAcceleration", "Trickplay: Enable hardware decoding")]
+    [InlineData("Trickplay:EnableKeyFrameOnlyExtraction", "Trickplay: Only generate images from key frames")]
+    [InlineData("EncoderAppPath", null)]
+    public void LabelForNamesEverySetting(string setting, string? label) =>
+        Assert.Equal(label, SettingsAdvisor.LabelFor(setting));
 }

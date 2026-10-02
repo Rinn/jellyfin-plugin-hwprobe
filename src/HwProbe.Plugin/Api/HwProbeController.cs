@@ -13,6 +13,7 @@ namespace Jellyfin.Plugin.HwProbe.Api;
 [ApiController]
 [Route("HwProbe")]
 [Authorize(Policy = Policies.RequiresElevation)]
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public sealed class HwProbeController(ProbeService service, SettingsService settings) : ControllerBase
 {
     /// <summary>Returns the latest report.</summary>

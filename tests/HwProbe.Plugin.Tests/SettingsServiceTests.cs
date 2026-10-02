@@ -26,7 +26,12 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.Equal(1, _harness.Saves);
         Assert.False(result.RestartRequired);
         Assert.False(_harness.Service.RestartRequired);
-        Assert.Equal([new AppliedChange("HardwareDecodingCodecs:hevc", "false", "true"), new AppliedChange("AllowAv1Encoding", "true", "false")], result.Changes);
+        Assert.Equal(
+            [
+                new AppliedChange("HardwareDecodingCodecs:hevc", "false", "true") { Label = "HEVC" },
+                new AppliedChange("AllowAv1Encoding", "true", "false") { Label = "Allow encoding in AV1 format" },
+            ],
+            result.Changes);
     }
 
     /// <summary>A value the advice doesn't support, an untested option or an unknown setting is refused and nothing is saved.</summary>
@@ -124,7 +129,7 @@ public sealed class SettingsServiceTests : IDisposable
     {
         var result = await ApplyAsync(("Trickplay:EnableHwAcceleration", true));
 
-        Assert.Equal([new AppliedChange("Trickplay:EnableHwAcceleration", "false", "true")], result.Changes);
+        Assert.Equal([new AppliedChange("Trickplay:EnableHwAcceleration", "false", "true") { Label = "Trickplay: Enable hardware decoding" }], result.Changes);
         Assert.True(_harness.SavedTrickplay.EnableHwAcceleration);
         Assert.Equal(0, _harness.Saves);
         Assert.False(result.RestartRequired);
@@ -142,6 +147,32 @@ public sealed class SettingsServiceTests : IDisposable
 
         Assert.Equal(ApplyOutcome.Applied, result.Outcome);
         Assert.True(_harness.SavedTrickplay.EnableKeyFrameOnlyExtraction);
+    }
+
+    /// <summary>The same option listed twice in one request is applied once, not refused or failed.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task DuplicateChangeIsAppliedOnce()
+    {
+        var result = await ApplyAsync(("HardwareDecodingCodecs:hevc", true), ("HardwareDecodingCodecs:hevc", true));
+
+        Assert.Equal(ApplyOutcome.Applied, result.Outcome);
+        Assert.Single(result.Changes);
+    }
+
+    /// <summary>A history written before labels were recorded comes back with them filled in.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task OldHistoryGetsLabels()
+    {
+        await File.WriteAllTextAsync(
+            _harness.HistoryPath,
+            """[{"timeUtc":"2026-10-02T07:38:05Z","user":"admin","kind":"Apply","changes":[{"setting":"EnableTonemapping","oldValue":"false","newValue":"true"},{"setting":"QsvDevice","oldValue":"","newValue":"/dev/dri/renderD128"}]}]""",
+            TestContext.Current.CancellationToken);
+
+        var history = await _harness.Service.HistoryAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(["Enable Tone mapping", null], history[0].Changes.Select(c => c.Label));
     }
 
     /// <summary>Revert restores the last apply, leaves settings changed since, and then has nothing left.</summary>
@@ -164,6 +195,7 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.Equal([HistoryKind.Apply, HistoryKind.Revert], history.Select(e => e.Kind));
         Assert.NotNull(history[0].RevertedUtc);
         Assert.Equal("admin", history[0].User);
+        Assert.Equal("HEVC", history[0].Changes[0].Label);
     }
 
     /// <inheritdoc/>

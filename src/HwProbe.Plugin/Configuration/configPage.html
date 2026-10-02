@@ -36,7 +36,7 @@
                     <span>Run probe</span>
                 </button>
                 <p id="hwprobeStatus"></p>
-                <p id="hwprobeChange"></p>
+                <div id="hwprobeChange"></div>
                 <p id="hwprobeMessage" class="hwprobe-warn"></p>
                 <div id="hwprobeResults"></div>
             </div>
@@ -300,9 +300,58 @@
                     if (!last) {
                         return;
                     }
+                    const line = el('p', 'Last change: ' + new Date(last.TimeUtc).toLocaleString() + ' ');
+                    line.appendChild(action('Revert', () => post('HwProbe/Revert')));
+                    changeText.appendChild(line);
+
+                    const details = el('details');
                     const count = last.Changes.length;
-                    changeText.appendChild(document.createTextNode('Last change: ' + new Date(last.TimeUtc).toLocaleString() + ', ' + count + (count === 1 ? ' setting ' : ' settings ')));
-                    changeText.appendChild(action('Revert', () => post('HwProbe/Revert')));
+                    details.appendChild(el('summary', count + (count === 1 ? ' setting' : ' settings')));
+                    const table = el('table');
+                    row(table, [el('th', 'Option'), el('th', 'Now'), el('th', 'After revert')]);
+                    for (const c of last.Changes) {
+                        // Revert leaves a setting that was changed again since; the server skips it too.
+                        const kept = currentText(c.Setting) !== undefined && currentText(c.Setting) !== c.NewValue;
+                        row(table, [c.Label || settingLabel(c.Setting), valueText(c.Setting, kept ? currentText(c.Setting) : c.NewValue), kept ? el('td', 'Changed since, kept', 'hwprobe-reason') : valueText(c.Setting, c.OldValue)]);
+                    }
+                    details.appendChild(table);
+                    changeText.appendChild(details);
+                }
+
+                const settingNames = {
+                    HardwareAccelerationType: 'Hardware acceleration',
+                    VaapiDevice: 'VA-API device',
+                    QsvDevice: 'QSV device',
+                };
+
+                // For changes recorded without a label: the label from the latest advice, else a plain name.
+                function settingLabel(setting) {
+                    for (const b of (report && report.backends) || []) {
+                        const a = (b.settings || []).find(x => x.setting === setting);
+                        if (a) {
+                            return a.section === 'Trickplay' ? 'Trickplay: ' + a.label : a.label;
+                        }
+                    }
+                    return settingNames[setting] || setting;
+                }
+
+                // The current value in the form history entries store it, or undefined when unknown.
+                function currentText(setting) {
+                    if (setting === 'HardwareAccelerationType' || setting === 'VaapiDevice' || setting === 'QsvDevice') {
+                        return encoding ? String(encoding[setting] || '') : undefined;
+                    }
+                    const value = current(setting);
+                    return typeof value === 'boolean' ? String(value) : undefined;
+                }
+
+                function valueText(setting, value) {
+                    if (value === 'true' || value === 'false') {
+                        return value === 'true' ? 'On' : 'Off';
+                    }
+                    if (setting === 'HardwareAccelerationType') {
+                        return value === 'none' ? 'None' : (names[value] || value);
+                    }
+                    return value || '-';
                 }
 
                 function renderSettings(container, viable) {
@@ -447,8 +496,17 @@
                     return Promise.all([config, server, data, changes, pending]).then(() => { renderChange(); render(); });
                 }
 
+                // jellyfin-web keeps a loaded plugin page until the browser reloads, so after an update this tab could
+                // still be running the old page.
+                let loadedVersion = null;
+
                 function loadStatus() {
                     return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Status'), dataType: 'json' }).then(s => {
+                        loadedVersion = loadedVersion || s.HwProbeVersion;
+                        if (s.HwProbeVersion && s.HwProbeVersion !== loadedVersion) {
+                            messageText.replaceChildren(document.createTextNode('HwProbe was updated. Reload the page to see the new version. '));
+                            messageText.appendChild(action('Reload', () => location.reload()));
+                        }
                         if (s.State === 'Running') {
                             statusText.textContent = 'Probing…';
                             pollTimer = setTimeout(loadStatus, 3000);
