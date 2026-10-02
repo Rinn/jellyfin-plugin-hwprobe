@@ -160,7 +160,7 @@ public sealed class ProbeServiceTests : IDisposable
             {
                 SpeedResult Planned(string test) => new(HwType.none, string.Empty, test, string.Empty, null, null, false, null) { Pending = true };
                 progress.Report(new SpeedProgress(0, 2, null) { Planned = [Planned("pattern|h264-8mbps"), Planned("pattern|decode")] });
-                progress.Report(new SpeedProgress(0, 2, null) { Preparing = "Making Test video, H.264" });
+                progress.Report(new SpeedProgress(0, 2, null) { Preparing = "Generating Test video, H.264" });
                 progress.Report(new SpeedProgress(0, 2, null));
                 var done = new SpeedResult(HwType.none, string.Empty, "pattern|h264-8mbps", string.Empty, 300, 12, false, null);
                 progress.Report(new SpeedProgress(1, 2, done));

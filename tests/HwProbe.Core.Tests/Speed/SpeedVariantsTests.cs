@@ -92,7 +92,7 @@ public sealed class SpeedVariantsTests
         Assert.Equal("H.264 at 4 Mbps, stereo AAC, tone-mapped to SDR", SpeedTestText.Output(SpeedCatalog.Find("pattern-4k-hdr|h264-4mbps")!));
         Assert.Equal("AV1 at 420 kbps, stereo AAC", SpeedTestText.Output(SpeedCatalog.Find("pattern|av1-420kbps")!));
         Assert.Equal("Decoded only, not encoded", SpeedTestText.Output(SpeedCatalog.Find("anime|decode")!));
-        Assert.Equal(("Live-action + CGI", "Tears of Steel", "10 MB download"), (SpeedCatalog.FindVideo("live-action")!.Name, SpeedCatalog.FindVideo("live-action")!.Title, SpeedCatalog.FindVideo("live-action")!.Origin));
+        Assert.Equal(("Live-action + CGI", "Tears of Steel", "2 MB download"), (SpeedCatalog.FindVideo("live-action")!.Name, SpeedCatalog.FindVideo("live-action")!.Title, SpeedCatalog.FindVideo("live-action")!.Origin));
         Assert.StartsWith("1080p H.264", SpeedTestText.Input(SpeedCatalog.FindVideo("live-action")!), StringComparison.Ordinal);
     }
 

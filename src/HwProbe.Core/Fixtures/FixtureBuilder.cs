@@ -206,7 +206,7 @@ public sealed partial class FixtureBuilder
         FixtureResult generated;
         try
         {
-            Progress?.Report(new FixtureStep(spec, FixtureAction.Making, 0, 0));
+            Progress?.Report(new FixtureStep(spec, FixtureAction.Generating, 0, 0));
             generated = await GenerateAsync(spec, path, piece, cancellationToken);
         }
         finally

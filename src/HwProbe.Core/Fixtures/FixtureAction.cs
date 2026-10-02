@@ -6,6 +6,6 @@ public enum FixtureAction
     /// <summary>Downloading it, or the piece it's made from.</summary>
     Downloading,
 
-    /// <summary>Encoding it with ffmpeg.</summary>
-    Making,
+    /// <summary>Generating it with ffmpeg.</summary>
+    Generating,
 }

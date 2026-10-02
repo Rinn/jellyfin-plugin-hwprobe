@@ -188,7 +188,7 @@ public sealed class SpeedEngine : IDisposable
     {
         var name = names.GetValueOrDefault(step.Spec.FileName)
             ?? (step.Spec.FileName == SpeedCatalog.TextSubtitles.FileName ? "text subtitles" : step.Spec.FileName == SpeedCatalog.ImageSubtitles.FileName ? "PGS subtitles" : step.Spec.FileName);
-        return step.Action == FixtureAction.Making ? "Making " + name
+        return step.Action == FixtureAction.Generating ? "Generating " + name
             : step.Total > 0 ? string.Create(CultureInfo.InvariantCulture, $"Downloading {name}: {step.Done / 1_000_000} of {Math.Round(step.Total / 1_000_000.0):0} MB")
             : "Downloading " + name;
     }

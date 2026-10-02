@@ -44,7 +44,7 @@ public sealed class CatalogTests
     [InlineData("defaultVideos: [pattern]", "defaultVideos: [pattern-8k]")]
     [InlineData("{testSource} -c:v libx264", "{testSourc} -c:v libx264")]
     [InlineData("    name: Test video, H.264", "    nmae: Test video, H.264")]
-    [InlineData("sha256: b3156d91", "sha256: B3156D91")]
+    [InlineData("sha256: 0da88a6b", "sha256: 0DA88A6B")]
     public void BrokenFileIsRefused(string find, string replace)
     {
         using var reader = new StreamReader(typeof(Catalog).Assembly.GetManifestResourceStream("catalog.yaml")!);
