@@ -25,10 +25,16 @@ public static class SettingsAdvisor
     private const string NotSupported = "Not supported by this GPU";
     private const string NotTested = "Not tested";
 
-    // Every label the advisor gives, gathered from advice for a backend of each type with no results.
+    // Every label the advisor gives, gathered from advice for a backend of each type with no results, plus the
+    // backend and device settings that "Use this backend" changes.
     private static readonly Lazy<Dictionary<string, string>> _labels = new(() =>
     {
-        Dictionary<string, string> labels = new(StringComparer.Ordinal);
+        Dictionary<string, string> labels = new(StringComparer.Ordinal)
+        {
+            ["HardwareAccelerationType"] = "Hardware acceleration",
+            ["VaapiDevice"] = "VA-API device",
+            ["QsvDevice"] = "QSV device",
+        };
         var deinterlace = new Dictionary<string, ProbeOutcome> { ["any_bwdif"] = ProbeOutcome.Untested };
         foreach (var type in Enum.GetValues<HwType>().Where(t => t != HwType.none))
         {

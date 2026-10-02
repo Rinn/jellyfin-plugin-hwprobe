@@ -172,7 +172,28 @@ public sealed class SettingsServiceTests : IDisposable
 
         var history = await _harness.Service.HistoryAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(["Enable Tone mapping", null], history[0].Changes.Select(c => c.Label));
+        Assert.Equal(["Enable Tone mapping", "QSV device"], history[0].Changes.Select(c => c.Label));
+    }
+
+    /// <summary>When every setting was changed since, Revert changes and saves nothing but still clears the entry, naming the settings.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task RevertWithEverythingChangedSinceOnlyClearsTheEntry()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await ApplyAsync(("HardwareDecodingCodecs:hevc", true));
+        _harness.Saved.HardwareDecodingCodecs = ["h264"];
+        var saves = _harness.Saves;
+
+        var revert = await _harness.Service.RevertAsync("admin", ct);
+
+        Assert.Equal(ApplyOutcome.Applied, revert.Outcome);
+        Assert.Empty(revert.Changes);
+        Assert.Equal("Changed since, left as is: Hardware decoding: HEVC", revert.Reason);
+        Assert.Equal(saves, _harness.Saves);
+        var history = await _harness.Service.HistoryAsync(ct);
+        Assert.NotNull(Assert.Single(history).RevertedUtc);
+        Assert.Equal(ApplyOutcome.NothingToRevert, (await _harness.Service.RevertAsync("admin", ct)).Outcome);
     }
 
     /// <summary>Revert restores the last apply, leaves settings changed since, and then has nothing left.</summary>
@@ -188,7 +209,7 @@ public sealed class SettingsServiceTests : IDisposable
 
         Assert.Equal(ApplyOutcome.Applied, revert.Outcome);
         Assert.Equal(["h264"], _harness.Saved.HardwareDecodingCodecs);
-        Assert.Contains("Allow encoding in AV1 format", revert.Reason, StringComparison.Ordinal);
+        Assert.Equal("Changed since, left as is: Allow encoding in AV1 format", revert.Reason);
         Assert.Equal(ApplyOutcome.NothingToRevert, (await _harness.Service.RevertAsync("admin", ct)).Outcome);
 
         var history = await _harness.Service.HistoryAsync(ct);

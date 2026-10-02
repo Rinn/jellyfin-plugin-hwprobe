@@ -284,11 +284,14 @@ public sealed class SettingsAdvisorTests
     [InlineData("HardwareDecodingCodecs:hevc", "Hardware decoding: HEVC")]
     [InlineData("HardwareDecodingCodecs:mpeg4", "Hardware decoding: MPEG4")]
     [InlineData("EnableDecodingColorDepth10Hevc", "Hardware decoding: HEVC 10bit")]
-    [InlineData("EnableEnhancedNvdecDecoder", "Enable enhanced NVDEC decoder")]
     [InlineData("EnableVideoToolboxTonemapping", "Enable VideoToolbox Tone mapping")]
     [InlineData("DeinterlaceMethod:bwdif", "Deinterlacing method: BWDIF")]
     [InlineData("Trickplay:EnableHwAcceleration", "Trickplay: Enable hardware decoding")]
     [InlineData("Trickplay:EnableKeyFrameOnlyExtraction", "Trickplay: Only generate images from key frames")]
+    [InlineData("EnableEnhancedNvdecDecoder", "Enable enhanced NVDEC decoder")]
+    [InlineData("PreferSystemNativeHwDecoder", "Prefer OS native DXVA or VA-API hardware decoders")]
+    [InlineData("QsvDevice", "QSV device")]
+    [InlineData("HardwareAccelerationType", "Hardware acceleration")]
     [InlineData("EncoderAppPath", null)]
     public void LabelForNamesEverySetting(string setting, string? label) =>
         Assert.Equal(label, SettingsAdvisor.LabelFor(setting));

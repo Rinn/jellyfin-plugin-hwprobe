@@ -193,7 +193,7 @@ public sealed class SettingsService : IDisposable
 
                 history[index] = entry with { RevertedUtc = _time.GetUtcNow() };
                 var result = await WriteAsync(options, values, HistoryKind.Revert, user, cancellationToken, history);
-                return skipped.Count == 0 ? result : result with { Reason = "Changed since, left as is: " + string.Join(", ", skipped.Select(k => SettingsAdvisor.LabelFor(k) ?? k)) };
+                return skipped.Count == 0 ? result : result with { Reason = "Changed since, left as is: " + string.Join("; ", skipped.Select(k => SettingsAdvisor.LabelFor(k) ?? k)) };
             },
             cancellationToken);
 

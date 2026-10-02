@@ -24,8 +24,9 @@
             #HwProbeConfigPage .hwprobe-tabs button { margin: 0 0.5em 0.75em 0; padding: 0.4em 1em; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 0.2em; background: transparent; color: inherit; font: inherit; cursor: pointer; }
             #HwProbeConfigPage .hwprobe-tabs button.hwprobe-selected { background: #00a4dc; border-color: #00a4dc; color: #fff; }
             #HwProbeConfigPage details { margin-top: 2em; }
-            #HwProbeConfigPage .hwprobe-change { display: flex; align-items: center; gap: 0.5em; margin: 0 0 0.5em; }
-            #HwProbeConfigPage .hwprobe-disclosure { padding: 0; border: none; background: none; color: inherit; font: inherit; cursor: pointer; }
+            #HwProbeConfigPage .hwprobe-change { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em; margin: 0 0 0.5em; }
+            #HwProbeConfigPage .hwprobe-disclosure { padding: 0; border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+            #HwProbeConfigPage .hwprobe-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
             #HwProbeConfigPage .hwprobe-change-list { margin: 0 0 1em 1em; }
             #HwProbeConfigPage .hwprobe-change-list table { margin: 0.2em 0 0; }
             #HwProbeConfigPage .hwprobe-arrow { display: inline-block; width: 1em; }
@@ -195,6 +196,13 @@
                     row(table, [el('td'), el('td', title)]).className = 'hwprobe-group';
                 }
 
+                // A mark for an on/off value, with the word for screen readers, which would read the glyph alone.
+                function flagMark(on) {
+                    const td = mark(on ? 'TurnOn' : 'LeaveOff');
+                    td.appendChild(el('span', on ? 'On' : 'Off', 'hwprobe-sr'));
+                    return td;
+                }
+
                 function mark(state) {
                     if (state === 'TurnOn' || state === 'Optional') {
                         return el('td', '✓', 'hwprobe-mark hwprobe-on');
@@ -225,11 +233,11 @@
 
                 // The server's current value for a setting key, or undefined when unknown.
                 function current(setting) {
-                    if (!encoding) {
-                        return undefined;
-                    }
                     if (setting.indexOf('Trickplay:') === 0) {
                         return trickplay ? trickplay[setting.substring('Trickplay:'.length)] : undefined;
+                    }
+                    if (!encoding) {
+                        return undefined;
                     }
                     if (setting === 'DeinterlaceMethod:bwdif') {
                         return encoding.DeinterlaceMethod === 'bwdif';
@@ -299,14 +307,19 @@
                         .then(() => waitForServer(Date.now() + 180000), () => { messageText.textContent = 'Restart failed.'; });
                 }
 
-                // Whether the last change's list is open, kept across re-renders after Apply or Revert.
+                // Whether the last change's list is open, kept across re-renders of the same entry.
                 let changeOpen = false;
+                let changeShown = null;
 
                 function renderChange() {
                     changeText.replaceChildren();
                     const last = history.filter(e => e.Kind !== 'Revert' && !e.RevertedUtc).pop();
                     if (!last) {
                         return;
+                    }
+                    if (changeShown !== last.TimeUtc) {
+                        changeOpen = false;
+                        changeShown = last.TimeUtc;
                     }
 
                     // Revert leaves a setting that was changed again since; the server skips it too. An unknown current
@@ -324,6 +337,7 @@
                     toggle.type = 'button';
                     toggle.setAttribute('aria-controls', 'hwprobeChangeList');
                     const arrow = el('span', null, 'hwprobe-arrow');
+                    arrow.setAttribute('aria-hidden', 'true');
                     toggle.appendChild(arrow);
                     toggle.appendChild(document.createTextNode('Last change: ' + new Date(last.TimeUtc).toLocaleString()));
                     line.appendChild(toggle);
@@ -333,17 +347,22 @@
 
                     const list = el('div', null, 'hwprobe-change-list');
                     list.id = 'hwprobeChangeList';
-                    list.appendChild(el('div', nothing ? 'Every setting was changed since; Revert leaves them as they are.' : 'Revert sets:', 'hwprobe-reason'));
+                    list.appendChild(el('div', nothing ? 'Every setting was changed since; nothing to revert.' : 'Revert sets:', 'hwprobe-reason'));
                     const table = el('table');
                     for (const r of rows) {
                         const c = r.change;
-                        const flag = c.OldValue === 'true' || c.OldValue === 'false';
-                        const label = c.Label || settingLabel(c.Setting);
-                        if (r.kept || r.unknown) {
-                            row(table, [mark('NotTested'), label, el('td', r.kept ? 'Changed since, left as is' : 'Current value unknown', 'hwprobe-reason')]);
-                        } else {
-                            row(table, [flag ? mark(c.OldValue === 'true' ? 'TurnOn' : 'LeaveOff') : el('td'), label, flag ? el('td') : valueText(c.Setting, c.OldValue)]);
+                        // The server labels every setting it knows; the key is a last resort.
+                        const label = c.Label || c.Setting;
+                        if (r.kept) {
+                            row(table, [mark('NotTested'), label, el('td', 'Changed since, left as is', 'hwprobe-reason')]);
+                            continue;
                         }
+                        const flag = c.OldValue === 'true' || c.OldValue === 'false';
+                        const value = flag ? el('td') : el('td', valueText(c.Setting, c.OldValue));
+                        if (r.unknown) {
+                            value.appendChild(el('span', (flag ? '' : ' ') + '(current value unknown)', 'hwprobe-reason'));
+                        }
+                        row(table, [flag ? flagMark(c.OldValue === 'true') : el('td'), label, value]);
                     }
                     list.appendChild(table);
                     changeText.appendChild(list);
@@ -358,25 +377,6 @@
                         show();
                     });
                     show();
-                }
-
-                const settingNames = {
-                    HardwareAccelerationType: 'Hardware acceleration',
-                    VaapiDevice: 'VA-API device',
-                    QsvDevice: 'QSV device',
-                };
-
-                // For changes recorded without a label: the label from the latest advice, else a plain name.
-                function settingLabel(setting) {
-                    for (const b of (report && report.backends) || []) {
-                        const a = (b.settings || []).find(x => x.setting === setting);
-                        if (a) {
-                            // As SettingsAdvisor.LabelFor names them, so the list doesn't depend on where a label came from.
-                            const decoding = setting.indexOf('HardwareDecodingCodecs:') === 0 || setting.indexOf('EnableDecodingColorDepth') === 0;
-                            return a.section === 'Trickplay' ? 'Trickplay: ' + a.label : decoding ? 'Hardware decoding: ' + a.label : a.label;
-                        }
-                    }
-                    return settingNames[setting] || setting;
                 }
 
                 // The current value in the form history entries store it, or undefined when unknown.
