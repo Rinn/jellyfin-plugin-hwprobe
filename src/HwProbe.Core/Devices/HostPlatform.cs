@@ -22,6 +22,24 @@ public sealed class HostPlatform : IHostPlatform
     public bool FileExists(string path) => File.Exists(path);
 
     /// <inheritdoc/>
+    public bool IsAccessDenied(string path)
+    {
+        try
+        {
+            using var handle = File.OpenHandle(path, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return true;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+    }
+
+    /// <inheritdoc/>
     public string? TryReadText(string path)
     {
         try

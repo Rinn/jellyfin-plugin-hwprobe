@@ -341,8 +341,12 @@ public sealed class ProbeEngine : IDisposable
                 exhausted.Add(candidate.Type);
             }
 
+            // ffmpeg's VAAPI open drops errno (hwcontext_vaapi.c, vaapi_device_create), so a render node this
+            // user can't open fails like a missing one; ask the OS directly.
+            var renderNode = candidate.Type is HwType.vaapi or HwType.qsv;
             var denied = open.Outcome == ProbeOutcome.PermissionDenied
-                || (run.Devices.RenderNodeAccess == DirectoryAccess.Denied && candidate.Type is HwType.vaapi or HwType.qsv);
+                || (renderNode && run.Devices.RenderNodeAccess == DirectoryAccess.Denied)
+                || (renderNode && open.Outcome == ProbeOutcome.DeviceUnavailable && _platform.IsAccessDenied(candidate.Device));
             var verdict = denied ? BackendVerdict.PermissionDenied : BackendVerdict.NotPresent;
             run.Backends.Add(EmptyRow(candidate, verdict, denied ? Hints.For(ProbeOutcome.PermissionDenied, candidate.Type, run.Host.Os, inContainer) : hint));
         }
