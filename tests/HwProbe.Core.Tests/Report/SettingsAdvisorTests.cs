@@ -194,11 +194,39 @@ public sealed class SettingsAdvisorTests
 
         var native = SettingsAdvisor.For(_apolloLakeQsv, _docker);
         var qsvDecoders = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Decode = qsvOnly }, _docker), a => a.Setting == Setting);
+
+        // With no cuvid results, enhanced NVDEC isn't tested, so key frames may drop to software.
         var nvenc = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Type = HwType.nvenc }, _docker), a => a.Setting == Setting);
 
         Assert.DoesNotContain(native, a => a.Setting == Setting);
         Assert.DoesNotContain(SettingsAdvisor.For(_apolloLakeQsv with { Type = HwType.vaapi }, _docker), a => a.Setting == Setting);
         Assert.Equal((SettingState.LeaveOff, "Turns off hardware decoding with this backend"), (qsvDecoders.State, qsvDecoders.Note));
-        Assert.Equal(SettingState.NotTested, nvenc.State);
+        Assert.Equal((SettingState.LeaveOff, "Turns off hardware decoding with this backend"), (nvenc.State, nvenc.Note));
+    }
+
+    /// <summary>Enhanced NVDEC is advised like the native decoders: off only when a codec decodes with cuvid alone.</summary>
+    [Fact]
+    public void EnhancedNvdecFollowsCuvidResults()
+    {
+        var nvenc = _apolloLakeQsv with { Type = HwType.nvenc, Decode = new Dictionary<string, ProbeOutcome> { ["h264"] = P, ["h264_cuvid"] = P, ["vc1"] = U, ["vc1_cuvid"] = P } };
+
+        var advice = SettingsAdvisor.For(nvenc, _docker);
+
+        var nvdec = Assert.Single(advice, a => a.Setting == "EnableEnhancedNvdecDecoder");
+        Assert.Equal((SettingState.LeaveOff, "cuvid decoders needed for VC1"), (nvdec.State, nvdec.Note));
+        Assert.Equal(SettingState.LeaveOff, Assert.Single(advice, a => a.Setting == "Trickplay:EnableKeyFrameOnlyExtraction").State);
+        Assert.Equal(SettingState.TurnOn, Assert.Single(SettingsAdvisor.For(nvenc with { Decode = new Dictionary<string, ProbeOutcome> { ["h264"] = P, ["h264_cuvid"] = P } }, _docker), a => a.Setting == "EnableEnhancedNvdecDecoder").State);
+    }
+
+    /// <summary>The BWDIF test decides the deinterlacing method, and there's no advice where the method isn't used.</summary>
+    [Fact]
+    public void BwdifFollowsItsTest()
+    {
+        var videotoolbox = _apolloLakeQsv with { Type = HwType.videotoolbox, Deinterlace = new Dictionary<string, ProbeOutcome> { ["videotoolbox"] = P, ["videotoolbox_bwdif"] = P } };
+
+        var advice = Assert.Single(SettingsAdvisor.For(videotoolbox, _docker), a => a.Setting == "DeinterlaceMethod:bwdif");
+
+        Assert.Equal(("Deinterlacing", SettingState.TurnOn), (advice.Section, advice.State));
+        Assert.DoesNotContain(SettingsAdvisor.For(_apolloLakeQsv, _docker), a => a.Setting == "DeinterlaceMethod:bwdif");
     }
 }

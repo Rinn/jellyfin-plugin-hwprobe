@@ -11,6 +11,9 @@ public static class EncodingSettings
     /// <summary>Prefix of a key naming one codec in <see cref="EncodingOptions.HardwareDecodingCodecs"/>.</summary>
     public const string CodecPrefix = "HardwareDecodingCodecs:";
 
+    /// <summary>Key for the deinterlacing method as a flag: <c>true</c> is BWDIF, <c>false</c> YADIF.</summary>
+    public const string Bwdif = "DeinterlaceMethod:bwdif";
+
     private static readonly Dictionary<string, (Func<EncodingOptions, bool> Get, Action<EncodingOptions, bool> Set)> _flags = new(StringComparer.Ordinal)
     {
         [nameof(EncodingOptions.EnableDecodingColorDepth10Hevc)] = (o => o.EnableDecodingColorDepth10Hevc, (o, v) => o.EnableDecodingColorDepth10Hevc = v),
@@ -18,6 +21,8 @@ public static class EncodingSettings
         [nameof(EncodingOptions.EnableDecodingColorDepth10HevcRext)] = (o => o.EnableDecodingColorDepth10HevcRext, (o, v) => o.EnableDecodingColorDepth10HevcRext = v),
         [nameof(EncodingOptions.EnableDecodingColorDepth12HevcRext)] = (o => o.EnableDecodingColorDepth12HevcRext, (o, v) => o.EnableDecodingColorDepth12HevcRext = v),
         [nameof(EncodingOptions.PreferSystemNativeHwDecoder)] = (o => o.PreferSystemNativeHwDecoder, (o, v) => o.PreferSystemNativeHwDecoder = v),
+        [nameof(EncodingOptions.EnableEnhancedNvdecDecoder)] = (o => o.EnableEnhancedNvdecDecoder, (o, v) => o.EnableEnhancedNvdecDecoder = v),
+        [Bwdif] = (o => o.DeinterlaceMethod == DeinterlaceMethod.bwdif, (o, v) => o.DeinterlaceMethod = v ? DeinterlaceMethod.bwdif : DeinterlaceMethod.yadif),
         [nameof(EncodingOptions.EnableHardwareEncoding)] = (o => o.EnableHardwareEncoding, (o, v) => o.EnableHardwareEncoding = v),
         [nameof(EncodingOptions.EnableIntelLowPowerH264HwEncoder)] = (o => o.EnableIntelLowPowerH264HwEncoder, (o, v) => o.EnableIntelLowPowerH264HwEncoder = v),
         [nameof(EncodingOptions.EnableIntelLowPowerHevcHwEncoder)] = (o => o.EnableIntelLowPowerHevcHwEncoder, (o, v) => o.EnableIntelLowPowerHevcHwEncoder = v),

@@ -25,6 +25,12 @@ public sealed record ProbeCell(
     /// <summary>Gets a value indicating whether Jellyfin's "Prefer OS native DXVA or VA-API decoders" is on (its default).</summary>
     public bool PreferNativeDecoder { get; init; } = true;
 
+    /// <summary>Gets a value indicating whether Jellyfin's "Enable enhanced NVDEC decoder" is on (its default); off means the cuvid decoders.</summary>
+    public bool EnhancedNvdec { get; init; } = true;
+
+    /// <summary>Gets a value indicating whether the deinterlacing method is BWDIF rather than YADIF, Jellyfin's default.</summary>
+    public bool Bwdif { get; init; }
+
     /// <summary>Gets a value indicating whether Intel VPP tone-mapping is enabled; only meaningful with <see cref="Tonemap"/>.</summary>
     public bool VppTonemap { get; init; }
 

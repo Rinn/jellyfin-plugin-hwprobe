@@ -39,6 +39,19 @@ public sealed class EncodingSettingsTests
         Assert.Equal("/dev/dri/renderD128", EncodingSettings.Read(options, "QsvDevice"));
     }
 
+    /// <summary>The deinterlacing method reads and writes as a BWDIF flag.</summary>
+    [Fact]
+    public void DeinterlaceMethodIsABwdifFlag()
+    {
+        var options = new EncodingOptions();
+
+        Assert.Equal("false", EncodingSettings.Read(options, "DeinterlaceMethod:bwdif"));
+        EncodingSettings.Write(options, "DeinterlaceMethod:bwdif", "true");
+        Assert.Equal(DeinterlaceMethod.bwdif, options.DeinterlaceMethod);
+        EncodingSettings.Write(options, "DeinterlaceMethod:bwdif", "false");
+        Assert.Equal(DeinterlaceMethod.yadif, options.DeinterlaceMethod);
+    }
+
     /// <summary>Every key the advisor can produce is known; anything else is not.</summary>
     [Fact]
     public void KnowsTheAdvisorKeysOnly()
@@ -48,6 +61,7 @@ public sealed class EncodingSettingsTests
             "HardwareDecodingCodecs:h264", "EnableDecodingColorDepth10Hevc", "EnableDecodingColorDepth10Vp9", "EnableDecodingColorDepth10HevcRext",
             "EnableDecodingColorDepth12HevcRext", "PreferSystemNativeHwDecoder", "EnableHardwareEncoding", "EnableIntelLowPowerH264HwEncoder",
             "EnableIntelLowPowerHevcHwEncoder", "AllowHevcEncoding", "AllowAv1Encoding", "EnableTonemapping", "EnableVppTonemapping", "EnableVideoToolboxTonemapping",
+            "EnableEnhancedNvdecDecoder", "DeinterlaceMethod:bwdif",
             "Trickplay:EnableHwAcceleration", "Trickplay:EnableHwEncoding", "Trickplay:EnableKeyFrameOnlyExtraction",
         ];
 

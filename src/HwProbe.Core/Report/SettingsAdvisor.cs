@@ -18,6 +18,9 @@ public static class SettingsAdvisor
     private const string FormatSection = "Encoding format options";
     private const string TonemapSection = "Tone mapping";
     private const string TrickplaySection = "Trickplay";
+    private const string DeinterlaceSection = "Deinterlacing";
+    private const string EnhancedNvdec = "EnableEnhancedNvdecDecoder";
+    private const string NativeDecoder = "PreferSystemNativeHwDecoder";
     private const string NotUsed = "Not used with this backend";
     private const string NotTested = "Not tested";
 
@@ -80,9 +83,14 @@ public static class SettingsAdvisor
             advice.Add(Advise(DecodingSection, setting, label, Cell(backend.Decode, cell)));
         }
 
+        if (type == HwType.nvenc)
+        {
+            advice.Add(DecoderChoice(backend, EnhancedNvdec, "Enable enhanced NVDEC decoder", "_cuvid", "cuvid"));
+        }
+
         if (type == HwType.qsv)
         {
-            advice.Add(NativeDecoders(backend));
+            advice.Add(DecoderChoice(backend, NativeDecoder, "Prefer OS native DXVA or VA-API hardware decoders", "_qsvdecoder", "QSV"));
         }
 
         advice.Add(Advise(EncodingSection, "EnableHardwareEncoding", "Enable hardware encoding", Cell(backend.Encode, "h264")));
@@ -116,6 +124,14 @@ public static class SettingsAdvisor
         if (type == HwType.videotoolbox)
         {
             advice.Add(Tonemap(backend, "EnableVideoToolboxTonemapping", "Enable VideoToolbox Tone mapping"));
+        }
+
+        // jellyfin-web says hardware deinterlacing ignores the method, but the CUDA, OpenCL and VideoToolbox
+        // deinterlacers use it (EncodingHelper.GetHwDeinterlaceFilter).
+        var bwdif = backend.Deinterlace.FirstOrDefault(c => c.Key.EndsWith("_bwdif", StringComparison.Ordinal));
+        if (bwdif.Key is not null)
+        {
+            advice.Add(Advise(DeinterlaceSection, "DeinterlaceMethod:bwdif", "Deinterlacing method: BWDIF", bwdif.Value));
         }
 
         advice.AddRange(Trickplay(backend, context, advice));
@@ -153,17 +169,16 @@ public static class SettingsAdvisor
         const string KeyFrameSetting = "Trickplay:EnableKeyFrameOnlyExtraction";
         const string KeyFrameLabel = "Only generate images from key frames";
         const string SoftwareNote = "Turns off hardware decoding with this backend";
-        if (type == HwType.qsv && transcoding.Find(a => a.Setting == "PreferSystemNativeHwDecoder")?.State != SettingState.TurnOn)
+        var decoder = type switch
+        {
+            HwType.qsv => NativeDecoder,
+            HwType.nvenc => EnhancedNvdec,
+            _ => null,
+        };
+        if ((decoder is not null && transcoding.Find(a => a.Setting == decoder)?.State != SettingState.TurnOn)
+            || (type == HwType.amf && context.Os != HostOs.Windows))
         {
             yield return new(TrickplaySection, KeyFrameSetting, KeyFrameLabel, SettingState.LeaveOff, SoftwareNote);
-        }
-        else if (type == HwType.amf && context.Os != HostOs.Windows)
-        {
-            yield return new(TrickplaySection, KeyFrameSetting, KeyFrameLabel, SettingState.LeaveOff, SoftwareNote);
-        }
-        else if (type == HwType.nvenc)
-        {
-            yield return new(TrickplaySection, KeyFrameSetting, KeyFrameLabel, SettingState.NotTested, "Needs the enhanced NVDEC decoder");
         }
     }
 
@@ -190,30 +205,31 @@ public static class SettingsAdvisor
     private static SettingAdvice WithFix(SettingAdvice advice, Fix? fix) =>
         advice.State == SettingState.LeaveOff && fix is not null ? advice with { Fix = fix } : advice;
 
-    /// <summary>Advice for "Prefer OS native DXVA or VA-API hardware decoders", from the native and QSV decoder results.</summary>
-    /// <param name="backend">The QSV backend's results.</param>
-    /// <returns>Leave off when some codec decodes only with the QSV decoders.</returns>
-    private static SettingAdvice NativeDecoders(BackendReport backend)
+    /// <summary>Advice for an option that picks between two hardware decoders, from tests of each.</summary>
+    /// <param name="backend">The backend's results.</param>
+    /// <param name="setting">The option's key; on selects the plain decode cells.</param>
+    /// <param name="label">The option's label.</param>
+    /// <param name="suffix">The suffix of the decode cells run with the option off.</param>
+    /// <param name="other">Names the decoders used with the option off.</param>
+    /// <returns>Leave off when some codec decodes only with the option off.</returns>
+    private static SettingAdvice DecoderChoice(BackendReport backend, string setting, string label, string suffix, string other)
     {
-        const string Setting = "PreferSystemNativeHwDecoder";
-        const string Label = "Prefer OS native DXVA or VA-API hardware decoders";
-        const string Suffix = "_qsvdecoder";
         var pairs = backend.Decode.Keys
-            .Where(k => k.EndsWith(Suffix, StringComparison.Ordinal))
-            .Select(k => (Native: k[..^Suffix.Length], Qsv: k))
+            .Where(k => k.EndsWith(suffix, StringComparison.Ordinal))
+            .Select(k => (On: k[..^suffix.Length], Off: k))
             .ToList();
         if (pairs.Count == 0)
         {
-            return new(DecodingSection, Setting, Label, SettingState.NotTested, NotTested);
+            return new(DecodingSection, setting, label, SettingState.NotTested, NotTested);
         }
 
-        var onlyQsv = pairs
-            .Where(p => backend.Decode[p.Qsv] == ProbeOutcome.Pass && Cell(backend.Decode, p.Native) != ProbeOutcome.Pass)
-            .Select(p => CellLabel(p.Native))
+        var onlyOff = pairs
+            .Where(p => backend.Decode[p.Off] == ProbeOutcome.Pass && Cell(backend.Decode, p.On) != ProbeOutcome.Pass)
+            .Select(p => CellLabel(p.On))
             .ToList();
-        return onlyQsv.Count == 0
-            ? new(DecodingSection, Setting, Label, SettingState.TurnOn, string.Empty)
-            : new(DecodingSection, Setting, Label, SettingState.LeaveOff, "QSV decoders needed for " + string.Join(", ", onlyQsv));
+        return onlyOff.Count == 0
+            ? new(DecodingSection, setting, label, SettingState.TurnOn, string.Empty)
+            : new(DecodingSection, setting, label, SettingState.LeaveOff, $"{other} decoders needed for " + string.Join(", ", onlyOff));
     }
 
     /// <summary>Advice for a tone-mapping option, from any tone-map test except VPP.</summary>

@@ -23,7 +23,7 @@ public sealed class MatrixCatalogTests
     [InlineData(HwType.videotoolbox)]
     public void DecodeCellsMatchJellyfinOptions(HwType type)
     {
-        var keys = Keys(type, MatrixGroup.Decode).Where(k => !k.EndsWith("_qsvdecoder", StringComparison.Ordinal));
+        var keys = Keys(type, MatrixGroup.Decode).Where(k => !k.EndsWith("_qsvdecoder", StringComparison.Ordinal) && !k.EndsWith("_cuvid", StringComparison.Ordinal));
 
         Assert.Equal(_decodeKeys.Order(StringComparer.Ordinal), keys.Order(StringComparer.Ordinal));
     }
@@ -79,6 +79,29 @@ public sealed class MatrixCatalogTests
             Assert.Equal(320, cell.Cell.MaxWidth);
         }
     }
+
+    /// <summary>NVENC tests each decode with the cuvid decoders too, as QSV does with its own decoders.</summary>
+    [Fact]
+    public void NvencTestsCuvidDecoders()
+    {
+        var cuvid = MatrixCatalog.For(HwType.nvenc).Where(c => c.Key.EndsWith("_cuvid", StringComparison.Ordinal)).ToList();
+
+        Assert.Contains(cuvid, c => c.Key == "h264_cuvid");
+        Assert.All(cuvid, c => Assert.False(c.Cell.EnhancedNvdec));
+        Assert.DoesNotContain(MatrixCatalog.For(HwType.qsv), c => !c.Cell.EnhancedNvdec);
+    }
+
+    /// <summary>A BWDIF deinterlace cell only where Jellyfin's deinterlacer follows the deinterlacing method.</summary>
+    /// <param name="type">The backend.</param>
+    /// <param name="bwdif">Whether the method reaches its deinterlacer.</param>
+    [Theory]
+    [InlineData(HwType.nvenc, true)]
+    [InlineData(HwType.amf, true)]
+    [InlineData(HwType.videotoolbox, true)]
+    [InlineData(HwType.qsv, false)]
+    [InlineData(HwType.vaapi, false)]
+    public void BwdifCellWhereTheMethodMatters(HwType type, bool bwdif) =>
+        Assert.Equal(bwdif, MatrixCatalog.For(type).Any(c => c.Group == MatrixGroup.Deinterlace && c.Cell.Bwdif && c.Cell.Interlaced));
 
     /// <summary>Every backend but v4l2m2m gets an interlaced deinterlace cell.</summary>
     [Fact]

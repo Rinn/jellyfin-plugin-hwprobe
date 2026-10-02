@@ -99,6 +99,8 @@ public sealed class ArgumentSource : IArgumentSource
             EnableVideoToolboxTonemapping = cell.Tonemap,
             EnableVppTonemapping = cell.Tonemap && cell.VppTonemap,
             PreferSystemNativeHwDecoder = cell.PreferNativeDecoder,
+            EnableEnhancedNvdecDecoder = cell.EnhancedNvdec,
+            DeinterlaceMethod = cell.Bwdif ? DeinterlaceMethod.bwdif : DeinterlaceMethod.yadif,
             AllowHevcEncoding = true,
             AllowAv1Encoding = true,
         };

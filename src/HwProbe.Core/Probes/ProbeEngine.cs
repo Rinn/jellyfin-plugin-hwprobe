@@ -560,6 +560,12 @@ public sealed class ProbeEngine : IDisposable
                     return Record(candidate, cell, stage, ProbeOutcome.Skipped, null, $"Jellyfin deinterlaces on the CPU for this backend and build (filters:{args.FilterArgs}).", null);
                 }
 
+                // Jellyfin falls back to YADIF when the build lacks the BWDIF filter, and VAAPI and QSV ignore the method.
+                if (cell.Cell.Bwdif && !args.FilterArgs.Contains("bwdif_", StringComparison.Ordinal))
+                {
+                    return Record(candidate, cell, stage, ProbeOutcome.Skipped, null, $"Jellyfin doesn't use a hardware BWDIF filter for this backend and build (filters:{args.FilterArgs}).", null);
+                }
+
                 // Checked after asking Jellyfin: a codec it won't hardware-decode needs no clip to say so.
                 var fixture = run.Fixtures.GetValueOrDefault(cell.Fixture.FileName);
                 if (fixture?.Status != FixtureStatus.Available)
@@ -583,7 +589,7 @@ public sealed class ProbeEngine : IDisposable
                 var recorded = Record(candidate, cell, stage, outcome, ran, hint, commandLine);
 
                 // The deinterlace column is keyed by the hardware filter family that did the work.
-                return cell.Group == MatrixGroup.Deinterlace ? recorded with { Codec = args.HardwareDeinterlacer } : recorded;
+                return cell.Group == MatrixGroup.Deinterlace ? recorded with { Codec = args.HardwareDeinterlacer + (cell.Cell.Bwdif ? "_bwdif" : string.Empty) } : recorded;
             },
             cancellationToken);
 

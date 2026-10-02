@@ -53,6 +53,18 @@ public static class MatrixCatalog
             cells.AddRange(decoded.Select(f => new MatrixCell(MatrixGroup.Decode, Key(f) + "_qsvdecoder", f, Cell(f, H264, hardwareDecode: true) with { PreferNativeDecoder = false })));
         }
 
+        if (type == HwType.nvenc)
+        {
+            // "Enable enhanced NVDEC decoder" only changes NVENC: off means the cuvid decoders.
+            cells.AddRange(decoded.Select(f => new MatrixCell(MatrixGroup.Decode, Key(f) + "_cuvid", f, Cell(f, H264, hardwareDecode: true) with { EnhancedNvdec = false })));
+        }
+
+        if (type is HwType.nvenc or HwType.amf or HwType.videotoolbox)
+        {
+            // "Deinterlacing method" only reaches the CUDA, OpenCL and VideoToolbox deinterlacers (EncodingHelper.GetHwDeinterlaceFilter).
+            cells.Add(new(MatrixGroup.Deinterlace, "bwdif", FixtureCatalog.H264Interlaced, Cell(FixtureCatalog.H264Interlaced, H264, hardwareDecode: true) with { Bwdif = true }));
+        }
+
         if (type is HwType.qsv or HwType.vaapi)
         {
             // Jellyfin's "Enable VPP Tone mapping", Intel only; it falls back to OpenCL when VPP can't be used.

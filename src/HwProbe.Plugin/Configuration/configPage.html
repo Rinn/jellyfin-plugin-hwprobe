@@ -185,6 +185,9 @@
                     if (setting.indexOf('Trickplay:') === 0) {
                         return trickplay ? trickplay[setting.substring('Trickplay:'.length)] : undefined;
                     }
+                    if (setting === 'DeinterlaceMethod:bwdif') {
+                        return encoding.DeinterlaceMethod === 'bwdif';
+                    }
                     const prefix = 'HardwareDecodingCodecs:';
                     if (setting.indexOf(prefix) === 0) {
                         return (encoding.HardwareDecodingCodecs || []).indexOf(setting.substring(prefix.length)) !== -1;
