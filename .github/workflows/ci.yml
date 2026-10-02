@@ -133,7 +133,6 @@ jobs:
 
   package:
     name: Package
-    needs: [build-test, real-ffmpeg, plugin-e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

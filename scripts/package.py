@@ -6,6 +6,7 @@ HEAD commit time), and gzip stores no file name or time, so the same commit alwa
 """
 
 import argparse
+import concurrent.futures
 import gzip
 import os
 import re
@@ -21,6 +22,14 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def run(*args):
     """Runs a command from the repo root, stopping on failure."""
     subprocess.run(args, cwd=ROOT, check=True)
+
+
+def run_captured(*args):
+    """Runs a command from the repo root, returning its output and raising with it on failure."""
+    result = subprocess.run(args, cwd=ROOT, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"{' '.join(args)} failed:\n{result.stdout}{result.stderr}")
+    return result.stdout
 
 
 def source_date_epoch():
@@ -79,19 +88,36 @@ def main():
     stamp = f"-p:Version={version}"
     plugin_zip = f"hwprobe-plugin_{version}.0.zip"
 
-    run("dotnet", "publish", "src/HwProbe.Plugin", "-c", "Release", stamp, "-o", os.path.join(work, "plugin"))
+    # One restore covers every publish: the CLI lists all its platforms, and SelfContained pulls their
+    # runtime packs. The publishes then run in parallel without restoring; each platform builds into its
+    # own obj/ and bin/ folders.
+    # The restore records project versions for deps.json, so it needs the version too.
+    run("dotnet", "restore", "src/HwProbe.Plugin", stamp)
+    run("dotnet", "restore", "src/HwProbe.Cli", "-p:SelfContained=true", stamp)
     plugin = os.path.join(work, "plugin")
-    dlls = [(n, os.path.join(plugin, n)) for n in os.listdir(plugin) if n.startswith("Jellyfin.Plugin.HwProbe") and n.endswith(".dll")]
-    write_zip(os.path.join(out, plugin_zip), dlls, epoch)
+    publishes = [("dotnet", "publish", "src/HwProbe.Plugin", "-c", "Release", "--no-restore", stamp, "-o", plugin)]
+    publishes += [
+        ("dotnet", "publish", "src/HwProbe.Cli", "-c", "Release", "-r", rid, "--self-contained", "--no-restore", stamp, "-o", os.path.join(work, "cli", rid))
+        for rid in CLI_RIDS
+    ]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(publishes)) as pool:
+        for output in pool.map(lambda command: run_captured(*command), publishes):
+            print(output, end="")
 
-    # Single-file and self-contained are set in the CLI project, so they don't reach the libraries' restore.
+    # Compression is most of the remaining time; zlib releases the GIL, so the archives are written in parallel too.
+    dlls = [(n, os.path.join(plugin, n)) for n in os.listdir(plugin) if n.startswith("Jellyfin.Plugin.HwProbe") and n.endswith(".dll")]
+    archives = [lambda: write_zip(os.path.join(out, plugin_zip), dlls, epoch)]
     for rid in CLI_RIDS:
         target = os.path.join(work, "cli", rid)
-        run("dotnet", "publish", "src/HwProbe.Cli", "-c", "Release", "-r", rid, "--self-contained", stamp, "-o", target)
         if rid.startswith("win"):
-            write_zip(os.path.join(out, f"hwprobe-{rid}.zip"), [("hwprobe.exe", os.path.join(target, "Jellyfin.Plugin.HwProbe.Cli.exe"))], epoch)
+            exe = [("hwprobe.exe", os.path.join(target, "Jellyfin.Plugin.HwProbe.Cli.exe"))]
+            archives.append(lambda rid=rid, exe=exe: write_zip(os.path.join(out, f"hwprobe-{rid}.zip"), exe, epoch))
         else:
-            write_gzip(os.path.join(out, f"hwprobe-{rid}.gz"), os.path.join(target, "Jellyfin.Plugin.HwProbe.Cli"))
+            binary = os.path.join(target, "Jellyfin.Plugin.HwProbe.Cli")
+            archives.append(lambda rid=rid, binary=binary: write_gzip(os.path.join(out, f"hwprobe-{rid}.gz"), binary))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(archives)) as pool:
+        for future in [pool.submit(write) for write in archives]:
+            future.result()
 
     print(plugin_zip)
 
