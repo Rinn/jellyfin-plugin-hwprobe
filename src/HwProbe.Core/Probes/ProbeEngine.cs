@@ -105,7 +105,7 @@ public sealed class ProbeEngine : IDisposable
             new FfmpegSummary(ffmpeg, options.Ffmpeg.Source.ToString(), caps.Version?.ToString() ?? "unknown", caps.IsJellyfinBuild),
             new HostSummary(OsName(host.Os), host.Kernel, host.Container)
             {
-                GpuVendors = devices.GpuVendors,
+                GpuVendors = host.Os == HostOs.Windows ? [.. run.WindowsGpuVendors.Order(StringComparer.Ordinal)] : devices.GpuVendors,
                 Architecture = host.Architecture,
             },
             new StageASummary([.. caps.Hwaccels.Order(StringComparer.Ordinal)], caps.BuildStatus, caps.FilterOptions),
@@ -337,6 +337,13 @@ public sealed class ProbeEngine : IDisposable
             var invocation = new FfmpegInvocation(run.Options.Ffmpeg.Path, arguments, _environment.Baseline, run.Options.ProbeTimeout);
             var result = await _gate.RunAsync(ct => _runner.RunAsync(invocation, ct), cancellationToken);
             var open = DeviceOpenProbe.Evaluate(candidate.Type, result);
+
+            // Windows has no PCI listing to read, so GPU vendors come from the adapters the opens used.
+            if (run.Host.Os == HostOs.Windows && D3d11Adapter.Vendor(result.Stderr) is { } vendor && vendor != D3d11Adapter.SoftwareVendor)
+            {
+                run.WindowsGpuVendors.Add(vendor);
+            }
+
             if (open.DriverDescription is not null)
             {
                 run.DriverLines[candidate.Device] = open.DriverDescription;
@@ -635,6 +642,9 @@ public sealed class ProbeEngine : IDisposable
 
         /// <summary>Gets VAAPI driver lines by device, for the fingerprint.</summary>
         public Dictionary<string, string> DriverLines { get; } = new(StringComparer.Ordinal);
+
+        /// <summary>Gets the vendors of the Direct3D adapters opened on Windows.</summary>
+        public HashSet<string> WindowsGpuVendors { get; } = new(StringComparer.Ordinal);
 
         /// <summary>Gets or sets fixtures by file name.</summary>
         public Dictionary<string, FixtureResult> Fixtures { get; set; } = new(StringComparer.Ordinal);

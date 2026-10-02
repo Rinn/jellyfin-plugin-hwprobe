@@ -79,6 +79,24 @@ public sealed class ProbeEngineTests : IDisposable
         }
     }
 
+    /// <summary>On Windows the GPU vendors come from the Direct3D adapters opened, leaving out Microsoft's software adapter.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task WindowsVendorsComeFromOpenedAdapters()
+    {
+        var runner = new EngineRunner("jellyfin-8.1.3-windows-x64")
+        {
+            Probe = i => i.Arguments.Contains("dx11:0", StringComparison.Ordinal) ? EngineRunner.Exited(1, null, "[D3D11VA @ 1] Using device 10de:2c02 (NVIDIA GeForce RTX 5080).\n")
+                : i.Arguments.Contains("dx11:1", StringComparison.Ordinal) ? EngineRunner.Exited(1, null, "[D3D11VA @ 1] Using device 1414:008c (Microsoft Basic Render Driver).\n")
+                : EngineRunner.Exited(1, null, "[D3D11VA @ 1] Failed to create Direct3D device (887a0004)\nDevice creation failed: -1.\n"),
+        };
+        using var engine = new ProbeEngine(runner, _arguments, new FakeHostPlatform(HostOs.Windows), TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
+
+        var report = await engine.RunAsync(Options(StopStage.Devices, refresh: true) with { Types = new HashSet<HwType> { HwType.amf } }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(["0x10de"], report.Host.GpuVendors);
+    }
+
     /// <summary>A device that won't open is NotPresent after one probe, with nothing further launched.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
