@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.2.1.0",
+        "changelog": "Restart button after a backend change; test clips download or retry when they can't be generated.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.2.1/hwprobe-plugin_0.2.1.0.zip",
+        "checksum": "dd7b9e4f734143438aa082e898d63978",
+        "timestamp": "2026-10-02T06:12:28Z"
+      },
+      {
         "version": "0.2.0.0",
         "changelog": "Apply settings from the plugin page.",
         "targetAbi": "12.1.0.0",
