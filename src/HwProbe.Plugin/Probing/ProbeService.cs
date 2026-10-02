@@ -109,10 +109,13 @@ public sealed class ProbeService : IDisposable
         return ProbeRunResult.Started;
     }
 
-    /// <summary>Returns the latest saved report as JSON, deleting one from another HwProbe version or ffmpeg.</summary>
+    /// <summary>Returns the latest saved report as JSON, unless it's from another HwProbe version or ffmpeg.</summary>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The report JSON, or null when no probe has completed with this HwProbe and ffmpeg.</returns>
-    /// <remarks>Advice and tests change between versions, and results belong to the ffmpeg that was tested.</remarks>
+    /// <remarks>
+    /// Advice and tests change between versions, and results belong to the ffmpeg that was tested. A stale file is
+    /// left for the next probe to overwrite: deleting it here could race that probe and delete the new report.
+    /// </remarks>
     public async Task<string?> LatestJsonAsync(CancellationToken cancellationToken)
     {
         if (!File.Exists(_latestPath))
@@ -122,13 +125,7 @@ public sealed class ProbeService : IDisposable
 
         var json = await File.ReadAllTextAsync(_latestPath, cancellationToken);
         var report = ReportStore.Deserialize(json);
-        if (report?.HwProbeVersion == CapabilityReport.CurrentHwProbeVersion && IsCurrentFfmpeg(report.Ffmpeg))
-        {
-            return json;
-        }
-
-        File.Delete(_latestPath);
-        return null;
+        return report?.HwProbeVersion == CapabilityReport.CurrentHwProbeVersion && IsCurrentFfmpeg(report.Ffmpeg) ? json : null;
     }
 
     /// <inheritdoc/>

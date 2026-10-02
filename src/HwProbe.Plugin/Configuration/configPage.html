@@ -439,7 +439,7 @@
                     const config = ApiClient.getNamedConfiguration('encoding').then(c => { encoding = c; }, () => { encoding = null; });
                     const server = ApiClient.getServerConfiguration().then(c => { trickplay = c.TrickplayOptions || null; }, () => { trickplay = null; });
                     const data = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Report'), dataType: 'json' })
-                        .then(r => { report = r; }, () => { report = null; statusText.textContent = 'No probe has run yet.'; });
+                        .then(r => { report = r; }, () => { report = null; statusText.textContent = 'No results yet.'; });
                     const changes = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/History'), dataType: 'json' })
                         .then(h => { history = h || []; }, () => { history = []; });
                     const pending = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/RestartRequired'), dataType: 'json' })

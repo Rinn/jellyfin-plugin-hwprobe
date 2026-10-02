@@ -29,7 +29,7 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Null(service.Status.LastError);
     }
 
-    /// <summary>A report saved by another HwProbe version, such as before an update, is deleted rather than shown.</summary>
+    /// <summary>A report saved by another HwProbe version, such as before an update, isn't shown.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
     public async Task ReportFromAnotherVersionIsCleared()
@@ -38,10 +38,12 @@ public sealed class ProbeServiceTests : IDisposable
         await service.RunAsync(TestContext.Current.CancellationToken);
 
         Assert.Null(await service.LatestJsonAsync(TestContext.Current.CancellationToken));
-        Assert.Null(await service.LatestJsonAsync(TestContext.Current.CancellationToken));
+
+        // Left for the next probe to overwrite; deleting it on read could race a probe that's saving.
+        Assert.True(File.Exists(Path.Combine(_directory, "latest.json")));
     }
 
-    /// <summary>A report from another ffmpeg path or version is deleted; the same version in another form is kept.</summary>
+    /// <summary>A report from another ffmpeg path or version isn't shown; the same version in another form is.</summary>
     /// <param name="path">The server's ffmpeg path now.</param>
     /// <param name="version">The server's ffmpeg version now, or null when unreadable.</param>
     /// <param name="kept">Whether the report is kept.</param>

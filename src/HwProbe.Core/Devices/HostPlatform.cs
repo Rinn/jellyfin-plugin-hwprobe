@@ -25,6 +25,7 @@ public sealed class HostPlatform : IHostPlatform
         System.Runtime.InteropServices.Architecture.X86 => "x86",
         System.Runtime.InteropServices.Architecture.Arm64 => "arm64",
         System.Runtime.InteropServices.Architecture.Arm => "arm",
+        System.Runtime.InteropServices.Architecture.Armv6 => "armv6",
         var other => other.ToString(),
     };
 
