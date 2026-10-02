@@ -70,7 +70,6 @@ public sealed class SpeedEngine : IDisposable
         ArgumentNullException.ThrowIfNull(speed);
         ArgumentNullException.ThrowIfNull(backends);
 
-        var clock = System.Diagnostics.Stopwatch.StartNew();
         var ffmpeg = options.Ffmpeg.Path;
         var caps = await new FfmpegCapabilityProbe(_runner, options.ProbeTimeout).ProbeAsync(ffmpeg, cancellationToken);
         if (caps.Validation != FfmpegValidation.Valid)
@@ -85,37 +84,19 @@ public sealed class SpeedEngine : IDisposable
         List<(HwType Type, string Device)> measured = [.. backends.Where(b => b.Type != HwType.none), (HwType.none, string.Empty)];
         var total = measured.Sum(b => tests.Sum(t => 1 + (MissingClip(t, clips) is null ? SpeedVariants.For(b.Type, t, SpeedVariants.Base(t, speed.Settings, Placeholders(t)), speed.Comparisons, Paths(clips)).Count() : 0)));
         var done = 0;
-        string? stopped = null;
         List<SpeedResult> results = [];
         foreach (var (type, device) in measured)
         {
-            if (stopped is not null)
-            {
-                break;
-            }
-
             var traits = await OpenAsync(options, type, device, host.Os, cancellationToken);
             var source = traits is null ? null : _arguments.Create(caps, traits);
             foreach (var test in tests)
             {
-                if (stopped is not null)
-                {
-                    break;
-                }
-
                 var missing = MissingClip(test, clips);
                 var cell = missing is null ? SpeedVariants.Base(test, speed.Settings, Paths(clips)) : null;
                 List<(string Label, ProbeCell? Cell)> runs = [(string.Empty, cell), .. cell is null ? [] : SpeedVariants.For(type, test, cell, speed.Comparisons, Paths(clips)).Select(v => (v.Label, (ProbeCell?)v.Cell))];
                 string? baseCommand = null;
                 foreach (var (label, variant) in runs)
                 {
-                    // The limit counts the whole run, making clips included, but a run always measures something.
-                    if (speed.TimeLimit is { } limit && done > 0 && clock.Elapsed >= limit)
-                    {
-                        stopped = string.Create(CultureInfo.InvariantCulture, $"Stopped at the {limit.TotalMinutes:0}-minute limit: {done} of {total} measured.");
-                        break;
-                    }
-
                     var result = source is null ? new SpeedResult(type, device, test.Key, label, null, null, false, "The device didn't open.")
                         : variant is null ? new SpeedResult(type, device, test.Key, label, null, null, false, missing)
                         : await MeasureRepeatedAsync(options, speed, source, type, device, test, label, variant, () => baseCommand, c => baseCommand ??= c, cancellationToken);
@@ -133,7 +114,6 @@ public sealed class SpeedEngine : IDisposable
             results)
         {
             Settings = speed.Settings,
-            Stopped = stopped,
             Repeats = speed.Repeats,
         };
     }
@@ -220,16 +200,23 @@ public sealed class SpeedEngine : IDisposable
     /// <returns>The median result, by fps.</returns>
     private async Task<SpeedResult> MeasureRepeatedAsync(EngineOptions options, SpeedOptions speed, IArgumentSource source, HwType type, string device, SpeedTest test, string label, ProbeCell cell, Func<string?> baseCommand, Action<string> remember, CancellationToken cancellationToken)
     {
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        bool TimeUp() => speed.TimeLimit is { } limit && clock.Elapsed >= limit;
         List<SpeedResult> runs = [];
         for (var i = 0; i < Math.Max(1, speed.Repeats); i++)
         {
-            var run = await MeasureAsync(options, speed.Method, source, type, device, test, label, cell, baseCommand(), remember, cancellationToken);
+            var run = await MeasureAsync(options, speed.Method, source, type, device, test, label, cell, baseCommand(), remember, TimeUp, cancellationToken);
             runs.Add(run);
 
             // Nothing to repeat when it couldn't be measured.
             if (run.Fps is null)
             {
                 return run;
+            }
+
+            if (TimeUp())
+            {
+                break;
             }
         }
 
@@ -250,6 +237,7 @@ public sealed class SpeedEngine : IDisposable
     /// <param name="cell">The cell to generate.</param>
     /// <param name="baseCommand">The base variant's command, to skip a comparison that changes nothing; null for the base.</param>
     /// <param name="remember">Records the base variant's command.</param>
+    /// <param name="timeUp">Reports when the measurement's time limit has passed.</param>
     /// <param name="cancellationToken">Cancels the measurement.</param>
     /// <returns>The result.</returns>
     private Task<SpeedResult> MeasureAsync(
@@ -263,6 +251,7 @@ public sealed class SpeedEngine : IDisposable
         ProbeCell cell,
         string? baseCommand,
         Action<string> remember,
+        Func<bool> timeUp,
         CancellationToken cancellationToken) =>
         _gate.RunAsync(
             async ct =>
@@ -305,7 +294,7 @@ public sealed class SpeedEngine : IDisposable
                     return await Task.WhenAll(Enumerable.Range(0, copies).Select(_ => _runner.RunAsync(invocation, token)));
                 }
 
-                var measured = await SpeedMeter.MeasureAsync(LaunchAsync, method, test.FrameRate, !test.DecodeOnly, ct);
+                var measured = await SpeedMeter.MeasureAsync(LaunchAsync, method, test.FrameRate, !test.DecodeOnly, ct, timeUp);
                 return new SpeedResult(type, device, test.Key, label, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note);
             },
             cancellationToken);

@@ -10,8 +10,8 @@ public sealed record SpeedRequest(string Method, IReadOnlyList<string> Videos, I
     /// <summary>Gets how many times each measurement runs (1 to 3); more than once reports the median.</summary>
     public int Repeats { get; init; } = 1;
 
-    /// <summary>Gets the minutes after which the run stops, keeping what's measured, or null for no limit.</summary>
-    public int? TimeLimitMinutes { get; init; }
+    /// <summary>Gets the seconds each measurement may take before it reports what it has (10 to 3600), or null for no limit.</summary>
+    public int? TimeLimitSeconds { get; init; }
 
     /// <summary>Gets the library item the <c>library</c> video reads, or null.</summary>
     public Guid? ItemId { get; init; }

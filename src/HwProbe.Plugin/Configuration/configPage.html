@@ -918,10 +918,11 @@
                         // Seconds per measurement by accuracy, from runs on real hosts; generating or downloading clips adds to the first run.
                         const per = { Quick: [10, 30], Confirm: [20, 60], Full: [50, 120] }[speedMethod] || [20, 60];
                         const minutes = n => Math.max(1, Math.round(n / 60));
-                        const low = minutes(runs * per[0] * speedRepeats);
-                        const high = minutes(runs * per[1] * speedRepeats);
+                        const cap = n => speedTimeLimit ? Math.min(n, speedTimeLimit) : n;
+                        const low = minutes(runs * cap(per[0] * speedRepeats));
+                        const high = minutes(runs * cap(per[1] * speedRepeats));
                         const span = low === high ? 'about ' + low : 'about ' + low + ' to ' + high;
-                        estimate.textContent = videos + ' input' + (videos === 1 ? '' : 's') + ' \u00d7 ' + outputs + ' output' + (outputs === 1 ? '' : 's') + ' on ' + (viable.length + 1) + ' backend' + (viable.length ? 's' : '') + ': ' + runs + ' measurement' + (runs === 1 ? '' : 's') + ', ' + span + ' minute' + (high === 1 ? '' : 's') + (speedTimeLimit ? ', stopping at ' + speedTimeLimit + ' minutes' : '');
+                        estimate.textContent = videos + ' input' + (videos === 1 ? '' : 's') + ' \u00d7 ' + outputs + ' output' + (outputs === 1 ? '' : 's') + ' on ' + (viable.length + 1) + ' backend' + (viable.length ? 's' : '') + ': ' + runs + ' measurement' + (runs === 1 ? '' : 's') + ', ' + span + ' minute' + (high === 1 ? '' : 's');
                         button.disabled = runs === 0 || running;
                     };
                     const pick = (set, key) => on => { if (on) { set.add(key); } else { set.delete(key); } update(); };
@@ -967,11 +968,11 @@
                     };
                     options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });
                     options('Repeats', [[1, 'Measure each once'], [2, 'Measure each twice, report the median'], [3, 'Measure each three times, report the median']], speedRepeats, v => { speedRepeats = Number(v); });
-                    options('Time limit', [['', 'No limit'], [5, 'Stop after 5 minutes'], [15, 'Stop after 15 minutes'], [30, 'Stop after 30 minutes'], [60, 'Stop after 1 hour']], speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); });
-                    container.appendChild(el('div', 'At the time limit the run stops and keeps everything measured so far.', 'fieldDescription'));
+                    options('Time limit per measurement', [['', 'No limit'], [30, '30 seconds'], [60, '1 minute'], [120, '2 minutes'], [300, '5 minutes']], speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); });
+                    container.appendChild(el('div', 'A measurement that reaches the limit stops and reports what it measured.', 'fieldDescription'));
 
                     button = action('Measure speed', () => {
-                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitMinutes: speedTimeLimit, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: speedOutputs.filter(o => chosenOutputs.has(o.Key)).map(o => o.Key), Comparisons: [...speedCompared], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
+                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: speedOutputs.filter(o => chosenOutputs.has(o.Key)).map(o => o.Key), Comparisons: [...speedCompared], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
                         ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed'), data: JSON.stringify(body), contentType: 'application/json' })
                             .then(loadStatus, response => (response && response.text ? response.text() : Promise.resolve('')).then(text => {
                                 setMessage('Could not start: ' + (text.replace(/^"|"$/g, '') || 'a probe is running or a session is transcoding.'));
@@ -1010,9 +1011,6 @@
                     if (!speedHistory.length && !speedLive) {
                         div.appendChild(el('p', 'Measured ' + new Date(r.generatedUtc).toLocaleString() + ', ' + methodName(r.method).toLowerCase() + ' accuracy', 'secondaryText'));
                     }
-                    if (r.stopped) {
-                        div.appendChild(el('div', r.stopped, 'infoBanner'));
-                    }
                     if (r.settings) {
                         const used = fold(div, 'Settings used');
                         const table = el('table');
@@ -1032,27 +1030,26 @@
                         return i === -1 ? footnotes.push(note) : i + 1;
                     };
                     const speedOf = x => x.fps && x.frameRate ? x.fps / x.frameRate : null;
-                    const cellFor = (x, best, baseline) => {
-                        const td = el('td', null, 'hwprobe-num' + (x && x === best ? ' hwprobe-best' : ''));
+                    // Two cells per backend: concurrent streams kept up with, and one transcode's speed.
+                    const cellsFor = (x, best, baseline) => {
+                        const bold = x && x === best ? ' hwprobe-best' : '';
+                        const streams = el('td', null, 'hwprobe-num' + bold);
+                        const speedCell = el('td', null, 'hwprobe-num' + bold);
                         if (!x) {
-                            return td;
+                            return [streams, speedCell];
                         }
                         const speed = speedOf(x);
-                        const parts = [];
-                        if (speed && x.streams !== null && x.streams !== undefined) {
-                            parts.push(streamsText(x));
-                        }
-                        parts.push(speed ? speed.toFixed(1) + '×' : '–');
-                        td.textContent = parts.join(' · ');
+                        streams.textContent = speed ? streamsText(x) : '';
+                        speedCell.textContent = speed ? speed.toFixed(1) + '× real time' : '–';
                         if (baseline && speed) {
-                            td.appendChild(el('span', ' ' + speedChange(x.fps, baseline.fps), 'hwprobe-small secondaryText'));
+                            speedCell.appendChild(el('span', ' ' + speedChange(x.fps, baseline.fps), 'hwprobe-small secondaryText'));
                         }
                         const n = footnote(x.note);
                         if (n) {
-                            td.appendChild(el('sup', String(n)));
+                            speedCell.appendChild(el('sup', String(n)));
                         }
-                        td.title = (x.fps ? Math.round(x.fps) + ' frames a second' : '') + (x.note ? (x.fps ? '. ' : '') + x.note : '');
-                        return td;
+                        speedCell.title = (x.fps ? Math.round(x.fps) + ' frames a second' : '') + (x.note ? (x.fps ? '. ' : '') + x.note : '');
+                        return [streams, speedCell];
                     };
                     const bestOf = cells => cells.filter(x => x && x.fps).reduce((a, b) => {
                         if (!a) {
@@ -1064,7 +1061,15 @@
                     }, null);
 
                     const table = el('table', null, 'hwprobe-matrix');
-                    row(table, [el('th', 'Output')].concat(backends.map(b => el('th', columnName(b), 'hwprobe-num'))));
+                    const top = el('tr');
+                    top.appendChild(el('th'));
+                    for (const b of backends) {
+                        const th = el('th', columnName(b), 'hwprobe-num');
+                        th.colSpan = 2;
+                        top.appendChild(th);
+                    }
+                    table.appendChild(top);
+                    row(table, [el('th', 'Output')].concat(backends.flatMap(() => [el('th', 'Concurrent streams', 'hwprobe-num secondaryText'), el('th', 'Speed', 'hwprobe-num secondaryText')])));
                     let video = null;
                     for (const key of [...new Set(r.results.map(x => x.test))]) {
                         const base = backends.map(b => r.results.find(x => x.test === key && !x.variant && keyOf(x) === keyOf(b)));
@@ -1073,7 +1078,7 @@
                         if (first.video && first.video !== video) {
                             video = first.video;
                             const name = el('td');
-                            name.colSpan = backends.length + 1;
+                            name.colSpan = backends.length * 2 + 1;
                             name.appendChild(document.createTextNode(first.video + '  '));
                             name.appendChild(el('span', first.input || '', 'secondaryText hwprobe-small'));
                             const tr = el('tr', null, 'hwprobe-group');
@@ -1081,7 +1086,7 @@
                             table.appendChild(tr);
                         }
                         const best = bestOf(base);
-                        row(table, [el('td', first.output || first.label || key)].concat(base.map(x => cellFor(x, best, null))));
+                        row(table, [el('td', first.output || first.label || key)].concat(base.flatMap(x => cellsFor(x, best, null))));
 
                         const variants = [...new Set(r.results.filter(x => x.test === key && x.variant).map(x => x.variant))];
                         if (!variants.length) {
@@ -1091,13 +1096,13 @@
                         toggle.type = 'button';
                         const toggleRow = el('tr', null, 'hwprobe-variant');
                         const toggleCell = el('td');
-                        toggleCell.colSpan = backends.length + 1;
+                        toggleCell.colSpan = backends.length * 2 + 1;
                         toggleCell.appendChild(toggle);
                         toggleRow.appendChild(toggleCell);
                         table.appendChild(toggleRow);
                         const rows = variants.map(v => {
                             const cells = backends.map(b => r.results.find(x => x.test === key && x.variant === v && keyOf(x) === keyOf(b)));
-                            const tr = row(table, [el('td', v)].concat(cells.map((x, i) => cellFor(x, null, base[i]))));
+                            const tr = row(table, [el('td', v)].concat(cells.flatMap((x, i) => cellsFor(x, null, base[i]))));
                             tr.className = 'hwprobe-variant';
                             return tr;
                         });
@@ -1118,7 +1123,7 @@
                     div.appendChild(scroll);
 
                     footnotes.forEach((note, i) => div.appendChild(el('div', (i + 1) + ' ' + note, 'fieldDescription')));
-                    div.appendChild(el('div', 'Each cell: how many of that transcode the backend keeps up with at the same time · how fast one runs on its own, as a multiple of playback speed (2× is twice as fast as playing). Point at a cell for frames a second. Bold is the best backend for that row. Test videos are easier to encode than real video, so their numbers run high.', 'fieldDescription'));
+                    div.appendChild(el('div', 'Concurrent streams: how many of that transcode the backend keeps up with together (estimated on Fast accuracy; 16+ is the most measured). Speed: one transcode on its own, as a multiple of playback (2× real time is twice as fast as playing); point at it for frames a second. Bold is the best backend for that row. Test videos are easier to encode than real video, so their numbers run high.', 'fieldDescription'));
 
                     const credits = new Map();
                     for (const x of r.results) {
@@ -1160,7 +1165,7 @@
                     if (x.streams === null || x.streams === undefined) {
                         return '-';
                     }
-                    return x.capped ? x.streams + '+' : '\u2248' + x.streams;
+                    return x.capped ? x.streams + '+' : String(x.streams);
                 }
 
                 function speedChange(fps, baseFps) {

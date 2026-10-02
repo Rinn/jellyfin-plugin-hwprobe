@@ -378,7 +378,7 @@ public sealed partial class ProbeService : IDisposable
             comparisons |= comparison;
         }
 
-        if (request.Repeats is < 1 or > 3 || request.TimeLimitMinutes is < 1 or > 600)
+        if (request.Repeats is < 1 or > 3 || request.TimeLimitSeconds is < 10 or > 3600)
         {
             return null;
         }
@@ -387,7 +387,7 @@ public sealed partial class ProbeService : IDisposable
         {
             File = file,
             Repeats = request.Repeats,
-            TimeLimit = request.TimeLimitMinutes is { } minutes ? TimeSpan.FromMinutes(minutes) : null,
+            TimeLimit = request.TimeLimitSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null,
         };
     }
 

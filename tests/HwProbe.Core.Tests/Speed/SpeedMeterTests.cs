@@ -64,6 +64,27 @@ public sealed class SpeedMeterTests
         Assert.Equal(capped, measured.Capped);
     }
 
+    /// <summary>At the time limit the count stops at what's confirmed, or the estimate when nothing is; the single run always happens.</summary>
+    /// <param name="method">Confirm or full.</param>
+    /// <param name="runsAllowed">Runs of copies started before the limit passes.</param>
+    /// <param name="expected">The streams reported.</param>
+    /// <returns>A task representing the test.</returns>
+    [Theory]
+    [InlineData(SpeedMethod.Confirm, 0, 5)]
+    [InlineData(SpeedMethod.Full, 0, 5)]
+    [InlineData(SpeedMethod.Full, 2, 2)]
+    public async Task TimeLimitReportsWhatItHas(SpeedMethod method, int runsAllowed, int expected)
+    {
+        var host = new Host(capacity: 11, fps: 130);
+
+        var measured = await SpeedMeter.MeasureAsync(host.LaunchAsync, method, 24, countStreams: true, TestContext.Current.CancellationToken, () => host.Copies.Count >= 2 + runsAllowed);
+
+        Assert.Equal(130, measured.Fps!.Value, 1);
+        Assert.Equal(expected, measured.Streams);
+        Assert.StartsWith("Time limit reached", measured.Note, StringComparison.Ordinal);
+        Assert.Equal(2 + runsAllowed, host.Copies.Count);
+    }
+
     /// <summary>A fast single run is repeated with more content, and its fps comes from the longer run.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

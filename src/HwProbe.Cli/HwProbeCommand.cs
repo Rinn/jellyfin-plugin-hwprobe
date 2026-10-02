@@ -51,7 +51,7 @@ internal sealed class HwProbeCommand
 
     private readonly Option<string?> _speedFile = new("--speed-file") { Description = "A video file to measure with --speed, as the library video." };
     private readonly Option<int> _speedRepeats = new("--speed-repeats") { Description = "Run each speed measurement 1 to 3 times and report the median.", DefaultValueFactory = _ => 1 };
-    private readonly Option<int?> _speedTimeLimit = new("--speed-time-limit") { Description = "Stop the speed run after this many minutes, keeping what's measured." };
+    private readonly Option<int?> _speedTimeLimit = new("--speed-time-limit") { Description = "Seconds each speed measurement may take before it reports what it has." };
     private readonly Option<string?> _speedJson = new("--speed-json") { Description = "Also write the speed report to this file." };
     private readonly Option<int> _timeout = new("--timeout") { Description = "Per-probe hard timeout, seconds.", DefaultValueFactory = _ => 15 };
     private readonly Option<int> _fixtureTimeout = new("--fixture-timeout") { Description = "Fixture generation timeout, seconds.", DefaultValueFactory = _ => 120 };
@@ -81,7 +81,7 @@ internal sealed class HwProbeCommand
         {
             if (r.GetValueOrDefault<int?>() is <= 0)
             {
-                r.AddError("--speed-time-limit must be a positive number of minutes.");
+                r.AddError("--speed-time-limit must be a positive number of seconds.");
             }
         });
 
@@ -217,6 +217,6 @@ internal sealed class HwProbeCommand
         new(method, result.GetValue(_speedVideos)!, result.GetValue(_speedOutputs)!, result.GetValue(_speedCompare), new SpeedSettings())
         {
             Repeats = result.GetValue(_speedRepeats),
-            TimeLimit = result.GetValue(_speedTimeLimit) is { } minutes ? TimeSpan.FromMinutes(minutes) : null,
+            TimeLimit = result.GetValue(_speedTimeLimit) is { } seconds ? TimeSpan.FromSeconds(seconds) : null,
         };
 }

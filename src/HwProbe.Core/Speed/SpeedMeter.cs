@@ -28,13 +28,15 @@ public static class SpeedMeter
     /// <param name="frameRate">The source frame rate.</param>
     /// <param name="countStreams">False for a decode test, which reports fps only.</param>
     /// <param name="cancellationToken">Cancels the measurement.</param>
+    /// <param name="timeUp">Reports when the measurement's time limit has passed; checked before each run of copies, never before the first run. Null for no limit.</param>
     /// <returns>The fps and stream count.</returns>
     public static async Task<SpeedMeasurement> MeasureAsync(
         Func<int, TimeSpan, CancellationToken, Task<IReadOnlyList<FfmpegRunResult>>> launch,
         SpeedMethod method,
         double frameRate,
         bool countStreams,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<bool>? timeUp = null)
     {
         ArgumentNullException.ThrowIfNull(launch);
 
@@ -66,8 +68,14 @@ public static class SpeedMeter
         }
 
         var erroredAt = 0;
+        var keptUp = 0;
         async Task<bool> KeepsUpAsync(int copies)
         {
+            if (timeUp?.Invoke() == true)
+            {
+                throw new TimeoutException();
+            }
+
             var runs = await launch(copies, Content, cancellationToken);
             if (runs.Any(r => r.Status == FfmpegRunStatus.LaunchFailed || (r.Status == FfmpegRunStatus.Exited && r.ExitCode != 0)))
             {
@@ -75,30 +83,22 @@ public static class SpeedMeter
                 return false;
             }
 
-            return runs.All(r => r.Status == FfmpegRunStatus.Exited && r.Duration <= Content + _startup);
+            var kept = runs.All(r => r.Status == FfmpegRunStatus.Exited && r.Duration <= Content + _startup);
+            keptUp = kept ? Math.Max(keptUp, copies) : keptUp;
+            return kept;
         }
 
         int streams;
-        if (method == SpeedMethod.Confirm)
+        try
         {
-            streams = estimate > 0 && await KeepsUpAsync(estimate) ? estimate : await SearchAsync(KeepsUpAsync, 1, estimate - 1);
+            streams = await CountAsync(KeepsUpAsync, method, estimate);
         }
-        else
+        catch (TimeoutException)
         {
-            var passed = 0;
-            var failed = 0;
-            for (var copies = 1; copies <= MaxStreams; copies *= 2)
-            {
-                if (!await KeepsUpAsync(copies))
-                {
-                    failed = copies;
-                    break;
-                }
-
-                passed = copies;
-            }
-
-            streams = failed == 0 ? passed : await SearchAsync(KeepsUpAsync, passed + 1, failed - 1, passed);
+            // The limit stops the search: what's confirmed so far, or the estimate when nothing was.
+            return keptUp > 0
+                ? new SpeedMeasurement(fps, keptUp, false, string.Create(CultureInfo.InvariantCulture, $"Time limit reached: at least {keptUp}."))
+                : new SpeedMeasurement(fps, estimate, estimate == MaxStreams, "Time limit reached: estimated from one run.");
         }
 
         // Copies that fail rather than fall behind usually hit the driver's limit on sessions at once (NVENC has one).
@@ -106,6 +106,34 @@ public static class SpeedMeter
             ? string.Create(CultureInfo.InvariantCulture, $"{erroredAt} at once failed to start, likely the driver's limit on sessions rather than speed.")
             : null;
         return new SpeedMeasurement(fps, streams, streams == MaxStreams, note);
+    }
+
+    /// <summary>Counts the streams that keep up, by confirming the estimate or by ramping up.</summary>
+    /// <param name="keepsUp">Runs that many copies and reports whether all kept real time.</param>
+    /// <param name="method">Confirm or full.</param>
+    /// <param name="estimate">The estimate from one run.</param>
+    /// <returns>The streams.</returns>
+    private static async Task<int> CountAsync(Func<int, Task<bool>> keepsUp, SpeedMethod method, int estimate)
+    {
+        if (method == SpeedMethod.Confirm)
+        {
+            return estimate > 0 && await keepsUp(estimate) ? estimate : await SearchAsync(keepsUp, 1, estimate - 1);
+        }
+
+        var passed = 0;
+        var failed = 0;
+        for (var copies = 1; copies <= MaxStreams; copies *= 2)
+        {
+            if (!await keepsUp(copies))
+            {
+                failed = copies;
+                break;
+            }
+
+            passed = copies;
+        }
+
+        return failed == 0 ? passed : await SearchAsync(keepsUp, passed + 1, failed - 1, passed);
     }
 
     /// <summary>Finds the most copies in a range that keep up, assuming fewer keep up when more do.</summary>

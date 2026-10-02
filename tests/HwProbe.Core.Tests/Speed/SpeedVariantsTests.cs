@@ -58,7 +58,7 @@ public sealed class SpeedVariantsTests
         Assert.All(SpeedCatalog.DefaultVideos, k => Assert.NotNull(SpeedCatalog.FindVideo(k)));
         Assert.All(SpeedCatalog.DefaultOutputs, k => Assert.NotNull(SpeedCatalog.FindOutput(k)));
         Assert.Null(SpeedCatalog.Find("pattern"));
-        Assert.Equal("Test video \u2192 720p H.264, 4 Mbps", SpeedCatalog.Find("pattern|720p-h264")!.Label);
+        Assert.Equal("Test video, H.264 \u2192 720p H.264, 4 Mbps", SpeedCatalog.Find("pattern|720p-h264")!.Label);
     }
 
     /// <summary>Every chosen output runs on every chosen video, video by video; the library video needs a file.</summary>

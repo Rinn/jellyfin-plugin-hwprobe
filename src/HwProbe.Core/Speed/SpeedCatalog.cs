@@ -60,17 +60,17 @@ public static class SpeedCatalog
         $"{Quiet} -f lavfi -i testsrc2=size=3840x2160:rate=24 {Audio} -t 5 -c:v libx265 -preset ultrafast -x265-params log-level=error -pix_fmt yuv420p10le -color_primaries {ColorMetadata.Hdr10.Primaries} -color_trc {ColorMetadata.Hdr10.Transfer} -colorspace {ColorMetadata.Hdr10.Space} {AudioOut}",
         null);
 
-    /// <summary>Gets the 1080p HEVC clip, for decoding.</summary>
-    public static FixtureSpec HevcAt1080 { get; } = Decode("speed_1080p_hevc.mkv", "hevc", 8, "libx265", "-c:v libx265 -preset ultrafast -x265-params log-level=error -pix_fmt yuv420p");
+    /// <summary>Gets the 1080p HEVC clip with 5.1 audio.</summary>
+    public static FixtureSpec HevcAt1080 { get; } = CodecClip("speed_1080p_hevc.mkv", "hevc", 8, "libx265", "-c:v libx265 -preset ultrafast -x265-params log-level=error -pix_fmt yuv420p");
 
-    /// <summary>Gets the 1080p HEVC 10-bit clip, for decoding.</summary>
-    public static FixtureSpec Hevc10At1080 { get; } = Decode("speed_1080p_hevc10.mkv", "hevc", 10, "libx265", "-c:v libx265 -preset ultrafast -x265-params log-level=error -pix_fmt yuv420p10le");
+    /// <summary>Gets the 1080p HEVC 10-bit clip with 5.1 audio.</summary>
+    public static FixtureSpec Hevc10At1080 { get; } = CodecClip("speed_1080p_hevc10.mkv", "hevc", 10, "libx265", "-c:v libx265 -preset ultrafast -x265-params log-level=error -pix_fmt yuv420p10le");
 
-    /// <summary>Gets the 1080p VP9 clip, for decoding.</summary>
-    public static FixtureSpec Vp9At1080 { get; } = Decode("speed_1080p_vp9.webm", "vp9", 8, "libvpx-vp9", "-c:v libvpx-vp9 -deadline realtime -cpu-used 8 -row-mt 1 -b:v 4M -pix_fmt yuv420p");
+    /// <summary>Gets the 1080p VP9 clip with 5.1 audio.</summary>
+    public static FixtureSpec Vp9At1080 { get; } = CodecClip("speed_1080p_vp9.mkv", "vp9", 8, "libvpx-vp9", "-c:v libvpx-vp9 -deadline realtime -cpu-used 8 -row-mt 1 -b:v 4M -pix_fmt yuv420p");
 
-    /// <summary>Gets the 1080p AV1 clip, for decoding; SVT-AV1 runs its C code, as the matrix clips do.</summary>
-    public static FixtureSpec Av1At1080 { get; } = Decode("speed_1080p_av1.mkv", "av1", 8, "libsvtav1", "-c:v libsvtav1 -preset 12 -svtav1-params asm=c -pix_fmt yuv420p");
+    /// <summary>Gets the 1080p AV1 clip with 5.1 audio; SVT-AV1 runs its C code, as the matrix clips do.</summary>
+    public static FixtureSpec Av1At1080 { get; } = CodecClip("speed_1080p_av1.mkv", "av1", 8, "libsvtav1", "-c:v libsvtav1 -preset 12 -svtav1-params asm=c -pix_fmt yuv420p");
 
     /// <summary>Gets an ASS subtitle shown for the whole of any run, made like the matrix one.</summary>
     public static FixtureSpec TextSubtitles { get; } = new(
@@ -123,11 +123,11 @@ public static class SpeedCatalog
     /// <summary>Gets every video, in the order the page lists them; the library video is added from a chosen file.</summary>
     public static IReadOnlyList<SpeedVideo> Videos { get; } =
     [
-        Pattern("pattern", "Test video", H264At1080, Surround),
-        Pattern("pattern-hevc", "Test video, HEVC", HevcAt1080, null),
-        Pattern("pattern-hevc10", "Test video, HEVC 10-bit", Hevc10At1080, null),
-        Pattern("pattern-vp9", "Test video, VP9", Vp9At1080, null),
-        Pattern("pattern-av1", "Test video, AV1", Av1At1080, null),
+        Pattern("pattern", "Test video, H.264", H264At1080, Surround),
+        Pattern("pattern-hevc", "Test video, HEVC", HevcAt1080, Surround),
+        Pattern("pattern-hevc10", "Test video, HEVC 10-bit", Hevc10At1080, Surround),
+        Pattern("pattern-vp9", "Test video, VP9", Vp9At1080, Surround),
+        Pattern("pattern-av1", "Test video, AV1", Av1At1080, Surround),
         Pattern("pattern-1080i", "Test video, interlaced", H264At1080i, Surround) with { FrameRate = 25 },
         Pattern("pattern-4k-hdr", "Test video, 4K HDR", Hdr10At2160, Surround) with { Width = 3840, Height = 2160 },
         Sample("live-action", "Live action", LiveAction, 858, "Tears of Steel, Blender Foundation (mango.blender.org), CC BY 3.0, via Wikimedia Commons", _ccBy3, "Tears_of_Steel_in_4k_-_Official_Blender_Foundation_release.webm", "Tears_of_Steel"),
@@ -267,13 +267,13 @@ public static class SpeedCatalog
     private static string Megabytes(FixtureSpec spec) =>
         string.Create(CultureInfo.InvariantCulture, $"{Math.Round(spec.Piece!.Size / 1_000_000.0):0} MB");
 
-    /// <summary>A 10-second 1080p clip without audio, for decode tests.</summary>
+    /// <summary>A 10-second 1080p test video in one codec, with the same 5.1 audio as the others.</summary>
     /// <param name="fileName">The cached file name.</param>
     /// <param name="codec">The codec as Jellyfin reports it.</param>
     /// <param name="bitDepth">The bit depth.</param>
     /// <param name="encoder">The software encoder that makes it.</param>
     /// <param name="encode">The encoder arguments.</param>
     /// <returns>The clip.</returns>
-    private static FixtureSpec Decode(string fileName, string codec, int bitDepth, string encoder, string encode) =>
-        new(fileName, codec, bitDepth, false, encoder, $"{Quiet} -f lavfi -i testsrc2=size=1920x1080:rate=24 -t 10 {encode}", null);
+    private static FixtureSpec CodecClip(string fileName, string codec, int bitDepth, string encoder, string encode) =>
+        new(fileName, codec, bitDepth, false, encoder, $"{Quiet} -f lavfi -i testsrc2=size=1920x1080:rate=24 {Audio} -t 10 {encode} {AudioOut}", null);
 }
