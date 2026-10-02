@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.4.0.0",
+        "changelog": "Says when a backend needs another platform or GPU vendor. Only offers the HuC firmware fix to GPUs that have the encoder. Results link to their fix. Consistent fix wording.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.4.0/hwprobe-plugin_0.4.0.0.zip",
+        "checksum": "37abdc83f71c8d6c811cd54f9a816fed",
+        "timestamp": "2026-10-02T11:16:05Z"
+      },
+      {
         "version": "0.3.0.0",
         "changelog": "Advice for trickplay (hardware decoding, MJPEG encoding, key frames only), enhanced NVDEC and BWDIF deinterlacing. Says when Jellyfin, not the GPU, uses software. Tests HEVC RExt in both 4:2:2 and 4:4:4. NVIDIA and V4L2 checked on real hardware.",
         "targetAbi": "12.1.0.0",
