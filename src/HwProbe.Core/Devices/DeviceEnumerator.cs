@@ -10,9 +10,15 @@ public sealed class DeviceEnumerator
     public const string Unknown = "unknown";
 
     private const string DriDirectory = "/dev/dri";
+    private const string PciDirectory = "/sys/bus/pci/devices";
 
     // Deliberate cap: more adapters are rare and each missing one costs a timeout.
     private const int AdapterCount = 4;
+
+    // Microsoft (WSL2, Hyper-V), virtio, Red Hat, VMware, VirtualBox, QEMU VGA. WSL2 shows a 0x1414 3D controller
+    // while the real GPU arrives through /dev/dxg (seen in Docker Desktop with an RTX 5080), so in a VM the list
+    // can't say which GPUs exist.
+    private static readonly string[] _virtualGpuVendors = ["0x1414", "0x1af4", "0x1b36", "0x15ad", "0x80ee", "0x1234"];
 
     private readonly IHostPlatform _platform;
 
@@ -39,7 +45,7 @@ public sealed class DeviceEnumerator
             candidates.AddRange(DevicesFor(type, nodes, indices).Select(d => new DeviceCandidate(type, d)));
         }
 
-        return new DeviceEnumeration(candidates, listing?.Access, [.. nodes.Select(Identify)]);
+        return new DeviceEnumeration(candidates, listing?.Access, [.. nodes.Select(Identify)]) { GpuVendors = GpuVendors() };
     }
 
     /// <summary>Orders render nodes by numeric suffix, so renderD1000 sorts after renderD129.</summary>
@@ -66,6 +72,25 @@ public sealed class DeviceEnumerator
         (HwType.rkmpp or HwType.v4l2m2m, HostOs.Linux) => [string.Empty],
         _ => [],
     };
+
+    /// <summary>Reads the vendors of PCI display controllers (class 0x03xxxx), which are listed whether or not their driver is loaded.</summary>
+    /// <returns>Distinct vendor IDs, sorted; empty off Linux, without a PCI bus, or in a VM with a virtual GPU.</returns>
+    private List<string> GpuVendors()
+    {
+        var listing = _platform.Os == HostOs.Linux ? _platform.ListDirectory(PciDirectory, "*") : null;
+        if (listing is not { Access: DirectoryAccess.Ok })
+        {
+            return [];
+        }
+
+        List<string> vendors = [.. listing.Entries
+            .Where(d => ReadField($"{d}/class").StartsWith("0x03", StringComparison.OrdinalIgnoreCase))
+            .Select(d => ReadField($"{d}/vendor"))
+            .Where(v => v != Unknown)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Order(StringComparer.Ordinal)];
+        return vendors.Exists(v => _virtualGpuVendors.Contains(v, StringComparer.OrdinalIgnoreCase)) ? [] : vendors;
+    }
 
     /// <summary>Reads a render node's PCI vendor and device IDs from sysfs.</summary>
     /// <param name="node">The render node path.</param>

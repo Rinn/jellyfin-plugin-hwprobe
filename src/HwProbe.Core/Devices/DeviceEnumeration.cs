@@ -7,4 +7,8 @@ namespace Jellyfin.Plugin.HwProbe.Core.Devices;
 public sealed record DeviceEnumeration(
     IReadOnlyList<DeviceCandidate> Candidates,
     DirectoryAccess? RenderNodeAccess,
-    IReadOnlyList<RenderNodeIdentity> RenderNodes);
+    IReadOnlyList<RenderNodeIdentity> RenderNodes)
+{
+    /// <summary>Gets the PCI vendor IDs of every display controller, driver loaded or not; empty off Linux or without PCI.</summary>
+    public IReadOnlyList<string> GpuVendors { get; init; } = [];
+}

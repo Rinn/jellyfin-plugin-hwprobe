@@ -75,7 +75,7 @@ public sealed class SettingsAdvisorTests
     [InlineData("VP9 10bit", SettingState.LeaveOff, "Not supported by this GPU")]
     [InlineData("Prefer OS native DXVA or VA-API hardware decoders", SettingState.TurnOn, "")]
     [InlineData("Enable Intel Low-Power H.264 hardware encoder", SettingState.TurnOn, "")]
-    [InlineData("Enable Intel Low-Power HEVC hardware encoder", SettingState.LeaveOff, "Not supported by this GPU")]
+    [InlineData("Enable Intel Low-Power HEVC hardware encoder", SettingState.LeaveOff, "Needs HuC firmware")]
     [InlineData("Allow encoding in AV1 format", SettingState.LeaveOff, "Not supported by this GPU")]
     [InlineData("Enable Tone mapping", SettingState.TurnOn, "")]
     [InlineData("Enable VPP Tone mapping", SettingState.LeaveOff, "Test failed")]
@@ -127,11 +127,32 @@ public sealed class SettingsAdvisorTests
         var advice = SettingsAdvisor.For(_apolloLakeQsv with { Tonemap = tonemap }, _docker with { OpenclUnavailable = true });
 
         var lowPower = Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerHevcHwEncoder").Fix!;
-        Assert.Equal("Gen 11+: enable HuC firmware", lowPower.Action);
+        Assert.Equal("Gen 11+: Enable HuC firmware", lowPower.Action);
         Assert.EndsWith("#configure-and-verify-lp-mode-on-linux", lowPower.Url!.ToString(), StringComparison.Ordinal);
         Assert.Equal(Hints.OpenclFix(inContainer: true), Assert.Single(advice, a => a.Setting == "EnableTonemapping").Fix);
         Assert.Null(Assert.Single(advice, a => a.Setting == "EnableVppTonemapping").Fix);
         Assert.Null(Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerH264HwEncoder").Fix);
+    }
+
+    /// <summary>Low-power encoders a GPU's generation doesn't have get no firmware fix; unknown GPUs keep it.</summary>
+    /// <param name="support">The generation's low-power support.</param>
+    /// <param name="h264Fix">Whether a failed low-power H.264 gets the fix.</param>
+    /// <param name="hevcFix">Whether a failed low-power HEVC gets the fix.</param>
+    [Theory]
+    [InlineData(LowPowerSupport.Unknown, true, true)]
+    [InlineData(LowPowerSupport.H264Only, true, false)]
+    [InlineData(LowPowerSupport.None, false, false)]
+    public void LowPowerFixFollowsGeneration(LowPowerSupport support, bool h264Fix, bool hevcFix)
+    {
+        var encode = new Dictionary<string, ProbeOutcome>(_apolloLakeQsv.Encode) { ["h264_lowpower"] = U, ["hevc_lowpower"] = U };
+
+        var advice = SettingsAdvisor.For(_apolloLakeQsv with { Encode = encode }, _docker with { IntelLowPower = support });
+
+        var h264 = Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerH264HwEncoder");
+        var hevc = Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerHevcHwEncoder");
+
+        Assert.Equal(h264Fix ? ("Gen 9+: Enable HuC firmware", "Needs HuC firmware") : (null, "Not supported by this GPU"), (h264.Fix?.Action, h264.Note));
+        Assert.Equal(hevcFix ? ("Gen 11+: Enable HuC firmware", "Needs HuC firmware") : (null, "Not supported by this GPU"), (hevc.Fix?.Action, hevc.Note));
     }
 
     /// <summary>Each backend gets the options its Transcoding page shows, and a backend that doesn't work gets none.</summary>

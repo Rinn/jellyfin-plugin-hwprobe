@@ -123,24 +123,54 @@
                 // Available and Unavailable share one layout: backend, device, status.
                 function backendTable(rows) {
                     const table = el('table', null, 'hwprobe-backends');
-                    const fixes = rows.some(r => r[3]);
-                    row(table, [el('th', 'Backend'), el('th', 'Device'), el('th', 'Status'), el('th', fixes ? 'Fix' : '')]);
+                    row(table, [el('th', 'Backend'), el('th', 'Device'), el('th', 'Status')]);
                     for (const [type, device, status, fix] of rows) {
-                        row(table, [names[type] || type, device || '-', el('td', status, 'hwprobe-reason'), fixCell(fix)]);
+                        row(table, [names[type] || type, device || '-', resultCell(status, fix, 'hwprobe-reason')]);
                     }
                     return table;
                 }
 
-                function fixCell(fix) {
-                    const td = el('td');
+                // Jellyfin's ffmpeg leaves out backends for other platforms (AMF needs d3d11va, so Windows only).
+                const platforms = {
+                    videotoolbox: [['macos'], 'macOS only'],
+                    amf: [['windows'], 'Windows only'],
+                    rkmpp: [[], 'Rockchip devices only'],
+                    vaapi: [['linux'], 'Linux only'],
+                    v4l2m2m: [['linux'], 'Linux only'],
+                    qsv: [['linux', 'windows'], 'Windows and Linux only'],
+                    nvenc: [['linux', 'windows'], 'Windows and Linux only'],
+                };
+
+                function notBuilt(type) {
+                    const platform = platforms[type];
+                    return wrongVendor(type) || (platform && platform[0].indexOf(report.host.os) === -1 ? platform[1] : 'Not built into ffmpeg');
+                }
+
+                // From the host's PCI display controllers, listed even without a driver and seen from containers too;
+                // Windows and non-PCI GPUs report none, so nothing is said there.
+                const vendors = { qsv: ['0x8086', 'Intel only'], nvenc: ['0x10de', 'NVIDIA only'] };
+
+                function wrongVendor(type) {
+                    const gpus = (report.host.gpuVendors || []).map(v => v.toLowerCase());
+                    const vendor = vendors[type];
+                    return vendor && gpus.length && gpus.indexOf(vendor[0]) === -1 ? vendor[1] : null;
+                }
+
+                // A result with a fix links to the fix's guide; the fix's action is the tooltip.
+                function resultCell(text, fix, className) {
+                    const td = el('td', null, className);
                     if (fix && fix.url) {
-                        const a = el('a', fix.action, 'button-link');
+                        const a = el('a', text || fix.action, 'button-link');
                         a.href = fix.url;
                         a.target = '_blank';
                         a.rel = 'noopener noreferrer';
+                        a.title = fix.action;
                         td.appendChild(a);
-                    } else if (fix) {
-                        td.textContent = fix.action;
+                    } else {
+                        td.textContent = text || '';
+                        if (fix) {
+                            td.title = fix.action;
+                        }
                     }
                     return td;
                 }
@@ -159,7 +189,7 @@
                 function outcomeRow(table, label, outcome) {
                     const state = outcome === 'Pass' ? 'TurnOn' : (outcome ? 'LeaveOff' : 'NotTested');
                     const reason = outcome === 'Pass' ? '' : (outcome ? 'Test failed' : 'Not tested');
-                    row(table, [mark(state), label, el('td', reason, 'hwprobe-reason'), el('td'), el('td')]);
+                    row(table, [mark(state), label, el('td', reason, 'hwprobe-reason'), el('td')]);
                 }
 
                 function firstOutcome(cells) {
@@ -298,7 +328,7 @@
                     if (everything.length > 1) {
                         header.appendChild(action('Apply all', () => apply(everything)));
                     }
-                    row(table, [el('th'), el('th', 'Option'), el('th', 'Result'), el('th', 'Fix'), header]);
+                    row(table, [el('th'), el('th', 'Option'), el('th', 'Result'), header]);
                     let group = null;
                     for (const a of settings.filter(x => !x.hidden || differs(x))) {
                         if (a.section !== group) {
@@ -308,13 +338,13 @@
                             if (pending.length > 1) {
                                 cell.appendChild(action('Apply section', () => apply(pending)));
                             }
-                            row(table, [el('td'), el('td', group), el('td'), el('td'), cell]).className = 'hwprobe-group';
+                            row(table, [el('td'), el('td', group), el('td'), cell]).className = 'hwprobe-group';
                         }
                         const cell = el('td');
                         if (configured && differs(a)) {
                             cell.appendChild(action('Apply', () => apply([a])));
                         }
-                        row(table, [mark(a.state), a.label, el('td', a.note, 'hwprobe-reason'), fixCell(a.fix), cell]);
+                        row(table, [mark(a.state), a.label, resultCell(a.note, a.fix, 'hwprobe-reason'), cell]);
                     }
                     groupRow(table, 'Also tested');
                     outcomeRow(table, 'Hardware deinterlacing', firstOutcome(selected.deinterlace));
@@ -351,10 +381,10 @@
                         return;
                     }
                     const table = el('table');
-                    row(table, [el('th', 'Note'), el('th', 'Backends'), el('th', 'Fix')]);
+                    row(table, [el('th', 'Note'), el('th', 'Backends')]);
                     for (const code of codes) {
                         const g = grouped[code];
-                        row(table, [el('td', notes[code] || g.finding.message, g.finding.severity === 'Warn' ? 'hwprobe-warn' : ''), g.backends.join(', '), fixCell(g.finding.fix)]);
+                        row(table, [resultCell(notes[code] || g.finding.message, g.finding.fix, g.finding.severity === 'Warn' ? 'hwprobe-warn' : ''), g.backends.join(', ')]);
                     }
                     section('Notes').appendChild(table);
                 }
@@ -381,8 +411,10 @@
                     }
 
                     const unavailable = report.backends.filter(b => b.verdict !== 'Viable')
-                        .map(b => [b.type, b.verdict === 'NotPresent' ? '' : b.device, verdicts[b.verdict] || b.verdict, b.fix])
-                        .concat(Object.entries(report.stageA.types || {}).filter(([, s]) => s === 'NotBuilt').map(([t]) => [t, '', 'Not in this ffmpeg build']))
+                        .map(b => b.verdict === 'NotPresent' && wrongVendor(b.type)
+                            ? [b.type, '', wrongVendor(b.type)]
+                            : [b.type, b.verdict === 'NotPresent' ? '' : b.device, verdicts[b.verdict] || b.verdict, b.fix])
+                        .concat(Object.entries(report.stageA.types || {}).filter(([, s]) => s === 'NotBuilt').map(([t]) => [t, '', notBuilt(t)]))
                         .sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
                     if (unavailable.length) {
                         section('Unavailable').appendChild(backendTable(unavailable));

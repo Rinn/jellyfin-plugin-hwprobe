@@ -32,15 +32,15 @@ public static class Hints
     public static Fix? FixFor(BackendVerdict verdict, HwType type, HostOs os, bool inContainer) => (verdict, type) switch
     {
         (BackendVerdict.PermissionDenied, HwType.vaapi or HwType.qsv) when inContainer =>
-            new("Add the render group (--group-add)", Section(type, "official-docker")),
+            new("Add render group (--group-add render)", Section(type, "official-docker")),
         (BackendVerdict.PermissionDenied, HwType.vaapi or HwType.qsv) =>
-            new("usermod -aG render jellyfin", Section(type, "configure-on-linux-host")),
+            new("Add jellyfin to render group (usermod)", Section(type, "configure-on-linux-host")),
         (BackendVerdict.NotPresent, HwType.nvenc) when inContainer =>
-            new("NVIDIA GPU present? Run with --gpus all", JellyfinDocs.Guide("nvidia", "official-docker")),
+            new("Pass GPU to container (--gpus all)", JellyfinDocs.Guide("nvidia", "official-docker")),
         (BackendVerdict.NotPresent, HwType.vaapi or HwType.qsv) when inContainer =>
-            new("GPU present? Pass --device /dev/dri", Section(type, "official-docker")),
+            new("Pass GPU to container (--device /dev/dri)", Section(type, "official-docker")),
         (BackendVerdict.NotPresent, HwType.vaapi or HwType.qsv) when os == HostOs.Linux =>
-            new("Load the GPU driver", Section(type, "configure-on-linux-host")),
+            new("Load GPU driver", Section(type, "configure-on-linux-host")),
         _ => null,
     };
 
@@ -49,7 +49,7 @@ public static class Hints
     /// <returns>The fix.</returns>
     public static Fix OpenclFix(bool inContainer) => inContainer
         ? new("Install Intel OpenCL runtime", JellyfinDocs.Guide("intel", "official-docker"))
-        : new("Install intel-opencl-icd", JellyfinDocs.Guide("intel", "configure-on-linux-host"));
+        : new("Install Intel OpenCL runtime (intel-opencl-icd)", JellyfinDocs.Guide("intel", "configure-on-linux-host"));
 
     /// <summary>Returns the remedy for an outcome.</summary>
     /// <param name="outcome">The probe outcome.</param>

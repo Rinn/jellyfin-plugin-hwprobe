@@ -22,6 +22,7 @@ public static class SettingsAdvisor
     private const string EnhancedNvdec = "EnableEnhancedNvdecDecoder";
     private const string NativeDecoder = "PreferSystemNativeHwDecoder";
     private const string NotUsed = "Not used with this backend";
+    private const string NotSupported = "Not supported by this GPU";
     private const string NotTested = "Not tested";
 
     // codecs.ts CODECS: the decoding checkboxes and the backends that show each one.
@@ -100,12 +101,12 @@ public static class SettingsAdvisor
 
             // Jellyfin's Intel guide: on Linux, low-power mode needs the HuC firmware, and Gen 9 has low-power H.264 only.
             var huc = context.Os == HostOs.Linux ? new Uri(LowPowerAdvice.GuideUrl) : null;
-            advice.Add(WithFix(
+            advice.Add(WithHucFix(
                 Advise(EncodingSection, "EnableIntelLowPowerH264HwEncoder", "Enable Intel Low-Power H.264 hardware encoder", Cell(backend.Encode, "h264_lowpower"), NotUsedByDriver),
-                huc is null ? null : new Fix("Enable HuC firmware", huc)));
-            advice.Add(WithFix(
+                huc is null || context.IntelLowPower == LowPowerSupport.None ? null : new Fix("Gen 9+: Enable HuC firmware", huc)));
+            advice.Add(WithHucFix(
                 Advise(EncodingSection, "EnableIntelLowPowerHevcHwEncoder", "Enable Intel Low-Power HEVC hardware encoder", Cell(backend.Encode, "hevc_lowpower"), NotUsedByDriver),
-                huc is null ? null : new Fix("Gen 11+: enable HuC firmware", huc)));
+                huc is null || context.IntelLowPower != LowPowerSupport.Unknown ? null : new Fix("Gen 11+: Enable HuC firmware", huc)));
         }
 
         advice.Add(Advise(FormatSection, "AllowHevcEncoding", "Allow encoding in HEVC format", Cell(backend.Encode, "hevc")));
@@ -201,7 +202,7 @@ public static class SettingsAdvisor
         {
             ProbeOutcome.Pass => new(section, setting, label, SettingState.TurnOn, string.Empty),
             null or ProbeOutcome.Skipped or ProbeOutcome.Untested => new(section, setting, label, SettingState.NotTested, notTested),
-            ProbeOutcome.CodecUnsupported => new(section, setting, label, SettingState.LeaveOff, "Not supported by this GPU"),
+            ProbeOutcome.CodecUnsupported => new(section, setting, label, SettingState.LeaveOff, NotSupported),
             ProbeOutcome.NotUsed => new(section, setting, label, SettingState.LeaveOff, "Jellyfin uses software for this"),
             _ => new(section, setting, label, SettingState.LeaveOff, "Test failed"),
         };
@@ -212,6 +213,16 @@ public static class SettingsAdvisor
     /// <returns>The advice, with the fix only when the option failed.</returns>
     private static SettingAdvice WithFix(SettingAdvice advice, Fix? fix) =>
         advice.State == SettingState.LeaveOff && fix is not null ? advice with { Fix = fix } : advice;
+
+    /// <summary>Attaches the HuC fix to a failed low-power encoder option.</summary>
+    /// <param name="advice">The advice.</param>
+    /// <param name="fix">The fix, or null when the GPU's generation has no such encoder.</param>
+    /// <returns>The advice; with a fix, an unsupported result says the firmware is what's missing.</returns>
+    private static SettingAdvice WithHucFix(SettingAdvice advice, Fix? fix)
+    {
+        var fixedAdvice = WithFix(advice, fix);
+        return fixedAdvice.Fix is not null && fixedAdvice.Note == NotSupported ? fixedAdvice with { Note = "Needs HuC firmware" } : fixedAdvice;
+    }
 
     /// <summary>Advice for an option that picks between two hardware decoders, from tests of each.</summary>
     /// <param name="backend">The backend's results.</param>

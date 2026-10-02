@@ -103,7 +103,10 @@ public sealed class ProbeEngine : IDisposable
             _time.GetUtcNow(),
             fingerprint,
             new FfmpegSummary(ffmpeg, options.Ffmpeg.Source.ToString(), caps.Version?.ToString() ?? "unknown", caps.IsJellyfinBuild),
-            new HostSummary(OsName(host.Os), host.Kernel, host.Container),
+            new HostSummary(OsName(host.Os), host.Kernel, host.Container)
+            {
+                GpuVendors = devices.GpuVendors,
+            },
             new StageASummary([.. caps.Hwaccels.Order(StringComparer.Ordinal)], caps.BuildStatus, caps.FilterOptions),
             [.. run.Backends
                 .Select(b => b.Verdict == BackendVerdict.Viable ? b : b with { Fix = Hints.FixFor(b.Verdict, b.Type, host.Os, host.Container is not null) })
@@ -222,6 +225,13 @@ public sealed class ProbeEngine : IDisposable
         run.Probes.Add(probe);
         return probe;
     }
+
+    /// <summary>Returns the Intel low-power encoders a candidate's render node has, from its PCI ID.</summary>
+    /// <param name="run">The run, for the render nodes' PCI IDs.</param>
+    /// <param name="candidate">The device.</param>
+    /// <returns>The support; Unknown when the node isn't a recognised Intel GPU.</returns>
+    private static LowPowerSupport IntelLowPower(Run run, DeviceCandidate candidate) =>
+        run.Devices.RenderNodes.FirstOrDefault(n => n.Node == candidate.Device) is { } node ? IntelGraphics.LowPower(node.Vendor, node.Device) : LowPowerSupport.Unknown;
 
     /// <summary>Creates a probe record.</summary>
     /// <param name="candidate">The device.</param>
@@ -454,11 +464,11 @@ public sealed class ProbeEngine : IDisposable
 
         if (candidate.Type is HwType.qsv or HwType.vaapi)
         {
-            run.Findings.AddRange(LowPowerAdvice.Findings(candidate.Type, candidate.Device, encode, run.Host.Os, inContainer, EnableGuc()));
+            run.Findings.AddRange(LowPowerAdvice.Findings(candidate.Type, candidate.Device, encode, run.Host.Os, inContainer, EnableGuc(), IntelLowPower(run, candidate)));
         }
 
         var row = new BackendReport(candidate.Type, candidate.Device, BackendVerdict.Viable, tier, decode, encode, tonemap, deinterlace, subtitles, string.Empty);
-        run.Backends.Add(row with { Settings = SettingsAdvisor.For(row, new AdviceContext(run.Host.Os, inContainer, run.NoOpencl.Contains(candidate))) });
+        run.Backends.Add(row with { Settings = SettingsAdvisor.For(row, new AdviceContext(run.Host.Os, inContainer, run.NoOpencl.Contains(candidate)) { IntelLowPower = IntelLowPower(run, candidate) }) });
     }
 
     /// <summary>Opens OpenCL on a device that upstream will send through its OpenCL pipeline.</summary>
@@ -583,7 +593,7 @@ public sealed class ProbeEngine : IDisposable
                     ? ProbeOutcome.CodecUnsupported
                     : VerdictEvaluator.Evaluate(ran, new ProbeExpectation(MatrixCatalog.Frames, StderrMarkers.HardwareFrames(candidate.Type, args.Hwaccel)));
                 var hint = outcome == ProbeOutcome.Pass ? string.Empty
-                    : cell.Cell.LowPower ? LowPowerAdvice.Remedy(cell.Cell.OutputCodec, run.Host.Os, inContainer, EnableGuc())
+                    : cell.Cell.LowPower ? LowPowerAdvice.Remedy(cell.Cell.OutputCodec, run.Host.Os, inContainer, EnableGuc(), IntelLowPower(run, candidate))
                     : cell.Group == MatrixGroup.Tonemap && !cell.Cell.VppTonemap && run.NoOpencl.Contains(candidate) ? Hints.OpenclUnavailable(inContainer)
                     : Hints.For(outcome, candidate.Type, run.Host.Os, inContainer);
                 var recorded = Record(candidate, cell, stage, outcome, ran, hint, commandLine);
