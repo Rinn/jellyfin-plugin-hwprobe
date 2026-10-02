@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.5.0.0",
+        "changelog": "V4L2 says ARM devices only on x86. Results from an older HwProbe or a different ffmpeg are no longer shown; run the probe again after either changes.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.5.0/hwprobe-plugin_0.5.0.0.zip",
+        "checksum": "aa923d35a3ccce3ca10be78724d6cfb6",
+        "timestamp": "2026-10-02T11:53:50Z"
+      },
+      {
         "version": "0.4.0.0",
         "changelog": "Says when a backend needs another platform or GPU vendor. Only offers the HuC firmware fix to GPUs that have the encoder. Results link to their fix. Consistent fix wording.",
         "targetAbi": "12.1.0.0",
