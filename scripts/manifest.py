@@ -69,7 +69,7 @@ def main():
     if package is None:
         package = {"guid": meta["guid"], "versions": []}
         manifest.append(package)
-    package.update({k: meta[k] for k in ("name", "description", "overview", "owner", "category")})
+    package.update({k: meta[k] for k in ("name", "description", "overview", "owner", "category", "imageUrl") if k in meta})
 
     version = {
         "version": args.version,

@@ -43,6 +43,11 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         {
             Name = Name,
             EmbeddedResourcePath = $"{GetType().Namespace}.Configuration.configPage.html",
+            EnableInMainMenu = true,
+            DisplayName = Name,
+
+            // A Material Icons name; the dashboard sidebar shows it next to the entry.
+            MenuIcon = "developer_board",
         },
     ];
 }
