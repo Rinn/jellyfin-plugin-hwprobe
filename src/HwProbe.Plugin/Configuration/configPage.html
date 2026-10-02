@@ -177,8 +177,8 @@
                     return armOnly[type] && arch !== 'unknown' && arch.indexOf('arm') !== 0 ? armOnly[type] : null;
                 }
 
-                // Linux lists every PCI display controller, driver or not, and containers see them too; Windows lists the
-                // Direct3D adapters the probe opened. Where no vendors were read, nothing is said.
+                // Linux lists every PCI display controller, driver or not, and containers see them too; Windows lists every
+                // Direct3D adapter. Where no vendors were read, nothing is said.
                 const vendors = { qsv: ['0x8086', 'Intel only'], nvenc: ['0x10de', 'NVIDIA only'], amf: ['0x1002', 'AMD only'] };
 
                 function wrongVendor(type) {

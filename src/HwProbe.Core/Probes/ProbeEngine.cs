@@ -105,7 +105,7 @@ public sealed class ProbeEngine : IDisposable
             new FfmpegSummary(ffmpeg, options.Ffmpeg.Source.ToString(), caps.Version?.ToString() ?? "unknown", caps.IsJellyfinBuild),
             new HostSummary(OsName(host.Os), host.Kernel, host.Container)
             {
-                GpuVendors = host.Os == HostOs.Windows ? [.. run.WindowsGpuVendors.Order(StringComparer.Ordinal)] : devices.GpuVendors,
+                GpuVendors = host.Os == HostOs.Windows ? D3d11Adapter.Vendors(run.Adapters) : devices.GpuVendors,
                 Architecture = host.Architecture,
             },
             new StageASummary([.. caps.Hwaccels.Order(StringComparer.Ordinal)], caps.BuildStatus, caps.FilterOptions),
@@ -139,7 +139,17 @@ public sealed class ProbeEngine : IDisposable
             .Where(c => run.Caps.BuildStatus.GetValueOrDefault(c.Type) == BuildStatus.Selectable)
 
             // EncodingHelper hard-codes CUDA device 0 (v12.1, L1162); other indices are unusable by Jellyfin.
-            .Where(c => c.Type != HwType.nvenc || c.Device == "0");
+            .Where(c => c.Type != HwType.nvenc || c.Device == "0")
+
+            // With no device set, Jellyfin picks the adapter by vendor: QSV 0x8086 (L970), AMF 0x1002 (L1180).
+            .Where(c => run.Adapters.Count == 0 || c.Type is not (HwType.qsv or HwType.amf) || AdapterVendor(run, c.Device) == (c.Type == HwType.qsv ? "0x8086" : "0x1002"));
+
+    /// <summary>Returns the vendor of a Windows adapter index.</summary>
+    /// <param name="run">The run, for its adapter list.</param>
+    /// <param name="device">The adapter index.</param>
+    /// <returns>The vendor, or null for an index past the list.</returns>
+    private static string? AdapterVendor(Run run, string device) =>
+        int.TryParse(device, NumberStyles.None, CultureInfo.InvariantCulture, out var index) && index < run.Adapters.Count ? run.Adapters[index].Vendor : null;
 
     /// <summary>Resolves the filter-pipeline tier for a viable device.</summary>
     /// <param name="run">Run state.</param>
@@ -290,6 +300,26 @@ public sealed class ProbeEngine : IDisposable
         _ => "other",
     };
 
+    /// <summary>Lists the Direct3D adapters by opening each index, stopping where ffmpeg names none.</summary>
+    /// <param name="run">The run to fill.</param>
+    /// <param name="cancellationToken">Cancels the opens.</param>
+    /// <returns>A task that completes when the adapters are listed.</returns>
+    private async Task ListAdaptersAsync(Run run, CancellationToken cancellationToken)
+    {
+        for (var index = 0; index < DeviceEnumerator.AdapterCount; index++)
+        {
+            var arguments = $"-v verbose -hide_banner -init_hw_device d3d11va=dx11:{index.ToString(CultureInfo.InvariantCulture)}";
+            var invocation = new FfmpegInvocation(run.Options.Ffmpeg.Path, arguments, _environment.Baseline, run.Options.ProbeTimeout);
+            var result = await _gate.RunAsync(ct => _runner.RunAsync(invocation, ct), cancellationToken);
+            if (D3d11Adapter.Parse(result.Stderr) is not { } adapter)
+            {
+                return;
+            }
+
+            run.Adapters.Add(adapter);
+        }
+    }
+
     /// <summary>Reads the i915 driver's enable_guc parameter.</summary>
     /// <returns>The value, or null when the i915 driver isn't loaded.</returns>
     private string? EnableGuc() => _platform.TryReadText(LowPowerAdvice.EnableGucPath)?.Trim();
@@ -301,6 +331,11 @@ public sealed class ProbeEngine : IDisposable
     private async Task OpenDevicesAsync(Run run, CancellationToken cancellationToken)
     {
         var inContainer = run.Host.Container is not null;
+        if (run.Host.Os == HostOs.Windows && run.Caps.SupportsHwaccel("d3d11va"))
+        {
+            await ListAdaptersAsync(run, cancellationToken);
+        }
+
         var selected = SelectCandidates(run).ToList();
 
         // A built backend with no device to try still gets a row: a missing /dev/dri in a container is
@@ -338,12 +373,6 @@ public sealed class ProbeEngine : IDisposable
             var result = await _gate.RunAsync(ct => _runner.RunAsync(invocation, ct), cancellationToken);
             var open = DeviceOpenProbe.Evaluate(candidate.Type, result);
 
-            // Windows has no PCI listing to read, so GPU vendors come from the adapters the opens used.
-            if (run.Host.Os == HostOs.Windows && D3d11Adapter.Vendor(result.Stderr) is { } vendor && vendor != D3d11Adapter.SoftwareVendor)
-            {
-                run.WindowsGpuVendors.Add(vendor);
-            }
-
             if (open.DriverDescription is not null)
             {
                 run.DriverLines[candidate.Device] = open.DriverDescription;
@@ -357,7 +386,8 @@ public sealed class ProbeEngine : IDisposable
                 continue;
             }
 
-            if (int.TryParse(candidate.Device, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out _))
+            // Without an adapter listing, a failed index means the rest don't exist; with one, each is a real adapter.
+            if (run.Adapters.Count == 0 && int.TryParse(candidate.Device, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out _))
             {
                 exhausted.Add(candidate.Type);
             }
@@ -643,8 +673,8 @@ public sealed class ProbeEngine : IDisposable
         /// <summary>Gets VAAPI driver lines by device, for the fingerprint.</summary>
         public Dictionary<string, string> DriverLines { get; } = new(StringComparer.Ordinal);
 
-        /// <summary>Gets the vendors of the Direct3D adapters opened on Windows.</summary>
-        public HashSet<string> WindowsGpuVendors { get; } = new(StringComparer.Ordinal);
+        /// <summary>Gets the Direct3D adapters on Windows, in index order; empty elsewhere or when the build lacks d3d11va.</summary>
+        public List<(string Vendor, string Device)> Adapters { get; } = [];
 
         /// <summary>Gets or sets fixtures by file name.</summary>
         public Dictionary<string, FixtureResult> Fixtures { get; set; } = new(StringComparer.Ordinal);

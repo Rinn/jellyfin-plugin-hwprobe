@@ -9,16 +9,11 @@ public sealed class DeviceEnumerator
     /// <summary>The literal recorded for an unreadable fingerprint field.</summary>
     public const string Unknown = "unknown";
 
+    /// <summary>How many Windows adapter indices are tried; more adapters are rare and each missing one costs a launch.</summary>
+    public const int AdapterCount = 4;
+
     private const string DriDirectory = "/dev/dri";
     private const string PciDirectory = "/sys/bus/pci/devices";
-
-    // Deliberate cap: more adapters are rare and each missing one costs a timeout.
-    private const int AdapterCount = 4;
-
-    // Microsoft (WSL2, Hyper-V), virtio, Red Hat, VMware, VirtualBox, QEMU VGA. WSL2 shows a 0x1414 3D controller
-    // while the real GPU arrives through /dev/dxg (seen in Docker Desktop with an RTX 5080), so in a VM the list
-    // can't say which GPUs exist.
-    private static readonly string[] _virtualGpuVendors = ["0x1414", "0x1af4", "0x1b36", "0x15ad", "0x80ee", "0x1234"];
 
     private readonly IHostPlatform _platform;
 
@@ -89,7 +84,7 @@ public sealed class DeviceEnumerator
             .Where(v => v != Unknown)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Order(StringComparer.Ordinal)];
-        return vendors.Exists(v => _virtualGpuVendors.Contains(v, StringComparer.OrdinalIgnoreCase)) ? [] : vendors;
+        return vendors.Exists(v => VirtualGpus.Vendors.Contains(v, StringComparer.OrdinalIgnoreCase)) ? [] : vendors;
     }
 
     /// <summary>Reads a render node's PCI vendor and device IDs from sysfs.</summary>
