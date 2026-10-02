@@ -3,6 +3,10 @@ namespace Jellyfin.Plugin.HwProbe.Core.Fixtures;
 /// <summary>The fixture clips from PLAN.md: 640x360, 25 frames of testsrc2.</summary>
 public static class FixtureCatalog
 {
+    // SVT-AV1's optimised code segfaults on some CPUs: every asm level up to sse4_1 crashed on a Celeron
+    // J3455 with jellyfin-ffmpeg 8.1.3, and only the C code worked.
+    private const string Av1PortableCode = "-svtav1-params asm=c";
+
     private const string Source = "-hide_banner -loglevel error -y -f lavfi -i testsrc2=size=640x360:rate=25 -frames:v 25";
 
     /// <summary>Gets the 8-bit H.264 clip, the smoke-probe source.</summary>
@@ -72,10 +76,16 @@ public static class FixtureCatalog
     };
 
     /// <summary>Gets the 10-bit AV1 clip.</summary>
-    public static FixtureSpec Av110 { get; } = new("av1_10bit.mp4", "av1", 10, false, "libsvtav1", $"{Source} -c:v libsvtav1 -pix_fmt yuv420p10le", null);
+    public static FixtureSpec Av110 { get; } = new("av1_10bit.mp4", "av1", 10, false, "libsvtav1", $"{Source} -c:v libsvtav1 -pix_fmt yuv420p10le", null)
+    {
+        FallbackArguments = $"{Source} -c:v libsvtav1 {Av1PortableCode} -pix_fmt yuv420p10le",
+    };
 
     /// <summary>Gets the 8-bit AV1 clip.</summary>
-    public static FixtureSpec Av1 { get; } = new("av1_8bit.mp4", "av1", 8, false, "libsvtav1", $"{Source} -c:v libsvtav1 -pix_fmt yuv420p", null);
+    public static FixtureSpec Av1 { get; } = new("av1_8bit.mp4", "av1", 8, false, "libsvtav1", $"{Source} -c:v libsvtav1 -pix_fmt yuv420p", null)
+    {
+        FallbackArguments = $"{Source} -c:v libsvtav1 {Av1PortableCode} -pix_fmt yuv420p",
+    };
 
     /// <summary>Gets the MPEG-2 clip.</summary>
     public static FixtureSpec Mpeg2 { get; } = new("mpeg2.mpg", "mpeg2video", 8, false, "mpeg2video", $"{Source} -c:v mpeg2video", null);

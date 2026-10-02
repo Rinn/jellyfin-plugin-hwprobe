@@ -31,4 +31,7 @@ public sealed record FixtureSpec(
 
     /// <summary>Gets the pinned SHA-256 (lowercase hex) a downloaded clip must match.</summary>
     public string? Sha256 { get; init; }
+
+    /// <summary>Gets arguments to retry with when the first encode fails, or null.</summary>
+    public string? FallbackArguments { get; init; }
 }

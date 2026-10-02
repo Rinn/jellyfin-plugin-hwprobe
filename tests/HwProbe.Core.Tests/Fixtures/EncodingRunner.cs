@@ -11,6 +11,9 @@ internal sealed class EncodingRunner : IFfmpegRunner
     /// <summary>Gets or sets the exit code returned; non-zero writes no output.</summary>
     public int ExitCode { get; set; }
 
+    /// <summary>Gets or sets a test for invocations that crash with exit 139 whatever <see cref="ExitCode"/> says.</summary>
+    public Func<FfmpegInvocation, bool> Crashes { get; set; } = _ => false;
+
     /// <summary>Extracts the quoted output path that ends the argument string.</summary>
     /// <param name="invocation">The invocation.</param>
     /// <returns>The output path.</returns>
@@ -24,6 +27,11 @@ internal sealed class EncodingRunner : IFfmpegRunner
     public async Task<FfmpegRunResult> RunAsync(FfmpegInvocation invocation, CancellationToken cancellationToken)
     {
         Invocations.Add(invocation);
+        if (Crashes(invocation))
+        {
+            return new FfmpegRunResult(FfmpegRunStatus.Exited, 139, string.Empty, "Segmentation fault\n", null, TimeSpan.Zero, null);
+        }
+
         if (ExitCode == 0)
         {
             await File.WriteAllTextAsync(OutputPath(invocation), "fake fixture bytes", cancellationToken);
