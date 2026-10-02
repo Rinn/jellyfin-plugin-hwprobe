@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.9.0.0",
+        "changelog": "Adds a diagnostics zip of the report and every ffmpeg log, downloaded from the plugin page or written by the command line with --diagnostics, to attach to a hardware report issue. Warns when Jellyfin is set to a backend that didn't work, and offers switching to software.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.9.0/hwprobe-plugin_0.9.0.0.zip",
+        "checksum": "6b3befbcd388c1849f13a79140c87a3e",
+        "timestamp": "2026-10-02T17:27:50Z"
+      },
+      {
         "version": "0.8.0.0",
         "changelog": "Tests QSV on every Intel adapter and AMF on the first AMD adapter on Windows, as Jellyfin picks them. Adds a Windows ARM64 command-line build. No longer guesses which GPU maker an unavailable option needs.",
         "targetAbi": "12.1.0.0",
@@ -124,7 +132,7 @@
       }
     ],
     "name": "HwProbe",
-    "description": "Runs short test transcodes for each hardware acceleration option on the Transcoding and Trickplay pages. Shows which ones work and how to fix the ones that don't. Results can be applied to Jellyfin's settings and reverted.",
+    "description": "Runs short test transcodes for each hardware acceleration option on the Transcoding and Trickplay pages. Shows which ones work and how to fix the ones that don't. Results can be applied to Jellyfin's settings and reverted, or downloaded as a diagnostics zip to attach to an issue.",
     "overview": "Tests which hardware transcoding options work on a Jellyfin server",
     "owner": "Rinn",
     "category": "General",
