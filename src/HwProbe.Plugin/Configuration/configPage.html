@@ -31,9 +31,14 @@
             #HwProbeConfigPage .hwprobe-change-list { margin: 0 0 1em 1em; }
             #HwProbeConfigPage .hwprobe-change-list table { margin: 0.2em 0 0; }
             #HwProbeConfigPage .hwprobe-arrow { display: inline-block; width: 1em; }
-            #HwProbeConfigPage .hwprobe-action { padding: 0 0.6em; line-height: 1.5; border: 1px solid #00a4dc; border-radius: 0.2em; background: transparent; color: #00a4dc; font: inherit; font-size: 0.9em; cursor: pointer; }
+            #HwProbeConfigPage .hwprobe-action { padding: 0 0.6em; line-height: 1.5; border: 1px solid #00a4dc; border-radius: 0.2em; background: transparent; color: #00a4dc; font: inherit; font-size: 0.9em; white-space: nowrap; cursor: pointer; }
             #HwProbeConfigPage .hwprobe-action:disabled { opacity: 0.5; cursor: default; }
             #HwProbeConfigPage .hwprobe-action.hwprobe-danger { border-color: #c62828; color: #c62828; font-weight: bold; }
+            /* Below about 336px the settings table only fits if "Apply section" may take two lines. */
+            @media (max-width: 21em) {
+                #HwProbeConfigPage .hwprobe-action { white-space: normal; }
+            }
+
             /* Phones: let columns size to their content and wrap, so nothing runs off the screen. */
             @media (max-width: 40em) {
                 #HwProbeConfigPage td, #HwProbeConfigPage th { padding-right: 0.5em; }
@@ -186,7 +191,8 @@
                     const td = el('td');
                     text.split('/').forEach((part, i, parts) => {
                         td.appendChild(document.createTextNode(part + (i < parts.length - 1 ? '/' : '')));
-                        if (i < parts.length - 1) {
+                        // Not after a leading slash, which would let "/" sit alone on a line.
+                        if (part && i < parts.length - 1) {
                             td.appendChild(document.createElement('wbr'));
                         }
                     });
@@ -478,7 +484,7 @@
                     }
                     groupRow(table, 'Also tested');
                     outcomeRow(table, 'Hardware deinterlacing', firstOutcome(selected.deinterlace));
-                    outcomeRow(table, 'Subtitle burn-in', firstOutcome(selected.subtitles));
+                    outcomeRow(table, 'Subtitle burn‑in', firstOutcome(selected.subtitles));
                     container.appendChild(table);
                 }
 
