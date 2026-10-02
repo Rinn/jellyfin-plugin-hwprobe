@@ -33,6 +33,7 @@
             #HwProbeConfigPage .hwprobe-disclosure { padding: 0; border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
             #HwProbeConfigPage .hwprobe-choices { display: flex; flex-wrap: wrap; gap: 0 1.5em; }
             #HwProbeConfigPage .hwprobe-choices .emby-checkbox-label { width: auto; margin-right: 1.5em; }
+            #HwProbeConfigPage .hwprobe-choices.hwprobe-fixed .emby-checkbox-label { width: 7em; margin-right: 0.5em; }
             #HwProbeConfigPage .hwprobe-fold > summary { display: flex; align-items: center; gap: 0.3em; cursor: pointer; list-style: none; }
             #HwProbeConfigPage .hwprobe-fold > summary::-webkit-details-marker { display: none; }
             #HwProbeConfigPage .hwprobe-fold > summary .sectionTitle { margin: 0.5em 0; }
@@ -717,8 +718,8 @@
                     return label;
                 }
 
-                function chips(items) {
-                    const div = el('div', null, 'hwprobe-choices');
+                function chips(items, className) {
+                    const div = el('div', null, 'hwprobe-choices' + (className ? ' ' + className : ''));
                     for (const item of items) {
                         div.appendChild(item);
                     }
@@ -970,7 +971,7 @@
                             .concat(speedOutputs.filter(o => o.DecodeOnly).map(o => [box(chosenCodecs, o.Key, true), o.Label, el('td', o.Detail, 'secondaryText')])));
                     container.appendChild(el('h3', 'Quality', 'sectionTitle'));
                     container.appendChild(el('div', 'The player\u2019s quality choices. Jellyfin picks the output size from the quality and codec; the results show it.', 'fieldDescription'));
-                    container.appendChild(chips(speedQualities.map(q => checkbox(q.Name, chosenQualities.has(q.Key), pick(chosenQualities, q.Key)))));
+                    container.appendChild(chips(speedQualities.map(q => checkbox(q.Name, chosenQualities.has(q.Key), pick(chosenQualities, q.Key))), 'hwprobe-fixed'));
                     list('Variations', 'Each selected variation measures again with one setting changed from the server\u2019s.', ['Setting', 'Measured'],
                         Object.entries(comparisons).map(([key, [name, values]]) => [box(speedCompared, key, true), name, el('td', values, 'secondaryText')]));
 
