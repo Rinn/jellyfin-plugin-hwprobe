@@ -41,6 +41,7 @@ public sealed class ProbeService : IDisposable
             TimeSpan.FromSeconds(2),
             logger)
     {
+        CurrentFfmpeg = () => (mediaEncoder.EncoderPath, mediaEncoder.EncoderVersion);
     }
 
     /// <summary>Initializes a new instance of the <see cref="ProbeService"/> class with injected behaviour.</summary>
@@ -62,6 +63,9 @@ public sealed class ProbeService : IDisposable
 
     /// <summary>Gets the current status.</summary>
     public ProbeStatus Status => _status;
+
+    /// <summary>Gets the ffmpeg path and version the server uses now, or null not to compare them.</summary>
+    internal Func<(string Path, Version? Version)>? CurrentFfmpeg { get; init; }
 
     /// <summary>Gets the probe started by <see cref="StartAsync"/>, or a completed task when none was.</summary>
     internal Task Background => _background ?? Task.CompletedTask;
@@ -105,10 +109,10 @@ public sealed class ProbeService : IDisposable
         return ProbeRunResult.Started;
     }
 
-    /// <summary>Returns the latest saved report as JSON, deleting one written by another HwProbe version.</summary>
+    /// <summary>Returns the latest saved report as JSON, deleting one from another HwProbe version or ffmpeg.</summary>
     /// <param name="cancellationToken">Cancels the read.</param>
-    /// <returns>The report JSON, or null when no probe has completed since this version was installed.</returns>
-    /// <remarks>Advice and tests change between versions, so an older report would show stale results.</remarks>
+    /// <returns>The report JSON, or null when no probe has completed with this HwProbe and ffmpeg.</returns>
+    /// <remarks>Advice and tests change between versions, and results belong to the ffmpeg that was tested.</remarks>
     public async Task<string?> LatestJsonAsync(CancellationToken cancellationToken)
     {
         if (!File.Exists(_latestPath))
@@ -117,7 +121,8 @@ public sealed class ProbeService : IDisposable
         }
 
         var json = await File.ReadAllTextAsync(_latestPath, cancellationToken);
-        if (ReportStore.Deserialize(json)?.HwProbeVersion == CapabilityReport.CurrentHwProbeVersion)
+        var report = ReportStore.Deserialize(json);
+        if (report?.HwProbeVersion == CapabilityReport.CurrentHwProbeVersion && IsCurrentFfmpeg(report.Ffmpeg))
         {
             return json;
         }
@@ -172,6 +177,27 @@ public sealed class ProbeService : IDisposable
         var environment = EnvironmentRules.InServer(baseline.Values, new Dictionary<string, string>());
         using var engine = new ProbeEngine(new FfmpegRunner(), arguments, new HostPlatform(), TimeProvider.System, environment);
         return await engine.RunAsync(options, cancellationToken);
+    }
+
+    /// <summary>Reports whether a report's ffmpeg is the one the server uses now.</summary>
+    /// <param name="ffmpeg">The report's ffmpeg.</param>
+    /// <returns>False when the path or the major, minor or patch version differs; an unreadable version counts as the same.</returns>
+    /// <remarks>Jellyfin and HwProbe parse <c>-version</c> separately, so only the numbers both read are compared.</remarks>
+    private bool IsCurrentFfmpeg(FfmpegSummary ffmpeg)
+    {
+        if (CurrentFfmpeg is null)
+        {
+            return true;
+        }
+
+        var (path, version) = CurrentFfmpeg();
+        if (!string.Equals(ffmpeg.Path, path, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return version is null || !Version.TryParse(ffmpeg.Version, out var tested)
+            || (tested.Major, tested.Minor, Math.Max(tested.Build, 0)) == (version.Major, version.Minor, Math.Max(version.Build, 0));
     }
 
     /// <summary>Reports whether a session is transcoding, checking twice.</summary>

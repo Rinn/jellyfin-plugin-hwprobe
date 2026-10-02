@@ -41,6 +41,28 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Null(await service.LatestJsonAsync(TestContext.Current.CancellationToken));
     }
 
+    /// <summary>A report from another ffmpeg path or version is deleted; the same version in another form is kept.</summary>
+    /// <param name="path">The server's ffmpeg path now.</param>
+    /// <param name="version">The server's ffmpeg version now, or null when unreadable.</param>
+    /// <param name="kept">Whether the report is kept.</param>
+    /// <returns>A task representing the test.</returns>
+    [Theory]
+    [InlineData("/usr/lib/jellyfin-ffmpeg/ffmpeg", "8.1.2", true)]
+    [InlineData("/usr/lib/jellyfin-ffmpeg/ffmpeg", "8.1.2.0", true)]
+    [InlineData("/usr/lib/jellyfin-ffmpeg/ffmpeg", null, true)]
+    [InlineData("/usr/lib/jellyfin-ffmpeg/ffmpeg", "8.1.3", false)]
+    [InlineData("/usr/bin/ffmpeg", "8.1.2", false)]
+    public async Task ReportFromAnotherFfmpegIsCleared(string path, string? version, bool kept)
+    {
+        using var service = new ProbeService(_ => Task.FromResult(Reports.Sample()), () => false, Path.Combine(_directory, "latest.json"), TimeProvider.System, TimeSpan.Zero, NullLogger.Instance)
+        {
+            CurrentFfmpeg = () => (path, version is null ? null : Version.Parse(version)),
+        };
+        await service.RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(kept, await service.LatestJsonAsync(TestContext.Current.CancellationToken) is not null);
+    }
+
     /// <summary>Nothing runs while a session is transcoding.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
