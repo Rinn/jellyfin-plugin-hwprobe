@@ -32,15 +32,16 @@ The SDK is pinned exactly in `global.json`, and NuGet restores are pinned by the
 
 ## Reproducible builds
 
-The same commit, built with the pinned SDK on the same OS, produces byte-identical DLLs and archives:
+The same commit, built with the pinned SDK on Linux, produces byte-identical DLLs and archives. A build in an arm64 Linux container matched the x64 GitHub runner's archives exactly. macOS hasn't been compared.
 
 - `Deterministic` is on, and on GitHub Actions `ContinuousIntegrationBuild` maps the repo root to `/_/`, so no checkout path ends up in a binary.
 - `scripts/package.py` writes archives with sorted entries, fixed permissions and the commit time (or `SOURCE_DATE_EPOCH`), and gzips with no stored name or time.
 
-To check, run the packaging in two clean copies of the repo and compare hashes:
+To check a release, build its tagged commit from a clone whose `origin` is the GitHub URL. SourceLink records the remote URL in the debug information, so a clone of a local path produces different bytes. Then compare hashes with the release assets:
 
 ```sh
-SOURCE_DATE_EPOCH=1790000000 GITHUB_ACTIONS=true python3 scripts/package.py --out dist
+git clone https://github.com/Rinn/jellyfin-plugin-hwprobe && cd jellyfin-plugin-hwprobe && git checkout v1.2.3
+GITHUB_ACTIONS=true python3 scripts/package.py --out dist
 shasum -a 256 dist/*
 ```
 
