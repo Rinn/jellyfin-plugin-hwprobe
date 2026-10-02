@@ -26,6 +26,7 @@
             #HwProbeConfigPage details { margin-top: 2em; }
             #HwProbeConfigPage .hwprobe-action { padding: 0 0.6em; line-height: 1.5; font-size: 0.9em; border: 1px solid #00a4dc; border-radius: 0.2em; background: transparent; color: #00a4dc; font: inherit; cursor: pointer; }
             #HwProbeConfigPage .hwprobe-action:disabled { opacity: 0.5; cursor: default; }
+            #HwProbeConfigPage .hwprobe-action.hwprobe-danger { border-color: #c62828; color: #c62828; font-weight: bold; }
         </style>
         <div data-role="content">
             <div class="content-primary">
@@ -57,6 +58,7 @@
                 let encoding = null;
                 let selected = null;
                 let history = [];
+                let restartRequired = false;
 
                 // The names and order of Jellyfin's Hardware acceleration dropdown.
                 const names = {
@@ -207,14 +209,7 @@
                         request.contentType = 'application/json';
                     }
                     return ApiClient.ajax(request).then(result => {
-                        const notes = [];
-                        if (result.RestartRequired) {
-                            notes.push('Restart Jellyfin to finish switching backend.');
-                        }
-                        if (result.Reason) {
-                            notes.push(result.Reason);
-                        }
-                        messageText.textContent = notes.join(' ');
+                        messageText.textContent = result.Reason || '';
                     }, response => (response && response.json ? response.json() : Promise.resolve({})).then(
                         result => { messageText.textContent = (result && result.Reason) || 'The change was refused.'; },
                         () => { messageText.textContent = 'The change was refused.'; })).then(loadReport);
@@ -222,6 +217,33 @@
 
                 function apply(advice) {
                     return post('HwProbe/Apply', advice.map(a => ({ Setting: a.setting, Value: a.state === 'TurnOn' })));
+                }
+
+                // The old server can still answer for a moment after the restart request, so wait until the
+                // plugin reports no pending restart, which only a new server does.
+                function waitForServer(deadline) {
+                    const retry = () => {
+                        if (Date.now() > deadline) {
+                            messageText.textContent = 'Jellyfin didn\'t come back. Reload the page.';
+                            return;
+                        }
+                        setTimeout(() => waitForServer(deadline), 2000);
+                    };
+                    ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/RestartRequired'), dataType: 'json' })
+                        .then(pending => {
+                            if (pending === true) {
+                                retry();
+                                return;
+                            }
+                            messageText.textContent = '';
+                            loadStatus();
+                        }, retry);
+                }
+
+                function restart() {
+                    messageText.textContent = 'Restarting…';
+                    ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('System/Restart') })
+                        .then(() => waitForServer(Date.now() + 180000), () => { messageText.textContent = 'Restart failed.'; });
                 }
 
                 function renderChange() {
@@ -237,6 +259,13 @@
 
                 function renderSettings(container, viable) {
                     container.replaceChildren();
+                    if (restartRequired) {
+                        const pending = el('p', 'Backend changed; Jellyfin needs a restart. ');
+                        const button = action('Restart Jellyfin', restart);
+                        button.classList.add('hwprobe-danger');
+                        pending.appendChild(button);
+                        container.appendChild(pending);
+                    }
                     if (viable.length > 1) {
                         const tabs = el('div', null, 'hwprobe-tabs');
                         for (const b of viable) {
@@ -252,14 +281,13 @@
                     if (!configured) {
                         const switcher = el('p', 'Not the configured backend. ');
                         switcher.appendChild(action('Use this backend', () => post('HwProbe/UseBackend', { Type: selected.type, Device: selected.device })));
-                        switcher.appendChild(el('span', ' Restart Jellyfin after switching.', 'hwprobe-reason'));
                         container.appendChild(switcher);
                     }
 
                     const settings = selected.settings || [];
                     const table = el('table');
                     const everything = configured ? settings.filter(differs) : [];
-                    const header = el('th');
+                    const header = el('td');
                     if (everything.length > 1) {
                         header.appendChild(action('Apply all', () => apply(everything)));
                     }
@@ -363,7 +391,9 @@
                         .then(r => { report = r; }, () => { report = null; statusText.textContent = 'No probe has run yet.'; });
                     const changes = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/History'), dataType: 'json' })
                         .then(h => { history = h || []; }, () => { history = []; });
-                    return Promise.all([config, data, changes]).then(() => { renderChange(); render(); });
+                    const pending = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/RestartRequired'), dataType: 'json' })
+                        .then(r => { restartRequired = r === true; }, () => { restartRequired = false; });
+                    return Promise.all([config, data, changes, pending]).then(() => { renderChange(); render(); });
                 }
 
                 function loadStatus() {

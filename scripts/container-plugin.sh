@@ -142,6 +142,7 @@ check "apply without a viable backend" 400 "$(code -X POST "$base/HwProbe/Apply"
 check "switch to a backend that didn't work" 400 "$(code -X POST "$base/HwProbe/UseBackend" -H "$h" -H 'Content-Type: application/json' -d '{"Type":"nvenc","Device":"0"}')"
 check "revert with no history" 409 "$(code -X POST "$base/HwProbe/Revert" -H "$h")"
 check "history" "[]" "$(curl -sf "$base/HwProbe/History" -H "$h")"
+check "no restart pending" false "$(curl -sf "$base/HwProbe/RestartRequired" -H "$h")"
 check "refused changes left settings alone" True "$(curl -sf "$base/System/Configuration/encoding" -H "$h" | python3 -c "import json,sys; print(json.load(sys.stdin) == json.loads(sys.argv[1]))" "$before")"
 
 task_id="$(curl -sf "$base/ScheduledTasks" -H "$h" | json 'next(t["Id"] for t in j if t["Key"]=="HwProbeHardwareProbe")')"

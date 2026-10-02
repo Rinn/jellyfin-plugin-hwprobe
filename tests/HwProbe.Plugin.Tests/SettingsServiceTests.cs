@@ -25,6 +25,7 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.Equal(EncoderPreset.slow, _harness.Saved.EncoderPreset);
         Assert.Equal(1, _harness.Saves);
         Assert.False(result.RestartRequired);
+        Assert.False(_harness.Service.RestartRequired);
         Assert.Equal([new AppliedChange("HardwareDecodingCodecs:hevc", "false", "true"), new AppliedChange("AllowAv1Encoding", "true", "false")], result.Changes);
     }
 
@@ -89,12 +90,31 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.UseBackendAsync(new("nvenc", "0"), "admin", ct)).Outcome);
         Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.UseBackendAsync(new("qsv", "/dev/dri/renderD129"), "admin", ct)).Outcome);
 
+        Assert.False(_harness.Service.RestartRequired);
+
         var result = await _harness.Service.UseBackendAsync(new("qsv", SettingsHarness.Node), "admin", ct);
 
         Assert.Equal(ApplyOutcome.Applied, result.Outcome);
         Assert.True(result.RestartRequired);
+        Assert.True(_harness.Service.RestartRequired);
         Assert.Equal(HardwareAccelerationType.qsv, _harness.Saved.HardwareAccelerationType);
         Assert.Equal(SettingsHarness.Node, _harness.Saved.QsvDevice);
+    }
+
+    /// <summary>Reverting a backend switch changes the backend again, so a restart stays pending.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task RevertingABackendSwitchKeepsTheRestartPending()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await _harness.Service.UseBackendAsync(new("qsv", SettingsHarness.Node), "admin", ct);
+        Assert.True(_harness.Service.RestartRequired);
+
+        var revert = await _harness.Service.RevertAsync("admin", ct);
+
+        Assert.True(revert.RestartRequired);
+        Assert.Equal(HardwareAccelerationType.vaapi, _harness.Saved.HardwareAccelerationType);
+        Assert.True(_harness.Service.RestartRequired);
     }
 
     /// <summary>Revert restores the last apply, leaves settings changed since, and then has nothing left.</summary>
