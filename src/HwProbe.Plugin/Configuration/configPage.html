@@ -24,9 +24,9 @@
             #HwProbeConfigPage .hwprobe-tabs button { margin: 0 0.5em 0.75em 0; padding: 0.4em 1em; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 0.2em; background: transparent; color: inherit; font: inherit; cursor: pointer; }
             #HwProbeConfigPage .hwprobe-tabs button.hwprobe-selected { background: #00a4dc; border-color: #00a4dc; color: #fff; }
             #HwProbeConfigPage details { margin-top: 2em; }
-            #HwProbeConfigPage details.hwprobe-change { margin: 0 0 1em; }
-            #HwProbeConfigPage details.hwprobe-change summary { cursor: pointer; }
-            #HwProbeConfigPage details.hwprobe-change table { margin: 0.25em 0 0 1.5em; }
+            #HwProbeConfigPage .hwprobe-change { display: flex; align-items: center; gap: 0.5em; margin: 0 0 0.5em; }
+            #HwProbeConfigPage .hwprobe-disclosure { padding: 0; border: none; background: none; color: inherit; font: inherit; cursor: pointer; }
+            #HwProbeConfigPage .hwprobe-change-list { margin: 0 0 1em 1.5em; }
             #HwProbeConfigPage .hwprobe-action { padding: 0 0.6em; line-height: 1.5; font-size: 0.9em; border: 1px solid #00a4dc; border-radius: 0.2em; background: transparent; color: #00a4dc; font: inherit; cursor: pointer; }
             #HwProbeConfigPage .hwprobe-action:disabled { opacity: 0.5; cursor: default; }
             #HwProbeConfigPage .hwprobe-action.hwprobe-danger { border-color: #c62828; color: #c62828; font-weight: bold; }
@@ -214,9 +214,9 @@
                 function action(text, onClick) {
                     const button = el('button', text, 'hwprobe-action');
                     button.type = 'button';
-                    button.addEventListener('click', e => {
+                    button.addEventListener('click', () => {
                         button.disabled = true;
-                        onClick(e);
+                        onClick();
                     });
                     return button;
                 }
@@ -303,14 +303,25 @@
                     if (!last) {
                         return;
                     }
-                    const details = el('details', null, 'hwprobe-change');
-                    const summary = el('summary', 'Last change: ' + new Date(last.TimeUtc).toLocaleString() + ' ');
-                    // A button in a summary would also open or close the list.
-                    summary.appendChild(action('Revert', e => { e.preventDefault(); post('HwProbe/Revert'); }));
-                    details.appendChild(summary);
+                    // A disclosure button beside Revert rather than a summary around it: buttons can't nest, and a
+                    // details element would widen with its table and push Revert along.
+                    const line = el('div', null, 'hwprobe-change');
+                    const toggle = el('button', '▸ Last change: ' + new Date(last.TimeUtc).toLocaleString(), 'hwprobe-disclosure');
+                    toggle.type = 'button';
+                    toggle.setAttribute('aria-expanded', 'false');
+                    line.appendChild(toggle);
+                    line.appendChild(action('Revert', () => post('HwProbe/Revert')));
+                    changeText.appendChild(line);
 
                     // What Revert sets each option to, marked as on the settings list.
-                    const table = el('table');
+                    const table = el('table', null, 'hwprobe-change-list');
+                    table.style.display = 'none';
+                    toggle.addEventListener('click', () => {
+                        const open = table.style.display === 'none';
+                        table.style.display = open ? '' : 'none';
+                        toggle.setAttribute('aria-expanded', String(open));
+                        toggle.textContent = (open ? '▾' : '▸') + toggle.textContent.substring(1);
+                    });
                     for (const c of last.Changes) {
                         // Revert leaves a setting that was changed again since; the server skips it too.
                         const kept = currentText(c.Setting) !== undefined && currentText(c.Setting) !== c.NewValue;
@@ -321,8 +332,7 @@
                         const marker = kept ? mark('NotTested') : flag ? mark(value === 'true' ? 'TurnOn' : 'LeaveOff') : el('td');
                         row(table, [marker, label, el('td', note, 'hwprobe-reason')]);
                     }
-                    details.appendChild(table);
-                    changeText.appendChild(details);
+                    changeText.appendChild(table);
                 }
 
                 const settingNames = {
