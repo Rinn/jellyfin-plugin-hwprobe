@@ -106,13 +106,17 @@ public sealed class ProbeEngine : IDisposable
             new HostSummary(OsName(host.Os), host.Kernel, host.Container)
             {
                 GpuVendors = devices.GpuVendors,
+                Architecture = host.Architecture,
             },
             new StageASummary([.. caps.Hwaccels.Order(StringComparer.Ordinal)], caps.BuildStatus, caps.FilterOptions),
             [.. run.Backends
                 .Select(b => b.Verdict == BackendVerdict.Viable ? b : b with { Fix = Hints.FixFor(b.Verdict, b.Type, host.Os, host.Container is not null) })
                 .OrderBy(b => b.Type).ThenBy(b => b.Device, StringComparer.Ordinal)],
             run.Findings,
-            run.Probes);
+            run.Probes)
+        {
+            HwProbeVersion = CapabilityReport.CurrentHwProbeVersion,
+        };
 
         if (options.StopAfter == StopStage.Matrix)
         {

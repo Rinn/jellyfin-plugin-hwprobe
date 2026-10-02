@@ -25,4 +25,10 @@ public sealed record CapabilityReport(
 {
     /// <summary>The schema version this build writes.</summary>
     public const int CurrentSchemaVersion = 3;
+
+    /// <summary>Gets the version of HwProbe that wrote the report; <c>unknown</c> for reports from before it was recorded.</summary>
+    public string HwProbeVersion { get; init; } = "unknown";
+
+    /// <summary>Gets the version of this HwProbe build, as reports record it.</summary>
+    public static string CurrentHwProbeVersion { get; } = typeof(CapabilityReport).Assembly.GetName().Version?.ToString() ?? "unknown";
 }

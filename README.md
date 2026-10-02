@@ -28,6 +28,8 @@ Requires Jellyfin 12.1 or newer.
 2. Open **HwProbe** in the dashboard sidebar, under Plugins, and press **Run probe**. The first run takes a few minutes.
 3. Optionally, press **Apply** on the options you want to change.
 
+After updating HwProbe, run the probe again: results from an older version are cleared.
+
 ## Privacy
 
 - Nothing is sent anywhere.

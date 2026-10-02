@@ -29,6 +29,18 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Null(service.Status.LastError);
     }
 
+    /// <summary>A report saved by another HwProbe version, such as before an update, is deleted rather than shown.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task ReportFromAnotherVersionIsCleared()
+    {
+        using var service = Create(_ => Task.FromResult(Reports.Sample() with { HwProbeVersion = "0.0.1.0" }), transcoding: false);
+        await service.RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Null(await service.LatestJsonAsync(TestContext.Current.CancellationToken));
+        Assert.Null(await service.LatestJsonAsync(TestContext.Current.CancellationToken));
+    }
+
     /// <summary>Nothing runs while a session is transcoding.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

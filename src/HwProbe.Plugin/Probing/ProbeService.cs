@@ -105,11 +105,26 @@ public sealed class ProbeService : IDisposable
         return ProbeRunResult.Started;
     }
 
-    /// <summary>Returns the latest saved report as JSON.</summary>
+    /// <summary>Returns the latest saved report as JSON, deleting one written by another HwProbe version.</summary>
     /// <param name="cancellationToken">Cancels the read.</param>
-    /// <returns>The report JSON, or null when no probe has completed.</returns>
-    public async Task<string?> LatestJsonAsync(CancellationToken cancellationToken) =>
-        File.Exists(_latestPath) ? await File.ReadAllTextAsync(_latestPath, cancellationToken) : null;
+    /// <returns>The report JSON, or null when no probe has completed since this version was installed.</returns>
+    /// <remarks>Advice and tests change between versions, so an older report would show stale results.</remarks>
+    public async Task<string?> LatestJsonAsync(CancellationToken cancellationToken)
+    {
+        if (!File.Exists(_latestPath))
+        {
+            return null;
+        }
+
+        var json = await File.ReadAllTextAsync(_latestPath, cancellationToken);
+        if (ReportStore.Deserialize(json)?.HwProbeVersion == CapabilityReport.CurrentHwProbeVersion)
+        {
+            return json;
+        }
+
+        File.Delete(_latestPath);
+        return null;
+    }
 
     /// <inheritdoc/>
     public void Dispose() => _gate.Dispose();

@@ -15,7 +15,7 @@ public sealed class HostInfoReader
 
     /// <summary>Reads the host facts.</summary>
     /// <returns>The host info; unreadable fields are <c>unknown</c>, never an exception.</returns>
-    public HostInfo Read() => new(_platform.Os, ReadKernel(), _platform.Os == HostOs.Linux ? DetectContainer() : null);
+    public HostInfo Read() => new(_platform.Os, ReadKernel(), _platform.Os == HostOs.Linux ? DetectContainer() : null) { Architecture = _platform.Architecture };
 
     /// <summary>Reads the kernel release, the equivalent of <c>uname -r</c>.</summary>
     /// <returns>The release, or <c>unknown</c>.</returns>
