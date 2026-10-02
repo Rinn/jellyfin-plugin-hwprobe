@@ -20,19 +20,12 @@ internal static class SpeedVariants
     /// <returns>The cell.</returns>
     public static ProbeCell Base(SpeedTest test, SpeedSettings settings, IReadOnlyDictionary<string, string> clips)
     {
-        var fixture = test.Fixture;
-        var color = fixture.IsHdr10 ? ColorMetadata.Hdr10 : null;
+        ArgumentNullException.ThrowIfNull(test);
+        ArgumentNullException.ThrowIfNull(settings);
         var output = test.OutputCodec ?? "h264";
-        return new ProbeCell(fixture.Codec, fixture.BitDepth, output, HardwareDecode: true, HardwareEncode: true)
+        var cell = test.File is { } file ? FromFile(file, test, output, settings) : FromClip(test, output, clips);
+        return cell with
         {
-            Profile = fixture.Profile,
-            PixelFormat = fixture.PixelFormat,
-            Interlaced = fixture.Interlaced,
-            ColorPrimaries = color?.Primaries,
-            ColorTransfer = color?.Transfer,
-            ColorSpace = color?.Space,
-            Tonemap = test.Tonemap,
-            VppTonemap = test.Tonemap && settings.VppTonemap,
             SourceWidth = test.Width,
             SourceHeight = test.Height,
             SourceFrameRate = test.FrameRate,
@@ -40,10 +33,11 @@ internal static class SpeedVariants
             MaxHeight = test.DecodeOnly ? null : test.OutputHeight,
             VideoBitrate = test.DecodeOnly ? null : test.Bitrate,
             FullQuality = true,
+            VppTonemap = cell.Tonemap && settings.VppTonemap,
             EncoderPreset = settings.EncoderPreset,
             H264Crf = settings.H264Crf,
             H265Crf = settings.H265Crf,
-            Audio = !test.DecodeOnly,
+            Audio = cell.Audio && !test.DecodeOnly,
             AudioVbr = settings.AudioVbr,
             DoubleRate = settings.DoubleRate,
             Bwdif = settings.Bwdif,
@@ -55,9 +49,6 @@ internal static class SpeedVariants
                 "hevc" => settings.LowPowerHevc,
                 _ => false,
             },
-            SourcePath = clips[fixture.FileName],
-            SubtitlePath = test.TextSubtitles is { } text ? clips[text.FileName] : null,
-            GraphicalSubtitlePath = test.ImageSubtitles is { } image ? clips[image.FileName] : null,
         };
     }
 
@@ -102,7 +93,7 @@ internal static class SpeedVariants
             }
         }
 
-        if (transcode && test.Fixture.Interlaced && comparisons.HasFlag(SpeedComparison.Deinterlace))
+        if (transcode && test.Interlaced && comparisons.HasFlag(SpeedComparison.Deinterlace))
         {
             yield return (cell.DoubleRate ? "Single rate" : "Double rate", cell with { DoubleRate = !cell.DoubleRate });
             yield return (cell.Bwdif ? "YADIF" : "BWDIF", cell with { Bwdif = !cell.Bwdif });
@@ -140,4 +131,62 @@ internal static class SpeedVariants
     /// <returns>The clips, each once.</returns>
     public static IReadOnlyList<FixtureSpec> Clips(IEnumerable<SpeedTest> tests) =>
         [.. tests.SelectMany(t => new[] { t.Fixture, t.TextSubtitles, t.ImageSubtitles }).OfType<FixtureSpec>().DistinctBy(f => f.FileName, StringComparer.Ordinal)];
+
+    /// <summary>Describes a generated clip.</summary>
+    /// <param name="test">The test.</param>
+    /// <param name="output">The output codec.</param>
+    /// <param name="clips">Clip paths by file name.</param>
+    /// <returns>The cell, before the settings.</returns>
+    private static ProbeCell FromClip(SpeedTest test, string output, IReadOnlyDictionary<string, string> clips)
+    {
+        var fixture = test.Fixture!;
+        var color = fixture.IsHdr10 ? ColorMetadata.Hdr10 : null;
+        return new ProbeCell(fixture.Codec, fixture.BitDepth, output, HardwareDecode: true, HardwareEncode: true)
+        {
+            Profile = fixture.Profile,
+            PixelFormat = fixture.PixelFormat,
+            Interlaced = fixture.Interlaced,
+            ColorPrimaries = color?.Primaries,
+            ColorTransfer = color?.Transfer,
+            ColorSpace = color?.Space,
+            Tonemap = test.Tonemap,
+            Audio = !test.DecodeOnly,
+            SourcePath = clips[fixture.FileName],
+            SubtitlePath = test.TextSubtitles is { } text ? clips[text.FileName] : null,
+            GraphicalSubtitlePath = test.ImageSubtitles is { } image ? clips[image.FileName] : null,
+        };
+    }
+
+    /// <summary>Describes a real file with its own streams.</summary>
+    /// <param name="file">The file.</param>
+    /// <param name="test">The test.</param>
+    /// <param name="output">The output codec.</param>
+    /// <param name="settings">The settings, for whether HDR is tone-mapped.</param>
+    /// <returns>The cell, before the other settings.</returns>
+    private static ProbeCell FromFile(SpeedFile file, SpeedTest test, string output, SpeedSettings settings)
+    {
+        var video = file.Video;
+        var subtitle = test.FileSubtitle;
+        return new ProbeCell(video.Codec, video.BitDepth, output, HardwareDecode: true, HardwareEncode: true)
+        {
+            Profile = video.Profile,
+            PixelFormat = video.PixelFormat,
+            Interlaced = video.Interlaced,
+            ColorPrimaries = video.ColorPrimaries,
+            ColorTransfer = video.ColorTransfer,
+            ColorSpace = video.ColorSpace,
+            Tonemap = test.Tonemap && settings.Tonemap,
+            VideoIndex = video.Index,
+            Audio = file.Audio is not null,
+            AudioIndex = file.Audio?.Index ?? 1,
+            AudioCodec = file.Audio?.Codec ?? "aac",
+            AudioChannels = file.Audio?.Channels ?? 2,
+            SourcePath = file.Path,
+            MediaSourceId = file.MediaSourceId,
+            SubtitlePath = subtitle is { ExternalPath: { } text, IsText: true } ? text : null,
+            GraphicalSubtitlePath = subtitle is { ExternalPath: { } image, IsText: false } ? image : null,
+            InternalSubtitleIndex = subtitle is { ExternalPath: null } ? subtitle.Index : null,
+            InternalSubtitleCodec = subtitle is { ExternalPath: null } ? subtitle.Codec : null,
+        };
+    }
 }

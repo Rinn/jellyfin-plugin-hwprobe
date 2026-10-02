@@ -42,6 +42,7 @@ internal sealed class HwProbeCommand
         CustomParser = ParseComparisons,
     };
 
+    private readonly Option<string?> _speedFile = new("--speed-file") { Description = "A real video file to measure with --speed; adds its tests (file-720p-h264 and others) to --speed-tests unless they're named." };
     private readonly Option<string?> _speedJson = new("--speed-json") { Description = "Also write the speed report to this file." };
     private readonly Option<int> _timeout = new("--timeout") { Description = "Per-probe hard timeout, seconds.", DefaultValueFactory = _ => 15 };
     private readonly Option<int> _fixtureTimeout = new("--fixture-timeout") { Description = "Fixture generation timeout, seconds.", DefaultValueFactory = _ => 120 };
@@ -63,7 +64,7 @@ internal sealed class HwProbeCommand
 
         Root = new RootCommand("Device-verified hardware transcode detection for Jellyfin.")
         {
-            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _speed, _speedTests, _speedCompare, _speedJson, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
+            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _speed, _speedTests, _speedCompare, _speedFile, _speedJson, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
         };
     }
 
@@ -94,6 +95,7 @@ internal sealed class HwProbeCommand
             DiagnosticsPath = result.GetValue(_diagnostics),
             Speed = result.GetValue(_speed) is { } method ? new SpeedOptions(method, result.GetValue(_speedTests)!, result.GetValue(_speedCompare), new SpeedSettings()) : null,
             SpeedJsonPath = result.GetValue(_speedJson),
+            SpeedFilePath = result.GetValue(_speedFile) is { } file ? Path.GetFullPath(file) : null,
         };
     }
 

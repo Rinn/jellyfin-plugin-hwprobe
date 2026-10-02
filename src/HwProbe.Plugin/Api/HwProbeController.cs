@@ -84,7 +84,16 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     [HttpGet("SpeedTests")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public ActionResult<IReadOnlyList<SpeedTestInfo>> SpeedTests() =>
-        Ok(SpeedCatalog.All.Select(t => new SpeedTestInfo(t.Key, t.Label, t.DecodeOnly, t.Fixture.Interlaced, SpeedCatalog.Default.Contains(t.Key), t.FrameRate)).ToList());
+        Ok(SpeedCatalog.All.Select(SpeedTestInfo.From).ToList());
+
+    /// <summary>Returns the tests a library item's file offers.</summary>
+    /// <param name="itemId">The movie or episode.</param>
+    /// <returns>Its tests, or 404 when it isn't a local video file.</returns>
+    [HttpGet("SpeedFileTests")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public ActionResult<IReadOnlyList<SpeedTestInfo>> SpeedFileTests([FromQuery] Guid itemId) =>
+        service.FindFile(itemId) is { } file ? Ok(Core.Speed.SpeedFileTests.For(file).Select(SpeedTestInfo.From).ToList()) : NotFound();
 
     /// <summary>Returns the latest speed report.</summary>
     /// <param name="cancellationToken">Cancels the read.</param>

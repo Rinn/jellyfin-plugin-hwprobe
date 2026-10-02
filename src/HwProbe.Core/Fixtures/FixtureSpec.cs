@@ -41,4 +41,7 @@ public sealed record FixtureSpec(
 
     /// <summary>Gets arguments to retry with when the first encode fails, or null.</summary>
     public string? FallbackArguments { get; init; }
+
+    /// <summary>Gets a longer time limit for generating this clip, or null for the builder's.</summary>
+    public TimeSpan? GenerateTimeout { get; init; }
 }

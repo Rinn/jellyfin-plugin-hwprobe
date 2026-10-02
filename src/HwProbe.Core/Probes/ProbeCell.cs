@@ -100,4 +100,25 @@ public sealed record ProbeCell(
 
     /// <summary>Gets an external image (PGS) subtitle file to burn in, or null for none.</summary>
     public string? GraphicalSubtitlePath { get; init; }
+
+    /// <summary>Gets the video stream's index in the source.</summary>
+    public int VideoIndex { get; init; }
+
+    /// <summary>Gets the audio stream's index in the source.</summary>
+    public int AudioIndex { get; init; } = 1;
+
+    /// <summary>Gets the source audio codec.</summary>
+    public string AudioCodec { get; init; } = "aac";
+
+    /// <summary>Gets the source audio channel count.</summary>
+    public int AudioChannels { get; init; } = 6;
+
+    /// <summary>Gets the index of a subtitle stream inside the source to burn in, or null.</summary>
+    public int? InternalSubtitleIndex { get; init; }
+
+    /// <summary>Gets that subtitle stream's codec as Jellyfin names it, e.g. <c>PGSSUB</c>.</summary>
+    public string? InternalSubtitleCodec { get; init; }
+
+    /// <summary>Gets the media source ID Jellyfin knows the file by, which keys its extracted subtitles; null for a clip.</summary>
+    public string? MediaSourceId { get; init; }
 }

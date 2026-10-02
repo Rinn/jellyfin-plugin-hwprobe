@@ -32,12 +32,15 @@ If Jellyfin is set to a backend that didn't work, the page says so and offers **
 
 After updating HwProbe or changing ffmpeg, run the probe again: older results are cleared.
 
+To see how fast the working options are, choose transcodes under **Speed** and press **Measure speed**. For each working backend and software it shows how many transcodes keep up with real time at once, and how fast one runs alone. Optional comparisons change one setting at a time, such as the encoder preset or VBR audio. Tests can use generated clips, a movie or episode from your library, or 30-second samples of freely licensed films (live action, digital animation and anime), downloaded only when chosen. For the best results, measure when nothing is playing and nothing else heavy is running. The command-line tool does the same with `--speed`, and `--speed-file <video>` for a file of your own.
+
 To share results, especially from AMD, Rockchip or other hardware HwProbe hasn't been tested on, press **Download diagnostics** and attach the zip to a [hardware report](../../issues/new?template=hardware-report.yml). The command-line tool writes the same zip with `--diagnostics <file.zip>`.
 
 ## Privacy
 
 - Nothing is sent anywhere.
 - The diagnostics zip is only downloaded when you ask for it. It holds the report and every ffmpeg log from the last probe, including file paths and the server's user and host names. Check it before sharing.
+- Speed samples are only downloaded when chosen: from Wikimedia Commons, and the 4K anime sample (about 4.3 GB) from Netflix Open Content.
 - Test clips may be downloaded from [FFmpeg's sample suite](https://fate-suite.ffmpeg.org/) when they can't be made on the server. Each is downloaded once and checked against a pinned hash.
 
 ## Status

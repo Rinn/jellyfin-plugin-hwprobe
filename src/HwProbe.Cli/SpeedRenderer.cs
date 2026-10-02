@@ -51,6 +51,12 @@ internal static class SpeedRenderer
             text.Append(string.Join("  ", row.Select((cell, i) => cell.PadRight(widths[i]))).TrimEnd()).Append('\n');
         }
 
+        var credits = report.Results.Select(r => r.Credit).OfType<string>().Distinct(StringComparer.Ordinal).ToList();
+        if (credits.Count > 0)
+        {
+            text.Append(CultureInfo.InvariantCulture, $"\nsamples: {string.Join("; ", credits)}\n");
+        }
+
         return text.ToString();
     }
 
@@ -60,7 +66,7 @@ internal static class SpeedRenderer
     /// <returns>The cells.</returns>
     private static string[] Row(SpeedResult result, double? baseFps)
     {
-        var frameRate = SpeedCatalog.Find(result.Test)?.FrameRate;
+        var frameRate = result.FrameRate ?? SpeedCatalog.Find(result.Test)?.FrameRate;
         return
         [
             Name(result.Type),

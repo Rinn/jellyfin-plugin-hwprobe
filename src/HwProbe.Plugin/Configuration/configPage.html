@@ -87,6 +87,8 @@
                 let speedReport = null;
                 let speedMethod = 'Confirm';
                 let speedChosen = null;
+                let speedItem = null;
+                let speedFileTests = [];
                 const speedCompared = new Set();
                 const methods = {
                     Quick: 'Quick: one transcode, streams estimated from its fps',
@@ -626,7 +628,7 @@
 
                 // A rough count for the estimate; the server skips comparisons that don't apply to a backend.
                 function speedRuns(viable) {
-                    const tests = speedTests.filter(t => speedChosen.has(t.Key));
+                    const tests = allSpeedTests().filter(t => speedChosen.has(t.Key));
                     let runs = 0;
                     for (const hardware of [...viable.map(() => true), false]) {
                         for (const t of tests) {
@@ -642,6 +644,65 @@
                         }
                     }
                     return runs;
+                }
+
+                function allSpeedTests() {
+                    return speedTests.concat(speedFileTests);
+                }
+
+                // Searches movies and episodes through Jellyfin's own Items API; the server describes the chosen file.
+                function renderLibraryPicker(viable) {
+                    const div = el('div');
+                    div.appendChild(el('p', 'Your library (a movie or episode, read from where it\u2019s stored; network storage can slow it)', 'hwprobe-speed-heading'));
+                    const line = el('p');
+                    const search = el('input');
+                    search.type = 'search';
+                    search.placeholder = 'Search for a movie or episode';
+                    search.value = speedItem ? speedItem.Name : '';
+                    line.appendChild(search);
+                    div.appendChild(line);
+                    const found = el('div', null, 'hwprobe-choices');
+                    div.appendChild(found);
+                    const fileChoices = el('div', null, 'hwprobe-choices');
+                    div.appendChild(fileChoices);
+                    const showFileTests = () => {
+                        fileChoices.replaceChildren(...speedFileTests.map(t => checkbox(t.Label, speedChosen.has(t.Key), on => {
+                            if (on) { speedChosen.add(t.Key); } else { speedChosen.delete(t.Key); }
+                            results.dispatchEvent(new Event('hwprobe-speed-changed'));
+                        })));
+                    };
+                    const choose = item => {
+                        found.replaceChildren();
+                        search.value = item.Name;
+                        ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedFileTests', { itemId: item.Id }), dataType: 'json' }).then(t => {
+                            speedItem = { Id: item.Id, Name: item.Name };
+                            for (const old of speedFileTests) {
+                                speedChosen.delete(old.Key);
+                            }
+                            speedFileTests = t || [];
+                            if (speedFileTests.length) {
+                                speedChosen.add(speedFileTests[0].Key);
+                            }
+                            showFileTests();
+                            results.dispatchEvent(new Event('hwprobe-speed-changed'));
+                        }, () => { messageText.textContent = 'That item has no local video file to measure.'; });
+                    };
+                    let timer = null;
+                    search.addEventListener('input', () => {
+                        clearTimeout(timer);
+                        const term = search.value.trim();
+                        if (term.length < 2) {
+                            found.replaceChildren();
+                            return;
+                        }
+                        timer = setTimeout(() => {
+                            ApiClient.getItems(ApiClient.getCurrentUserId(), { SearchTerm: term, IncludeItemTypes: 'Movie,Episode', Recursive: true, Limit: 8 }).then(r => {
+                                found.replaceChildren(...(r.Items || []).map(item => action(item.SeriesName ? item.SeriesName + ': ' + item.Name : item.Name, () => choose(item))));
+                            });
+                        }, 300);
+                    });
+                    showFileTests();
+                    return div;
                 }
 
                 function renderSpeed(container, viable) {
@@ -670,12 +731,14 @@
                         button.disabled = runs === 0;
                     };
                     const pick = (set, key) => on => { if (on) { set.add(key); } else { set.delete(key); } update(); };
-                    container.appendChild(choices('Transcodes', speedTests.filter(t => !t.DecodeOnly).map(t => checkbox(t.Label, speedChosen.has(t.Key), pick(speedChosen, t.Key)))));
+                    container.appendChild(choices('Transcodes', speedTests.filter(t => !t.DecodeOnly && !t.Credit).map(t => checkbox(t.Label, speedChosen.has(t.Key), pick(speedChosen, t.Key)))));
+                    container.appendChild(choices('Real video samples (30 s, downloaded from Wikimedia Commons when chosen)', speedTests.filter(t => t.Credit).map(t => checkbox(t.Label, speedChosen.has(t.Key), pick(speedChosen, t.Key)))));
+                    container.appendChild(renderLibraryPicker(viable));
                     container.appendChild(choices('Decoding (fps only)', speedTests.filter(t => t.DecodeOnly).map(t => checkbox(t.Label, speedChosen.has(t.Key), pick(speedChosen, t.Key)))));
                     container.appendChild(choices('Compare', Object.entries(comparisons).map(([key, text]) => checkbox(text, speedCompared.has(key), pick(speedCompared, key)))));
 
                     const button = action('Measure speed', () => {
-                        const body = { Method: speedMethod, Tests: speedTests.filter(t => speedChosen.has(t.Key)).map(t => t.Key), Comparisons: [...speedCompared] };
+                        const body = { Method: speedMethod, Tests: allSpeedTests().filter(t => speedChosen.has(t.Key)).map(t => t.Key), Comparisons: [...speedCompared], ItemId: speedItem ? speedItem.Id : null };
                         ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed'), data: JSON.stringify(body), contentType: 'application/json' })
                             .then(loadStatus, response => (response && response.text ? response.text() : Promise.resolve('')).then(text => {
                                 messageText.textContent = 'Could not start: ' + (text.replace(/^"|"$/g, '') || 'a probe is running or a session is transcoding.');
@@ -687,6 +750,7 @@
                     container.appendChild(buttons);
                     container.appendChild(estimate);
                     update();
+                    results.addEventListener('hwprobe-speed-changed', update);
 
                     if (speedReport) {
                         container.appendChild(speedTable(speedReport));
@@ -711,14 +775,15 @@
                             continue;
                         }
                         const best = counted.reduce((a, b) => (b.streams > a.streams || (b.streams === a.streams && (b.fps || 0) > (a.fps || 0))) ? b : a);
-                        const label = tests[key] ? tests[key].Label : key;
+                        const first = base.find(x => x.test === key);
+                        const label = first.label || (tests[key] ? tests[key].Label : key);
                         row(summary, [label, best.streams === 0 ? 'No backend keeps one stream at real time' : 'Most streams: ' + backendName(best) + ' (' + streamsText(best) + ')']);
                     }
                     if (summary.childNodes.length) {
                         div.appendChild(summary);
                     }
 
-                    div.appendChild(el('p', 'Streams: transcodes kept at real time at once. Speed: one transcode alone, as a multiple of real time (1\u00d7 plays as fast as it\u2019s made). Change: speed against the same test with the base settings.', 'hwprobe-reason'));
+                    div.appendChild(el('p', 'Streams: transcodes kept at real time at once. Speed: one transcode alone, as a multiple of real time (1\u00d7 plays as fast as it\u2019s made). Change: speed against the same test with the base settings. Some GPUs (Apple VideoToolbox) decode more slowly when only decoding than inside a transcode.', 'hwprobe-reason'));
                     const table = el('table');
                     row(table, [el('th', 'Test'), el('th', 'Compared'), el('th', 'Streams'), el('th', 'Speed'), el('th', 'fps'), el('th', 'Change'), el('th')]);
                     let backend = null;
@@ -733,11 +798,16 @@
                             baseFps = x.fps;
                         }
                         const test = tests[x.test];
-                        const speed = x.fps && test ? (x.fps / test.FrameRate).toFixed(1) + '\u00d7' : '-';
+                        const rate = x.frameRate || (test && test.FrameRate);
+                        const speed = x.fps && rate ? (x.fps / rate).toFixed(1) + '\u00d7' : '-';
                         const fps = x.fps ? String(Math.round(x.fps)) : '-';
-                        row(table, [x.variant ? '' : (test ? test.Label : x.test), x.variant || '', streamsText(x), speed, fps, x.variant ? changeText(x.fps, baseFps) : '', el('td', x.note || '', 'hwprobe-reason')]);
+                        row(table, [x.variant ? '' : (x.label || (test ? test.Label : x.test)), x.variant || '', streamsText(x), speed, fps, x.variant ? changeText(x.fps, baseFps) : '', el('td', x.note || '', 'hwprobe-reason')]);
                     }
                     div.appendChild(table);
+                    const credits = [...new Set(r.results.map(x => x.credit || (tests[x.test] && tests[x.test].Credit)).filter(c => c))];
+                    if (credits.length) {
+                        div.appendChild(el('p', 'Samples: ' + credits.join('; ') + '.', 'hwprobe-reason'));
+                    }
                     return div;
                 }
 

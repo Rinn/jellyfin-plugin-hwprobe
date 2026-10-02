@@ -22,6 +22,9 @@ public sealed record SpeedSettings
     /// <summary>Gets a value indicating whether Intel low-power HEVC encoding is on.</summary>
     public bool LowPowerHevc { get; init; }
 
+    /// <summary>Gets a value indicating whether tone-mapping is on, for HDR files; HwProbe advises it, so it's on unless the server's is off.</summary>
+    public bool Tonemap { get; init; } = true;
+
     /// <summary>Gets a value indicating whether VPP tone-mapping is on.</summary>
     public bool VppTonemap { get; init; }
 

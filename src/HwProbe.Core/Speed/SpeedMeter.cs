@@ -39,14 +39,16 @@ public static class SpeedMeter
         ArgumentNullException.ThrowIfNull(launch);
 
         var single = (await launch(1, Content, cancellationToken))[0];
+        var fps = Fps(single);
         if (single.Status == FfmpegRunStatus.Exited && single.ExitCode == 0 && single.Duration < _shortest && single.Duration > TimeSpan.Zero)
         {
-            // Enough content to take about as long as the content plays.
+            // Enough content to take about as long as the content plays. Start-up, and restarting a short looped
+            // clip (slow with NVIDIA's cuvid decoders), only slow a run down, so the faster run is the closer figure.
             var longer = TimeSpan.FromSeconds(Math.Min(Content.TotalSeconds * Content.TotalSeconds / single.Duration.TotalSeconds, _longestContent.TotalSeconds));
-            single = (await launch(1, longer, cancellationToken))[0];
+            var longerFps = Fps((await launch(1, longer, cancellationToken))[0]);
+            fps = fps is { } first && longerFps is { } second ? Math.Max(first, second) : fps ?? longerFps;
         }
 
-        var fps = Fps(single);
         if (fps is null)
         {
             return new SpeedMeasurement(null, null, false, Failure(single));
@@ -63,8 +65,18 @@ public static class SpeedMeter
             return new SpeedMeasurement(fps, estimate, estimate == MaxStreams, null);
         }
 
-        async Task<bool> KeepsUpAsync(int copies) =>
-            (await launch(copies, Content, cancellationToken)).All(r => r.Status == FfmpegRunStatus.Exited && r.ExitCode == 0 && r.Duration <= Content + _startup);
+        var erroredAt = 0;
+        async Task<bool> KeepsUpAsync(int copies)
+        {
+            var runs = await launch(copies, Content, cancellationToken);
+            if (runs.Any(r => r.Status == FfmpegRunStatus.LaunchFailed || (r.Status == FfmpegRunStatus.Exited && r.ExitCode != 0)))
+            {
+                erroredAt = erroredAt == 0 ? copies : Math.Min(erroredAt, copies);
+                return false;
+            }
+
+            return runs.All(r => r.Status == FfmpegRunStatus.Exited && r.Duration <= Content + _startup);
+        }
 
         int streams;
         if (method == SpeedMethod.Confirm)
@@ -89,7 +101,11 @@ public static class SpeedMeter
             streams = failed == 0 ? passed : await SearchAsync(KeepsUpAsync, passed + 1, failed - 1, passed);
         }
 
-        return new SpeedMeasurement(fps, streams, streams == MaxStreams, null);
+        // Copies that fail rather than fall behind usually hit the driver's limit on sessions at once (NVENC has one).
+        var note = erroredAt == streams + 1
+            ? string.Create(CultureInfo.InvariantCulture, $"{erroredAt} at once failed to start, likely the driver's limit on sessions rather than speed.")
+            : null;
+        return new SpeedMeasurement(fps, streams, streams == MaxStreams, note);
     }
 
     /// <summary>Finds the most copies in a range that keep up, assuming fewer keep up when more do.</summary>

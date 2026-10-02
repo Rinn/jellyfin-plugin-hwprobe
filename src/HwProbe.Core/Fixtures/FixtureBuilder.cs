@@ -289,11 +289,12 @@ public sealed class FixtureBuilder
     /// <summary>Runs one encode to the temp path.</summary>
     /// <param name="arguments">ffmpeg arguments before the output path.</param>
     /// <param name="partial">The temp output path.</param>
+    /// <param name="timeout">The time limit.</param>
     /// <param name="cancellationToken">Cancels the encode.</param>
     /// <returns>Null when it wrote output; otherwise why it failed, with the temp file removed.</returns>
-    private async Task<string?> EncodeAsync(string arguments, string partial, CancellationToken cancellationToken)
+    private async Task<string?> EncodeAsync(string arguments, string partial, TimeSpan timeout, CancellationToken cancellationToken)
     {
-        var invocation = new FfmpegInvocation(_ffmpegPath, $"{arguments} \"{partial}\"", new Dictionary<string, string?>(), _timeout);
+        var invocation = new FfmpegInvocation(_ffmpegPath, $"{arguments} \"{partial}\"", new Dictionary<string, string?>(), timeout);
         var result = await _runner.RunAsync(invocation, cancellationToken);
         if (result.Status == FfmpegRunStatus.Exited && result.ExitCode == 0 && File.Exists(partial) && new FileInfo(partial).Length > 0)
         {
@@ -317,10 +318,11 @@ public sealed class FixtureBuilder
         DeleteIfExists(manifestPath);
         DeleteIfExists(partial);
 
-        var result = await EncodeAsync(spec.EncodeArguments, partial, cancellationToken);
+        var timeout = spec.GenerateTimeout ?? _timeout;
+        var result = await EncodeAsync(spec.EncodeArguments, partial, timeout, cancellationToken);
         if (result is not null && spec.FallbackArguments is not null)
         {
-            var fallback = await EncodeAsync(spec.FallbackArguments, partial, cancellationToken);
+            var fallback = await EncodeAsync(spec.FallbackArguments, partial, timeout, cancellationToken);
             result = fallback is null ? null : $"{result}; retry: {fallback}";
         }
 

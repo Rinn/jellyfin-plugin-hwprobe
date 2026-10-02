@@ -74,7 +74,7 @@ public sealed class SpeedEngine : IDisposable
         }
 
         var host = new HostInfoReader(_platform).Read();
-        var tests = speed.Tests.Select(SpeedCatalog.Find).OfType<SpeedTest>().ToList();
+        var tests = speed.Resolve();
         var clips = await BuildClipsAsync(options, caps, tests, cancellationToken);
 
         List<(HwType Type, string Device)> measured = [.. backends.Where(b => b.Type != HwType.none), (HwType.none, string.Empty)];
@@ -96,7 +96,7 @@ public sealed class SpeedEngine : IDisposable
                     var result = source is null ? new SpeedResult(type, device, test.Key, label, null, null, false, "The device didn't open.")
                         : variant is null ? new SpeedResult(type, device, test.Key, label, null, null, false, missing)
                         : await MeasureAsync(options, speed.Method, source, type, device, test, label, variant, baseCommand, c => baseCommand ??= c, cancellationToken);
-                    results.Add(result);
+                    results.Add(result with { Label = test.Label, FrameRate = test.FrameRate, Credit = test.Credit });
                     progress?.Report((++done, total));
                 }
             }
@@ -203,13 +203,18 @@ public sealed class SpeedEngine : IDisposable
                 {
                     return new SpeedResult(type, device, test.Key, label, null, null, false, test.DecodeOnly ? "Jellyfin decodes this in software." : ex.Message);
                 }
+                catch (NotSupportedException)
+                {
+                    // The command-line tool has no subtitle encoder to extract a file's internal text subtitles with.
+                    return new SpeedResult(type, device, test.Key, label, null, null, false, "Burning in a file's own text subtitles needs Jellyfin; measure it from the plugin.");
+                }
 
                 // Software decodes and encodes everything, so only a hardware backend can fall back.
                 var note = type == HwType.none ? null
                     : args.Hwaccel is null && args.HardwareDecoder is null ? "Jellyfin decodes this in software."
                     : !test.DecodeOnly && !args.HardwareEncoder ? "Jellyfin encodes this in software."
                     : null;
-                string Command(TimeSpan content) => SpeedCommandLine.Build(args, content, test.DecodeOnly);
+                string Command(TimeSpan content) => SpeedCommandLine.Build(args, content, test.DecodeOnly, test.StartAt);
 
                 var command = Command(SpeedMeter.Content);
                 if (label.Length == 0)

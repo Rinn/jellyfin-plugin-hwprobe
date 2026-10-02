@@ -37,6 +37,9 @@ internal sealed record CliOptions(
     /// <summary>Gets what to measure for speed after the probe, or null for no speed run.</summary>
     public SpeedOptions? Speed { get; init; }
 
+    /// <summary>Gets a real video file to measure, or null.</summary>
+    public string? SpeedFilePath { get; init; }
+
     /// <summary>Gets where to write the speed report as JSON, or null.</summary>
     public string? SpeedJsonPath { get; init; }
 }

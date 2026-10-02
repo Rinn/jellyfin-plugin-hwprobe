@@ -105,8 +105,27 @@ internal static class HwProbeApp
             await stderr.WriteLineAsync($"hwprobe: wrote {options.DiagnosticsPath}. Attach it to an issue: {DiagnosticsBundle.IssueUrl}".AsMemory(), cancellationToken);
         }
 
-        if (options.Speed is { } speed)
+        if (options.Speed is { } requested)
         {
+            var speed = requested;
+            if (options.SpeedFilePath is { } path)
+            {
+                SpeedFile file;
+                try
+                {
+                    file = await FfprobeFile.ReadAsync(location.Path, path, cancellationToken);
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or IOException or System.ComponentModel.Win32Exception)
+                {
+                    await stderr.WriteLineAsync($"hwprobe: {ex.Message}".AsMemory(), cancellationToken);
+                    return (int)HwProbeExitCode.UsageError;
+                }
+
+                // Without named file tests, measure the file's own transcodes as well as the chosen ones.
+                var fileTests = SpeedFileTests.For(file).Select(t => t.Key).ToList();
+                speed = speed with { Tests = speed.Tests.Any(t => fileTests.Contains(t)) ? speed.Tests : [.. speed.Tests, .. fileTests], File = file };
+            }
+
             var viable = report.Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device)).ToList();
             using var engine = new SpeedEngine(new FfmpegRunner(), new ArgumentSourceFactory(), platform, TimeProvider.System, EnvironmentRules.Standalone());
             var progress = new Progress<(int Done, int Total)>(p => stderr.Write($"\rhwprobe: speed {p.Done} of {p.Total}"));

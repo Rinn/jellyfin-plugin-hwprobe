@@ -11,4 +11,14 @@ namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 /// <param name="Streams">Transcodes that keep real time at once, or null for a decode test or when not measured.</param>
 /// <param name="Capped">Whether <see cref="Streams"/> is a lower bound.</param>
 /// <param name="Note">Why something is missing or what Jellyfin does instead, or null.</param>
-public sealed record SpeedResult(HwType Type, string Device, string Test, string Variant, double? Fps, int? Streams, bool Capped, string? Note);
+public sealed record SpeedResult(HwType Type, string Device, string Test, string Variant, double? Fps, int? Streams, bool Capped, string? Note)
+{
+    /// <summary>Gets the test's label, so a report reads without the catalog (a file's tests aren't in it).</summary>
+    public string? Label { get; init; }
+
+    /// <summary>Gets the source frame rate, so fps can be shown as a multiple of real time.</summary>
+    public float? FrameRate { get; init; }
+
+    /// <summary>Gets the credit a sample's licence requires, or null.</summary>
+    public string? Credit { get; init; }
+}

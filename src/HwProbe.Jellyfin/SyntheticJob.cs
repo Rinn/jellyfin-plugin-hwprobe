@@ -20,7 +20,7 @@ public static class SyntheticJob
 
         var stream = new MediaStream
         {
-            Index = 0,
+            Index = cell.VideoIndex,
             Type = MediaStreamType.Video,
             Codec = cell.InputCodec,
             BitDepth = cell.BitDepth,
@@ -38,28 +38,29 @@ public static class SyntheticJob
 
         // External, like a track the server has extracted: it reaches the same subtitles= burn-in filter
         // without needing the server's subtitle extraction.
-        var subtitle = cell.SubtitlePath is null && cell.GraphicalSubtitlePath is null ? null : new MediaStream
-        {
-            Index = 2,
-            Type = MediaStreamType.Subtitle,
-            Codec = cell.GraphicalSubtitlePath is null ? "ass" : "PGSSUB",
-            IsExternal = true,
-            Path = cell.GraphicalSubtitlePath ?? cell.SubtitlePath,
-        };
+        var subtitle = cell.InternalSubtitleIndex is { } index
+            ? new MediaStream { Index = index, Type = MediaStreamType.Subtitle, Codec = cell.InternalSubtitleCodec }
+            : cell.SubtitlePath is null && cell.GraphicalSubtitlePath is null ? null : new MediaStream
+            {
+                Index = 2,
+                Type = MediaStreamType.Subtitle,
+                Codec = cell.GraphicalSubtitlePath is null ? "ass" : "PGSSUB",
+                IsExternal = true,
+                Path = cell.GraphicalSubtitlePath ?? cell.SubtitlePath,
+            };
 
         var audio = !cell.Audio ? null : new MediaStream
         {
-            Index = 1,
+            Index = cell.AudioIndex,
             Type = MediaStreamType.Audio,
-            Codec = "aac",
-            Channels = 6,
-            ChannelLayout = "5.1",
+            Codec = cell.AudioCodec,
+            Channels = cell.AudioChannels,
             SampleRate = 48000,
         };
 
         var source = new MediaSourceInfo
         {
-            Id = "hwprobe",
+            Id = cell.MediaSourceId ?? "hwprobe",
             Protocol = MediaProtocol.File,
             VideoType = VideoType.VideoFile,
             Path = sourcePath,

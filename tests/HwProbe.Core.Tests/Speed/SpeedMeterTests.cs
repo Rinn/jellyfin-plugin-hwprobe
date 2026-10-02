@@ -111,6 +111,39 @@ public sealed class SpeedMeterTests
         Assert.Equal("ffmpeg exited with 1: No such filter: 'scale_vt'", broken.Note);
     }
 
+    /// <summary>Copies that fail to start rather than fall behind are reported as a likely session limit.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task SessionLimitIsNamed()
+    {
+        Task<IReadOnlyList<FfmpegRunResult>> LimitedAsync(int copies, TimeSpan content, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<FfmpegRunResult>>([.. Enumerable.Range(0, copies).Select(i => i < 3
+                ? new FfmpegRunResult(FfmpegRunStatus.Exited, 0, string.Empty, string.Empty, (long)(content.TotalSeconds * 24), TimeSpan.FromSeconds(copies == 1 ? 6 : 9), null)
+                : new FfmpegRunResult(FfmpegRunStatus.Exited, 1, string.Empty, "OpenEncodeSessionEx failed: incompatible client key (21)", null, TimeSpan.FromSeconds(0.3), null))]);
+
+        var measured = await SpeedMeter.MeasureAsync(LimitedAsync, SpeedMethod.Full, 24, countStreams: true, TestContext.Current.CancellationToken);
+
+        Assert.Equal(3, measured.Streams);
+        Assert.Equal("4 at once failed to start, likely the driver's limit on sessions rather than speed.", measured.Note);
+    }
+
+    /// <summary>When the longer single run is slower (a looped clip restarting), the faster first run's fps is kept.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task FasterRunIsKept()
+    {
+        var calls = 0;
+        Task<IReadOnlyList<FfmpegRunResult>> SlowerLaterAsync(int copies, TimeSpan content, CancellationToken ct)
+        {
+            var seconds = ++calls == 1 ? 1.0 : 30.0;
+            return Task.FromResult<IReadOnlyList<FfmpegRunResult>>([new(FfmpegRunStatus.Exited, 0, string.Empty, string.Empty, 240, TimeSpan.FromSeconds(seconds), null)]);
+        }
+
+        var measured = await SpeedMeter.MeasureAsync(SlowerLaterAsync, SpeedMethod.Quick, 24, countStreams: false, TestContext.Current.CancellationToken);
+
+        Assert.Equal(240, measured.Fps!.Value, 1);
+    }
+
     /// <summary>A scripted host that keeps a fixed number of copies at real time.</summary>
     /// <param name="capacity">Copies that finish within real time at once.</param>
     /// <param name="fps">One copy's fps when alone.</param>

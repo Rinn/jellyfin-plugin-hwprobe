@@ -37,8 +37,9 @@ public sealed class ProbeService : IDisposable
     /// <param name="sessions">Sessions, to refuse probing while anything transcodes.</param>
     /// <param name="baseline">Environment values captured when the plugin loaded.</param>
     /// <param name="config">Server configuration, for the encoding settings a speed run starts from.</param>
+    /// <param name="files">Describes library items for speed runs on real files.</param>
     /// <param name="logger">Logger.</param>
-    public ProbeService(IArgumentSourceFactory arguments, IMediaEncoder mediaEncoder, IApplicationPaths paths, ISessionManager sessions, ServerEnvironmentBaseline baseline, IServerConfigurationManager config, ILogger<ProbeService> logger)
+    public ProbeService(IArgumentSourceFactory arguments, IMediaEncoder mediaEncoder, IApplicationPaths paths, ISessionManager sessions, ServerEnvironmentBaseline baseline, IServerConfigurationManager config, LibraryFiles files, ILogger<ProbeService> logger)
         : this(
             ct => RunEngineAsync(arguments, mediaEncoder, paths, baseline, logger, ct),
             TranscodingCheck(sessions),
@@ -47,9 +48,11 @@ public sealed class ProbeService : IDisposable
             TimeSpan.FromSeconds(2),
             logger)
     {
+        ArgumentNullException.ThrowIfNull(files);
         CurrentFfmpeg = () => (mediaEncoder.EncoderPath, mediaEncoder.EncoderVersion);
         MeasureSpeed = (speed, backends, progress, ct) => RunSpeedEngineAsync(arguments, mediaEncoder, paths, baseline, speed, backends, progress, ct);
         ServerSpeedSettings = () => SettingsFrom(config.GetEncodingOptions());
+        FindFile = files.Find;
     }
 
     /// <summary>Initializes a new instance of the <see cref="ProbeService"/> class with injected behaviour.</summary>
@@ -80,6 +83,9 @@ public sealed class ProbeService : IDisposable
 
     /// <summary>Gets the speed run, or null when this service can't measure speed.</summary>
     internal Func<SpeedOptions, IReadOnlyCollection<(HwType Type, string Device)>, IProgress<(int Done, int Total)>, CancellationToken, Task<SpeedReport>>? MeasureSpeed { get; init; }
+
+    /// <summary>Gets the lookup from a library item to its file.</summary>
+    internal Func<Guid, SpeedFile?> FindFile { get; init; } = _ => null;
 
     /// <summary>Gets the server's encoding settings, as a speed run starts from them.</summary>
     internal Func<SpeedSettings> ServerSpeedSettings { get; init; } = () => new SpeedSettings();
@@ -136,7 +142,8 @@ public sealed class ProbeService : IDisposable
     public async Task<ProbeRunResult> StartSpeedAsync(SpeedRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (MeasureSpeed is not { } measure || ParseSpeed(request) is not { } speed)
+        var file = request.ItemId is { } item ? FindFile(item) : null;
+        if (MeasureSpeed is not { } measure || (request.ItemId is not null && file is null) || ParseSpeed(request, file) is not { } speed)
         {
             return ProbeRunResult.Invalid;
         }
@@ -235,8 +242,9 @@ public sealed class ProbeService : IDisposable
 
     /// <summary>Parses a request from the page.</summary>
     /// <param name="request">The request.</param>
+    /// <param name="file">The library item's file, or null.</param>
     /// <returns>The options with default settings, or null when a name is unknown.</returns>
-    private static SpeedOptions? ParseSpeed(SpeedRequest request)
+    private static SpeedOptions? ParseSpeed(SpeedRequest request, SpeedFile? file)
     {
         if (!Enum.TryParse<SpeedMethod>(request.Method, ignoreCase: true, out var method) || !Enum.IsDefined(method))
         {
@@ -244,7 +252,8 @@ public sealed class ProbeService : IDisposable
         }
 
         var tests = request.Tests.Count == 0 ? SpeedCatalog.Default : request.Tests;
-        if (tests.Any(t => SpeedCatalog.Find(t) is null))
+        var fileTests = file is null ? [] : SpeedFileTests.For(file);
+        if (tests.Any(t => SpeedCatalog.Find(t) is null && !fileTests.Any(f => f.Key == t)))
         {
             return null;
         }
@@ -260,7 +269,7 @@ public sealed class ProbeService : IDisposable
             comparisons |= comparison;
         }
 
-        return new SpeedOptions(method, tests, comparisons, new SpeedSettings());
+        return new SpeedOptions(method, tests, comparisons, new SpeedSettings()) { File = file };
     }
 
     /// <summary>Reads the speed run's starting settings from the server's encoding options.</summary>
@@ -279,6 +288,7 @@ public sealed class ProbeService : IDisposable
         EnhancedNvdec = options.EnableEnhancedNvdecDecoder,
         DoubleRate = options.DeinterlaceDoubleRate,
         Bwdif = options.DeinterlaceMethod == DeinterlaceMethod.bwdif,
+        Tonemap = options.EnableTonemapping,
     };
 
     /// <summary>Returns a check for any session that is transcoding.</summary>

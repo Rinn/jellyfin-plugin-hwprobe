@@ -40,6 +40,14 @@ HWPROBE_INSTALL=existing HWPROBE_BASE=http://host:18096 scripts/container-plugin
 
 `src/HwProbe.Cli` runs the same probe without the plugin. Run it where Jellyfin runs (inside the container, for Docker). `--help` lists the options.
 
+## Speed runs
+
+`SpeedEngine` measures the tests in `SpeedCatalog` on each viable backend and software. Arguments come from `EncodingHelper` with `ProbeCell.FullQuality` (quality, audio and input arguments, as a real request gets them); `SpeedCommandLine` loops the inputs and bounds the run with `-t`. `SpeedMeter` does the counting and is tested without ffmpeg. A real file (`SpeedFile`) comes from the library item's media source in the plugin and from ffprobe (`FfprobeFile`) in the CLI; `SpeedFileTests` lists its tests, starting a tenth of the way in. Clips are generated with the server's ffmpeg and cached with the other fixtures; the PGS sample is downloaded from FFmpeg's FATE suite.
+
+```sh
+hwprobe --speed confirm --speed-tests 1080p-h264,decode-hevc --speed-compare preset,vbr --speed-json speed.json
+```
+
 ## Diagnostics zips
 
 A user's zip (plugin **Download diagnostics**, or `--diagnostics`) is laid out like `tests/Corpus`:
@@ -88,4 +96,10 @@ HwProbe only downloads test clips from FFmpeg's FATE sample suite, each pinned b
   - `vp9-test-vectors/vp90-2-09-lf_deltas.webm`
   - `vp9-test-vectors/vp92-2-20-10bit-yuv420.webm`
   - `vp8-test-vectors-r1/vp80-00-comprehensive-001.ivf`
+- Only for the PGS subtitle speed test: `sub/pgs_sub.sup`. ffmpeg has no PGS encoder.
+
+Speed samples, only when chosen, each a 30-second segment read with HTTP range requests and encoded the same way (1080p 24 fps H.264, CRF 18 capped at 10 Mbps, stereo AAC). They can't be pinned by hash, since the encode depends on the ffmpeg version.
+
+- Wikimedia Commons 1080p VP9 transcodes: Tears of Steel (CC BY 3.0), Sintel (CC BY 3.0), Sol Levante (CC BY 4.0). Requests carry a descriptive User-Agent, as Wikimedia asks.
+- Netflix Open Content (`s3.amazonaws.com/download.opencontent.netflix.com`, CC BY 4.0): the Sol Levante HDR10 ProRes master and its 5.1 IMF audio, encoded to 4K HEVC 10-bit HDR10. About 4.3 GB per segment.
   - `av1-test-vectors/av1-1-b8-02-allintra.ivf`

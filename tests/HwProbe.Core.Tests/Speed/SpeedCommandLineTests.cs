@@ -33,6 +33,14 @@ public sealed class SpeedCommandLineTests
             "-hide_banner -v warning -nostats -progress pipe:1 -stream_loop -1 -i file:\"/c/a.mkv\" -t 10 -an -f null -",
             SpeedCommandLine.Build(_args with { InputArgument = " -i file:\"/c/a.mkv\"" }, TimeSpan.FromSeconds(10), decodeOnly: true));
 
+    /// <summary>A start point seeks the first input only.</summary>
+    [Fact]
+    public void StartSeeksTheVideo() =>
+        Assert.Contains(
+            "-hwaccel videotoolbox -ss 720 -stream_loop -1 -i file:\"/c/a.mkv\" -stream_loop -1 -i file:\"/c/s.sup\"",
+            SpeedCommandLine.Build(_args, TimeSpan.FromSeconds(10), decodeOnly: false, TimeSpan.FromMinutes(12)),
+            StringComparison.Ordinal);
+
     /// <summary>Arguments generated without the input can't be measured.</summary>
     [Fact]
     public void InputIsRequired() =>
