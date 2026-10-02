@@ -420,14 +420,30 @@
                     return value || 'Not set';
                 }
 
+                function restartPrompt() {
+                    const pending = el('p', 'Backend changed; Jellyfin needs a restart. ');
+                    const button = action('Restart Jellyfin', restart);
+                    button.classList.add('hwprobe-danger');
+                    pending.appendChild(button);
+                    return pending;
+                }
+
+                // A backend that failed every test still gets used for every transcode until it's changed.
+                function renderBrokenBackend(container, viable) {
+                    const type = encoding && encoding.HardwareAccelerationType;
+                    if (!type || type === 'none' || viable.some(b => b.type === type)) {
+                        return;
+                    }
+                    const warning = el('p', null, 'hwprobe-warn');
+                    warning.appendChild(document.createTextNode('Jellyfin is set to use ' + (names[type] || type) + ', which didn\u2019t work in the last probe. Transcodes that use it can fail. '));
+                    warning.appendChild(action('Use software (None)', () => post('HwProbe/UseBackend', { Type: 'none', Device: '' })));
+                    container.appendChild(warning);
+                }
+
                 function renderSettings(container, viable) {
                     container.replaceChildren();
                     if (restartRequired) {
-                        const pending = el('p', 'Backend changed; Jellyfin needs a restart. ');
-                        const button = action('Restart Jellyfin', restart);
-                        button.classList.add('hwprobe-danger');
-                        pending.appendChild(button);
-                        container.appendChild(pending);
+                        container.appendChild(restartPrompt());
                     }
                     if (viable.length > 1) {
                         const tabs = el('div', null, 'hwprobe-tabs');
@@ -526,7 +542,11 @@
 
                     const viable = report.backends.filter(b => b.verdict === 'Viable').sort(byDropdown);
                     const available = section('Available');
+                    renderBrokenBackend(available, viable);
                     if (viable.length === 0) {
+                        if (restartRequired) {
+                            available.appendChild(restartPrompt());
+                        }
                         available.appendChild(el('p', 'None'));
                     } else {
                         available.appendChild(backendTable(viable.map(b => [b.type, b.device, tiers[b.tier] || ''])));

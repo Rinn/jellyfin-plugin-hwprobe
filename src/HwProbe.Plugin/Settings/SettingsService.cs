@@ -131,7 +131,7 @@ public sealed class SettingsService : IDisposable
             cancellationToken);
     }
 
-    /// <summary>Switches the hardware acceleration backend and device to one the latest report found working.</summary>
+    /// <summary>Switches the hardware acceleration backend and device to one the latest report found working, or to software (<c>none</c>).</summary>
     /// <param name="choice">The backend and device.</param>
     /// <param name="user">The admin making the change.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
@@ -148,8 +148,9 @@ public sealed class SettingsService : IDisposable
                     return refusal!;
                 }
 
+                // Software (none) always works, so it needs no probe result.
                 if (!Enum.TryParse<HwType>(choice.Type, out var type)
-                    || !report.Backends.Any(b => b.Type == type && b.Device == choice.Device && b.Verdict == BackendVerdict.Viable))
+                    || (type != HwType.none && !report.Backends.Any(b => b.Type == type && b.Device == choice.Device && b.Verdict == BackendVerdict.Viable)))
                 {
                     return Refuse($"{choice.Type} on {choice.Device} didn't work in the last probe.");
                 }

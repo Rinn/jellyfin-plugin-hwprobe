@@ -106,6 +106,20 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.Equal(SettingsHarness.Node, _harness.Saved.QsvDevice);
     }
 
+    /// <summary>Switching to software needs no viable backend, and leaves the device settings alone.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task UseBackendCanAlwaysSwitchToSoftware()
+    {
+        var device = _harness.Saved.VaapiDevice;
+
+        var result = await _harness.Service.UseBackendAsync(new("none", string.Empty), "admin", TestContext.Current.CancellationToken);
+
+        Assert.Equal(ApplyOutcome.Applied, result.Outcome);
+        Assert.Equal(HardwareAccelerationType.none, _harness.Saved.HardwareAccelerationType);
+        Assert.Equal(device, _harness.Saved.VaapiDevice);
+    }
+
     /// <summary>Reverting a backend switch changes the backend again, so a restart stays pending.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

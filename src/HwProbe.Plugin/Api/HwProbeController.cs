@@ -71,7 +71,7 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     public async Task<ActionResult<ApplyResult>> ApplyAsync([FromBody] IReadOnlyList<SettingChange> changes, CancellationToken cancellationToken) =>
         ToResponse(await settings.ApplyAsync(changes, UserName(), cancellationToken));
 
-    /// <summary>Switches the hardware acceleration backend and device to one the latest report found working.</summary>
+    /// <summary>Switches the hardware acceleration backend and device to one the latest report found working, or to software (<c>none</c>).</summary>
     /// <param name="choice">The backend and device.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>The result, with <c>RestartRequired</c> set.</returns>
