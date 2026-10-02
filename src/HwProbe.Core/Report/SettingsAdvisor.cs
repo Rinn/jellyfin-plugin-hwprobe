@@ -8,7 +8,8 @@ namespace Jellyfin.Plugin.HwProbe.Core.Report;
 /// <remarks>
 /// Which options appear for which backend, their labels and their headings follow jellyfin-web's Transcoding page
 /// (src/apps/dashboard/routes/playback/transcoding.tsx, features/playback/constants/codecs.ts and the en-us strings),
-/// read on 2026-10-01.
+/// read on 2026-10-01. Trickplay options follow the Trickplay page (routes/playback/trickplay.tsx) and
+/// MediaEncoder.ExtractVideoImagesOnIntervalAccelerated, read at v12.1 on 2026-10-02.
 /// </remarks>
 public static class SettingsAdvisor
 {
@@ -16,6 +17,8 @@ public static class SettingsAdvisor
     private const string EncodingSection = "Hardware encoding options";
     private const string FormatSection = "Encoding format options";
     private const string TonemapSection = "Tone mapping";
+    private const string TrickplaySection = "Trickplay";
+    private const string NotUsed = "Not used with this backend";
     private const string NotTested = "Not tested";
 
     // codecs.ts CODECS: the decoding checkboxes and the backends that show each one.
@@ -85,15 +88,15 @@ public static class SettingsAdvisor
         advice.Add(Advise(EncodingSection, "EnableHardwareEncoding", "Enable hardware encoding", Cell(backend.Encode, "h264")));
         if (intel)
         {
-            const string NotUsed = "Not used with this driver";
+            const string NotUsedByDriver = "Not used with this driver";
 
             // Jellyfin's Intel guide: on Linux, low-power mode needs the HuC firmware, and Gen 9 has low-power H.264 only.
             var huc = context.Os == HostOs.Linux ? new Uri(LowPowerAdvice.GuideUrl) : null;
             advice.Add(WithFix(
-                Advise(EncodingSection, "EnableIntelLowPowerH264HwEncoder", "Enable Intel Low-Power H.264 hardware encoder", Cell(backend.Encode, "h264_lowpower"), NotUsed),
+                Advise(EncodingSection, "EnableIntelLowPowerH264HwEncoder", "Enable Intel Low-Power H.264 hardware encoder", Cell(backend.Encode, "h264_lowpower"), NotUsedByDriver),
                 huc is null ? null : new Fix("Enable HuC firmware", huc)));
             advice.Add(WithFix(
-                Advise(EncodingSection, "EnableIntelLowPowerHevcHwEncoder", "Enable Intel Low-Power HEVC hardware encoder", Cell(backend.Encode, "hevc_lowpower"), NotUsed),
+                Advise(EncodingSection, "EnableIntelLowPowerHevcHwEncoder", "Enable Intel Low-Power HEVC hardware encoder", Cell(backend.Encode, "hevc_lowpower"), NotUsedByDriver),
                 huc is null ? null : new Fix("Gen 11+: enable HuC firmware", huc)));
         }
 
@@ -115,7 +118,53 @@ public static class SettingsAdvisor
             advice.Add(Tonemap(backend, "EnableVideoToolboxTonemapping", "Enable VideoToolbox Tone mapping"));
         }
 
+        advice.AddRange(Trickplay(backend, context, advice));
         return advice;
+    }
+
+    /// <summary>Advice for the Trickplay page's hardware options, which reuse the Transcoding page's settings.</summary>
+    /// <param name="backend">The backend's results.</param>
+    /// <param name="context">Host facts.</param>
+    /// <param name="transcoding">The Transcoding page advice already given.</param>
+    /// <returns>The trickplay advice.</returns>
+    private static IEnumerable<SettingAdvice> Trickplay(BackendReport backend, AdviceContext context, List<SettingAdvice> transcoding)
+    {
+        var type = backend.Type;
+        if (type == HwType.v4l2m2m)
+        {
+            yield return new(TrickplaySection, "Trickplay:EnableHwAcceleration", "Enable hardware decoding", SettingState.LeaveOff, NotUsed);
+            yield return new(TrickplaySection, "Trickplay:EnableHwEncoding", "Enable hardware accelerated MJPEG encoding", SettingState.LeaveOff, NotUsed);
+            yield break;
+        }
+
+        yield return Advise(TrickplaySection, "Trickplay:EnableHwAcceleration", "Enable hardware decoding", Cell(backend.Decode, "h264"));
+
+        // The MJPEG encoder is only picked with the Transcoding page's hardware encoding on (EncodingHelper.GetMjpegEncoder).
+        const string MjpegLabel = "Enable hardware accelerated MJPEG encoding";
+        var mjpeg = backend.Encode.ContainsKey("mjpeg")
+            ? Advise(TrickplaySection, "Trickplay:EnableHwEncoding", MjpegLabel, Cell(backend.Encode, "mjpeg"))
+            : new(TrickplaySection, "Trickplay:EnableHwEncoding", MjpegLabel, type is HwType.nvenc or HwType.amf ? SettingState.LeaveOff : SettingState.NotTested, type is HwType.nvenc or HwType.amf ? NotUsed : NotTested);
+        var encoding = transcoding.Find(a => a.Setting == "EnableHardwareEncoding");
+        yield return mjpeg.State == SettingState.TurnOn && encoding?.State != SettingState.TurnOn
+            ? mjpeg with { State = SettingState.LeaveOff, Note = "Needs hardware encoding" }
+            : mjpeg;
+
+        // Key-frame-only extraction quietly drops to software decoding on backends that can't do it.
+        const string KeyFrameSetting = "Trickplay:EnableKeyFrameOnlyExtraction";
+        const string KeyFrameLabel = "Only generate images from key frames";
+        const string SoftwareNote = "Turns off hardware decoding with this backend";
+        if (type == HwType.qsv && transcoding.Find(a => a.Setting == "PreferSystemNativeHwDecoder")?.State != SettingState.TurnOn)
+        {
+            yield return new(TrickplaySection, KeyFrameSetting, KeyFrameLabel, SettingState.LeaveOff, SoftwareNote);
+        }
+        else if (type == HwType.amf && context.Os != HostOs.Windows)
+        {
+            yield return new(TrickplaySection, KeyFrameSetting, KeyFrameLabel, SettingState.LeaveOff, SoftwareNote);
+        }
+        else if (type == HwType.nvenc)
+        {
+            yield return new(TrickplaySection, KeyFrameSetting, KeyFrameLabel, SettingState.NotTested, "Needs the enhanced NVDEC decoder");
+        }
     }
 
     /// <summary>Builds advice from one test's outcome.</summary>

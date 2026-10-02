@@ -22,6 +22,16 @@ public sealed class VerdictEvaluatorTests
         Assert.Equal(ProbeOutcome.Pass, VerdictEvaluator.Evaluate(Exited(0, 10, stderr), _vt));
     }
 
+    /// <summary>mjpeg_videotoolbox's warning about an unsupported speed hint doesn't stop a pass.</summary>
+    [Fact]
+    public void RecordedVideoToolboxMjpegPassIsPass()
+    {
+        var stderr = CorpusFile.Load("stderr/videotoolbox-mjpeg-pass.txt");
+
+        Assert.Contains("is not supported on this device", stderr, StringComparison.Ordinal);
+        Assert.Equal(ProbeOutcome.Pass, VerdictEvaluator.Evaluate(Exited(0, 10, stderr), _vt));
+    }
+
     /// <summary>The headline case: exit 0 and frames, but decoded in software.</summary>
     [Fact]
     public void RecordedCleanExitSoftwareFallbackIsNotPass()

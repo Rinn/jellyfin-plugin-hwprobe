@@ -2,7 +2,7 @@
 
 Tests which hardware transcoding options work on a Jellyfin server.
 
-Jellyfin lists every hardware acceleration option on every server, whether or not the GPU supports it. HwProbe runs short test transcodes and shows, for each option on the Transcoding page:
+Jellyfin lists every hardware acceleration option on every server, whether or not the GPU supports it. HwProbe runs short test transcodes and shows, for each option on the Transcoding and Trickplay pages:
 
 - whether it works on this server
 - how to fix it, if it doesn't

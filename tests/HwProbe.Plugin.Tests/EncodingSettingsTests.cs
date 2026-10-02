@@ -48,9 +48,11 @@ public sealed class EncodingSettingsTests
             "HardwareDecodingCodecs:h264", "EnableDecodingColorDepth10Hevc", "EnableDecodingColorDepth10Vp9", "EnableDecodingColorDepth10HevcRext",
             "EnableDecodingColorDepth12HevcRext", "PreferSystemNativeHwDecoder", "EnableHardwareEncoding", "EnableIntelLowPowerH264HwEncoder",
             "EnableIntelLowPowerHevcHwEncoder", "AllowHevcEncoding", "AllowAv1Encoding", "EnableTonemapping", "EnableVppTonemapping", "EnableVideoToolboxTonemapping",
+            "Trickplay:EnableHwAcceleration", "Trickplay:EnableHwEncoding", "Trickplay:EnableKeyFrameOnlyExtraction",
         ];
 
-        Assert.All(advisorKeys, k => Assert.True(EncodingSettings.IsKnown(k), k));
+        Assert.All(advisorKeys, k => Assert.True(ServerSettings.IsKnown(k), k));
+        Assert.False(ServerSettings.IsKnown("Trickplay:Interval"));
         Assert.False(EncodingSettings.IsKnown("EncoderAppPath"));
         Assert.False(EncodingSettings.IsKnown("HardwareDecodingCodecs:"));
         Assert.Throws<ArgumentException>(() => EncodingSettings.Read(new EncodingOptions(), "EncoderAppPath"));

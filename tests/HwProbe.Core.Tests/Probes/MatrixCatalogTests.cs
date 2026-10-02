@@ -56,6 +56,30 @@ public sealed class MatrixCatalogTests
         Assert.Equal(intel, tonemap.Any(c => c.Cell.VppTonemap));
     }
 
+    /// <summary>Backends with a hardware MJPEG encoder get a trickplay-sized MJPEG cell; others don't.</summary>
+    /// <param name="type">The backend.</param>
+    /// <param name="mjpeg">Whether Jellyfin has an MJPEG encoder for it.</param>
+    [Theory]
+    [InlineData(HwType.qsv, true)]
+    [InlineData(HwType.vaapi, true)]
+    [InlineData(HwType.videotoolbox, true)]
+    [InlineData(HwType.rkmpp, true)]
+    [InlineData(HwType.nvenc, false)]
+    [InlineData(HwType.amf, false)]
+    [InlineData(HwType.v4l2m2m, false)]
+    public void MjpegCellForTrickplay(HwType type, bool mjpeg)
+    {
+        var cell = MatrixCatalog.For(type).SingleOrDefault(c => c.Key == "mjpeg");
+
+        Assert.Equal(mjpeg, cell is not null);
+        if (cell is not null)
+        {
+            Assert.Equal(MatrixGroup.Encode, cell.Group);
+            Assert.True(cell.Cell.HardwareDecode);
+            Assert.Equal(320, cell.Cell.MaxWidth);
+        }
+    }
+
     /// <summary>Every backend but v4l2m2m gets an interlaced deinterlace cell.</summary>
     [Fact]
     public void DeinterlaceCellIsInterlaced()

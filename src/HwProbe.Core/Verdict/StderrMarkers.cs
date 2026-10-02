@@ -77,9 +77,15 @@ public static class StderrMarkers
     /// <summary>Lines that match a failure marker but don't affect the transcode; removed before matching.</summary>
     /// <remarks>
     /// Stream probing's own decoder open (libavformat, avformat_find_stream_info). Observed with jellyfin-ffmpeg
-    /// 8.1.3 on a VC-1 elementary stream that then decoded in hardware.
+    /// 8.1.3 on a VC-1 elementary stream that then decoded in hardware. VideoToolbox declining an optional speed
+    /// hint, logged as a warning before encoding carries on (libavcodec/videotoolboxenc.c). Observed with
+    /// jellyfin-ffmpeg 8.1.3 for mjpeg_videotoolbox on Apple silicon.
     /// </remarks>
-    public static readonly IReadOnlyList<string> Harmless = ["Failed to open codec in avformat_find_stream_info"];
+    public static readonly IReadOnlyList<string> Harmless =
+    [
+        "Failed to open codec in avformat_find_stream_info",
+        "PrioritizeEncodingSpeedOverQuality property is not supported on this device. Ignoring.",
+    ];
 
     /// <summary>Gets every failure marker, for picking the stderr lines that explain a failure.</summary>
     public static IReadOnlyList<string> AllFailures { get; } = [.. PermissionDenied, .. DeviceUnavailable, .. FilterUnsupported, .. CodecUnsupported, .. Generic];

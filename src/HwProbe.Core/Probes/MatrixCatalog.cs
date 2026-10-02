@@ -66,6 +66,13 @@ public static class MatrixCatalog
             }
         }
 
+        if (type is HwType.qsv or HwType.vaapi or HwType.videotoolbox or HwType.rkmpp)
+        {
+            // Trickplay's MJPEG encoding; EncodingHelper's _mjpegCodecMap has encoders for these backends only.
+            var mjpeg = Encode(FixtureCatalog.H264, "mjpeg", hardwareDecode: true);
+            cells.Add(mjpeg with { Cell = mjpeg.Cell with { MaxWidth = 320 } });
+        }
+
         return cells;
     }
 

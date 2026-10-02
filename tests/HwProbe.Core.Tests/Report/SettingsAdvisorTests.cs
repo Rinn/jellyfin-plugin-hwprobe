@@ -60,6 +60,7 @@ public sealed class SettingsAdvisorTests
                 "Enable hardware encoding", "Enable Intel Low-Power H.264 hardware encoder", "Enable Intel Low-Power HEVC hardware encoder",
                 "Allow encoding in HEVC format", "Allow encoding in AV1 format",
                 "Enable Tone mapping", "Enable VPP Tone mapping",
+                "Enable hardware decoding", "Enable hardware accelerated MJPEG encoding",
             ],
             labels);
     }
@@ -146,5 +147,58 @@ public sealed class SettingsAdvisorTests
         Assert.Contains("EnableVideoToolboxTonemapping", videotoolbox);
         Assert.DoesNotContain("HardwareDecodingCodecs:vc1", videotoolbox);
         Assert.Empty(SettingsAdvisor.For(_apolloLakeQsv with { Verdict = BackendVerdict.NotPresent }, _docker));
+    }
+
+    /// <summary>Trickplay hardware decoding follows the H.264 decode test, and MJPEG encoding its own test.</summary>
+    [Fact]
+    public void TrickplayFollowsResults()
+    {
+        var encode = new Dictionary<string, ProbeOutcome>(_apolloLakeQsv.Encode) { ["mjpeg"] = P };
+
+        var advice = SettingsAdvisor.For(_apolloLakeQsv with { Encode = encode }, _docker);
+
+        Assert.Equal(SettingState.TurnOn, Assert.Single(advice, a => a.Setting == "Trickplay:EnableHwAcceleration").State);
+        Assert.Equal(SettingState.TurnOn, Assert.Single(advice, a => a.Setting == "Trickplay:EnableHwEncoding").State);
+        Assert.All(advice.Where(a => a.Setting.StartsWith("Trickplay:", StringComparison.Ordinal)), a => Assert.Equal("Trickplay", a.Section));
+    }
+
+    /// <summary>MJPEG encoding is only picked with hardware encoding on, so a passing test can't help without it.</summary>
+    [Fact]
+    public void TrickplayEncodingNeedsHardwareEncoding()
+    {
+        var encode = new Dictionary<string, ProbeOutcome>(_apolloLakeQsv.Encode) { ["h264"] = U, ["mjpeg"] = P };
+
+        var advice = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Encode = encode }, _docker), a => a.Setting == "Trickplay:EnableHwEncoding");
+
+        Assert.Equal((SettingState.LeaveOff, "Needs hardware encoding"), (advice.State, advice.Note));
+    }
+
+    /// <summary>NVENC and AMF have no MJPEG encoder in Jellyfin, so trickplay hardware encoding does nothing there.</summary>
+    /// <param name="type">The backend.</param>
+    [Theory]
+    [InlineData(HwType.nvenc)]
+    [InlineData(HwType.amf)]
+    public void TrickplayEncodingNotUsed(HwType type)
+    {
+        var advice = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Type = type }, _docker), a => a.Setting == "Trickplay:EnableHwEncoding");
+
+        Assert.Equal((SettingState.LeaveOff, "Not used with this backend"), (advice.State, advice.Note));
+    }
+
+    /// <summary>Key-frame-only trickplay is flagged only where it would turn hardware decoding off.</summary>
+    [Fact]
+    public void KeyFrameOnlyFlaggedWhereItDropsHardwareDecoding()
+    {
+        const string Setting = "Trickplay:EnableKeyFrameOnlyExtraction";
+        var qsvOnly = new Dictionary<string, ProbeOutcome>(_apolloLakeQsv.Decode) { ["vc1"] = U, ["vc1_qsvdecoder"] = P };
+
+        var native = SettingsAdvisor.For(_apolloLakeQsv, _docker);
+        var qsvDecoders = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Decode = qsvOnly }, _docker), a => a.Setting == Setting);
+        var nvenc = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Type = HwType.nvenc }, _docker), a => a.Setting == Setting);
+
+        Assert.DoesNotContain(native, a => a.Setting == Setting);
+        Assert.DoesNotContain(SettingsAdvisor.For(_apolloLakeQsv with { Type = HwType.vaapi }, _docker), a => a.Setting == Setting);
+        Assert.Equal((SettingState.LeaveOff, "Turns off hardware decoding with this backend"), (qsvDecoders.State, qsvDecoders.Note));
+        Assert.Equal(SettingState.NotTested, nvenc.State);
     }
 }

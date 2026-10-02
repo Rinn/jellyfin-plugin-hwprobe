@@ -56,6 +56,7 @@
                 let report = null;
                 // Only used to open the configured backend's settings first.
                 let encoding = null;
+                let trickplay = null;
                 let selected = null;
                 let history = [];
                 let restartRequired = false;
@@ -180,6 +181,9 @@
                 function current(setting) {
                     if (!encoding) {
                         return undefined;
+                    }
+                    if (setting.indexOf('Trickplay:') === 0) {
+                        return trickplay ? trickplay[setting.substring('Trickplay:'.length)] : undefined;
                     }
                     const prefix = 'HardwareDecodingCodecs:';
                     if (setting.indexOf(prefix) === 0) {
@@ -369,7 +373,7 @@
                             selected = viable.find(b => encoding && b.type === encoding.HardwareAccelerationType) || viable[0];
                         }
                         const container = el('div');
-                        section('Transcoding settings').appendChild(container);
+                        section('Settings').appendChild(container);
                         renderSettings(container, viable);
                     }
 
@@ -387,13 +391,14 @@
 
                 function loadReport() {
                     const config = ApiClient.getNamedConfiguration('encoding').then(c => { encoding = c; }, () => { encoding = null; });
+                    const server = ApiClient.getServerConfiguration().then(c => { trickplay = c.TrickplayOptions || null; }, () => { trickplay = null; });
                     const data = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Report'), dataType: 'json' })
                         .then(r => { report = r; }, () => { report = null; statusText.textContent = 'No probe has run yet.'; });
                     const changes = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/History'), dataType: 'json' })
                         .then(h => { history = h || []; }, () => { history = []; });
                     const pending = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/RestartRequired'), dataType: 'json' })
                         .then(r => { restartRequired = r === true; }, () => { restartRequired = false; });
-                    return Promise.all([config, data, changes, pending]).then(() => { renderChange(); render(); });
+                    return Promise.all([config, server, data, changes, pending]).then(() => { renderChange(); render(); });
                 }
 
                 function loadStatus() {
