@@ -10,6 +10,7 @@
 | `src/HwProbe.Plugin` | The Jellyfin plugin. |
 | `tests/` | Tests, and recorded ffmpeg output in `tests/Corpus`. |
 | `build.yaml` | Plugin metadata for the repository manifest. |
+| `assets/` | Sidebar icon source and the catalog image. `assets/make-plugin-image.sh` rebuilds `plugin.png` with headless Chrome. Licences are in `assets/NOTICE.md`. |
 
 ## Building
 

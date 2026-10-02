@@ -7,6 +7,7 @@ overview: "Tests which hardware transcoding options work on a Jellyfin server"
 description: >
   Runs short test transcodes for each hardware acceleration option on the Transcoding page. Shows which ones work and how to fix the ones that don't. Results can be applied to Jellyfin's settings and reverted.
 category: "General"
+imageUrl: "https://raw.githubusercontent.com/Rinn/jellyfin-plugin-hwprobe/main/assets/plugin.png"
 owner: "Rinn"
 artifacts:
 - "Jellyfin.Plugin.HwProbe.dll"

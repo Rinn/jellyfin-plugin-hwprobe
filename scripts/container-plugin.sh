@@ -116,6 +116,7 @@ check "plugin status" Active "$(curl -sf "$base/Plugins" -H "$h" | json 'next((p
 check "plugin version" "$version" "$(curl -sf "$base/Plugins" -H "$h" | json 'next((p["Version"] for p in j if p["Name"]=="HwProbe"), "missing")')"
 check "scheduled task" "Probe hardware transcoding" "$(curl -sf "$base/ScheduledTasks" -H "$h" | json 'next((t["Name"] for t in j if t["Key"]=="HwProbeHardwareProbe"), "missing")')"
 check "config page" 200 "$(code "$base/web/ConfigurationPage?name=HwProbe" -H "$h")"
+check "sidebar entry" "HwProbe developer_board" "$(curl -sf "$base/web/ConfigurationPages?enableInMainMenu=true" -H "$h" | json 'next((p["DisplayName"] + " " + p["MenuIcon"] for p in j if p["Name"]=="HwProbe"), "missing")')"
 check "report without token" 401 "$(code "$base/HwProbe/Report")"
 check "report before a probe" 404 "$(code "$base/HwProbe/Report" -H "$h")"
 check "start probe" 202 "$(code -X POST "$base/HwProbe/Run" -H "$h")"
