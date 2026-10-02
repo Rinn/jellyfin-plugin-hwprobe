@@ -291,6 +291,7 @@ public sealed class SettingsAdvisorTests
     [InlineData("EnableEnhancedNvdecDecoder", "Enable enhanced NVDEC decoder")]
     [InlineData("PreferSystemNativeHwDecoder", "Prefer OS native DXVA or VA-API hardware decoders")]
     [InlineData("QsvDevice", "QSV device")]
+    [InlineData("VaapiDevice", "VA-API device")]
     [InlineData("HardwareAccelerationType", "Hardware acceleration")]
     [InlineData("EncoderAppPath", null)]
     public void LabelForNamesEverySetting(string setting, string? label) =>

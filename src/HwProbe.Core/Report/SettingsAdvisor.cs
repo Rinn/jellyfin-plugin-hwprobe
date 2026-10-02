@@ -75,9 +75,9 @@ public static class SettingsAdvisor
         ("HEVC RExt 12bit", "EnableDecodingColorDepth12HevcRext", ["hevc_rext_12bit", "hevc_rext_422_12bit"], _rextTypes),
     ];
 
-    /// <summary>Returns the label the settings list gives a setting key, e.g. <c>HEVC</c> for <c>HardwareDecodingCodecs:hevc</c>.</summary>
+    /// <summary>Returns the label for a setting HwProbe can change, e.g. <c>Hardware decoding: HEVC</c> for <c>HardwareDecodingCodecs:hevc</c>.</summary>
     /// <param name="setting">The setting key.</param>
-    /// <returns>The label, with <c>Trickplay: </c> or <c>Hardware decoding: </c> before options a bare label wouldn't place; null for a key the advisor never gives.</returns>
+    /// <returns>The settings list's label, prefixed where a bare one wouldn't place it, or a name for the backend and device settings; null for any other key.</returns>
     public static string? LabelFor(string setting) => _labels.Value.GetValueOrDefault(setting);
 
     /// <summary>Returns advice for every option Jellyfin's Transcoding page shows for this backend.</summary>

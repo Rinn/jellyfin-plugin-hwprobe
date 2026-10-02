@@ -160,19 +160,19 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.Single(result.Changes);
     }
 
-    /// <summary>A history written before labels were recorded comes back with them filled in.</summary>
+    /// <summary>A history written before labels were recorded comes back with them filled in; an unknown key stays unlabelled.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
     public async Task OldHistoryGetsLabels()
     {
         await File.WriteAllTextAsync(
             _harness.HistoryPath,
-            """[{"timeUtc":"2026-10-02T07:38:05Z","user":"admin","kind":"Apply","changes":[{"setting":"EnableTonemapping","oldValue":"false","newValue":"true"},{"setting":"QsvDevice","oldValue":"","newValue":"/dev/dri/renderD128"}]}]""",
+            """[{"timeUtc":"2026-10-02T07:38:05Z","user":"admin","kind":"Apply","changes":[{"setting":"EnableTonemapping","oldValue":"false","newValue":"true"},{"setting":"QsvDevice","oldValue":"","newValue":"/dev/dri/renderD128"},{"setting":"EncoderAppPath","oldValue":"a","newValue":"b"}]}]""",
             TestContext.Current.CancellationToken);
 
         var history = await _harness.Service.HistoryAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(["Enable Tone mapping", "QSV device"], history[0].Changes.Select(c => c.Label));
+        Assert.Equal(["Enable Tone mapping", "QSV device", null], history[0].Changes.Select(c => c.Label));
     }
 
     /// <summary>When every setting was changed since, Revert changes and saves nothing but still clears the entry, naming the settings.</summary>
