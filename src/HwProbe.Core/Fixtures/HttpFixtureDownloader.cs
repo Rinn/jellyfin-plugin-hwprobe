@@ -9,13 +9,21 @@ public sealed class HttpFixtureDownloader : IFixtureDownloader
     // Wikimedia asks for a descriptive User-Agent with a contact (meta.wikimedia.org/wiki/User-Agent_policy).
     private static readonly HttpClient _client = new() { DefaultRequestHeaders = { { "User-Agent", "HwProbe (https://github.com/Rinn/jellyfin-plugin-hwprobe)" } } };
 
+    /// <summary>Gets a value indicating whether downloads are turned off with <c>HWPROBE_NO_DOWNLOADS=1</c>, as tests and CI run.</summary>
+    private static bool Disabled => Environment.GetEnvironmentVariable("HWPROBE_NO_DOWNLOADS") == "1";
+
     /// <inheritdoc/>
     public Task<byte[]> DownloadAsync(Uri url, CancellationToken cancellationToken) =>
-        _client.GetByteArrayAsync(url, cancellationToken);
+        Disabled ? throw Off(url) : _client.GetByteArrayAsync(url, cancellationToken);
 
     /// <inheritdoc/>
     public async Task<byte[]> DownloadRangeAsync(Uri url, long start, long length, CancellationToken cancellationToken)
     {
+        if (Disabled)
+        {
+            throw Off(url);
+        }
+
         // HTTP ranges name the last byte, not a length.
         using var request = new HttpRequestMessage(HttpMethod.Get, url) { Headers = { Range = new RangeHeaderValue(start, start + length - 1) } };
         using var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -29,4 +37,9 @@ public sealed class HttpFixtureDownloader : IFixtureDownloader
         var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
         return bytes.LongLength == length ? bytes : throw new HttpRequestException($"{url} sent {bytes.LongLength} bytes, not {length}.");
     }
+
+    /// <summary>The error for a download refused because downloads are off.</summary>
+    /// <param name="url">The refused file.</param>
+    /// <returns>The exception, reported like any failed download.</returns>
+    private static HttpRequestException Off(Uri url) => new($"downloads are turned off (HWPROBE_NO_DOWNLOADS), so {url} wasn't fetched");
 }

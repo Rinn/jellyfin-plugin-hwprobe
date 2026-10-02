@@ -98,7 +98,7 @@ HwProbe only downloads test clips from FFmpeg's FATE sample suite, each pinned b
   - `vp8-test-vectors-r1/vp80-00-comprehensive-001.ivf`
 - Only for the PGS subtitle speed test: `sub/pgs_sub.sup`. ffmpeg has no PGS encoder.
 
-Speed samples, only when chosen: a pinned piece of each file (its WebM header and about 30 seconds of whole clusters, two range requests), checked by SHA-256 before ffmpeg reads it (`FixturePiece`). The 1080p ones are encoded the same way (24 fps H.264, CRF 18 capped at 10 Mbps, stereo AAC); the 4K one to HEVC 10-bit HDR10 at CRF 18. The encode is cached and the piece deleted. Tests never download them. To re-pin after Wikimedia re-encodes a file, find the cluster offsets around the wanted time and hash the header plus those bytes.
+Speed samples, only when chosen: a pinned piece of each file (its WebM header and about 30 seconds of whole clusters, two range requests), checked by SHA-256 before ffmpeg reads it (`FixturePiece`). The 1080p ones are encoded the same way (24 fps H.264, CRF 18 capped at 10 Mbps, stereo AAC); the 4K one to HEVC 10-bit HDR10 at CRF 18. The encode is cached and the piece deleted. Tests never download them, and `HWPROBE_NO_DOWNLOADS=1` (set in CI and `scripts/container-plugin.sh`) turns off every download, so a fixture that only downloads, like the VC-1 sample, is reported as untested. To re-pin after Wikimedia re-encodes a file, find the cluster offsets around the wanted time and hash the header plus those bytes.
 
 - Wikimedia Commons 1080p VP9 transcodes: Tears of Steel (CC BY 3.0), Sintel (CC BY 3.0), Sol Levante (CC BY 4.0).
 - Wikimedia Commons' 4K HDR10 AV1 copy of Sol Levante, encoded to 4K HEVC 10-bit HDR10 (about 108 MB).

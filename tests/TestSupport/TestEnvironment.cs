@@ -29,9 +29,6 @@ internal static class TestEnvironment
     /// <summary>Gets a value indicating whether RealFfmpeg tests are enabled and an ffmpeg was found.</summary>
     public static bool RealFfmpegAvailable => HardwareTestsEnabled && RealFfmpeg is not null;
 
-    /// <summary>Gets a shared folder for downloaded fixtures (<c>HWPROBE_TEST_DOWNLOADS</c>), so tests don't fetch them every run; null for the test's own folder.</summary>
-    public static string? FixtureDownloads => Environment.GetEnvironmentVariable("HWPROBE_TEST_DOWNLOADS");
-
     /// <summary>Gets a value indicating whether RealFfmpeg tests can run on macOS.</summary>
     public static bool RealFfmpegOnMacOS => RealFfmpegAvailable && IsMacOS;
 

@@ -77,7 +77,8 @@ esac
 
 network=""
 [ "$install" = repository ] && network="--network $net"
-podman run -d --name "$name" $network -p 127.0.0.1::8096 \
+# Nothing is downloaded: fixtures that only download (the VC-1 sample) are reported as untested.
+podman run -d --name "$name" $network -p 127.0.0.1::8096 -e HWPROBE_NO_DOWNLOADS=1 \
     -v "$work/config":/config -v "$work/cache":/cache "$image" >/dev/null
 base="http://$(podman port "$name" 8096 | head -1)"
 wait_healthy
