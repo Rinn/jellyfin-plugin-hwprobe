@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.8.0.0",
+        "changelog": "Tests QSV on every Intel adapter and AMF on the first AMD adapter on Windows, as Jellyfin picks them. Adds a Windows ARM64 command-line build. No longer guesses which GPU maker an unavailable option needs.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.8.0/hwprobe-plugin_0.8.0.0.zip",
+        "checksum": "098abf8b50f46e48cf135a79477fa37b",
+        "timestamp": "2026-10-02T16:24:26Z"
+      },
+      {
         "version": "0.7.0.0",
         "changelog": "NVIDIA shows its pipeline tier (Full GPU pipeline (CUDA)). The plugin page fits phone screens.",
         "targetAbi": "12.1.0.0",
