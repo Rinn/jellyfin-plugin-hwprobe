@@ -139,22 +139,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
-      - name: Publish plugin
-        run: |
-          dotnet publish src/HwProbe.Plugin -c Release -o artifacts/plugin
-          mkdir -p artifacts/dist
-          (cd artifacts/plugin && zip ../dist/hwprobe-plugin.zip Jellyfin.Plugin.HwProbe*.dll)
-      # The SDK ad-hoc signs osx-arm64 executables on Linux too (checked with codesign on macOS).
-      - name: Publish CLI
-        run: |
-          for rid in linux-x64 win-x64 osx-arm64; do
-            dotnet publish src/HwProbe.Cli -c Release -r "$rid" --self-contained -p:PublishSingleFile=true -o "artifacts/cli/$rid"
-          done
+      # Same script and archives as a release, so a pull request shows what would ship.
+      - name: Package
+        run: python3 scripts/package.py --out artifacts/dist
       - uses: actions/upload-artifact@v7
         with:
-          name: hwprobe-plugin
-          path: artifacts/dist/hwprobe-plugin.zip
-      - uses: actions/upload-artifact@v7
-        with:
-          name: hwprobe-cli
-          path: artifacts/cli
+          name: hwprobe-dist
+          path: artifacts/dist

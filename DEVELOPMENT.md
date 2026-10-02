@@ -28,6 +28,23 @@ HWPROBE_HW_TESTS=1 dotnet test     # also RealFfmpeg + Hardware tests
 
 Warnings are errors. The build runs the .NET, StyleCop and threading analyzers.
 
+The SDK is pinned exactly in `global.json`, and NuGet restores are pinned by the committed `packages.lock.json` files, which CI enforces. After changing a package version or the target platforms, update the lock files with `dotnet restore --force-evaluate` and commit them.
+
+## Reproducible builds
+
+The same commit, built with the pinned SDK on Linux, produces byte-identical DLLs and archives. A build in an arm64 Linux container matched the x64 GitHub runner's archives exactly. macOS hasn't been compared.
+
+- `Deterministic` is on, and on GitHub Actions `ContinuousIntegrationBuild` maps the repo root to `/_/`, so no checkout path ends up in a binary.
+- `scripts/package.py` writes archives with sorted entries, fixed permissions and the commit time (or `SOURCE_DATE_EPOCH`), and gzips with no stored name or time.
+
+To check a release, build its tagged commit from a clone whose `origin` is the GitHub URL. SourceLink records the remote URL in the debug information, so a clone of a local path produces different bytes. Then compare hashes with the release assets:
+
+```sh
+git clone https://github.com/Rinn/jellyfin-plugin-hwprobe && cd jellyfin-plugin-hwprobe && git checkout v1.2.3
+GITHUB_ACTIONS=true python3 scripts/package.py --out dist
+shasum -a 256 dist/*
+```
+
 ## Pre-commit hook
 
 All three checks above must pass before every commit. Install the checked-in hook once per clone:
@@ -58,13 +75,13 @@ Extra arguments are passed to hwprobe. On Apple Silicon the Windows script needs
 - builds and tests on Linux, macOS and Windows;
 - runs the real-ffmpeg tests and a CLI run against jellyfin-ffmpeg's portable builds on all three;
 - installs the plugin into Jellyfin 12.1, both by copying it and from a plugin repository, and probes through its API;
-- uploads the plugin zip and CLI builds as artifacts.
+- packages with `scripts/package.py` and uploads the archives a release would ship.
 
 ## Releasing
 
 `.github/workflows/release.yml` runs when a GitHub release is published.
 
-1. Set the version in `build.yaml` (`version: "1.2.3.0"`) and in `src/HwProbe.Plugin/HwProbe.Plugin.csproj` (`<Version>1.2.3</Version>`), and merge that to `main`.
+1. Set the version in `build.yaml` (`version: "1.2.3.0"`) and in `Directory.Build.props` (`<Version>1.2.3</Version>`, which every assembly gets), and merge that to `main`.
 2. Create a release with tag `v1.2.3`. Its description becomes the plugin's changelog in Jellyfin. For example: `gh release create v1.2.3 --target main --title v1.2.3 --notes "What changed"`.
 3. The workflow checks the tag matches both versions, builds and tests, and attaches to the release:
    - `hwprobe-plugin_1.2.3.0.zip`

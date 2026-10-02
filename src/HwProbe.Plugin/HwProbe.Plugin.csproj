@@ -4,7 +4,6 @@
     <AssemblyName>Jellyfin.Plugin.HwProbe</AssemblyName>
     <RootNamespace>Jellyfin.Plugin.HwProbe</RootNamespace>
     <!-- Keep in step with build.yaml; the server shows this when there's no meta.json. -->
-    <Version>0.1.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

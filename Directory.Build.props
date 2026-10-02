@@ -12,7 +12,26 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <IsPackable>false</IsPackable>
+
+    <!-- One version for every assembly; the release workflow checks the tag and build.yaml against it. -->
+    <Version>0.1.0</Version>
+
+    <!-- Reproducible builds: same source and SDK give byte-identical assemblies. CI also normalises
+         source paths, and restores only what the committed lock files allow. -->
+    <Deterministic>true</Deterministic>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <RestoreLockedMode>true</RestoreLockedMode>
+  </PropertyGroup>
+
+  <!-- Maps the repo root to /_/ in CI builds even without git; source generators hash file paths into
+       type names (e.g. the regex generator), so an unmapped checkout path changes the assembly. -->
+  <ItemGroup Condition="'$(ContinuousIntegrationBuild)' == 'true'">
+    <SourceRoot Include="$(MSBuildThisFileDirectory)" />
+  </ItemGroup>
 
   <ItemGroup>
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)stylecop.json" Link="stylecop.json" />

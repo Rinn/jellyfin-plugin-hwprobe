@@ -37,9 +37,9 @@ jobs:
             echo "::error::Tag '$TAG' must look like v1.2.3"; exit 1
           fi
           yaml="$(sed -n 's/^version: "\(.*\)"/\1/p' build.yaml)"
-          csproj="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' src/HwProbe.Plugin/HwProbe.Plugin.csproj)"
-          if [ "$yaml" != "$version.0" ] || [ "$csproj" != "$version" ]; then
-            echo "::error::Tag $TAG needs build.yaml version $version.0 and csproj Version $version; found $yaml and $csproj"; exit 1
+          props="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)"
+          if [ "$yaml" != "$version.0" ] || [ "$props" != "$version" ]; then
+            echo "::error::Tag $TAG needs build.yaml version $version.0 and Directory.Build.props Version $version; found $yaml and $props"; exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
@@ -48,23 +48,9 @@ jobs:
           dotnet build -warnaserror
           dotnet test
 
-      - name: Package plugin
-        run: |
-          dotnet publish src/HwProbe.Plugin -c Release -o artifacts/plugin
-          mkdir -p artifacts/dist
-          (cd artifacts/plugin && zip ../dist/hwprobe-plugin_${{ steps.version.outputs.version }}.0.zip Jellyfin.Plugin.HwProbe*.dll)
-
       # The SDK ad-hoc signs osx-arm64 executables on Linux too (checked with codesign on macOS).
-      - name: Package CLI
-        run: |
-          for rid in linux-x64 linux-arm64 win-x64 osx-arm64; do
-            dotnet publish src/HwProbe.Cli -c Release -r "$rid" --self-contained -p:PublishSingleFile=true -o "artifacts/cli/$rid"
-          done
-          for rid in linux-x64 linux-arm64 osx-arm64; do
-            gzip -c "artifacts/cli/$rid/Jellyfin.Plugin.HwProbe.Cli" > "artifacts/dist/hwprobe-$rid.gz"
-          done
-          cp artifacts/cli/win-x64/Jellyfin.Plugin.HwProbe.Cli.exe artifacts/hwprobe.exe
-          (cd artifacts && zip dist/hwprobe-win-x64.zip hwprobe.exe)
+      - name: Package
+        run: python3 scripts/package.py --out artifacts/dist
 
       - name: Attach to the release
         env:
