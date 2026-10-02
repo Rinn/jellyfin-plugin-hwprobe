@@ -11,4 +11,13 @@ public sealed record ProbeStatus(ProbeState State, DateTimeOffset? LastStartedUt
 {
     /// <summary>Gets the running HwProbe version, so an open page can tell the plugin was updated under it.</summary>
     public string HwProbeVersion { get; init; } = CapabilityReport.CurrentHwProbeVersion;
+
+    /// <summary>Gets what is running, or ran last.</summary>
+    public ProbeActivity Activity { get; init; }
+
+    /// <summary>Gets the speed measurements done so far, while one runs.</summary>
+    public int? Done { get; init; }
+
+    /// <summary>Gets the speed measurements in the run, while one runs.</summary>
+    public int? Total { get; init; }
 }

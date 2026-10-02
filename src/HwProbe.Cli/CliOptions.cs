@@ -1,5 +1,6 @@
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
+using Jellyfin.Plugin.HwProbe.Core.Speed;
 
 namespace Jellyfin.Plugin.HwProbe.Cli;
 
@@ -32,4 +33,10 @@ internal sealed record CliOptions(
 {
     /// <summary>Gets where to write a diagnostics zip, or null for none.</summary>
     public string? DiagnosticsPath { get; init; }
+
+    /// <summary>Gets what to measure for speed after the probe, or null for no speed run.</summary>
+    public SpeedOptions? Speed { get; init; }
+
+    /// <summary>Gets where to write the speed report as JSON, or null.</summary>
+    public string? SpeedJsonPath { get; init; }
 }

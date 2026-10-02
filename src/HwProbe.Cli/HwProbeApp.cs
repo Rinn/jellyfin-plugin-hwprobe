@@ -4,6 +4,7 @@ using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
 using Jellyfin.Plugin.HwProbe.Core.Report;
+using Jellyfin.Plugin.HwProbe.Core.Speed;
 using Jellyfin.Plugin.HwProbe.Jellyfin;
 
 namespace Jellyfin.Plugin.HwProbe.Cli;
@@ -102,6 +103,24 @@ internal static class HwProbeApp
             }
 
             await stderr.WriteLineAsync($"hwprobe: wrote {options.DiagnosticsPath}. Attach it to an issue: {DiagnosticsBundle.IssueUrl}".AsMemory(), cancellationToken);
+        }
+
+        if (options.Speed is { } speed)
+        {
+            var viable = report.Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device)).ToList();
+            using var engine = new SpeedEngine(new FfmpegRunner(), new ArgumentSourceFactory(), platform, TimeProvider.System, EnvironmentRules.Standalone());
+            var progress = new Progress<(int Done, int Total)>(p => stderr.Write($"\rhwprobe: speed {p.Done} of {p.Total}"));
+            var measured = await engine.RunAsync(engineOptions, speed, viable, progress, cancellationToken);
+            await stderr.WriteLineAsync(string.Empty.AsMemory(), cancellationToken);
+            if (options.Format != OutputFormat.Json)
+            {
+                await stdout.WriteAsync(SpeedRenderer.Render(measured).AsMemory(), cancellationToken);
+            }
+
+            if (options.SpeedJsonPath is not null)
+            {
+                await SpeedReportStore.WriteAsync(measured, options.SpeedJsonPath, cancellationToken);
+            }
         }
 
         var anyViable = report.Backends.Any(b => b.Verdict == BackendVerdict.Viable);

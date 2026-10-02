@@ -60,4 +60,44 @@ public sealed record ProbeCell(
 
     /// <summary>Gets a value indicating whether tone-mapping is enabled.</summary>
     public bool Tonemap { get; init; }
+
+    /// <summary>Gets the source width.</summary>
+    public int SourceWidth { get; init; } = 640;
+
+    /// <summary>Gets the source height.</summary>
+    public int SourceHeight { get; init; } = 360;
+
+    /// <summary>Gets the source frame rate.</summary>
+    public float SourceFrameRate { get; init; } = 25;
+
+    /// <summary>Gets the requested video bitrate in bits per second, as a client asks for it, or null for none.</summary>
+    public int? VideoBitrate { get; init; }
+
+    /// <summary>Gets a value indicating whether the encoder gets upstream's full quality arguments (preset, bitrate, CRF) and the job its audio.</summary>
+    /// <remarks>Probes keep only the low-power flag; speed runs need everything a real transcode passes.</remarks>
+    public bool FullQuality { get; init; }
+
+    /// <summary>Gets Jellyfin's encoder preset name, e.g. <c>veryfast</c>, or null for <c>auto</c>.</summary>
+    public string? EncoderPreset { get; init; }
+
+    /// <summary>Gets Jellyfin's H.264 CRF; upstream's default is 23.</summary>
+    public int H264Crf { get; init; } = 23;
+
+    /// <summary>Gets Jellyfin's HEVC CRF; upstream's default is 28.</summary>
+    public int H265Crf { get; init; } = 28;
+
+    /// <summary>Gets a value indicating whether the source has a 5.1 AAC track, transcoded to stereo AAC.</summary>
+    public bool Audio { get; init; }
+
+    /// <summary>Gets a value indicating whether Jellyfin's "Enable VBR audio encoding" is on.</summary>
+    public bool AudioVbr { get; init; }
+
+    /// <summary>Gets a value indicating whether Jellyfin's "Double the frame rate when deinterlacing" is on.</summary>
+    public bool DoubleRate { get; init; }
+
+    /// <summary>Gets the input clip, so upstream can write the whole input argument; null for probes, which add the input themselves.</summary>
+    public string? SourcePath { get; init; }
+
+    /// <summary>Gets an external image (PGS) subtitle file to burn in, or null for none.</summary>
+    public string? GraphicalSubtitlePath { get; init; }
 }

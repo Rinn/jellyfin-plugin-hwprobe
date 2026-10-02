@@ -1,6 +1,7 @@
 using Jellyfin.Plugin.HwProbe.Core.Diagnostics;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Report;
+using Jellyfin.Plugin.HwProbe.Core.Speed;
 using Jellyfin.Plugin.HwProbe.Probing;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -89,6 +90,54 @@ public sealed class ProbeServiceTests : IDisposable
         }
 
         Assert.Equal(offered, await service.LatestDiagnosticsAsync(TestContext.Current.CancellationToken) is not null);
+    }
+
+    /// <summary>A speed run needs a report, refuses unknown names, and saves its report over the viable backends.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task SpeedRunMeasuresViableBackends()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        IReadOnlyCollection<(HwType Type, string Device)>? measured = null;
+        SpeedOptions? asked = null;
+        using var service = new ProbeService(_ => Task.FromResult(Reports.Sample()), () => false, Path.Combine(_directory, "latest.json"), TimeProvider.System, TimeSpan.Zero, NullLogger.Instance)
+        {
+            MeasureSpeed = (speed, backends, progress, _) =>
+            {
+                (asked, measured) = (speed, backends);
+                progress.Report((1, 1));
+                return Task.FromResult(new SpeedReport(DateTimeOffset.UnixEpoch, Reports.Sample().Ffmpeg, speed.Method, [new SpeedResult(HwType.none, string.Empty, "1080p-h264", string.Empty, 300, 12, false, null)]));
+            },
+            ServerSpeedSettings = () => new SpeedSettings { EncoderPreset = "fast" },
+        };
+        var request = new SpeedRequest("full", [], ["Bitrate", "AudioVbr"]);
+
+        Assert.Equal(ProbeRunResult.NoReport, await service.StartSpeedAsync(request, ct));
+        await service.RunAsync(ct);
+        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Method = "fastest" }, ct));
+        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Tests = ["8k-h266"] }, ct));
+        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Comparisons = ["None"] }, ct));
+
+        Assert.Equal(ProbeRunResult.Started, await service.StartSpeedAsync(request, ct));
+        await service.Background;
+
+        Assert.Equal(Reports.Sample().Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device)), measured);
+        Assert.Equal((SpeedMethod.Full, SpeedComparison.Bitrate | SpeedComparison.AudioVbr, "fast"), (asked!.Method, asked.Comparisons, asked.Settings.EncoderPreset));
+        Assert.Equal(SpeedCatalog.Default, asked.Tests);
+        Assert.Equal(ProbeActivity.Speed, service.Status.Activity);
+        Assert.Null(service.Status.Total);
+        Assert.Equal(12, SpeedReportStore.Deserialize((await service.LatestSpeedJsonAsync(ct))!)!.Results[0].Streams);
+    }
+
+    /// <summary>A speed report from another HwProbe version isn't shown.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task SpeedFromAnotherVersionIsCleared()
+    {
+        using var service = Create(_ => Task.FromResult(Reports.Sample()), transcoding: false);
+        await SpeedReportStore.WriteAsync(new SpeedReport(DateTimeOffset.UnixEpoch, Reports.Sample().Ffmpeg, SpeedMethod.Quick, []) { HwProbeVersion = "0.0.1.0" }, service.SpeedPath, TestContext.Current.CancellationToken);
+
+        Assert.Null(await service.LatestSpeedJsonAsync(TestContext.Current.CancellationToken));
     }
 
     /// <summary>Nothing runs while a session is transcoding.</summary>

@@ -22,6 +22,12 @@ internal static partial class Log
     [LoggerMessage(Level = LogLevel.Error, Message = "HwProbe failed.")]
     public static partial void Failed(ILogger logger, Exception exception);
 
+    /// <summary>Logs a completed speed run.</summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="results">Number of measurements.</param>
+    [LoggerMessage(Level = LogLevel.Information, Message = "HwProbe speed run finished: {Results} measurement(s).")]
+    public static partial void SpeedCompleted(ILogger logger, int results);
+
     /// <summary>Logs a diagnostics zip that couldn't be saved; the report is still saved.</summary>
     /// <param name="logger">The logger.</param>
     /// <param name="exception">The failure.</param>

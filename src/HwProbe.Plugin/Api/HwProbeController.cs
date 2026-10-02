@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.HwProbe.Core.Speed;
 using Jellyfin.Plugin.HwProbe.Probing;
 using Jellyfin.Plugin.HwProbe.Settings;
 using MediaBrowser.Common.Api;
@@ -55,10 +56,47 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     public async Task<ActionResult> RunAsync(CancellationToken cancellationToken) => await service.StartAsync(cancellationToken) switch
     {
         ProbeRunResult.Started => Accepted(),
-        ProbeRunResult.AlreadyRunning => Conflict("A probe is already running."),
+        ProbeRunResult.AlreadyRunning => Conflict("A probe or speed run is already running."),
         ProbeRunResult.ServerBusy => Conflict("A session is transcoding; probe when the server is idle."),
         var other => Problem($"Unexpected result {other}."),
     };
+
+    /// <summary>Starts measuring the speed of the backends the latest report found working, and software.</summary>
+    /// <param name="request">The method, tests and comparisons.</param>
+    /// <param name="cancellationToken">Cancels the checks.</param>
+    /// <returns>202 when started; 400 for an unknown name; 409 when busy or no probe has run.</returns>
+    [HttpPost("Speed")]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult> StartSpeedAsync([FromBody] SpeedRequest request, CancellationToken cancellationToken) => await service.StartSpeedAsync(request, cancellationToken) switch
+    {
+        ProbeRunResult.Started => Accepted(),
+        ProbeRunResult.Invalid => BadRequest("Unknown method, test or comparison."),
+        ProbeRunResult.NoReport => Conflict("Run a probe first, so the speed run knows which backends work."),
+        ProbeRunResult.AlreadyRunning => Conflict("A probe or speed run is already running."),
+        ProbeRunResult.ServerBusy => Conflict("A session is transcoding; measure when the server is idle."),
+        var other => Problem($"Unexpected result {other}."),
+    };
+
+    /// <summary>Returns the tests a speed run can measure, for the page's choices.</summary>
+    /// <returns>Each test's key, label and whether it only decodes.</returns>
+    [HttpGet("SpeedTests")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<IReadOnlyList<SpeedTestInfo>> SpeedTests() =>
+        Ok(SpeedCatalog.All.Select(t => new SpeedTestInfo(t.Key, t.Label, t.DecodeOnly, t.Fixture.Interlaced, SpeedCatalog.Default.Contains(t.Key), t.FrameRate)).ToList());
+
+    /// <summary>Returns the latest speed report.</summary>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The speed report JSON, or 404 when none was measured with this HwProbe and ffmpeg.</returns>
+    [HttpGet("Speed")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> GetSpeedAsync(CancellationToken cancellationToken)
+    {
+        var json = await service.LatestSpeedJsonAsync(cancellationToken);
+        return json is null ? NotFound() : Content(json, "application/json");
+    }
 
     /// <summary>Applies options from the latest report's advice for the configured backend.</summary>
     /// <param name="changes">The options and values.</param>

@@ -14,6 +14,12 @@ public sealed record ProbeArguments(
     /// <summary>Gets encoder options placed after <c>-c:v</c>, with a leading space, or empty.</summary>
     public string EncoderArgs { get; init; } = string.Empty;
 
+    /// <summary>Gets upstream's audio arguments, with a leading space, or empty when the job has no audio.</summary>
+    public string AudioArgs { get; init; } = string.Empty;
+
+    /// <summary>Gets upstream's whole input argument string, including every <c>-i</c>, or null unless the cell asked for full quality.</summary>
+    public string? InputArgument { get; init; }
+
     /// <summary>Gets a value indicating whether upstream asked the encoder for low-power mode.</summary>
     public bool LowPowerEncoder { get; init; }
 

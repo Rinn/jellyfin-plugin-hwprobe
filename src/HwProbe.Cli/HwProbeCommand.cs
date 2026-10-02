@@ -1,6 +1,7 @@
 using System.CommandLine;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
+using Jellyfin.Plugin.HwProbe.Core.Speed;
 
 namespace Jellyfin.Plugin.HwProbe.Cli;
 
@@ -21,6 +22,27 @@ internal sealed class HwProbeCommand
     private readonly Option<OutputFormat> _format = new("--format") { Description = "Stdout format.", DefaultValueFactory = _ => OutputFormat.Table };
     private readonly Option<string?> _json = new("--json") { Description = "Also write the JSON report to this file." };
     private readonly Option<string?> _diagnostics = new("--diagnostics") { Description = "Also write a zip of the report and every ffmpeg log, to attach to an issue. Runs a fresh probe." };
+    private readonly Option<SpeedMethod?> _speed = new("--speed")
+    {
+        Description = "After the probe, measure fps and real-time streams of each working backend and software: quick, confirm or full.",
+        Arity = ArgumentArity.ZeroOrOne,
+        CustomParser = r => r.Tokens.Count == 0 ? SpeedMethod.Confirm : Enum.TryParse<SpeedMethod>(r.Tokens[0].Value, ignoreCase: true, out var m) ? m : Error<SpeedMethod?>(r, $"Unknown speed method '{r.Tokens[0].Value}'. Expected: quick, confirm, full."),
+    };
+
+    private readonly Option<IReadOnlyList<string>> _speedTests = new("--speed-tests")
+    {
+        Description = $"Speed tests, comma-separated. Default: {string.Join(',', SpeedCatalog.Default)}. All: {string.Join(',', SpeedCatalog.All.Select(t => t.Key))}.",
+        CustomParser = ParseTests,
+        DefaultValueFactory = _ => SpeedCatalog.Default,
+    };
+
+    private readonly Option<SpeedComparison> _speedCompare = new("--speed-compare")
+    {
+        Description = "Also measure with one setting changed: vbr, preset, quality, bitrate, deinterlace, paths; comma-separated.",
+        CustomParser = ParseComparisons,
+    };
+
+    private readonly Option<string?> _speedJson = new("--speed-json") { Description = "Also write the speed report to this file." };
     private readonly Option<int> _timeout = new("--timeout") { Description = "Per-probe hard timeout, seconds.", DefaultValueFactory = _ => 15 };
     private readonly Option<int> _fixtureTimeout = new("--fixture-timeout") { Description = "Fixture generation timeout, seconds.", DefaultValueFactory = _ => 120 };
     private readonly Option<bool> _refresh = new("--refresh") { Description = "Ignore cached results for this fingerprint." };
@@ -41,7 +63,7 @@ internal sealed class HwProbeCommand
 
         Root = new RootCommand("Device-verified hardware transcode detection for Jellyfin.")
         {
-            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
+            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _speed, _speedTests, _speedCompare, _speedJson, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
         };
     }
 
@@ -70,6 +92,8 @@ internal sealed class HwProbeCommand
             result.GetValue(_verbose))
         {
             DiagnosticsPath = result.GetValue(_diagnostics),
+            Speed = result.GetValue(_speed) is { } method ? new SpeedOptions(method, result.GetValue(_speedTests)!, result.GetValue(_speedCompare), new SpeedSettings()) : null,
+            SpeedJsonPath = result.GetValue(_speedJson),
         };
     }
 
@@ -95,6 +119,54 @@ internal sealed class HwProbeCommand
         }
 
         return types;
+    }
+
+    /// <summary>Parses a comma-separated speed test list.</summary>
+    /// <param name="result">The option's argument result.</param>
+    /// <returns>The test keys, after reporting any unknown one.</returns>
+    private static List<string> ParseTests(System.CommandLine.Parsing.ArgumentResult result)
+    {
+        var keys = result.Tokens.SelectMany(t => t.Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).ToList();
+        foreach (var unknown in keys.Where(k => SpeedCatalog.Find(k) is null))
+        {
+            result.AddError($"Unknown speed test '{unknown}'. Expected: {string.Join(", ", SpeedCatalog.All.Select(t => t.Key))}.");
+        }
+
+        return keys;
+    }
+
+    /// <summary>Parses a comma-separated comparison list.</summary>
+    /// <param name="result">The option's argument result.</param>
+    /// <returns>The comparisons, after reporting any unknown one.</returns>
+    private static SpeedComparison ParseComparisons(System.CommandLine.Parsing.ArgumentResult result)
+    {
+        var comparisons = SpeedComparison.None;
+        foreach (var name in result.Tokens.SelectMany(t => t.Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)))
+        {
+            comparisons |= name.ToUpperInvariant() switch
+            {
+                "VBR" => SpeedComparison.AudioVbr,
+                "PRESET" => SpeedComparison.Preset,
+                "QUALITY" => SpeedComparison.Quality,
+                "BITRATE" => SpeedComparison.Bitrate,
+                "DEINTERLACE" => SpeedComparison.Deinterlace,
+                "PATHS" => SpeedComparison.Paths,
+                _ => Error<SpeedComparison>(result, $"Unknown comparison '{name}'. Expected: vbr, preset, quality, bitrate, deinterlace, paths."),
+            };
+        }
+
+        return comparisons;
+    }
+
+    /// <summary>Reports a parse error and returns a placeholder value.</summary>
+    /// <typeparam name="T">The option's value type.</typeparam>
+    /// <param name="result">The option's argument result.</param>
+    /// <param name="message">The error.</param>
+    /// <returns>The default value.</returns>
+    private static T Error<T>(System.CommandLine.Parsing.ArgumentResult result, string message)
+    {
+        result.AddError(message);
+        return default!;
     }
 
     /// <summary>Rejects zero or negative second counts.</summary>

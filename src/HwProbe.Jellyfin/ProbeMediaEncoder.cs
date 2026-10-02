@@ -28,6 +28,9 @@ public static class ProbeMediaEncoder
                 .Replace(":", "\\:", StringComparison.Ordinal)
                 .Replace("'", @"'\\\''", StringComparison.Ordinal)
                 .Replace("\"", "\\\"", StringComparison.Ordinal),
+
+            // MediaEncoder.GetInputPathArgument through EncodingUtils.GetInputArgument (v12.1) for a plain file; fixture paths hold no quotes.
+            ["GetInputPathArgument"] = a => $"file:\"{(a.Length == 1 ? ((EncodingJobInfo)a[0]!).MediaPath : (string)a[0]!)}\"",
             ["SupportsFilterWithOption"] = a => capabilities.FilterOptions.Contains((FilterOptionType)a[0]!),
             ["get_IsVaapiDeviceInteliHD"] = _ => capabilities.IsVaapiDeviceInteliHD,
             ["get_IsVaapiDeviceInteli965"] = _ => capabilities.IsVaapiDeviceInteli965,

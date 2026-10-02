@@ -5,10 +5,14 @@ using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
 using Jellyfin.Plugin.HwProbe.Core.Report;
+using Jellyfin.Plugin.HwProbe.Core.Speed;
 using Jellyfin.Plugin.HwProbe.Jellyfin;
 using MediaBrowser.Common.Configuration;
+using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Controller.Session;
+using MediaBrowser.Model.Configuration;
+using MediaBrowser.Model.Entities;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.HwProbe.Probing;
@@ -32,8 +36,9 @@ public sealed class ProbeService : IDisposable
     /// <param name="paths">Server paths, for caches and the saved report.</param>
     /// <param name="sessions">Sessions, to refuse probing while anything transcodes.</param>
     /// <param name="baseline">Environment values captured when the plugin loaded.</param>
+    /// <param name="config">Server configuration, for the encoding settings a speed run starts from.</param>
     /// <param name="logger">Logger.</param>
-    public ProbeService(IArgumentSourceFactory arguments, IMediaEncoder mediaEncoder, IApplicationPaths paths, ISessionManager sessions, ServerEnvironmentBaseline baseline, ILogger<ProbeService> logger)
+    public ProbeService(IArgumentSourceFactory arguments, IMediaEncoder mediaEncoder, IApplicationPaths paths, ISessionManager sessions, ServerEnvironmentBaseline baseline, IServerConfigurationManager config, ILogger<ProbeService> logger)
         : this(
             ct => RunEngineAsync(arguments, mediaEncoder, paths, baseline, logger, ct),
             TranscodingCheck(sessions),
@@ -43,6 +48,8 @@ public sealed class ProbeService : IDisposable
             logger)
     {
         CurrentFfmpeg = () => (mediaEncoder.EncoderPath, mediaEncoder.EncoderVersion);
+        MeasureSpeed = (speed, backends, progress, ct) => RunSpeedEngineAsync(arguments, mediaEncoder, paths, baseline, speed, backends, progress, ct);
+        ServerSpeedSettings = () => SettingsFrom(config.GetEncodingOptions());
     }
 
     /// <summary>Initializes a new instance of the <see cref="ProbeService"/> class with injected behaviour.</summary>
@@ -67,6 +74,15 @@ public sealed class ProbeService : IDisposable
 
     /// <summary>Gets where the latest probe's diagnostics zip is saved.</summary>
     internal string DiagnosticsPath => DiagnosticsPathFor(_latestPath);
+
+    /// <summary>Gets where the latest speed report is saved.</summary>
+    internal string SpeedPath => Path.Combine(Path.GetDirectoryName(_latestPath)!, "speed.json");
+
+    /// <summary>Gets the speed run, or null when this service can't measure speed.</summary>
+    internal Func<SpeedOptions, IReadOnlyCollection<(HwType Type, string Device)>, IProgress<(int Done, int Total)>, CancellationToken, Task<SpeedReport>>? MeasureSpeed { get; init; }
+
+    /// <summary>Gets the server's encoding settings, as a speed run starts from them.</summary>
+    internal Func<SpeedSettings> ServerSpeedSettings { get; init; } = () => new SpeedSettings();
 
     /// <summary>Gets the ffmpeg path and version the server uses now, or null not to compare them.</summary>
     internal Func<(string Path, Version? Version)>? CurrentFfmpeg { get; init; }
@@ -111,6 +127,62 @@ public sealed class ProbeService : IDisposable
 
         _background = Task.Run(() => RunHeldAsync(CancellationToken.None), CancellationToken.None);
         return ProbeRunResult.Started;
+    }
+
+    /// <summary>Starts a speed run in the background over the backends the latest report found working.</summary>
+    /// <param name="request">What to measure.</param>
+    /// <param name="cancellationToken">Cancels the checks; the run itself goes to completion.</param>
+    /// <returns><see cref="ProbeRunResult.Started"/>, or why it can't start.</returns>
+    public async Task<ProbeRunResult> StartSpeedAsync(SpeedRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (MeasureSpeed is not { } measure || ParseSpeed(request) is not { } speed)
+        {
+            return ProbeRunResult.Invalid;
+        }
+
+        if (await LatestJsonAsync(cancellationToken) is not { } json || ReportStore.Deserialize(json) is not { } report)
+        {
+            return ProbeRunResult.NoReport;
+        }
+
+        if (await IsBusyAsync(cancellationToken))
+        {
+            return ProbeRunResult.ServerBusy;
+        }
+
+        if (!await _gate.WaitAsync(0, cancellationToken))
+        {
+            return ProbeRunResult.AlreadyRunning;
+        }
+
+        List<(HwType, string)> backends = [.. report.Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device))];
+        _background = Task.Run(() => RunSpeedHeldAsync(measure, speed with { Settings = ServerSpeedSettings() }, backends), CancellationToken.None);
+        return ProbeRunResult.Started;
+    }
+
+    /// <summary>Returns the latest speed report as JSON, unless it's from another HwProbe version or ffmpeg.</summary>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The JSON, or null when none was measured with this HwProbe and ffmpeg.</returns>
+    public async Task<string?> LatestSpeedJsonAsync(CancellationToken cancellationToken)
+    {
+        if (!File.Exists(SpeedPath))
+        {
+            return null;
+        }
+
+        string json;
+        try
+        {
+            json = await File.ReadAllTextAsync(SpeedPath, cancellationToken);
+        }
+        catch (FileNotFoundException)
+        {
+            return null;
+        }
+
+        var speed = SpeedReportStore.Deserialize(json);
+        return speed?.HwProbeVersion == CapabilityReport.CurrentHwProbeVersion && IsCurrentFfmpeg(speed.Ffmpeg) ? json : null;
     }
 
     /// <summary>Returns the latest saved report as JSON, unless it's from another HwProbe version or ffmpeg.</summary>
@@ -161,6 +233,54 @@ public sealed class ProbeService : IDisposable
     /// <inheritdoc/>
     public void Dispose() => _gate.Dispose();
 
+    /// <summary>Parses a request from the page.</summary>
+    /// <param name="request">The request.</param>
+    /// <returns>The options with default settings, or null when a name is unknown.</returns>
+    private static SpeedOptions? ParseSpeed(SpeedRequest request)
+    {
+        if (!Enum.TryParse<SpeedMethod>(request.Method, ignoreCase: true, out var method) || !Enum.IsDefined(method))
+        {
+            return null;
+        }
+
+        var tests = request.Tests.Count == 0 ? SpeedCatalog.Default : request.Tests;
+        if (tests.Any(t => SpeedCatalog.Find(t) is null))
+        {
+            return null;
+        }
+
+        var comparisons = SpeedComparison.None;
+        foreach (var name in request.Comparisons)
+        {
+            if (!Enum.TryParse<SpeedComparison>(name, ignoreCase: true, out var comparison) || comparison == SpeedComparison.None || !Enum.IsDefined(comparison))
+            {
+                return null;
+            }
+
+            comparisons |= comparison;
+        }
+
+        return new SpeedOptions(method, tests, comparisons, new SpeedSettings());
+    }
+
+    /// <summary>Reads the speed run's starting settings from the server's encoding options.</summary>
+    /// <param name="options">The server's encoding options.</param>
+    /// <returns>The settings.</returns>
+    private static SpeedSettings SettingsFrom(EncodingOptions options) => new()
+    {
+        EncoderPreset = options.EncoderPreset == EncoderPreset.auto ? null : options.EncoderPreset.ToString(),
+        AudioVbr = options.EnableAudioVbr,
+        H264Crf = options.H264Crf,
+        H265Crf = options.H265Crf,
+        LowPowerH264 = options.EnableIntelLowPowerH264HwEncoder,
+        LowPowerHevc = options.EnableIntelLowPowerHevcHwEncoder,
+        VppTonemap = options.EnableVppTonemapping,
+        PreferNativeDecoder = options.PreferSystemNativeHwDecoder,
+        EnhancedNvdec = options.EnableEnhancedNvdecDecoder,
+        DoubleRate = options.DeinterlaceDoubleRate,
+        Bwdif = options.DeinterlaceMethod == DeinterlaceMethod.bwdif,
+    };
+
     /// <summary>Returns a check for any session that is transcoding.</summary>
     /// <param name="sessions">The session manager.</param>
     /// <returns>True while any session is transcoding.</returns>
@@ -194,19 +314,7 @@ public sealed class ProbeService : IDisposable
     /// <returns>The report.</returns>
     private static async Task<CapabilityReport> RunEngineAsync(IArgumentSourceFactory arguments, IMediaEncoder mediaEncoder, IApplicationPaths paths, ServerEnvironmentBaseline baseline, ILogger logger, CancellationToken cancellationToken)
     {
-        var config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
-        var root = Path.Combine(paths.CachePath, "hwprobe");
-        var options = new EngineOptions(
-            new FfmpegLocation(mediaEncoder.EncoderPath, FfmpegSource.Server),
-            StopStage.Matrix,
-            new HashSet<HwType>(),
-            null,
-            TimeSpan.FromSeconds(config.ProbeTimeoutSeconds),
-            TimeSpan.FromSeconds(config.FixtureTimeoutSeconds),
-            Path.Combine(root, "fixtures"),
-            Path.Combine(root, "reports"),
-            Refresh: true);
-
+        var options = ServerEngineOptions(mediaEncoder, paths);
         var environment = EnvironmentRules.InServer(baseline.Values, new Dictionary<string, string>());
         var recorder = new RecordingFfmpegRunner(new FfmpegRunner());
         CapabilityReport report;
@@ -226,6 +334,43 @@ public sealed class ProbeService : IDisposable
         }
 
         return report;
+    }
+
+    /// <summary>Runs the speed engine against the server's ffmpeg.</summary>
+    /// <param name="arguments">Argument source factory.</param>
+    /// <param name="mediaEncoder">The server's media encoder.</param>
+    /// <param name="paths">Server paths.</param>
+    /// <param name="baseline">Environment values captured when the plugin loaded.</param>
+    /// <param name="speed">What to measure.</param>
+    /// <param name="backends">The working backends.</param>
+    /// <param name="progress">Receives measurements done and the total.</param>
+    /// <param name="cancellationToken">Cancels the run.</param>
+    /// <returns>The speed report.</returns>
+    private static async Task<SpeedReport> RunSpeedEngineAsync(IArgumentSourceFactory arguments, IMediaEncoder mediaEncoder, IApplicationPaths paths, ServerEnvironmentBaseline baseline, SpeedOptions speed, IReadOnlyCollection<(HwType Type, string Device)> backends, IProgress<(int Done, int Total)> progress, CancellationToken cancellationToken)
+    {
+        var environment = EnvironmentRules.InServer(baseline.Values, new Dictionary<string, string>());
+        using var engine = new SpeedEngine(new FfmpegRunner(), arguments, new HostPlatform(), TimeProvider.System, environment);
+        return await engine.RunAsync(ServerEngineOptions(mediaEncoder, paths), speed, backends, progress, cancellationToken);
+    }
+
+    /// <summary>Returns the engine options for the server's ffmpeg and caches.</summary>
+    /// <param name="mediaEncoder">The server's media encoder.</param>
+    /// <param name="paths">Server paths.</param>
+    /// <returns>The options.</returns>
+    private static EngineOptions ServerEngineOptions(IMediaEncoder mediaEncoder, IApplicationPaths paths)
+    {
+        var config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
+        var root = Path.Combine(paths.CachePath, "hwprobe");
+        return new EngineOptions(
+            new FfmpegLocation(mediaEncoder.EncoderPath, FfmpegSource.Server),
+            StopStage.Matrix,
+            new HashSet<HwType>(),
+            null,
+            TimeSpan.FromSeconds(config.ProbeTimeoutSeconds),
+            TimeSpan.FromSeconds(config.FixtureTimeoutSeconds),
+            Path.Combine(root, "fixtures"),
+            Path.Combine(root, "reports"),
+            Refresh: true);
     }
 
     /// <summary>Reports whether a report's ffmpeg is the one the server uses now.</summary>
@@ -272,7 +417,7 @@ public sealed class ProbeService : IDisposable
     /// <returns>The result.</returns>
     private async Task<ProbeRunResult> RunHeldAsync(CancellationToken cancellationToken)
     {
-        _status = _status with { State = ProbeState.Running, LastStartedUtc = _time.GetUtcNow(), LastError = null };
+        _status = _status with { State = ProbeState.Running, Activity = ProbeActivity.Probe, LastStartedUtc = _time.GetUtcNow(), LastError = null };
         try
         {
             var report = await _probe(cancellationToken);
@@ -291,6 +436,39 @@ public sealed class ProbeService : IDisposable
         finally
         {
             _status = _status with { State = ProbeState.Idle, LastCompletedUtc = _time.GetUtcNow() };
+            _gate.Release();
+        }
+    }
+
+    /// <summary>Runs a speed measurement; the caller already holds the gate, which this releases.</summary>
+    /// <param name="measure">The speed run.</param>
+    /// <param name="speed">What to measure.</param>
+    /// <param name="backends">The working backends.</param>
+    /// <returns>The result.</returns>
+    private async Task<ProbeRunResult> RunSpeedHeldAsync(
+        Func<SpeedOptions, IReadOnlyCollection<(HwType Type, string Device)>, IProgress<(int Done, int Total)>, CancellationToken, Task<SpeedReport>> measure,
+        SpeedOptions speed,
+        IReadOnlyCollection<(HwType Type, string Device)> backends)
+    {
+        _status = _status with { State = ProbeState.Running, Activity = ProbeActivity.Speed, LastStartedUtc = _time.GetUtcNow(), LastError = null, Done = 0, Total = null };
+        try
+        {
+            var progress = new Progress<(int Done, int Total)>(p => _status = _status with { Done = p.Done, Total = p.Total });
+            var report = await measure(speed, backends, progress, CancellationToken.None);
+            await SpeedReportStore.WriteAsync(report, SpeedPath, CancellationToken.None);
+            Log.SpeedCompleted(_logger, report.Results.Count);
+            return ProbeRunResult.Completed;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // As with a probe: the reason goes to the status and the log, and the server keeps running.
+            Log.Failed(_logger, ex);
+            _status = _status with { LastError = ex.Message };
+            return ProbeRunResult.Failed;
+        }
+        finally
+        {
+            _status = _status with { State = ProbeState.Idle, LastCompletedUtc = _time.GetUtcNow(), Done = null, Total = null };
             _gate.Release();
         }
     }

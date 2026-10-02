@@ -34,6 +34,11 @@
             #HwProbeConfigPage .hwprobe-action { padding: 0 0.6em; line-height: 1.5; border: 1px solid #00a4dc; border-radius: 0.2em; background: transparent; color: #00a4dc; font: inherit; font-size: 0.9em; white-space: nowrap; cursor: pointer; }
             #HwProbeConfigPage .hwprobe-action:disabled { opacity: 0.5; cursor: default; }
             #HwProbeConfigPage .hwprobe-action.hwprobe-danger { border-color: #c62828; color: #c62828; font-weight: bold; }
+            #HwProbeConfigPage .hwprobe-choices { display: flex; flex-wrap: wrap; gap: 0.3em 1.5em; margin: 0.3em 0 0.8em; }
+            #HwProbeConfigPage .hwprobe-choices label { white-space: nowrap; }
+            #HwProbeConfigPage .hwprobe-speed-heading { margin: 0.8em 0 0; font-weight: 500; }
+            #HwProbeConfigPage .hwprobe-speed select { font: inherit; color: inherit; background: transparent; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 0.2em; padding: 0.1em 0.3em; }
+            #HwProbeConfigPage .hwprobe-speed select option { color: #000; }
             /* Below about 336px the settings table only fits if "Apply section" may take two lines. */
             @media (max-width: 21em) {
                 #HwProbeConfigPage .hwprobe-action { white-space: normal; }
@@ -78,6 +83,24 @@
                 let selected = null;
                 let history = [];
                 let restartRequired = false;
+                let speedTests = [];
+                let speedReport = null;
+                let speedMethod = 'Confirm';
+                let speedChosen = null;
+                const speedCompared = new Set();
+                const methods = {
+                    Quick: 'Quick: one transcode, streams estimated from its fps',
+                    Confirm: 'Confirm: the estimate is checked by running that many at once',
+                    Full: 'Full: 1, 2, 4, 8 and 16 at once, then narrowed down'
+                };
+                const comparisons = {
+                    AudioVbr: 'VBR audio on and off',
+                    Preset: 'Encoder preset one step faster and slower',
+                    Quality: 'CRF 18 and 28 (software)',
+                    Bitrate: 'Lowest and highest bitrate',
+                    Deinterlace: 'Double-rate deinterlacing, BWDIF',
+                    Paths: 'Decoder and encoder choices (low power, VPP, QSV and NVIDIA decoders)'
+                };
 
                 // The names and order of Jellyfin's Hardware acceleration dropdown.
                 const names = {
@@ -573,9 +596,167 @@
                         section('Unavailable').appendChild(backendTable(unavailable));
                     }
 
+                    renderSpeed(section('Speed'), viable);
                     renderNotes();
                     results.appendChild(renderDetails(report));
                     results.appendChild(renderReporting());
+                }
+
+                function checkbox(text, checked, onChange) {
+                    const label = el('label');
+                    const input = el('input');
+                    input.type = 'checkbox';
+                    input.checked = checked;
+                    input.addEventListener('change', () => onChange(input.checked));
+                    label.appendChild(input);
+                    label.appendChild(document.createTextNode(' ' + text));
+                    return label;
+                }
+
+                function choices(heading, items) {
+                    const div = el('div');
+                    div.appendChild(el('p', heading, 'hwprobe-speed-heading'));
+                    const list = el('div', null, 'hwprobe-choices');
+                    for (const item of items) {
+                        list.appendChild(item);
+                    }
+                    div.appendChild(list);
+                    return div;
+                }
+
+                // A rough count for the estimate; the server skips comparisons that don't apply to a backend.
+                function speedRuns(viable) {
+                    const tests = speedTests.filter(t => speedChosen.has(t.Key));
+                    let runs = 0;
+                    for (const hardware of [...viable.map(() => true), false]) {
+                        for (const t of tests) {
+                            runs += 1;
+                            if (t.DecodeOnly) {
+                                runs += hardware && speedCompared.has('Paths') ? 1 : 0;
+                                continue;
+                            }
+                            runs += (speedCompared.has('AudioVbr') ? 1 : 0) + (speedCompared.has('Preset') ? 2 : 0) + (speedCompared.has('Bitrate') ? 1 : 0);
+                            runs += !hardware && speedCompared.has('Quality') ? 1 : 0;
+                            runs += t.Interlaced && speedCompared.has('Deinterlace') ? 2 : 0;
+                            runs += hardware && speedCompared.has('Paths') ? 2 : 0;
+                        }
+                    }
+                    return runs;
+                }
+
+                function renderSpeed(container, viable) {
+                    container.classList.add('hwprobe-speed');
+                    if (!speedChosen) {
+                        speedChosen = new Set(speedTests.filter(t => t.Default).map(t => t.Key));
+                    }
+                    container.appendChild(el('p', 'Measures how many transcodes each working backend, and software, keeps at real time at once, and the fps of one alone. For the best results nothing should be playing, and nothing else heavy should run on this machine (library scans, backups, other containers); plug laptops in. Results vary between runs, so run it twice. Test-pattern clips encode faster than real video, so counts are an upper bound.', 'hwprobe-reason'));
+
+                    const method = el('select');
+                    for (const [key, text] of Object.entries(methods)) {
+                        const option = el('option', text);
+                        option.value = key;
+                        option.selected = key === speedMethod;
+                        method.appendChild(option);
+                    }
+                    method.addEventListener('change', () => { speedMethod = method.value; });
+                    const methodLine = el('p');
+                    methodLine.appendChild(method);
+                    container.appendChild(methodLine);
+
+                    const estimate = el('p', null, 'hwprobe-reason');
+                    const update = () => {
+                        const runs = speedRuns(viable);
+                        estimate.textContent = 'Up to ' + runs + ' measurement' + (runs === 1 ? '' : 's') + ', each 10 to 60 seconds.';
+                        button.disabled = runs === 0;
+                    };
+                    const pick = (set, key) => on => { if (on) { set.add(key); } else { set.delete(key); } update(); };
+                    container.appendChild(choices('Transcodes', speedTests.filter(t => !t.DecodeOnly).map(t => checkbox(t.Label, speedChosen.has(t.Key), pick(speedChosen, t.Key)))));
+                    container.appendChild(choices('Decoding (fps only)', speedTests.filter(t => t.DecodeOnly).map(t => checkbox(t.Label, speedChosen.has(t.Key), pick(speedChosen, t.Key)))));
+                    container.appendChild(choices('Compare', Object.entries(comparisons).map(([key, text]) => checkbox(text, speedCompared.has(key), pick(speedCompared, key)))));
+
+                    const button = action('Measure speed', () => {
+                        const body = { Method: speedMethod, Tests: speedTests.filter(t => speedChosen.has(t.Key)).map(t => t.Key), Comparisons: [...speedCompared] };
+                        ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed'), data: JSON.stringify(body), contentType: 'application/json' })
+                            .then(loadStatus, response => (response && response.text ? response.text() : Promise.resolve('')).then(text => {
+                                messageText.textContent = 'Could not start: ' + (text.replace(/^"|"$/g, '') || 'a probe is running or a session is transcoding.');
+                                button.disabled = false;
+                            }));
+                    });
+                    const buttons = el('p');
+                    buttons.appendChild(button);
+                    container.appendChild(buttons);
+                    container.appendChild(estimate);
+                    update();
+
+                    if (speedReport) {
+                        container.appendChild(speedTable(speedReport));
+                    }
+                }
+
+                // Runs of the same command vary by a few percent, so smaller differences aren't shown as one.
+                const noise = 0.05;
+
+                function speedTable(r) {
+                    const div = el('div', null, 'hwprobe-scroll');
+                    const tests = Object.fromEntries(speedTests.map(t => [t.Key, t]));
+                    const backendName = x => x.type === 'none' ? 'Software' : (names[x.type] || x.type) + (x.device ? ' ' + x.device : '');
+                    div.appendChild(el('p', 'Measured ' + new Date(r.generatedUtc).toLocaleString() + ', ' + r.method.toLowerCase() + ' method.', 'hwprobe-reason'));
+
+                    // One line per transcode: which backend kept the most streams, then the fastest.
+                    const base = r.results.filter(x => !x.variant);
+                    const summary = el('table');
+                    for (const key of [...new Set(base.map(x => x.test))]) {
+                        const counted = base.filter(x => x.test === key && x.streams !== null && x.streams !== undefined);
+                        if (!counted.length) {
+                            continue;
+                        }
+                        const best = counted.reduce((a, b) => (b.streams > a.streams || (b.streams === a.streams && (b.fps || 0) > (a.fps || 0))) ? b : a);
+                        const label = tests[key] ? tests[key].Label : key;
+                        row(summary, [label, best.streams === 0 ? 'No backend keeps one stream at real time' : 'Most streams: ' + backendName(best) + ' (' + streamsText(best) + ')']);
+                    }
+                    if (summary.childNodes.length) {
+                        div.appendChild(summary);
+                    }
+
+                    div.appendChild(el('p', 'Streams: transcodes kept at real time at once. Speed: one transcode alone, as a multiple of real time (1\u00d7 plays as fast as it\u2019s made). Change: speed against the same test with the base settings.', 'hwprobe-reason'));
+                    const table = el('table');
+                    row(table, [el('th', 'Test'), el('th', 'Compared'), el('th', 'Streams'), el('th', 'Speed'), el('th', 'fps'), el('th', 'Change'), el('th')]);
+                    let backend = null;
+                    let baseFps = null;
+                    for (const x of r.results) {
+                        const key = x.type + ' ' + x.device;
+                        if (key !== backend) {
+                            backend = key;
+                            row(table, [backendName(x), '', '', '', '', '', '']).className = 'hwprobe-group';
+                        }
+                        if (!x.variant) {
+                            baseFps = x.fps;
+                        }
+                        const test = tests[x.test];
+                        const speed = x.fps && test ? (x.fps / test.FrameRate).toFixed(1) + '\u00d7' : '-';
+                        const fps = x.fps ? String(Math.round(x.fps)) : '-';
+                        row(table, [x.variant ? '' : (test ? test.Label : x.test), x.variant || '', streamsText(x), speed, fps, x.variant ? changeText(x.fps, baseFps) : '', el('td', x.note || '', 'hwprobe-reason')]);
+                    }
+                    div.appendChild(table);
+                    return div;
+                }
+
+                function streamsText(x) {
+                    if (x.streams === null || x.streams === undefined) {
+                        return '-';
+                    }
+                    return x.capped ? x.streams + '+' : '\u2248' + x.streams;
+                }
+
+                function changeText(fps, baseFps) {
+                    if (!fps || !baseFps) {
+                        return '-';
+                    }
+                    const change = fps / baseFps - 1;
+                    if (Math.abs(change) < noise) {
+                        return 'No clear difference';
+                    }
+                    return (change > 0 ? '+' : '\u2212') + Math.round(Math.abs(change) * 100) + '%';
                 }
 
                 function renderReporting() {
@@ -616,7 +797,11 @@
                         .then(h => { history = h || []; }, () => { history = []; });
                     const pending = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/RestartRequired'), dataType: 'json' })
                         .then(r => { restartRequired = r === true; }, () => { restartRequired = false; });
-                    return Promise.all([config, server, data, changes, pending]).then(() => { renderChange(); render(); });
+                    const tests = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedTests'), dataType: 'json' })
+                        .then(t => { speedTests = t || []; }, () => { speedTests = []; });
+                    const speed = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Speed'), dataType: 'json' })
+                        .then(r => { speedReport = r; }, () => { speedReport = null; });
+                    return Promise.all([config, server, data, changes, pending, tests, speed]).then(() => { renderChange(); render(); });
                 }
 
                 // jellyfin-web keeps a loaded plugin page until the browser reloads, so after an update this tab could
@@ -631,11 +816,14 @@
                             messageText.appendChild(action('Reload', () => location.reload()));
                         }
                         if (s.State === 'Running') {
-                            statusText.textContent = 'Probing…';
+                            statusText.textContent = s.Activity === 'Speed'
+                                ? 'Measuring speed… ' + (s.Done || 0) + (s.Total ? ' of ' + s.Total : '')
+                                : 'Probing…';
                             pollTimer = setTimeout(loadStatus, 3000);
                             return;
                         }
-                        statusText.textContent = s.LastError ? 'Last probe failed: ' + s.LastError : (s.LastCompletedUtc ? 'Last probe: ' + new Date(s.LastCompletedUtc).toLocaleString() : '');
+                        const last = s.Activity === 'Speed' ? 'Last speed run' : 'Last probe';
+                        statusText.textContent = s.LastError ? last + ' failed: ' + s.LastError : (s.LastCompletedUtc ? last + ': ' + new Date(s.LastCompletedUtc).toLocaleString() : '');
                         loadReport();
                     });
                 }

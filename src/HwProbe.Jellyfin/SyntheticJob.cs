@@ -10,16 +10,11 @@ namespace Jellyfin.Plugin.HwProbe.Jellyfin;
 /// <summary>Builds the <see cref="EncodingJobInfo"/> EncodingHelper reads for one probe cell.</summary>
 public static class SyntheticJob
 {
-    /// <summary>Fixture width; matches the generated clips.</summary>
-    public const int Width = 640;
-
-    /// <summary>Fixture height; matches the generated clips.</summary>
-    public const int Height = 360;
-
     /// <summary>Creates a progressive video job whose source stream matches the cell.</summary>
     /// <param name="cell">The media shape to describe.</param>
+    /// <param name="sourcePath">The input clip, or null when only the arguments around the input are wanted.</param>
     /// <returns>The job.</returns>
-    public static EncodingJobInfo Create(ProbeCell cell)
+    public static EncodingJobInfo Create(ProbeCell cell, string? sourcePath = null)
     {
         ArgumentNullException.ThrowIfNull(cell);
 
@@ -32,10 +27,10 @@ public static class SyntheticJob
             Profile = cell.Profile,
             PixelFormat = cell.PixelFormat ?? (cell.BitDepth > 8 ? "yuv420p10le" : "yuv420p"),
             IsInterlaced = cell.Interlaced,
-            Width = Width,
-            Height = Height,
-            AverageFrameRate = 25,
-            RealFrameRate = 25,
+            Width = cell.SourceWidth,
+            Height = cell.SourceHeight,
+            AverageFrameRate = cell.SourceFrameRate,
+            RealFrameRate = cell.SourceFrameRate,
             ColorTransfer = cell.ColorTransfer,
             ColorPrimaries = cell.ColorPrimaries,
             ColorSpace = cell.ColorSpace,
@@ -43,13 +38,23 @@ public static class SyntheticJob
 
         // External, like a track the server has extracted: it reaches the same subtitles= burn-in filter
         // without needing the server's subtitle extraction.
-        var subtitle = cell.SubtitlePath is null ? null : new MediaStream
+        var subtitle = cell.SubtitlePath is null && cell.GraphicalSubtitlePath is null ? null : new MediaStream
+        {
+            Index = 2,
+            Type = MediaStreamType.Subtitle,
+            Codec = cell.GraphicalSubtitlePath is null ? "ass" : "PGSSUB",
+            IsExternal = true,
+            Path = cell.GraphicalSubtitlePath ?? cell.SubtitlePath,
+        };
+
+        var audio = !cell.Audio ? null : new MediaStream
         {
             Index = 1,
-            Type = MediaStreamType.Subtitle,
-            Codec = "ass",
-            IsExternal = true,
-            Path = cell.SubtitlePath,
+            Type = MediaStreamType.Audio,
+            Codec = "aac",
+            Channels = 6,
+            ChannelLayout = "5.1",
+            SampleRate = 48000,
         };
 
         var source = new MediaSourceInfo
@@ -57,7 +62,8 @@ public static class SyntheticJob
             Id = "hwprobe",
             Protocol = MediaProtocol.File,
             VideoType = VideoType.VideoFile,
-            MediaStreams = subtitle is null ? [stream] : [stream, subtitle],
+            Path = sourcePath,
+            MediaStreams = [.. new[] { stream, audio, subtitle }.OfType<MediaStream>()],
         };
 
         return new EncodingJobInfo(TranscodingJobType.Progressive)
@@ -70,7 +76,11 @@ public static class SyntheticJob
             VideoStream = stream,
             MediaSource = source,
             OutputVideoCodec = cell.OutputCodec,
-            BaseRequest = new BaseEncodingJobOptions { MaxWidth = cell.MaxWidth, MaxHeight = cell.MaxHeight },
+            MediaPath = sourcePath,
+            AudioStream = audio,
+            OutputAudioCodec = audio is null ? null : "aac",
+            OutputAudioChannels = audio is null ? null : 2,
+            BaseRequest = new BaseEncodingJobOptions { MaxWidth = cell.MaxWidth, MaxHeight = cell.MaxHeight, VideoBitRate = cell.VideoBitrate, EnableAudioVbrEncoding = true },
         };
     }
 }
