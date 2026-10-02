@@ -17,13 +17,14 @@ public sealed class SpeedCommandLineTests
         EncoderArgs = " -b:v 4000000",
         AudioArgs = " -codec:a:0 aac -ac 2 -ab 256000",
         InputArgument = "-hwaccel videotoolbox -i file:\"/c/a.mkv\" -i file:\"/c/s.sup\"",
+        Threads = 0,
     };
 
     /// <summary>Every input loops, the run is bounded by duration, and upstream's encoder and audio arguments follow.</summary>
     [Fact]
     public void TranscodeLoopsEveryInput() =>
         Assert.Equal(
-            "-hide_banner -v warning -nostats -progress pipe:1 -hwaccel videotoolbox -stream_loop -1 -i file:\"/c/a.mkv\" -stream_loop -1 -i file:\"/c/s.sup\" -t 12.5 -filter_complex \"[1:0]scale[sub];[0:0][sub]overlay\" -c:v h264_videotoolbox -b:v 4000000 -codec:a:0 aac -ac 2 -ab 256000 -f null -",
+            "-hide_banner -v warning -nostats -progress pipe:1 -hwaccel videotoolbox -stream_loop -1 -i file:\"/c/a.mkv\" -stream_loop -1 -i file:\"/c/s.sup\" -t 12.5 -threads 0 -filter_complex \"[1:0]scale[sub];[0:0][sub]overlay\" -c:v h264_videotoolbox -b:v 4000000 -codec:a:0 aac -ac 2 -ab 256000 -f null -",
             SpeedCommandLine.Build(_args, TimeSpan.FromSeconds(12.5), decodeOnly: false));
 
     /// <summary>A decode test keeps only the input and drops audio.</summary>

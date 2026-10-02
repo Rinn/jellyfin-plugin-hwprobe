@@ -5,7 +5,7 @@ using Jellyfin.Plugin.HwProbe.Core.Probes;
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 
 /// <summary>Assembles a speed run's command line around upstream's input, filter, encoder and audio arguments.</summary>
-/// <remarks>The wrapper (looping, duration, progress, null output) is synthesized, as the probe's is.</remarks>
+/// <remarks>The wrapper (looping, duration, progress, null output) is synthesized, as the probe's is; <c>-threads</c> sits before the filters, as in DynamicHlsController's command line (v12.1).</remarks>
 public static partial class SpeedCommandLine
 {
     /// <summary>Builds the argument string.</summary>
@@ -31,7 +31,7 @@ public static partial class SpeedCommandLine
         var seconds = content.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture);
         var output = decodeOnly
             ? " -an"
-            : $"{args.FilterArgs} -c:v {args.VideoEncoder}{args.EncoderArgs}{(args.AudioArgs.Length > 0 ? args.AudioArgs : " -an")}";
+            : $"{(args.Threads is { } threads ? string.Create(CultureInfo.InvariantCulture, $" -threads {threads}") : string.Empty)}{args.FilterArgs} -c:v {args.VideoEncoder}{args.EncoderArgs}{(args.AudioArgs.Length > 0 ? args.AudioArgs : " -an")}";
 
         // No blanket space clean-up: a library path may hold two spaces in a row.
         return $"-hide_banner -v warning -nostats -progress pipe:1 {looped} -t {seconds}{output} -f null -";

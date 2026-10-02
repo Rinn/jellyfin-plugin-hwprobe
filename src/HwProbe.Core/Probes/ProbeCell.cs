@@ -121,4 +121,7 @@ public sealed record ProbeCell(
 
     /// <summary>Gets the media source ID Jellyfin knows the file by, which keys its extracted subtitles; null for a clip.</summary>
     public string? MediaSourceId { get; init; }
+
+    /// <summary>Gets Jellyfin's "Transcoding thread count"; -1 is its default, automatic.</summary>
+    public int EncodingThreadCount { get; init; } = -1;
 }

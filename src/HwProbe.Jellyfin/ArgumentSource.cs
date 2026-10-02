@@ -111,6 +111,7 @@ public sealed class ArgumentSource : IArgumentSource
             H265Crf = cell.H265Crf,
             EnableAudioVbr = cell.AudioVbr,
             DeinterlaceDoubleRate = cell.DoubleRate,
+            EncodingThreadCount = cell.EncodingThreadCount,
         };
     }
 
@@ -207,6 +208,7 @@ public sealed class ArgumentSource : IArgumentSource
                 : lowPower ? " " + LowPowerArg : string.Empty,
             AudioArgs = cell.FullQuality && state.AudioStream is not null ? " " + _helper.GetProgressiveVideoAudioArguments(state, options).Trim() : string.Empty,
             InputArgument = inputArgument,
+            Threads = cell.FullQuality ? EncodingHelper.GetNumberOfThreads(state, options, encoder) : null,
             LowPowerEncoder = lowPower,
             HardwareDecoder = _helper.HardwareDecoder(state, options),
             HardwareEncoder = !string.Equals(encoder, softwareEncoder, StringComparison.Ordinal),

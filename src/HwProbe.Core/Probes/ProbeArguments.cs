@@ -14,6 +14,9 @@ public sealed record ProbeArguments(
     /// <summary>Gets encoder options placed after <c>-c:v</c>, with a leading space, or empty.</summary>
     public string EncoderArgs { get; init; } = string.Empty;
 
+    /// <summary>Gets the thread count upstream passes as <c>-threads</c> (0 is automatic), or null unless the cell asked for full quality.</summary>
+    public int? Threads { get; init; }
+
     /// <summary>Gets upstream's audio arguments, with a leading space, or empty when the job has no audio.</summary>
     public string AudioArgs { get; init; } = string.Empty;
 

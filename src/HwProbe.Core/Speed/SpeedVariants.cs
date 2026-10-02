@@ -41,6 +41,7 @@ internal static class SpeedVariants
             AudioVbr = settings.AudioVbr,
             DoubleRate = settings.DoubleRate,
             Bwdif = settings.Bwdif,
+            EncodingThreadCount = settings.EncodingThreadCount,
             PreferNativeDecoder = settings.PreferNativeDecoder,
             EnhancedNvdec = settings.EnhancedNvdec,
             LowPower = output switch

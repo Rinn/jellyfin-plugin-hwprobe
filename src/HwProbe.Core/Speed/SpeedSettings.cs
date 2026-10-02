@@ -37,6 +37,9 @@ public sealed record SpeedSettings
     /// <summary>Gets a value indicating whether deinterlacing doubles the frame rate.</summary>
     public bool DoubleRate { get; init; }
 
+    /// <summary>Gets the transcoding thread count; -1 (Jellyfin's default) is automatic.</summary>
+    public int EncodingThreadCount { get; init; } = -1;
+
     /// <summary>Gets a value indicating whether the deinterlacer is BWDIF rather than YADIF.</summary>
     public bool Bwdif { get; init; }
 }

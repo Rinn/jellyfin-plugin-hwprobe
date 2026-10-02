@@ -333,6 +333,7 @@ public sealed class ProbeService : IDisposable
         DoubleRate = options.DeinterlaceDoubleRate,
         Bwdif = options.DeinterlaceMethod == DeinterlaceMethod.bwdif,
         Tonemap = options.EnableTonemapping,
+        EncodingThreadCount = options.EncodingThreadCount,
     };
 
     /// <summary>Returns a check for any session that is transcoding.</summary>

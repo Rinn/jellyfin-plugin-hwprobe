@@ -64,6 +64,14 @@ public sealed class SpeedArgumentsTests
     public void InternalImageSubtitleUsesItsStream() =>
         Assert.Contains("[0:3]", Build(_cell with { InternalSubtitleIndex = 3, InternalSubtitleCodec = "PGSSUB" }).FilterArgs, StringComparison.Ordinal);
 
+    /// <summary>The thread count is upstream's: automatic by default, the server's setting capped at the core count otherwise.</summary>
+    [Fact]
+    public void ThreadsFollowTheSetting()
+    {
+        Assert.Equal(0, Build(_cell).Threads);
+        Assert.Equal(Math.Min(2, Environment.ProcessorCount), Build(_cell with { EncodingThreadCount = 2 }).Threads);
+    }
+
     /// <summary>Double-rate deinterlacing changes the deinterlace filter.</summary>
     [Fact]
     public void DoubleRateChangesTheFilter()
