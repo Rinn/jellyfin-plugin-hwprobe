@@ -143,7 +143,16 @@ public sealed class ProbeService : IDisposable
             return null;
         }
 
-        var bytes = await File.ReadAllBytesAsync(DiagnosticsPath, cancellationToken);
+        byte[] bytes;
+        try
+        {
+            bytes = await File.ReadAllBytesAsync(DiagnosticsPath, cancellationToken);
+        }
+        catch (FileNotFoundException)
+        {
+            return null;
+        }
+
         var latest = ReportStore.Deserialize(json);
         var bundled = await DiagnosticsBundle.ReadReportAsync(bytes, cancellationToken);
         return bundled is not null && bundled.GeneratedUtc == latest?.GeneratedUtc ? bytes : null;

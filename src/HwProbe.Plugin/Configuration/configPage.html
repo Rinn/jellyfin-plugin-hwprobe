@@ -431,7 +431,9 @@
                 // A backend that failed every test still gets used for every transcode until it's changed.
                 function renderBrokenBackend(container, viable) {
                     const type = encoding && encoding.HardwareAccelerationType;
-                    if (!type || type === 'none' || viable.some(b => b.type === type)) {
+                    // Untested isn't a failure, so it gets no warning.
+                    if (!type || type === 'none' || viable.some(isConfigured)
+                        || report.backends.some(b => b.verdict === 'Untested' && isConfigured(b))) {
                         return;
                     }
                     const warning = el('p', null, 'hwprobe-warn');
