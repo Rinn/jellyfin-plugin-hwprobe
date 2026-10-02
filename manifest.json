@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.6.1.0",
+        "changelog": "Last change is one expandable line, listing what Revert sets each option to.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.6.1/hwprobe-plugin_0.6.1.0.zip",
+        "checksum": "8b55ded46f5f6182968c13eb212fc968",
+        "timestamp": "2026-10-02T14:05:10Z"
+      },
+      {
         "version": "0.6.0.0",
         "changelog": "Shows what Revert would change. Asks to reload an open page after HwProbe is updated. HwProbe's API responses are no longer cached.",
         "targetAbi": "12.1.0.0",
