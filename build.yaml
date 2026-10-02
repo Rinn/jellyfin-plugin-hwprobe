@@ -3,10 +3,11 @@ name: "HwProbe"
 guid: "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93"
 targetAbi: "12.1.0.0"
 framework: "net10.0"
-overview: "Tests which hardware transcoding backends actually work"
+overview: "Tests which hardware transcoding options work on a Jellyfin server"
 description: >
-  Runs short real transcodes on each hardware backend and device, and reports which ones work,
-  which filter pipeline Jellyfin would use, and how to fix the ones that don't.
+  Runs short test transcodes for each hardware acceleration option on the Transcoding page.
+  Shows which ones work and how to fix the ones that don't. Results can be applied to
+  Jellyfin's settings and reverted.
 category: "General"
 owner: "Rinn"
 artifacts:

@@ -34,7 +34,7 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     public override Guid Id => Guid.Parse(PluginId, CultureInfo.InvariantCulture);
 
     /// <inheritdoc/>
-    public override string Description => "Tests which hardware transcoding backends and codecs actually work on this server.";
+    public override string Description => "Tests which hardware transcoding options work on a Jellyfin server.";
 
     /// <inheritdoc/>
     public IEnumerable<PluginPageInfo> GetPages() =>
