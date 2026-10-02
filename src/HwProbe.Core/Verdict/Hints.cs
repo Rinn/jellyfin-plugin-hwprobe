@@ -44,6 +44,18 @@ public static class Hints
         _ => null,
     };
 
+    /// <summary>Returns the remedy when no listed Windows adapter is the backend's vendor.</summary>
+    /// <param name="type">QSV or AMF.</param>
+    /// <param name="device">The adapter index the user asked for, or null when every adapter was considered.</param>
+    /// <returns>Remedy text.</returns>
+    public static string NoVendorAdapter(HwType type, string? device)
+    {
+        var maker = type == HwType.qsv ? "Intel" : "AMD";
+        return device is null
+            ? $"No {maker} adapter found. Check the {maker} graphics driver is installed."
+            : $"Adapter {device} isn't an {maker} adapter.";
+    }
+
     /// <summary>Returns the fix for an Intel device whose OpenCL runtime doesn't start.</summary>
     /// <param name="inContainer">Whether the probe ran inside a container.</param>
     /// <returns>The fix.</returns>

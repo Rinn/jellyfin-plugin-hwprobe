@@ -98,8 +98,37 @@ public sealed class ProbeEngineTests : IDisposable
 
         Assert.Equal(["0x10de", "0x8086"], report.Host.GpuVendors);
         Assert.Equal(["dx11:1"], runner.Calls.Where(c => c.Contains("qsv=qs@dx11", StringComparison.Ordinal)).Select(c => c.Split("d3d11va=")[1].Split(' ')[0]));
+
+        // The listing stops at index 3, the first with no adapter, below its cap of five.
         Assert.Equal(4, runner.Calls.Count(c => c.Contains("-init_hw_device d3d11va=dx11:", StringComparison.Ordinal) && !c.Contains("qsv", StringComparison.Ordinal)));
-        Assert.Equal(BackendVerdict.NotPresent, Assert.Single(report.Backends, b => b.Type == HwType.amf).Verdict);
+        var amf = Assert.Single(report.Backends, b => b.Type == HwType.amf);
+        Assert.Equal((BackendVerdict.NotPresent, "No AMD adapter found. Check the AMD graphics driver is installed."), (amf.Verdict, amf.Hint));
+    }
+
+    /// <summary>With the adapters listed, a failed Intel adapter doesn't hide the next, and AMF tests only the first AMD adapter.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task WindowsAdaptersAreAllTriedButAmfOnlyItsFirst()
+    {
+        // Intel at 0 (its QSV open fails), Intel at 1, AMD at 2 and 3, the software adapter at 4.
+        string[] adapters = ["8086:4680 (Intel(R) UHD Graphics 770)", "8086:56a0 (Intel(R) Arc(TM) A770)", "1002:744c (AMD Radeon RX 7900 XTX)", "1002:164e (AMD Radeon(TM) Graphics)", "1414:008c (Microsoft Basic Render Driver)"];
+        var runner = new EngineRunner("jellyfin-8.1.3-windows-x64")
+        {
+            Probe = i =>
+            {
+                var index = Enumerable.Range(0, adapters.Length).FirstOrDefault(n => i.Arguments.Contains($"dx11:{n}", StringComparison.Ordinal), -1);
+                var line = index < 0 ? string.Empty : $"[D3D11VA @ 1] Using device {adapters[index]}.\n";
+                var failed = index == 0 && i.Arguments.Contains("qsv=qs@dx11", StringComparison.Ordinal);
+                return EngineRunner.Exited(1, null, line + (failed ? "Device creation failed: -1.\n" : string.Empty));
+            },
+        };
+        using var engine = new ProbeEngine(runner, _arguments, new FakeHostPlatform(HostOs.Windows), TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
+
+        await engine.RunAsync(Options(StopStage.Devices, refresh: true) with { Types = new HashSet<HwType> { HwType.qsv, HwType.amf } }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(["dx11:0", "dx11:1"], runner.Calls.Where(c => c.Contains("qsv=qs@dx11", StringComparison.Ordinal)).Select(c => c.Split("d3d11va=")[1].Split(' ')[0]));
+        Assert.Equal(2, runner.Calls.Count(c => c.EndsWith("d3d11va=dx11:2", StringComparison.Ordinal)));
+        Assert.Equal(1, runner.Calls.Count(c => c.EndsWith("d3d11va=dx11:3", StringComparison.Ordinal)));
     }
 
     /// <summary>A device that won't open is NotPresent after one probe, with nothing further launched.</summary>

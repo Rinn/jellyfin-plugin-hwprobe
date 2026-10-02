@@ -141,8 +141,18 @@ public sealed class ProbeEngine : IDisposable
             // EncodingHelper hard-codes CUDA device 0 (v12.1, L1162); other indices are unusable by Jellyfin.
             .Where(c => c.Type != HwType.nvenc || c.Device == "0")
 
-            // With no device set, Jellyfin picks the adapter by vendor: QSV 0x8086 (L970), AMF 0x1002 (L1180).
-            .Where(c => run.Adapters.Count == 0 || c.Type is not (HwType.qsv or HwType.amf) || AdapterVendor(run, c.Device) == (c.Type == HwType.qsv ? "0x8086" : "0x1002"));
+            // Jellyfin picks the adapter by vendor: QSV any Intel one (vendor=0x8086 unless QsvDevice names an index, L964-970),
+            // AMF always the first AMD one (vendor=0x1002, L1180; there's no AMF device setting).
+            .Where(c => run.Adapters.Count == 0 || c.Type is not (HwType.qsv or HwType.amf) || IsAdapterJellyfinUses(run, c));
+
+    /// <summary>Reports whether Jellyfin could use a Windows adapter index for QSV or AMF.</summary>
+    /// <param name="run">The run, for its adapter list.</param>
+    /// <param name="candidate">A QSV or AMF candidate.</param>
+    /// <returns>True for an Intel adapter (QSV), or the first AMD adapter (AMF).</returns>
+    private static bool IsAdapterJellyfinUses(Run run, DeviceCandidate candidate) =>
+        candidate.Type == HwType.qsv
+            ? AdapterVendor(run, candidate.Device) == "0x8086"
+            : candidate.Device == run.Adapters.FindIndex(a => a.Vendor == "0x1002").ToString(CultureInfo.InvariantCulture);
 
     /// <summary>Returns the vendor of a Windows adapter index.</summary>
     /// <param name="run">The run, for its adapter list.</param>
@@ -202,6 +212,12 @@ public sealed class ProbeEngine : IDisposable
         foreach (var node in run.Devices.RenderNodes)
         {
             identities[node.Node] = $"{node.Vendor}:{node.Device}:{run.DriverLines.GetValueOrDefault(node.Node) ?? DeviceEnumerator.Unknown}";
+        }
+
+        // Installing a Windows GPU driver changes its adapter IDs, which must invalidate a cached report.
+        for (var index = 0; index < run.Adapters.Count; index++)
+        {
+            identities[$"dx11:{index.ToString(CultureInfo.InvariantCulture)}"] = $"{run.Adapters[index].Vendor}:{run.Adapters[index].Device}";
         }
 
         return Fingerprint.Compute(new FingerprintInputs(
@@ -306,7 +322,8 @@ public sealed class ProbeEngine : IDisposable
     /// <returns>A task that completes when the adapters are listed.</returns>
     private async Task ListAdaptersAsync(Run run, CancellationToken cancellationToken)
     {
-        for (var index = 0; index < DeviceEnumerator.AdapterCount; index++)
+        // One past the candidate indices, so the software adapter listed last doesn't hide a fourth GPU's vendor.
+        for (var index = 0; index <= DeviceEnumerator.AdapterCount; index++)
         {
             var arguments = $"-v verbose -hide_banner -init_hw_device d3d11va=dx11:{index.ToString(CultureInfo.InvariantCulture)}";
             var invocation = new FfmpegInvocation(run.Options.Ffmpeg.Path, arguments, _environment.Baseline, run.Options.ProbeTimeout);
@@ -349,7 +366,17 @@ public sealed class ProbeEngine : IDisposable
             {
                 var denied = run.Devices.RenderNodeAccess == DirectoryAccess.Denied && type is HwType.vaapi or HwType.qsv;
                 var outcome = denied ? ProbeOutcome.PermissionDenied : ProbeOutcome.DeviceUnavailable;
-                run.Backends.Add(EmptyRow(new DeviceCandidate(type, string.Empty), denied ? BackendVerdict.PermissionDenied : BackendVerdict.NotPresent, Hints.For(outcome, type, run.Host.Os, inContainer)));
+                var hint = run.Adapters.Count > 0 && type is HwType.qsv or HwType.amf ? Hints.NoVendorAdapter(type, null) : Hints.For(outcome, type, run.Host.Os, inContainer);
+                run.Backends.Add(EmptyRow(new DeviceCandidate(type, string.Empty), denied ? BackendVerdict.PermissionDenied : BackendVerdict.NotPresent, hint));
+            }
+        }
+        else if (run.Adapters.Count > 0)
+        {
+            // A requested adapter that isn't the backend's vendor would otherwise give no row at all.
+            foreach (var type in new[] { HwType.qsv, HwType.amf }.Where(t => (run.Options.Types.Count == 0 || run.Options.Types.Contains(t))
+                && run.Caps.BuildStatus.GetValueOrDefault(t) == BuildStatus.Selectable && !selected.Any(c => c.Type == t)))
+            {
+                run.Backends.Add(EmptyRow(new DeviceCandidate(type, run.Options.Device), BackendVerdict.NotPresent, Hints.NoVendorAdapter(type, run.Options.Device)));
             }
         }
 

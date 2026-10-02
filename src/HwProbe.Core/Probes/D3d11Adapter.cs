@@ -26,13 +26,15 @@ public static partial class D3d11Adapter
 
     /// <summary>Returns the GPU vendors among the adapters, or none when the list can't be trusted.</summary>
     /// <param name="adapters">Every adapter, in index order.</param>
-    /// <returns>Distinct vendors, sorted; empty when any adapter is a VM's virtual GPU or Microsoft's driverless display adapter.</returns>
-    public static IReadOnlyList<string> Vendors(IEnumerable<(string Vendor, string Device)> adapters)
+    /// <returns>Distinct vendors, sorted; empty when any adapter but the last is Microsoft's, or one is a VM's virtual GPU.</returns>
+    /// <remarks>
+    /// Windows always lists the software adapter (Basic Render Driver, 1414:008c) last. A GPU without its driver shows as
+    /// Microsoft Basic Display Adapter with the same IDs, earlier in the list, and its maker is then unknown.
+    /// </remarks>
+    public static IReadOnlyList<string> Vendors(IReadOnlyList<(string Vendor, string Device)> adapters)
     {
         ArgumentNullException.ThrowIfNull(adapters);
-        var real = adapters.Where(a => a != SoftwareAdapter).ToList();
-
-        // A GPU without its driver shows as Microsoft Basic Display Adapter, so its maker is unknown.
+        var real = adapters.Count > 0 && adapters[^1] == SoftwareAdapter ? adapters.Take(adapters.Count - 1).ToList() : [.. adapters];
         return real.Exists(a => VirtualGpus.Vendors.Contains(a.Vendor, StringComparer.Ordinal))
             ? []
             : [.. real.Select(a => a.Vendor).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)];
