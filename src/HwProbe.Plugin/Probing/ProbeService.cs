@@ -610,9 +610,12 @@ public sealed partial class ProbeService : IDisposable
 
             var progress = new DirectProgress(p =>
             {
-                lock (_speedSoFar)
+                if (p.Result is { } result)
                 {
-                    _speedSoFar.Add(p.Result);
+                    lock (_speedSoFar)
+                    {
+                        _speedSoFar.Add(result);
+                    }
                 }
 
                 _status = _status with { Done = p.Done, Total = p.Total };

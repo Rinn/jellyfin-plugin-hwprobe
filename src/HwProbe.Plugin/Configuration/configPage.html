@@ -797,7 +797,7 @@
                         const bar = jf('<div class="itemProgressBar hwprobe-progress"><div class="itemProgressBarForeground"></div></div>');
                         bar.firstElementChild.style.width = (speedProgress.Total ? Math.round(100 * speedProgress.Done / speedProgress.Total) : 0) + '%';
                         line.appendChild(bar);
-                        line.appendChild(el('span', 'Measuring … ' + speedProgress.Done + (speedProgress.Total ? ' of ' + speedProgress.Total : ''), 'secondaryText'));
+                        line.appendChild(el('span', speedProgressText(speedProgress.Done, speedProgress.Total), 'secondaryText'));
                         speedResults.appendChild(line);
                     }
                     const shown = speedLive || speedReport;
@@ -1137,6 +1137,11 @@
                     ].map(([key, value]) => [settingLabels[key] || key, value]);
                 }
 
+                // The run makes or downloads its test videos before it knows how many measurements apply.
+                function speedProgressText(done, total) {
+                    return total ? 'Measured ' + done + ' of ' + total : 'Preparing test videos\u2026';
+                }
+
                 function streamsText(x) {
                     if (x.streams === null || x.streams === undefined) {
                         return '-';
@@ -1216,7 +1221,7 @@
                         runButton.disabled = running;
                         if (running) {
                             const text = s.Activity === 'Speed'
-                                ? 'Measuring speed\u2026 ' + (s.Done || 0) + (s.Total ? ' of ' + s.Total : '')
+                                ? speedProgressText(s.Done || 0, s.Total)
                                 : 'Probing\u2026';
                             statusText.textContent = text;
                             speedUpdate();
