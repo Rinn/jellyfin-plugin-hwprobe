@@ -32,7 +32,7 @@ public static class MatrixCatalog
         FixtureSpec[] decoded =
         [
             FixtureCatalog.H264, FixtureCatalog.Hevc, FixtureCatalog.Mpeg2, FixtureCatalog.Vc1, FixtureCatalog.Vp8, FixtureCatalog.Vp9,
-            FixtureCatalog.Av1, FixtureCatalog.Hevc10, FixtureCatalog.Vp910, FixtureCatalog.HevcRext10, FixtureCatalog.HevcRext12, FixtureCatalog.Av110,
+            FixtureCatalog.Av1, FixtureCatalog.Hevc10, FixtureCatalog.Vp910, FixtureCatalog.HevcRext10, FixtureCatalog.HevcRext10Yuv444, FixtureCatalog.HevcRext12, FixtureCatalog.HevcRext12Yuv422, FixtureCatalog.Av110,
         ];
 
         List<MatrixCell> cells =
@@ -91,7 +91,7 @@ public static class MatrixCatalog
     /// <summary>Report key for a fixture, e.g. <c>hevc_rext_12bit</c>; 8-bit 4:2:0 is the bare codec.</summary>
     /// <param name="fixture">The fixture.</param>
     /// <returns>The key.</returns>
-    private static string Key(FixtureSpec fixture) => Key(fixture.Codec, fixture.BitDepth, fixture.Profile);
+    private static string Key(FixtureSpec fixture) => fixture.Key ?? Key(fixture.Codec, fixture.BitDepth, fixture.Profile);
 
     /// <summary>Report key for a codec, bit depth and profile.</summary>
     /// <param name="codec">The codec.</param>

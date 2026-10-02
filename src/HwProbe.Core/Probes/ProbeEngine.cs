@@ -13,7 +13,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Probes;
 /// <summary>Runs build enumeration, device probes and the codec matrix, pruning as it goes, and assembles the report.</summary>
 public sealed class ProbeEngine : IDisposable
 {
-    private static readonly HwType[] _unvalidated = [HwType.nvenc, HwType.amf, HwType.rkmpp];
+    private static readonly HwType[] _unvalidated = [HwType.amf, HwType.rkmpp];
 
     private readonly IFfmpegRunner _runner;
     private readonly IArgumentSourceFactory _arguments;
@@ -524,7 +524,7 @@ public sealed class ProbeEngine : IDisposable
                 }
                 catch (ArgumentConstructionException ex)
                 {
-                    return Record(candidate, cell, stage, ProbeOutcome.CodecUnsupported, null, ex.Message, null);
+                    return Record(candidate, cell, stage, ProbeOutcome.NotUsed, null, ex.Message, null);
                 }
                 catch (UnsafeProbeException ex)
                 {
@@ -537,12 +537,12 @@ public sealed class ProbeEngine : IDisposable
 
                 if (cell.Cell.HardwareDecode && args.HardwareDecoder is null)
                 {
-                    return Record(candidate, cell, stage, ProbeOutcome.CodecUnsupported, null, $"Jellyfin would decode {cell.Cell.InputCodec} in software on this build.", null);
+                    return Record(candidate, cell, stage, ProbeOutcome.NotUsed, null, $"Jellyfin would decode {cell.Cell.InputCodec} in software on this build.", null);
                 }
 
                 if (cell.Cell.HardwareEncode && !args.HardwareEncoder)
                 {
-                    return Record(candidate, cell, stage, ProbeOutcome.CodecUnsupported, null, $"No {candidate.Type} encoder for {cell.Cell.OutputCodec} in this build.", null);
+                    return Record(candidate, cell, stage, ProbeOutcome.NotUsed, null, $"No {candidate.Type} encoder for {cell.Cell.OutputCodec} in this build.", null);
                 }
 
                 if (cell.Cell.LowPower && !args.LowPowerEncoder)

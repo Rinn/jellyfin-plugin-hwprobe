@@ -229,4 +229,27 @@ public sealed class SettingsAdvisorTests
         Assert.Equal(("Deinterlacing", SettingState.TurnOn), (advice.Section, advice.State));
         Assert.DoesNotContain(SettingsAdvisor.For(_apolloLakeQsv, _docker), a => a.Setting == "DeinterlaceMethod:bwdif");
     }
+
+    /// <summary>An RExt option needs both its 4:2:2 and 4:4:4 tests, ignoring a format Jellyfin decodes in software.</summary>
+    /// <param name="yuv422">The 4:2:2 10-bit result.</param>
+    /// <param name="yuv444">The 4:4:4 10-bit result, or null when it didn't run.</param>
+    /// <param name="state">The expected advice.</param>
+    /// <param name="note">The expected reason.</param>
+    [Theory]
+    [InlineData(ProbeOutcome.NotUsed, ProbeOutcome.Pass, SettingState.TurnOn, "")]
+    [InlineData(ProbeOutcome.Pass, ProbeOutcome.CodecUnsupported, SettingState.LeaveOff, "Not supported by this GPU")]
+    [InlineData(ProbeOutcome.Pass, null, SettingState.NotTested, "Not tested")]
+    [InlineData(ProbeOutcome.NotUsed, ProbeOutcome.NotUsed, SettingState.LeaveOff, "Jellyfin uses software for this")]
+    public void RextNeedsEveryFormatJellyfinDecodesInHardware(ProbeOutcome yuv422, ProbeOutcome? yuv444, SettingState state, string note)
+    {
+        var decode = new Dictionary<string, ProbeOutcome>(_apolloLakeQsv.Decode) { ["hevc_rext_10bit"] = yuv422 };
+        if (yuv444 is { } outcome)
+        {
+            decode["hevc_rext_444_10bit"] = outcome;
+        }
+
+        var advice = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Decode = decode }, _docker), a => a.Setting == "EnableDecodingColorDepth10HevcRext");
+
+        Assert.Equal((state, note), (advice.State, advice.Note));
+    }
 }

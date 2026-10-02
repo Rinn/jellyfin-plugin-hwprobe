@@ -29,4 +29,7 @@ public enum ProbeOutcome
 
     /// <summary>No hardware or fixture available to validate this cell; not a failure.</summary>
     Untested,
+
+    /// <summary>Jellyfin's own code wouldn't use the hardware for this with this ffmpeg build, so nothing ran.</summary>
+    NotUsed,
 }

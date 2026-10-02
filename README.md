@@ -37,8 +37,8 @@ Requires Jellyfin 12.1 or newer.
 
 Work in progress.
 
-- Tested on real hardware: Intel QuickSync and VAAPI on Linux, Apple VideoToolbox on macOS.
-- Not tested on real hardware: NVIDIA, AMD, Rockchip and V4L2. Results for these may be wrong.
+- Tested on real hardware: Intel QuickSync and VAAPI on Linux, NVIDIA NVENC on Windows and Linux, Apple VideoToolbox on macOS.
+- Not tested on real hardware: AMD, Rockchip and V4L2. Results for these may be wrong.
 
 Report problems in [Issues](../../issues).
 

@@ -74,6 +74,8 @@ public static class Hints
             "Not run: a prerequisite is missing (a software encoder for the fixture, or the build lacks it).",
         ProbeOutcome.Untested =>
             "Not verified: no hardware or sample was available to test this.",
+        ProbeOutcome.NotUsed =>
+            "Jellyfin uses software for this with this ffmpeg build, so the hardware option has no effect.",
         _ => throw new ArgumentOutOfRangeException(nameof(outcome), outcome, null),
     };
 

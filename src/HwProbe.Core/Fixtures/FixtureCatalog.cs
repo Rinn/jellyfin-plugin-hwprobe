@@ -100,6 +100,22 @@ public static class FixtureCatalog
         Sha256 = "91f796b1ef99c5391a4e1a2f3c5d64471290b642e272965201e7c7bb1bdac3be",
     };
 
+    /// <summary>Gets the 10-bit 4:4:4 HEVC range-extension clip, also under "HEVC RExt 8/10bit"; NVDEC decodes 4:4:4 but not 4:2:2.</summary>
+    public static FixtureSpec HevcRext10Yuv444 { get; } = new("hevc_rext_444_10bit.mp4", "hevc", 10, false, "libx265", $"{Source} -c:v libx265 -pix_fmt yuv444p10le", null)
+    {
+        PixelFormat = "yuv444p10le",
+        Profile = "Rext",
+        Key = "hevc_rext_444_10bit",
+    };
+
+    /// <summary>Gets the 12-bit 4:2:2 HEVC range-extension clip, also under "HEVC RExt 12bit".</summary>
+    public static FixtureSpec HevcRext12Yuv422 { get; } = new("hevc_rext_422_12bit.mp4", "hevc", 12, false, "libx265", $"{Source} -c:v libx265 -pix_fmt yuv422p12le", null)
+    {
+        PixelFormat = "yuv422p12le",
+        Profile = "Rext",
+        Key = "hevc_rext_422_12bit",
+    };
+
     /// <summary>Gets the 12-bit HEVC range-extension clip (4:4:4), Jellyfin's "HEVC RExt 12bit".</summary>
     public static FixtureSpec HevcRext12 { get; } = new("hevc_rext_12bit.mp4", "hevc", 12, false, "libx265", $"{Source} -c:v libx265 -pix_fmt yuv444p12le", null)
     {
@@ -136,7 +152,7 @@ public static class FixtureCatalog
     };
 
     /// <summary>Gets every fixture, including ones that can never be generated.</summary>
-    public static IReadOnlyList<FixtureSpec> All { get; } = [H264, H264Interlaced, SubtitlesAss, Hevc, Hevc10, HevcRext10, HevcRext12, Hdr10, Vp8, Vp9, Vp910, Av1, Av110, Mpeg2, Vc1];
+    public static IReadOnlyList<FixtureSpec> All { get; } = [H264, H264Interlaced, SubtitlesAss, Hevc, Hevc10, HevcRext10, HevcRext10Yuv444, HevcRext12, HevcRext12Yuv422, Hdr10, Vp8, Vp9, Vp910, Av1, Av110, Mpeg2, Vc1];
 
     /// <summary>Returns the URL of a FATE sample.</summary>
     /// <param name="path">The sample's path in the suite.</param>

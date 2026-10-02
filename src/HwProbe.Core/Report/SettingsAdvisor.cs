@@ -42,13 +42,13 @@ public static class SettingsAdvisor
     private static readonly HwType[] _tenBitTypes = [HwType.amf, HwType.nvenc, HwType.qsv, HwType.vaapi, HwType.rkmpp];
     private static readonly HwType[] _rextTypes = [HwType.nvenc, HwType.qsv, HwType.vaapi];
 
-    // The 10-bit and RExt options, with the decode cell that tests each.
-    private static readonly (string Label, string Setting, string Cell, HwType[] Types)[] _depthOptions =
+    // The 10-bit and RExt options, with the decode cells that test each; each RExt option covers 4:2:2 and 4:4:4.
+    private static readonly (string Label, string Setting, string[] Cells, HwType[] Types)[] _depthOptions =
     [
-        ("HEVC 10bit", "EnableDecodingColorDepth10Hevc", "hevc_10bit", _tenBitTypes),
-        ("VP9 10bit", "EnableDecodingColorDepth10Vp9", "vp9_10bit", _tenBitTypes),
-        ("HEVC RExt 8/10bit", "EnableDecodingColorDepth10HevcRext", "hevc_rext_10bit", _rextTypes),
-        ("HEVC RExt 12bit", "EnableDecodingColorDepth12HevcRext", "hevc_rext_12bit", _rextTypes),
+        ("HEVC 10bit", "EnableDecodingColorDepth10Hevc", ["hevc_10bit"], _tenBitTypes),
+        ("VP9 10bit", "EnableDecodingColorDepth10Vp9", ["vp9_10bit"], _tenBitTypes),
+        ("HEVC RExt 8/10bit", "EnableDecodingColorDepth10HevcRext", ["hevc_rext_10bit", "hevc_rext_444_10bit"], _rextTypes),
+        ("HEVC RExt 12bit", "EnableDecodingColorDepth12HevcRext", ["hevc_rext_12bit", "hevc_rext_422_12bit"], _rextTypes),
     ];
 
     /// <summary>Returns advice for every option Jellyfin's Transcoding page shows for this backend.</summary>
@@ -78,9 +78,9 @@ public static class SettingsAdvisor
             advice.Add(new SettingAdvice(DecodingSection, "HardwareDecodingCodecs:" + codec, label, SettingState.LeaveOff, "Not used with this backend") { Hidden = true });
         }
 
-        foreach (var (label, setting, cell, _) in _depthOptions.Where(o => o.Types.Contains(type)))
+        foreach (var (label, setting, cells, _) in _depthOptions.Where(o => o.Types.Contains(type)))
         {
-            advice.Add(Advise(DecodingSection, setting, label, Cell(backend.Decode, cell)));
+            advice.Add(Advise(DecodingSection, setting, label, Combined(cells.Select(c => Cell(backend.Decode, c)))));
         }
 
         if (type == HwType.nvenc)
@@ -195,6 +195,7 @@ public static class SettingsAdvisor
             ProbeOutcome.Pass => new(section, setting, label, SettingState.TurnOn, string.Empty),
             null or ProbeOutcome.Skipped or ProbeOutcome.Untested => new(section, setting, label, SettingState.NotTested, notTested),
             ProbeOutcome.CodecUnsupported => new(section, setting, label, SettingState.LeaveOff, "Not supported by this GPU"),
+            ProbeOutcome.NotUsed => new(section, setting, label, SettingState.LeaveOff, "Jellyfin uses software for this"),
             _ => new(section, setting, label, SettingState.LeaveOff, "Test failed"),
         };
 
@@ -247,6 +248,27 @@ public static class SettingsAdvisor
         return Advise(TonemapSection, setting, label, outcome, notTested);
     }
 
+    /// <summary>Combines the tests behind one option: formats Jellyfin decodes in software don't count, and every other one must pass.</summary>
+    /// <param name="outcomes">The tests' outcomes, null where a test didn't run.</param>
+    /// <returns>The first failure, else the first untested result, else a pass; NotUsed when Jellyfin uses software for all of them.</returns>
+    private static ProbeOutcome? Combined(IEnumerable<ProbeOutcome?> outcomes)
+    {
+        var all = outcomes.ToList();
+        var used = all.Where(o => o != ProbeOutcome.NotUsed).ToList();
+        if (used.Count == 0)
+        {
+            return all.Count > 0 ? ProbeOutcome.NotUsed : null;
+        }
+
+        if (used.Exists(o => o is not (null or ProbeOutcome.Pass or ProbeOutcome.Skipped or ProbeOutcome.Untested)))
+        {
+            return used.First(o => o is not (null or ProbeOutcome.Pass or ProbeOutcome.Skipped or ProbeOutcome.Untested));
+        }
+
+        // A missing test is null, which advises "not tested".
+        return used.Exists(o => o != ProbeOutcome.Pass) ? used.First(o => o != ProbeOutcome.Pass) : ProbeOutcome.Pass;
+    }
+
     /// <summary>Looks up a cell's outcome.</summary>
     /// <param name="cells">A column of results.</param>
     /// <param name="key">The cell key.</param>
@@ -259,6 +281,6 @@ public static class SettingsAdvisor
     /// <returns>The label, e.g. <c>HEVC 10bit</c>.</returns>
     private static string CellLabel(string cell) =>
         _codecs.FirstOrDefault(c => c.Codec == cell).Label
-        ?? _depthOptions.FirstOrDefault(o => o.Cell == cell).Label
+        ?? _depthOptions.FirstOrDefault(o => o.Cells?.Contains(cell) == true).Label
         ?? cell;
 }
