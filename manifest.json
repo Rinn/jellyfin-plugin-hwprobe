@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.2.0.0",
+        "changelog": "Apply settings from the plugin page.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.2.0/hwprobe-plugin_0.2.0.0.zip",
+        "checksum": "e2ef997f853169be62e97ead3cc51389",
+        "timestamp": "2026-10-02T04:41:08Z"
+      },
+      {
         "version": "0.1.1.0",
         "changelog": "Every assembly carries the release version; reproducible builds.",
         "targetAbi": "12.1.0.0",
