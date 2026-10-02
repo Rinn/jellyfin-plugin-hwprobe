@@ -170,8 +170,6 @@ subtitles:
 # Variations, keyed by SpeedComparison: Jellyfin's own setting names, and the values measured beside the server's.
 variations:
   - { key: AudioVbr, name: Enable VBR audio encoding, measured: On and off }
-  - { key: Preset, name: Encoder preset, measured: One step faster and one step slower }
-  - { key: Quality, name: H.264 and HEVC encoding CRF, measured: 18 and 28 (software encoding only) }
   - { key: Deinterlace, name: "Double the frame rate when deinterlacing, Deinterlacing method", measured: "On, and BWDIF (interlaced input only)" }
   - { key: Paths, name: "Intel low-power encoders, VPP tone mapping, QSV and NVIDIA decoders", measured: Each switched (where the backend has it) }
   - { key: Subtitles, name: Subtitle burn-in, measured: Text (ASS) and image (PGS) subtitles drawn onto the picture }
@@ -188,6 +186,27 @@ repeats:
   - { value: 1, label: Measure each once }
   - { value: 2, label: "Measure each twice, report the median" }
   - { value: 3, label: "Measure each three times, report the median" }
+
+# Jellyfin's Encoding preset choices (transcoding.tsx, v12.1); auto is veryfast for VOD (DynamicHlsController.DefaultVodEncoderPreset).
+presets:
+  - { key: auto, label: Auto }
+  - { key: veryslow, label: veryslow }
+  - { key: slower, label: slower }
+  - { key: slow, label: slow }
+  - { key: medium, label: medium }
+  - { key: fast, label: fast }
+  - { key: faster, label: faster }
+  - { key: veryfast, label: veryfast }
+  - { key: superfast, label: superfast }
+  - { key: ultrafast, label: ultrafast }
+
+# Jellyfin's H.264 and H.265 encoding CRF range (transcoding.tsx, v12.1).
+crfRange: [0, 51]
+
+# Audio: transcoded to stereo AAC, as most clients get it, or copied, as for a client that plays the source's audio.
+audio:
+  - { key: transcode, label: Transcode to stereo AAC }
+  - { key: copy, label: Copy (passthrough) }
 
 # Jellyfin's Transcoding thread count choices (jellyfin-web transcoding.tsx, v12.1). EncodingHelper.GetNumberOfThreads treats Auto (-1) and Max (0) alike: ffmpeg picks (v12.1).
 threads:
@@ -256,8 +275,9 @@ findings:
 # The settings a speed run started from, as the results list them; keyed by SpeedSettings property.
 settings:
   encodingThreadCount: Transcoding threads
-  encoderPreset: Encoder preset
-  crf: CRF
+  audio: Audio
+  encoderPreset: Encoding preset
+  crf: Encoding CRF
   audioVbr: VBR audio
   tonemap: Tone mapping
   lowPower: Intel low power

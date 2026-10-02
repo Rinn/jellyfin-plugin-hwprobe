@@ -33,6 +33,15 @@ public sealed partial class Catalog
     /// <summary>Gets the repeat counts offered.</summary>
     public required IReadOnlyList<CatalogOption> Repeats { get; init; }
 
+    /// <summary>Gets Jellyfin's encoding presets, <c>auto</c> first.</summary>
+    public required IReadOnlyList<CatalogLabel> Presets { get; init; }
+
+    /// <summary>Gets the lowest and highest encoding CRF Jellyfin accepts.</summary>
+    public required IReadOnlyList<int> CrfRange { get; init; }
+
+    /// <summary>Gets the audio choices: <c>transcode</c> and <c>copy</c>.</summary>
+    public required IReadOnlyList<CatalogLabel> Audio { get; init; }
+
     /// <summary>Gets Jellyfin's transcoding thread counts.</summary>
     public required IReadOnlyList<CatalogOption> Threads { get; init; }
 
@@ -195,9 +204,14 @@ public sealed partial class Catalog
         }
 
         RequireKeys("outputs", [.. Codecs.SelectMany(c => Qualities.Select(q => OutputKey(c, q))), Decode.Key], DefaultOutputs);
-        if (Methods.Any(m => m.Seconds.Count != 2))
+        if (Methods.Any(m => m.Seconds.Count != 2) || CrfRange.Count != 2)
         {
-            throw new InvalidDataException("catalog.yaml: method seconds are [low, high].");
+            throw new InvalidDataException("catalog.yaml: method seconds and the CRF range are [low, high].");
+        }
+
+        if (Presets.Count == 0 || Presets[0].Key != "auto" || !Audio.Select(a => a.Key).Order(StringComparer.Ordinal).SequenceEqual(["copy", "transcode"]))
+        {
+            throw new InvalidDataException("catalog.yaml: presets start with auto, and audio is transcode and copy.");
         }
 
         if (Subtitles is null)

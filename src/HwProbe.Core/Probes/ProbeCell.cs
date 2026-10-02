@@ -92,6 +92,9 @@ public sealed record ProbeCell(
     /// <summary>Gets a value indicating whether Jellyfin's "Enable VBR audio encoding" is on.</summary>
     public bool AudioVbr { get; init; }
 
+    /// <summary>Gets a value indicating whether the audio is copied, as for a client that plays the source's audio, instead of transcoded.</summary>
+    public bool AudioCopy { get; init; }
+
     /// <summary>Gets a value indicating whether Jellyfin's "Double the frame rate when deinterlacing" is on.</summary>
     public bool DoubleRate { get; init; }
 

@@ -79,8 +79,8 @@ public static class SyntheticJob
             OutputVideoCodec = cell.OutputCodec,
             MediaPath = sourcePath,
             AudioStream = audio,
-            OutputAudioCodec = audio is null ? null : "aac",
-            OutputAudioChannels = audio is null ? null : 2,
+            OutputAudioCodec = audio is null ? null : cell.AudioCopy ? "copy" : "aac",
+            OutputAudioChannels = audio is null || cell.AudioCopy ? null : 2,
             BaseRequest = new BaseEncodingJobOptions { MaxWidth = cell.MaxWidth, MaxHeight = cell.MaxHeight, VideoBitRate = cell.VideoBitrate, EnableAudioVbrEncoding = true },
         };
     }

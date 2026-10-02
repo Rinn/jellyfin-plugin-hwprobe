@@ -8,11 +8,6 @@ namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 /// <summary>Builds the probe cell for a speed test at the base settings, and one per comparison.</summary>
 internal static class SpeedVariants
 {
-    private static readonly int[] _crfs = [18, 28];
-
-    // EncoderPreset in Jellyfin's order, slowest first; auto is veryfast for VOD (DynamicHlsController.DefaultVodEncoderPreset, v12.1).
-    private static readonly string[] _presets = ["veryslow", "slower", "slow", "medium", "fast", "faster", "veryfast", "superfast", "ultrafast"];
-
     /// <summary>Returns the cell for a test at the base settings.</summary>
     /// <param name="test">The test.</param>
     /// <param name="settings">The base settings.</param>
@@ -37,6 +32,7 @@ internal static class SpeedVariants
             H265Crf = settings.H265Crf,
             Audio = cell.Audio && !test.DecodeOnly,
             AudioVbr = settings.AudioVbr,
+            AudioCopy = settings.AudioCopy,
             DoubleRate = settings.DoubleRate,
             Bwdif = settings.Bwdif,
             EncodingThreadCount = settings.EncodingThreadCount,
@@ -75,28 +71,9 @@ internal static class SpeedVariants
             }
         }
 
-        if (transcode && comparisons.HasFlag(SpeedComparison.AudioVbr))
+        if (transcode && !cell.AudioCopy && comparisons.HasFlag(SpeedComparison.AudioVbr))
         {
             yield return (cell.AudioVbr ? "VBR audio off" : "VBR audio on", cell with { AudioVbr = !cell.AudioVbr });
-        }
-
-        if (transcode && comparisons.HasFlag(SpeedComparison.Preset))
-        {
-            var index = Array.IndexOf(_presets, cell.EncoderPreset ?? "veryfast");
-            foreach (var other in new[] { index + 1, index - 1 }.Where(i => index >= 0 && i >= 0 && i < _presets.Length))
-            {
-                yield return ($"Preset {_presets[other]}", cell with { EncoderPreset = _presets[other] });
-            }
-        }
-
-        // CRF only reaches the software encoders; hardware ones are compared by bitrate.
-        if (transcode && type == HwType.none && comparisons.HasFlag(SpeedComparison.Quality) && test.OutputCodec is "h264" or "hevc")
-        {
-            var current = test.OutputCodec == "hevc" ? cell.H265Crf : cell.H264Crf;
-            foreach (var crf in _crfs.Where(c => c != current))
-            {
-                yield return (string.Create(CultureInfo.InvariantCulture, $"CRF {crf}"), test.OutputCodec == "hevc" ? cell with { H265Crf = crf } : cell with { H264Crf = crf });
-            }
         }
 
         if (transcode && test.Interlaced && comparisons.HasFlag(SpeedComparison.Deinterlace))

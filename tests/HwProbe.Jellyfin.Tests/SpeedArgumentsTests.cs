@@ -51,6 +51,11 @@ public sealed class SpeedArgumentsTests
         Assert.Equal(width, args.OutputWidth);
     }
 
+    /// <summary>Copied audio is passed through, as for a client that plays the source's audio.</summary>
+    [Fact]
+    public void CopiedAudioIsPassedThrough() =>
+        Assert.Equal(" -codec:a:0 copy", Build(_cell with { AudioCopy = true }).AudioArgs);
+
     /// <summary>The server's preset and CRF reach the encoder.</summary>
     [Fact]
     public void PresetAndCrfReachTheEncoder() =>

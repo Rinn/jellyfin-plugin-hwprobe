@@ -9,17 +9,17 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Speed;
 [Trait("Category", "Unit")]
 public sealed class SpeedVariantsTests
 {
-    private const SpeedComparison All = SpeedComparison.AudioVbr | SpeedComparison.Preset | SpeedComparison.Quality | SpeedComparison.Deinterlace | SpeedComparison.Paths | SpeedComparison.Subtitles;
+    private const SpeedComparison All = SpeedComparison.AudioVbr | SpeedComparison.Deinterlace | SpeedComparison.Paths | SpeedComparison.Subtitles;
 
     /// <summary>Labels per backend and test with every comparison asked for.</summary>
     /// <param name="type">The backend.</param>
     /// <param name="test">The test key.</param>
     /// <param name="expected">The comparison labels, in order.</param>
     [Theory]
-    [InlineData(HwType.none, "pattern|h264-4mbps", "Text subtitles burned in|PGS subtitles burned in|VBR audio on|Preset superfast|Preset faster|CRF 18|CRF 28")]
-    [InlineData(HwType.none, "pattern|av1-4mbps", "Text subtitles burned in|PGS subtitles burned in|VBR audio on|Preset superfast|Preset faster")]
-    [InlineData(HwType.qsv, "pattern-1080i|h264-4mbps", "Text subtitles burned in|PGS subtitles burned in|VBR audio on|Preset superfast|Preset faster|Double rate|BWDIF|Low power on|QSV decoders")]
-    [InlineData(HwType.vaapi, "pattern-4k-hdr|h264-8mbps", "Text subtitles burned in|PGS subtitles burned in|VBR audio on|Preset superfast|Preset faster|Low power on|VPP tone-mapping on")]
+    [InlineData(HwType.none, "pattern|h264-4mbps", "Text subtitles burned in|PGS subtitles burned in|VBR audio on")]
+    [InlineData(HwType.none, "pattern|av1-4mbps", "Text subtitles burned in|PGS subtitles burned in|VBR audio on")]
+    [InlineData(HwType.qsv, "pattern-1080i|h264-4mbps", "Text subtitles burned in|PGS subtitles burned in|VBR audio on|Double rate|BWDIF|Low power on|QSV decoders")]
+    [InlineData(HwType.vaapi, "pattern-4k-hdr|h264-8mbps", "Text subtitles burned in|PGS subtitles burned in|VBR audio on|Low power on|VPP tone-mapping on")]
     [InlineData(HwType.nvenc, "pattern-hevc|decode", "cuvid decoders")]
     [InlineData(HwType.videotoolbox, "pattern-hevc|decode", "")]
     public void ComparisonsFollowTheBackend(HwType type, string test, string expected)
@@ -48,6 +48,10 @@ public sealed class SpeedVariantsTests
         Assert.Equal("/c/speed_1080p_h264.mkv", cell.SourcePath);
         Assert.Null(cell.GraphicalSubtitlePath);
         Assert.Equal("/c/speed_pgs_sub.sup", SpeedVariants.For(HwType.none, spec, cell, SpeedComparison.Subtitles, clips).Single(v => v.Label == "PGS subtitles burned in").Cell.GraphicalSubtitlePath);
+
+        var copied = SpeedVariants.Base(spec, new SpeedSettings { AudioCopy = true }, clips);
+        Assert.True(copied.AudioCopy);
+        Assert.Empty(SpeedVariants.For(HwType.none, spec, copied, SpeedComparison.AudioVbr, clips));
     }
 
     /// <summary>Video and output keys are unique, the defaults exist, and a test is keyed video|output.</summary>

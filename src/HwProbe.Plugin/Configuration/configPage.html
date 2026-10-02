@@ -125,6 +125,10 @@
                 let speedTimeLimit = null;
                 // Null measures with the server's own thread count.
                 let speedThreads = null;
+                let speedPreset = null;
+                let speedH264Crf = null;
+                let speedH265Crf = null;
+                let speedAudio = 'transcode';
                 let chosenVideos = null;
                 // Outputs are every chosen codec at every chosen quality; 'decode' is chosen with the codecs.
                 let chosenCodecs = null;
@@ -145,6 +149,9 @@
                 let comparisons = {};
                 let repeatOptions = [];
                 let threadOptions = [];
+                let presetOptions = [];
+                let crfRange = [0, 51];
+                let audioOptions = [];
                 let timeLimitOptions = [];
                 let names = {};
                 let order = [];
@@ -163,6 +170,9 @@
                     comparisons = Object.fromEntries(c.Variations.map(v => [v.Key, [v.Name, v.Measured]]));
                     repeatOptions = c.Repeats.map(o => [o.Value, o.Label]);
                     threadOptions = c.Threads.map(o => [o.Value, o.Label]);
+                    presetOptions = c.Presets.map(o => [o.Key, o.Label]);
+                    crfRange = c.CrfRange;
+                    audioOptions = c.Audio.map(o => [o.Key, o.Label]);
                     timeLimitOptions = c.TimeLimits.map(o => [o.Value === undefined || o.Value === null ? '' : o.Value, o.Label]);
                     names = Object.fromEntries(c.Backends.map(b => [b.Type, b.Name]));
                     order = c.Backends.map(b => b.Type);
@@ -738,8 +748,7 @@
                                     runs += hardware && speedCompared.has('Paths') ? 1 : 0;
                                     continue;
                                 }
-                                runs += (speedCompared.has('AudioVbr') ? 1 : 0) + (speedCompared.has('Preset') ? 2 : 0);
-                                runs += !hardware && speedCompared.has('Quality') ? 1 : 0;
+                                runs += speedAudio !== 'copy' && speedCompared.has('AudioVbr') ? 1 : 0;
                                 runs += v.Interlaced && speedCompared.has('Deinterlace') ? 2 : 0;
                                 runs += hardware && speedCompared.has('Paths') ? 2 : 0;
                                 runs += speedCompared.has('Subtitles') ? 2 : 0;
@@ -976,6 +985,22 @@
                         }
                         select.addEventListener('change', () => { onChange(select.value); update(); });
                     };
+                    // The first choice keeps the server's own setting, named with its value.
+                    const server = (choices, value) => {
+                        const found = choices.find(([key]) => key === value);
+                        return [['', 'Server setting' + (found ? ' (' + found[1] + ')' : '')]].concat(choices);
+                    };
+                    const crfs = [];
+                    for (let crf = crfRange[0]; crf <= crfRange[1]; crf++) {
+                        crfs.push([crf, String(crf)]);
+                    }
+                    const orNull = v => v === '' ? null : v;
+                    options('Audio', audioOptions, speedAudio, v => { speedAudio = v; });
+                    container.appendChild(el('div', 'Copying passes the source\u2019s audio through, as for a client that plays it, so only the video is transcoded.', 'fieldDescription'));
+                    options('Encoding preset', server(presetOptions, encoding ? encoding.EncoderPreset : null), speedPreset === null ? '' : speedPreset, v => { speedPreset = orNull(v); });
+                    options('H.264 encoding CRF', server(crfs, encoding ? encoding.H264Crf : null), speedH264Crf === null ? '' : speedH264Crf, v => { speedH264Crf = v === '' ? null : Number(v); });
+                    options('H.265 encoding CRF', server(crfs, encoding ? encoding.H265Crf : null), speedH265Crf === null ? '' : speedH265Crf, v => { speedH265Crf = v === '' ? null : Number(v); });
+                    container.appendChild(el('div', 'CRF only reaches the software encoders; hardware encoders follow the bitrate.', 'fieldDescription'));
                     const serverThreads = encoding ? threadOptions.find(([value]) => value === encoding.EncodingThreadCount) : null;
                     options('Transcoding thread count', [['', 'Server setting' + (serverThreads ? ' (' + serverThreads[1] + ')' : '')]].concat(threadOptions), speedThreads === null ? '' : speedThreads, v => { speedThreads = v === '' ? null : Number(v); });
                     container.appendChild(el('div', 'The most CPU threads each transcode uses, as Jellyfin\u2019s Transcoding thread count setting.', 'fieldDescription'));
@@ -986,7 +1011,7 @@
                     container.appendChild(el('div', 'A measurement that reaches the limit stops and reports what it measured.', 'fieldDescription'));
 
                     button = action('Measure speed', () => {
-                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, EncodingThreadCount: speedThreads, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Comparisons: [...speedCompared], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
+                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, EncodingThreadCount: speedThreads, EncoderPreset: speedPreset, H264Crf: speedH264Crf, H265Crf: speedH265Crf, Audio: speedAudio, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Comparisons: [...speedCompared], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
                         ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed'), data: JSON.stringify(body), contentType: 'application/json' })
                             .then(loadStatus, response => (response && response.text ? response.text() : Promise.resolve('')).then(text => {
                                 setMessage('Could not start: ' + (text.replace(/^"|"$/g, '') || 'a probe is running or a session is transcoding.'));
@@ -1189,6 +1214,7 @@
                 function settingsRows(t) {
                     const onOff = on => on ? 'On' : 'Off';
                     return [
+                        ['audio', t.audioCopy ? 'Copied (passthrough)' : 'Transcoded to stereo AAC'],
                         ['encodingThreadCount', t.encodingThreadCount > 0 ? String(t.encodingThreadCount) : 'Automatic'],
                         ['encoderPreset', t.encoderPreset || 'Auto (veryfast)'],
                         ['crf', 'H.264 ' + t.h264Crf + ', HEVC ' + t.h265Crf],

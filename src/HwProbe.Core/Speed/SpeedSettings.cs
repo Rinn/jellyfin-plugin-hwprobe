@@ -7,6 +7,9 @@ public sealed record SpeedSettings
     /// <summary>Gets the encoder preset name, or null for <c>auto</c>.</summary>
     public string? EncoderPreset { get; init; }
 
+    /// <summary>Gets a value indicating whether audio is copied, as for a client that plays the source's audio, instead of transcoded to stereo AAC.</summary>
+    public bool AudioCopy { get; init; }
+
     /// <summary>Gets a value indicating whether VBR audio encoding is on.</summary>
     public bool AudioVbr { get; init; }
 

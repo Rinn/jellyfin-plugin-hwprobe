@@ -10,12 +10,6 @@ public enum SpeedComparison
     /// <summary>"Enable VBR audio encoding" the other way.</summary>
     AudioVbr = 1,
 
-    /// <summary>The encoder preset one step faster and one slower.</summary>
-    Preset = 2,
-
-    /// <summary>The software encoders' CRF at 18 and 28.</summary>
-    Quality = 4,
-
     /// <summary>Double-rate deinterlacing, and BWDIF instead of YADIF.</summary>
     Deinterlace = 16,
 

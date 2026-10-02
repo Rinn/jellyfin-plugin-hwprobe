@@ -13,6 +13,18 @@ public sealed record SpeedRequest(string Method, IReadOnlyList<string> Videos, I
     /// <summary>Gets the seconds each measurement may take before it reports what it has, one of the catalog's time limits, or null for no limit.</summary>
     public int? TimeLimitSeconds { get; init; }
 
+    /// <summary>Gets the encoding preset to measure with, one of the catalog's, or null for the server's setting.</summary>
+    public string? EncoderPreset { get; init; }
+
+    /// <summary>Gets the H.264 encoding CRF to measure with, or null for the server's setting.</summary>
+    public int? H264Crf { get; init; }
+
+    /// <summary>Gets the H.265 encoding CRF to measure with, or null for the server's setting.</summary>
+    public int? H265Crf { get; init; }
+
+    /// <summary>Gets <c>copy</c> to copy the audio, or <c>transcode</c> or null to transcode it to stereo AAC.</summary>
+    public string? Audio { get; init; }
+
     /// <summary>Gets the transcoding thread count to measure with, one of the catalog's, or null for the server's setting.</summary>
     public int? EncodingThreadCount { get; init; }
 
