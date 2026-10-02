@@ -41,7 +41,8 @@ public sealed class ProbeEngineTests : IDisposable
         Assert.Equal(ProbeOutcome.Pass, backend.Tonemap["videotoolbox"]);
         Assert.Equal(ProbeOutcome.Pass, backend.Deinterlace["videotoolbox"]);
         Assert.Equal(ProbeOutcome.Pass, backend.Subtitles["text"]);
-        Assert.Contains(report.Findings, f => f.Code == "legacy-copyback");
+        var copyBack = Assert.Single(report.Findings, f => f.Code == "legacy-copyback");
+        Assert.Contains("lacks overlay_videotoolbox, tonemap_videotoolbox, alphasrc; use jellyfin-ffmpeg for the Metal pipeline", copyBack.Message, StringComparison.Ordinal);
         Assert.Equal(CapabilityReport.CurrentSchemaVersion, report.SchemaVersion);
     }
 
