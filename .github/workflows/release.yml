@@ -1,11 +1,22 @@
 name: Release
 
-# Runs when a GitHub release is published. Attaches the plugin zip and CLI builds to the release and,
-# for full releases, adds the version to manifest.json on the manifest branch, which is the plugin
-# repository URL users add in Jellyfin. Nothing is pushed to main.
+# Run by hand on main. Builds the plugin zip and CLI builds, attaches them to a draft release and
+# publishes it; immutable releases can't take assets after publishing. For full releases, adds the
+# version to manifest.json on the manifest branch, which is the plugin repository URL users add in
+# Jellyfin. Nothing is pushed to main.
 on:
-  release:
-    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version, like 1.2.3
+        required: true
+      notes:
+        description: Release notes, which become the plugin's changelog
+        required: true
+      prerelease:
+        description: Prerelease (not added to the plugin repository)
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -18,7 +29,7 @@ concurrency:
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
-  TAG: ${{ github.event.release.tag_name }}
+  TAG: v${{ inputs.version }}
 
 jobs:
   release:
@@ -29,12 +40,18 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
 
-      - name: Read the version from the tag
+      - name: Check the version
         id: version
         run: |
           version="${TAG#v}"
           if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::Tag '$TAG' must look like v1.2.3"; exit 1
+            echo "::error::Version '$version' must look like 1.2.3"; exit 1
+          fi
+          if [ "$GITHUB_REF" != refs/heads/main ]; then
+            echo "::error::Run this on main"; exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            echo "::error::Tag $TAG already exists"; exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
@@ -47,15 +64,25 @@ jobs:
       - name: Package
         run: python3 scripts/package.py --version "${{ steps.version.outputs.version }}" --out artifacts/dist
 
-      - name: Attach to the release
+      # A draft left by an earlier failed run is replaced.
+      - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$TAG" artifacts/dist/* --clobber
+          NOTES: ${{ inputs.notes }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          if gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null | grep -q true; then
+            gh release delete "$TAG" --yes
+          fi
+          flags=""
+          if [ "$PRERELEASE" = true ]; then flags="--prerelease"; fi
+          gh release create "$TAG" --draft $flags --target "$GITHUB_SHA" --title "$TAG" --notes "$NOTES" artifacts/dist/*
+          gh release edit "$TAG" --draft=false
 
       - name: Add the version to the plugin repository
-        if: ${{ !github.event.release.prerelease }}
+        if: ${{ !inputs.prerelease }}
         env:
-          CHANGELOG: ${{ github.event.release.body }}
+          CHANGELOG: ${{ inputs.notes }}
         run: |
           version="${{ steps.version.outputs.version }}.0"
           zip="hwprobe-plugin_$version.zip"
