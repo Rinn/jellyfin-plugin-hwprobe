@@ -4,6 +4,7 @@ using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller.IO;
 using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Model.Configuration;
+using MediaBrowser.Model.Dlna;
 using MediaBrowser.Model.Entities;
 using Microsoft.Extensions.Configuration;
 
@@ -126,11 +127,21 @@ public sealed class ArgumentSource : IArgumentSource
         RefuseForeignWrites(type, effects);
 
         var encoder = _helper.GetVideoEncoder(state, options);
+        int? scaledWidth = null;
         if (cell.FullQuality)
         {
             // As StreamingHelpers.GetStreamingState sets them for a real request (v12.1).
             state.OutputVideoBitrate = _helper.GetVideoBitrateParamValue(state.BaseRequest, state.VideoStream, state.OutputVideoCodec);
             state.OutputAudioBitrate = _helper.GetAudioBitrateParam(null, state.OutputAudioCodec, state.AudioStream, state.OutputAudioChannels);
+
+            // The server lowers the size a bitrate can carry, from the H.264-equivalent bitrate (StreamingHelpers.GetStreamingState, v12.1).
+            if (state.OutputVideoBitrate is { } bitrate && cell.MaxWidth is { } requested)
+            {
+                var resolution = ResolutionNormalizer.Normalize(state.VideoStream?.BitRate, bitrate, EncodingHelper.ScaleBitrate(bitrate, state.OutputVideoCodec, "h264"), state.BaseRequest.MaxWidth, state.BaseRequest.MaxHeight, state.TargetFramerate);
+                state.BaseRequest.MaxWidth = resolution.MaxWidth;
+                state.BaseRequest.MaxHeight = resolution.MaxHeight;
+                scaledWidth = resolution.MaxWidth < requested ? resolution.MaxWidth : null;
+            }
         }
 
         var before = Snapshot();
@@ -214,6 +225,7 @@ public sealed class ArgumentSource : IArgumentSource
             HardwareEncoder = !string.Equals(encoder, softwareEncoder, StringComparison.Ordinal),
             HardwareTonemap = !string.Equals(filterArgs, withoutTonemap, StringComparison.Ordinal),
             HardwareDeinterlacer = cell.Interlaced ? HardwareDeinterlacer(state, options, filterArgs) : null,
+            ScaledWidth = scaledWidth,
         };
     }
 

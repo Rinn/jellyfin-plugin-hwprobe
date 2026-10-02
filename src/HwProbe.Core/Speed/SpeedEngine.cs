@@ -347,7 +347,9 @@ public sealed class SpeedEngine : IDisposable
                     return new SpeedResult(type, device, test.Key, label, null, null, false, $"Not measured: Jellyfin {softwareStep} this in software with this backend.");
                 }
 
-                var note = softwareDecode ? "Jellyfin decodes this in software with this backend, then encodes on the GPU." : null;
+                var note = args.ScaledWidth is { } width
+                    ? $"Jellyfin scales this to {SpeedTestText.Resolution(width, width * 9 / 16, false)} at this bitrate, so it was measured at that size."
+                    : softwareDecode ? "Jellyfin decodes this in software with this backend, then encodes on the GPU." : null;
 
                 string Command(TimeSpan content) => SpeedCommandLine.Build(args, content, test.DecodeOnly, test.StartAt);
 

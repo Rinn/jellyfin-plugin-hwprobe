@@ -77,7 +77,7 @@ public static class SpeedTestText
     /// <param name="height">The height.</param>
     /// <param name="interlaced">Whether it's interlaced.</param>
     /// <returns>e.g. <c>4K</c>, <c>1080i</c>.</returns>
-    private static string Resolution(int width, int height, bool interlaced)
+    internal static string Resolution(int width, int height, bool interlaced)
     {
         var lines = width >= 3200 || height >= 1800 ? 2160 : width >= 1700 || height >= 1000 ? 1080 : width >= 1100 || height >= 700 ? 720 : height;
         return lines == 2160 ? "4K" : string.Create(CultureInfo.InvariantCulture, $"{lines}{(interlaced ? "i" : "p")}");

@@ -34,6 +34,24 @@ public sealed class SpeedArgumentsTests
         Assert.Equal(" -i file:\"/c/a.mkv\"", args.InputArgument);
     }
 
+    /// <summary>The size kept or lowered for a bitrate as the server does it: H.264 at 6 Mbps carries 720p, not 1080p; HEVC needs less.</summary>
+    /// <param name="codec">The output codec.</param>
+    /// <param name="bitrate">The bitrate asked for.</param>
+    /// <param name="scaled">The width it's lowered to, or null when 1080p is kept.</param>
+    [Theory]
+    [InlineData("h264", 8_000_000, null)]
+    [InlineData("h264", 6_000_000, 1280)]
+    [InlineData("hevc", 6_000_000, null)]
+    public void BitrateLimitsTheSize(string codec, int bitrate, int? scaled)
+    {
+        var cell = _cell with { OutputCodec = codec, MaxWidth = 1920, MaxHeight = 1080, VideoBitrate = bitrate };
+
+        var args = Build(cell);
+
+        Assert.Equal(scaled, args.ScaledWidth);
+        Assert.Contains(scaled is null ? "1920" : "1280", args.FilterArgs, StringComparison.Ordinal);
+    }
+
     /// <summary>The server's preset and CRF reach the encoder.</summary>
     [Fact]
     public void PresetAndCrfReachTheEncoder() =>
