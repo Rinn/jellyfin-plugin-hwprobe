@@ -1000,13 +1000,16 @@
                         return i === -1 ? footnotes.push(note) : i + 1;
                     };
                     const speedOf = x => x.fps && x.frameRate ? x.fps / x.frameRate : null;
-                    // Two cells per backend: concurrent streams kept up with, and one transcode's speed.
+                    // Fast accuracy derives the stream count from the speed, so only Standard and Thorough get a column for it.
+                    const counted = r.method !== 'Quick';
+                    const per = counted ? 2 : 1;
+                    // Per backend: concurrent streams kept up with, when counted, and one transcode's speed.
                     const cellsFor = (x, best, baseline) => {
                         const bold = x && x === best ? ' hwprobe-best' : '';
                         const streams = el('td', null, 'hwprobe-num' + bold);
                         const speedCell = el('td', null, 'hwprobe-num' + bold);
                         if (!x) {
-                            return [streams, speedCell];
+                            return counted ? [streams, speedCell] : [speedCell];
                         }
                         const speed = speedOf(x);
                         streams.textContent = speed ? streamsText(x) : '';
@@ -1019,7 +1022,7 @@
                             speedCell.appendChild(el('sup', String(n)));
                         }
                         speedCell.title = (x.fps ? Math.round(x.fps) + ' frames a second' : '') + (x.note ? (x.fps ? '. ' : '') + x.note : '');
-                        return [streams, speedCell];
+                        return counted ? [streams, speedCell] : [speedCell];
                     };
                     const bestOf = cells => cells.filter(x => x && x.fps).reduce((a, b) => {
                         if (!a) {
@@ -1035,11 +1038,11 @@
                     top.appendChild(el('th'));
                     for (const b of backends) {
                         const th = el('th', columnName(b), 'hwprobe-num');
-                        th.colSpan = 2;
+                        th.colSpan = per;
                         top.appendChild(th);
                     }
                     table.appendChild(top);
-                    row(table, [el('th', 'Output')].concat(backends.flatMap(() => [el('th', 'Concurrent streams', 'hwprobe-num secondaryText'), el('th', 'Speed', 'hwprobe-num secondaryText')])));
+                    row(table, [el('th', 'Output')].concat(backends.flatMap(() => (counted ? [el('th', 'Concurrent streams', 'hwprobe-num secondaryText')] : []).concat([el('th', 'Speed', 'hwprobe-num secondaryText')]))));
                     let video = null;
                     for (const key of [...new Set(r.results.map(x => x.test))]) {
                         const base = backends.map(b => r.results.find(x => x.test === key && !x.variant && keyOf(x) === keyOf(b)));
@@ -1048,7 +1051,7 @@
                         if (first.video && first.video !== video) {
                             video = first.video;
                             const name = el('td');
-                            name.colSpan = backends.length * 2 + 1;
+                            name.colSpan = backends.length * per + 1;
                             name.appendChild(document.createTextNode(first.video + '  '));
                             name.appendChild(el('span', first.input || '', 'secondaryText hwprobe-small'));
                             const tr = el('tr', null, 'hwprobe-group');
@@ -1066,7 +1069,7 @@
                         toggle.type = 'button';
                         const toggleRow = el('tr', null, 'hwprobe-variant');
                         const toggleCell = el('td');
-                        toggleCell.colSpan = backends.length * 2 + 1;
+                        toggleCell.colSpan = backends.length * per + 1;
                         toggleCell.appendChild(toggle);
                         toggleRow.appendChild(toggleCell);
                         table.appendChild(toggleRow);
@@ -1093,7 +1096,10 @@
                     div.appendChild(scroll);
 
                     footnotes.forEach((note, i) => div.appendChild(el('div', (i + 1) + ' ' + note, 'fieldDescription')));
-                    div.appendChild(el('div', 'Concurrent streams: how many of that transcode the backend keeps up with together (estimated on Fast accuracy; 16+ is the most measured). Speed: one transcode on its own, as a multiple of playback (2× real time is twice as fast as playing); point at it for frames a second. Bold is the best backend for that row. Test videos are easier to encode than real video, so their numbers run high.', 'fieldDescription'));
+                    const streamsLegend = counted
+                        ? 'Concurrent streams: how many of that transcode the backend keeps up with when run together (16+ is the most measured). '
+                        : 'Fast accuracy doesn\u2019t count concurrent streams; Standard and Thorough run transcodes together to count them. ';
+                    div.appendChild(el('div', 'Speed: one transcode on its own, as a multiple of playback (2\u00d7 real time is twice as fast as playing); point at it for frames a second. ' + streamsLegend + 'Bold is the best backend for that row. Test videos are easier to encode than real video, so their numbers run high.', 'fieldDescription'));
 
                     const credits = new Map();
                     for (const x of r.results) {

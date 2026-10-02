@@ -161,9 +161,9 @@ variations:
 
 # Accuracy, keyed by SpeedMethod. Seconds per measurement are from runs on real hosts, for the page's estimate; making or downloading clips adds to the first.
 methods:
-  - { key: Quick, name: Fast, description: "Fast: estimates the stream count from one run", seconds: [10, 30] }
-  - { key: Confirm, name: Standard, description: "Standard: estimates, then checks by running that many at once", seconds: [20, 60] }
-  - { key: Full, name: Thorough, description: "Thorough: runs 1, 2, 4, 8 and 16 at once to find the limit; takes longest", seconds: [50, 120] }
+  - { key: Quick, name: Fast, description: "Fast: measures one transcode's speed; concurrent streams aren't counted", seconds: [10, 30] }
+  - { key: Confirm, name: Standard, description: "Standard: also counts concurrent streams, starting from one transcode's speed", seconds: [20, 60] }
+  - { key: Full, name: Thorough, description: "Thorough: also counts concurrent streams, running 1, 2, 4, 8 and 16 at once; takes longest", seconds: [50, 120] }
 
 defaultMethod: Confirm
 

@@ -8,23 +8,23 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Speed;
 [Trait("Category", "Unit")]
 public sealed class SpeedMeterTests
 {
-    /// <summary>Quick estimates streams from one run's fps at the source frame rate.</summary>
+    /// <summary>Quick measures one copy's fps and counts no streams, since one copy's speed doesn't say how many keep up together.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
-    public async Task QuickEstimatesFromFps()
+    public async Task QuickMeasuresSpeedOnly()
     {
         var host = new Host(capacity: 5, fps: 130);
 
         var measured = await SpeedMeter.MeasureAsync(host.LaunchAsync, SpeedMethod.Quick, 24, countStreams: true, TestContext.Current.CancellationToken);
 
         Assert.Equal(130, measured.Fps!.Value, 1);
-        Assert.Equal(5, measured.Streams);
+        Assert.Null(measured.Streams);
 
         // One copy, then one again with more content, since the first finished in under 5 s.
         Assert.Equal([1, 1], host.Copies);
     }
 
-    /// <summary>Confirm keeps an estimate that holds, and searches down from one that doesn't.</summary>
+    /// <summary>Confirm starts from one copy's speed and searches up from a count that keeps up, or down from one that doesn't.</summary>
     /// <param name="capacity">How many copies the scripted host keeps at real time.</param>
     /// <param name="fps">One copy's fps.</param>
     /// <param name="expected">The streams reported.</param>
@@ -32,15 +32,17 @@ public sealed class SpeedMeterTests
     [Theory]
     [InlineData(5, 130, 5)]
     [InlineData(3, 130, 3)]
+    [InlineData(11, 130, 11)]
+    [InlineData(40, 130, 16)]
     [InlineData(0, 10, 0)]
-    public async Task ConfirmChecksTheEstimate(int capacity, double fps, int expected)
+    public async Task ConfirmSearchesFromTheSpeed(int capacity, double fps, int expected)
     {
         var host = new Host(capacity, fps);
 
         var measured = await SpeedMeter.MeasureAsync(host.LaunchAsync, SpeedMethod.Confirm, 24, countStreams: true, TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, measured.Streams);
-        Assert.False(measured.Capped);
+        Assert.Equal(expected == SpeedMeter.MaxStreams, measured.Capped);
     }
 
     /// <summary>Full ramps up by doubling and searches between the last pass and the first failure.</summary>
@@ -64,16 +66,17 @@ public sealed class SpeedMeterTests
         Assert.Equal(capped, measured.Capped);
     }
 
-    /// <summary>At the time limit the count stops at what's confirmed, or the estimate when nothing is; the single run always happens.</summary>
+    /// <summary>At the time limit the count stops at what's confirmed, or none when nothing is; the single run always happens.</summary>
     /// <param name="method">Confirm or full.</param>
     /// <param name="runsAllowed">Runs of copies started before the limit passes.</param>
     /// <param name="expected">The streams reported.</param>
     /// <returns>A task representing the test.</returns>
     [Theory]
-    [InlineData(SpeedMethod.Confirm, 0, 5)]
-    [InlineData(SpeedMethod.Full, 0, 5)]
+    [InlineData(SpeedMethod.Confirm, 0, null)]
+    [InlineData(SpeedMethod.Full, 0, null)]
     [InlineData(SpeedMethod.Full, 2, 2)]
-    public async Task TimeLimitReportsWhatItHas(SpeedMethod method, int runsAllowed, int expected)
+    [InlineData(SpeedMethod.Confirm, 1, 5)]
+    public async Task TimeLimitReportsWhatItHas(SpeedMethod method, int runsAllowed, int? expected)
     {
         var host = new Host(capacity: 11, fps: 130);
 
@@ -97,7 +100,6 @@ public sealed class SpeedMeterTests
         Assert.Equal(2, host.Contents.Count);
         Assert.True(host.Contents[1] > host.Contents[0] * 5);
         Assert.Equal(2400, measured.Fps!.Value, 1);
-        Assert.True(measured.Capped);
     }
 
     /// <summary>A decode test reports fps only.</summary>
@@ -123,7 +125,7 @@ public sealed class SpeedMeterTests
         Task<IReadOnlyList<FfmpegRunResult>> FailedAsync(int copies, TimeSpan content, CancellationToken ct) =>
             Task.FromResult<IReadOnlyList<FfmpegRunResult>>([new(FfmpegRunStatus.Exited, 1, string.Empty, "x\nNo such filter: 'scale_vt'\n", null, TimeSpan.FromSeconds(0.2), null)]);
 
-        var slow = await SpeedMeter.MeasureAsync(TimedOutAsync, SpeedMethod.Quick, 24, countStreams: true, TestContext.Current.CancellationToken);
+        var slow = await SpeedMeter.MeasureAsync(TimedOutAsync, SpeedMethod.Confirm, 24, countStreams: true, TestContext.Current.CancellationToken);
         var broken = await SpeedMeter.MeasureAsync(FailedAsync, SpeedMethod.Confirm, 24, countStreams: true, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, slow.Fps!.Value, 1);

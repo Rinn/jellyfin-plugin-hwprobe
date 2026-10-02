@@ -24,7 +24,7 @@ internal sealed class HwProbeCommand
     private readonly Option<string?> _diagnostics = new("--diagnostics") { Description = "Also write a zip of the report and every ffmpeg log, to attach to an issue. Runs a fresh probe." };
     private readonly Option<SpeedMethod?> _speed = new("--speed")
     {
-        Description = "After the probe, measure fps and real-time streams of each working backend and software: quick, confirm or full.",
+        Description = "After the probe, measure the speed of each working backend and software: quick (speed only), confirm or full (also concurrent streams, starting from the speed or from one).",
         Arity = ArgumentArity.ZeroOrOne,
         CustomParser = r => r.Tokens.Count == 0 ? SpeedMethod.Confirm : Enum.TryParse<SpeedMethod>(r.Tokens[0].Value, ignoreCase: true, out var m) ? m : Error<SpeedMethod?>(r, $"Unknown speed method '{r.Tokens[0].Value}'. Expected: quick, confirm, full."),
     };

@@ -61,11 +61,13 @@ public static class SpeedMeter
             return new SpeedMeasurement(fps, null, false, null);
         }
 
-        var estimate = Math.Min((int)Math.Floor(fps.Value / frameRate), MaxStreams);
+        // One copy's speed doesn't say how many keep up together: copies share the CPU, and a GPU often runs several sessions faster in total than one.
         if (method == SpeedMethod.Quick)
         {
-            return new SpeedMeasurement(fps, estimate, estimate == MaxStreams, null);
+            return new SpeedMeasurement(fps, null, false, null);
         }
+
+        var start = Math.Clamp((int)Math.Floor(fps.Value / frameRate), 1, MaxStreams);
 
         var erroredAt = 0;
         var keptUp = 0;
@@ -91,14 +93,13 @@ public static class SpeedMeter
         int streams;
         try
         {
-            streams = await CountAsync(KeepsUpAsync, method, estimate);
+            streams = await CountAsync(KeepsUpAsync, method, start);
         }
         catch (TimeoutException)
         {
-            // The limit stops the search: what's confirmed so far, or the estimate when nothing was.
             return keptUp > 0
                 ? new SpeedMeasurement(fps, keptUp, false, string.Create(CultureInfo.InvariantCulture, $"Time limit reached: at least {keptUp}."))
-                : new SpeedMeasurement(fps, estimate, estimate == MaxStreams, "Time limit reached: estimated from one run.");
+                : new SpeedMeasurement(fps, null, false, "Time limit reached before streams were counted.");
         }
 
         // Copies that fail rather than fall behind usually hit the driver's limit on sessions at once (NVENC has one).
@@ -108,21 +109,22 @@ public static class SpeedMeter
         return new SpeedMeasurement(fps, streams, streams == MaxStreams, note);
     }
 
-    /// <summary>Counts the streams that keep up, by confirming the estimate or by ramping up.</summary>
+    /// <summary>Counts the streams that keep up: doubling from a starting count until they fall behind, then narrowing down.</summary>
     /// <param name="keepsUp">Runs that many copies and reports whether all kept real time.</param>
-    /// <param name="method">Confirm or full.</param>
-    /// <param name="estimate">The estimate from one run.</param>
+    /// <param name="method">Confirm starts from one copy's speed; full starts from one copy.</param>
+    /// <param name="start">One copy's speed as a whole number, at least 1.</param>
     /// <returns>The streams.</returns>
-    private static async Task<int> CountAsync(Func<int, Task<bool>> keepsUp, SpeedMethod method, int estimate)
+    private static async Task<int> CountAsync(Func<int, Task<bool>> keepsUp, SpeedMethod method, int start)
     {
-        if (method == SpeedMethod.Confirm)
+        var first = method == SpeedMethod.Confirm ? start : 1;
+        if (!await keepsUp(first))
         {
-            return estimate > 0 && await keepsUp(estimate) ? estimate : await SearchAsync(keepsUp, 1, estimate - 1);
+            return await SearchAsync(keepsUp, 1, first - 1);
         }
 
-        var passed = 0;
+        var passed = first;
         var failed = 0;
-        for (var copies = 1; copies <= MaxStreams; copies *= 2)
+        for (var copies = Math.Min(first * 2, MaxStreams); passed < MaxStreams; copies = Math.Min(copies * 2, MaxStreams))
         {
             if (!await keepsUp(copies))
             {
