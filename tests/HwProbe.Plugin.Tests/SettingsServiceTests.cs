@@ -149,6 +149,17 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.True(_harness.SavedTrickplay.EnableKeyFrameOnlyExtraction);
     }
 
+    /// <summary>The same option listed twice in one request is applied once, not refused or failed.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task DuplicateChangeIsAppliedOnce()
+    {
+        var result = await ApplyAsync(("HardwareDecodingCodecs:hevc", true), ("HardwareDecodingCodecs:hevc", true));
+
+        Assert.Equal(ApplyOutcome.Applied, result.Outcome);
+        Assert.Single(result.Changes);
+    }
+
     /// <summary>A history written before labels were recorded comes back with them filled in.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
