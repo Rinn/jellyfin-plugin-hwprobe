@@ -127,6 +127,28 @@ public sealed class ProbeEngineTests : IDisposable
         Assert.Contains("--device", vaapi.Hint, StringComparison.Ordinal);
     }
 
+    /// <summary>The report lists the render nodes' PCI vendors, leaving out unreadable ones.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task ReportListsGpuVendors()
+    {
+        var linux = new FakeHostPlatform(HostOs.Linux)
+        {
+            Files =
+            {
+                ["/dev/dri/renderD128"] = string.Empty,
+                ["/dev/dri/renderD129"] = string.Empty,
+                ["/sys/class/drm/renderD128/device/vendor"] = "0x1002\n",
+            },
+        };
+        var runner = new ScriptedOnly(new() { ["-version"] = "ffmpeg version 7.1.4-Jellyfin Copyright (c) 2000-2025\n" });
+        using var engine = new ProbeEngine(runner, _arguments, linux, TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
+
+        var report = await engine.RunAsync(Options(StopStage.Devices, refresh: true), TestContext.Current.CancellationToken);
+
+        Assert.Equal(["0x1002"], report.Host.GpuVendors);
+    }
+
     /// <summary>On Windows, adapter indices stop at the first that fails to open, giving one row.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

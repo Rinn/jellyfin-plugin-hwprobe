@@ -130,6 +130,32 @@
                     return table;
                 }
 
+                // Jellyfin's ffmpeg leaves out backends for other platforms (AMF needs d3d11va, so Windows only).
+                const platforms = {
+                    videotoolbox: [['macos'], 'macOS only'],
+                    amf: [['windows'], 'Windows only'],
+                    rkmpp: [[], 'Rockchip devices only'],
+                    vaapi: [['linux'], 'Linux only'],
+                    v4l2m2m: [['linux'], 'Linux only'],
+                    qsv: [['linux', 'windows'], 'Windows and Linux only'],
+                    nvenc: [['linux', 'windows'], 'Windows and Linux only'],
+                };
+
+                function notBuilt(type) {
+                    const platform = platforms[type];
+                    return wrongVendor(type) || (platform && platform[0].indexOf(report.host.os) === -1 ? platform[1] : 'Not built into ffmpeg');
+                }
+
+                // Only says so when every GPU's PCI vendor was read: not in a container, which sees only the GPUs passed
+                // in, and not on Windows or with non-PCI GPUs, which report none.
+                const vendors = { qsv: ['0x8086', 'Intel only'], nvenc: ['0x10de', 'NVIDIA only'] };
+
+                function wrongVendor(type) {
+                    const gpus = (report.host.gpuVendors || []).map(v => v.toLowerCase());
+                    const vendor = vendors[type];
+                    return vendor && !report.host.container && gpus.length && gpus.indexOf(vendor[0]) === -1 ? vendor[1] : null;
+                }
+
                 // A result with a fix links to the fix's guide; the fix's action is the tooltip.
                 function resultCell(text, fix, className) {
                     const td = el('td', null, className);
@@ -385,8 +411,10 @@
                     }
 
                     const unavailable = report.backends.filter(b => b.verdict !== 'Viable')
-                        .map(b => [b.type, b.verdict === 'NotPresent' ? '' : b.device, verdicts[b.verdict] || b.verdict, b.fix])
-                        .concat(Object.entries(report.stageA.types || {}).filter(([, s]) => s === 'NotBuilt').map(([t]) => [t, '', 'Not in this ffmpeg build']))
+                        .map(b => b.verdict === 'NotPresent' && wrongVendor(b.type)
+                            ? [b.type, '', wrongVendor(b.type)]
+                            : [b.type, b.verdict === 'NotPresent' ? '' : b.device, verdicts[b.verdict] || b.verdict, b.fix])
+                        .concat(Object.entries(report.stageA.types || {}).filter(([, s]) => s === 'NotBuilt').map(([t]) => [t, '', notBuilt(t)]))
                         .sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
                     if (unavailable.length) {
                         section('Unavailable').appendChild(backendTable(unavailable));

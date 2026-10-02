@@ -103,7 +103,10 @@ public sealed class ProbeEngine : IDisposable
             _time.GetUtcNow(),
             fingerprint,
             new FfmpegSummary(ffmpeg, options.Ffmpeg.Source.ToString(), caps.Version?.ToString() ?? "unknown", caps.IsJellyfinBuild),
-            new HostSummary(OsName(host.Os), host.Kernel, host.Container),
+            new HostSummary(OsName(host.Os), host.Kernel, host.Container)
+            {
+                GpuVendors = [.. devices.RenderNodes.Select(n => n.Vendor).Where(v => v != DeviceEnumerator.Unknown).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.Ordinal)],
+            },
             new StageASummary([.. caps.Hwaccels.Order(StringComparer.Ordinal)], caps.BuildStatus, caps.FilterOptions),
             [.. run.Backends
                 .Select(b => b.Verdict == BackendVerdict.Viable ? b : b with { Fix = Hints.FixFor(b.Verdict, b.Type, host.Os, host.Container is not null) })
