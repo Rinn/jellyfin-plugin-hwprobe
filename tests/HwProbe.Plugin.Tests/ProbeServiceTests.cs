@@ -141,6 +141,63 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Null(await service.SpeedHistoryJsonAsync("../latest", ct));
     }
 
+    /// <summary>A running speed run shows its plan as it fills in, pauses after the current measurement, and keeps what's finished when cancelled.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task SpeedRunPausesAndCancels()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var first = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var proceed = new SemaphoreSlim(0);
+        using var service = new ProbeService(_ => Task.FromResult(Reports.Sample()), () => false, Path.Combine(_directory, "latest.json"), TimeProvider.System, TimeSpan.Zero, NullLogger.Instance)
+        {
+            MeasureSpeed = async (speed, backends, progress, token) =>
+            {
+                SpeedResult Planned(string test) => new(HwType.none, string.Empty, test, string.Empty, null, null, false, null) { Pending = true };
+                progress.Report(new SpeedProgress(0, 2, null) { Planned = [Planned("pattern|720p-h264"), Planned("pattern|decode")] });
+                progress.Report(new SpeedProgress(0, 2, null) { Preparing = "Making Test video, H.264" });
+                progress.Report(new SpeedProgress(0, 2, null));
+                var done = new SpeedResult(HwType.none, string.Empty, "pattern|720p-h264", string.Empty, 300, 12, false, null);
+                progress.Report(new SpeedProgress(1, 2, done));
+                first.SetResult();
+                await proceed.WaitAsync(token);
+                try
+                {
+                    await speed.Pause!.WaitAsync(token);
+                }
+                catch (OperationCanceledException)
+                {
+                    return new SpeedReport(DateTimeOffset.UnixEpoch, Reports.Sample().Ffmpeg, speed.Method, [done]) { Cancelled = true };
+                }
+
+                throw new InvalidOperationException("Resumed instead of cancelled.");
+            },
+            ServerSpeedSettings = () => new SpeedSettings(),
+        };
+        await service.RunAsync(ct);
+
+        Assert.Equal(ProbeRunResult.Started, await service.StartSpeedAsync(new SpeedRequest("confirm", [], [], []), ct));
+        await first.Task;
+        var running = SpeedReportStore.Deserialize(service.RunningSpeedJson()!)!;
+        Assert.Equal([(false, 12), (true, (int?)null)], running.Results.Select(r => (r.Pending, r.Streams)));
+        Assert.Equal(SpeedPhase.Measuring, service.Status.Phase);
+        Assert.NotNull(service.Status.MeasuringSeconds);
+
+        Assert.True(service.PauseSpeed(true));
+        Assert.Equal(SpeedPhase.Pausing, service.Status.Phase);
+        proceed.Release();
+        Assert.True(SpinWait.SpinUntil(() => service.Status.Phase == SpeedPhase.Paused, TimeSpan.FromSeconds(10)));
+
+        Assert.True(service.CancelSpeed());
+        await service.Background;
+
+        var saved = SpeedReportStore.Deserialize((await service.LatestSpeedJsonAsync(ct))!)!;
+        Assert.True(saved.Cancelled);
+        Assert.Single(saved.Results);
+        Assert.False(service.CancelSpeed());
+        Assert.Equal((ProbeState.Idle, (SpeedPhase?)null), (service.Status.State, service.Status.Phase));
+    }
+
     /// <summary>A speed report from another HwProbe version isn't shown.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

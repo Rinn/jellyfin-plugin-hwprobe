@@ -35,6 +35,9 @@ public sealed partial class ProbeService : IDisposable
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly List<SpeedResult> _speedSoFar = [];
     private SpeedOptions? _speedRunning;
+    private CancellationTokenSource? _speedCancel;
+    private SpeedPause? _speedPause;
+    private DateTimeOffset? _measuringSince;
     private ProbeStatus _status = new(ProbeState.Idle, null, null, null);
     private Task<ProbeRunResult>? _background;
 
@@ -84,7 +87,25 @@ public sealed partial class ProbeService : IDisposable
     }
 
     /// <summary>Gets the current status.</summary>
-    public ProbeStatus Status => _status;
+    public ProbeStatus Status
+    {
+        get
+        {
+            lock (_speedSoFar)
+            {
+                if (_speedRunning is null || _speedPause is not { } pause)
+                {
+                    return _status;
+                }
+
+                var phase = _speedCancel?.IsCancellationRequested == true ? SpeedPhase.Cancelling
+                    : pause.IsPaused ? (pause.IsWaiting ? SpeedPhase.Paused : SpeedPhase.Pausing)
+                    : _measuringSince is null ? SpeedPhase.Preparing
+                    : SpeedPhase.Measuring;
+                return _status with { Phase = phase, MeasuringSeconds = _measuringSince is { } since ? (int)(_time.GetUtcNow() - since - pause.Paused).TotalSeconds : null };
+            }
+        }
+    }
 
     /// <summary>Gets where the latest probe's diagnostics zip is saved.</summary>
     internal string DiagnosticsPath => DiagnosticsPathFor(_latestPath);
@@ -181,8 +202,51 @@ public sealed partial class ProbeService : IDisposable
         }
 
         List<(HwType, string)> backends = [.. report.Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device))];
-        _background = Task.Run(() => RunSpeedHeldAsync(measure, speed with { Settings = ServerSpeedSettings() }, backends), CancellationToken.None);
+        _speedCancel = new CancellationTokenSource();
+        _speedPause = new SpeedPause(_time);
+        _background = Task.Run(() => RunSpeedHeldAsync(measure, speed with { Settings = ServerSpeedSettings(), Pause = _speedPause }, backends, _speedCancel.Token), CancellationToken.None);
         return ProbeRunResult.Started;
+    }
+
+    /// <summary>Pauses or resumes the running speed run; a pause takes effect when the current measurement finishes.</summary>
+    /// <param name="paused">True to pause, false to resume.</param>
+    /// <returns>Whether a speed run was running.</returns>
+    public bool PauseSpeed(bool paused)
+    {
+        lock (_speedSoFar)
+        {
+            if (_speedRunning is null || _speedPause is not { } pause)
+            {
+                return false;
+            }
+
+            if (paused)
+            {
+                pause.Pause();
+            }
+            else
+            {
+                pause.Resume();
+            }
+
+            return true;
+        }
+    }
+
+    /// <summary>Cancels the running speed run; it stops its ffmpeg runs and keeps the measurements already finished.</summary>
+    /// <returns>Whether a speed run was running.</returns>
+    public bool CancelSpeed()
+    {
+        lock (_speedSoFar)
+        {
+            if (_speedRunning is null || _speedCancel is not { } cancel)
+            {
+                return false;
+            }
+
+            cancel.Cancel();
+            return true;
+        }
     }
 
     /// <summary>Returns the running speed run's results so far as a speed report, so the page fills in as they finish.</summary>
@@ -194,6 +258,7 @@ public sealed partial class ProbeService : IDisposable
             return _speedRunning is not { } speed ? null : SpeedReportStore.Serialize(new SpeedReport(_time.GetUtcNow(), new FfmpegSummary(string.Empty, "Server", "unknown", true), speed.Method, [.. _speedSoFar])
             {
                 Settings = speed.Settings,
+                Repeats = speed.Repeats,
             });
         }
     }
@@ -347,7 +412,11 @@ public sealed partial class ProbeService : IDisposable
     }
 
     /// <inheritdoc/>
-    public void Dispose() => _gate.Dispose();
+    public void Dispose()
+    {
+        _gate.Dispose();
+        _speedCancel?.Dispose();
+    }
 
     /// <summary>Parses a request from the page.</summary>
     /// <param name="request">The request.</param>
@@ -593,13 +662,15 @@ public sealed partial class ProbeService : IDisposable
     /// <param name="measure">The speed run.</param>
     /// <param name="speed">What to measure.</param>
     /// <param name="backends">The working backends.</param>
+    /// <param name="cancellationToken">Cancels the run, from <see cref="CancelSpeed"/>.</param>
     /// <returns>The result.</returns>
     private async Task<ProbeRunResult> RunSpeedHeldAsync(
         Func<SpeedOptions, IReadOnlyCollection<(HwType Type, string Device)>, IProgress<SpeedProgress>, CancellationToken, Task<SpeedReport>> measure,
         SpeedOptions speed,
-        IReadOnlyCollection<(HwType Type, string Device)> backends)
+        IReadOnlyCollection<(HwType Type, string Device)> backends,
+        CancellationToken cancellationToken)
     {
-        _status = _status with { State = ProbeState.Running, Activity = ProbeActivity.Speed, LastStartedUtc = _time.GetUtcNow(), LastError = null, Done = 0, Total = null };
+        _status = _status with { State = ProbeState.Running, Activity = ProbeActivity.Speed, LastStartedUtc = _time.GetUtcNow(), LastError = null, Done = 0, Total = null, Preparing = null };
         try
         {
             lock (_speedSoFar)
@@ -610,20 +681,55 @@ public sealed partial class ProbeService : IDisposable
 
             var progress = new DirectProgress(p =>
             {
-                if (p.Result is { } result)
+                lock (_speedSoFar)
                 {
-                    lock (_speedSoFar)
+                    if (p.Planned is { } planned)
                     {
-                        _speedSoFar.Add(result);
+                        _speedSoFar.Clear();
+                        _speedSoFar.AddRange(planned);
+                    }
+                    else if (p.Result is { } result)
+                    {
+                        // Results replace their planned row, so the table keeps its shape as it fills in.
+                        var index = _speedSoFar.FindIndex(x => x.Pending && x.Type == result.Type && x.Device == result.Device && x.Test == result.Test && x.Variant == result.Variant);
+                        if (index >= 0)
+                        {
+                            _speedSoFar[index] = result;
+                        }
+                        else
+                        {
+                            _speedSoFar.Add(result);
+                        }
+                    }
+                    else if (p.Preparing is null)
+                    {
+                        _measuringSince ??= _time.GetUtcNow();
                     }
                 }
 
-                _status = _status with { Done = p.Done, Total = p.Total };
+                _status = _status with { Done = p.Done, Total = p.Total, Preparing = p.Preparing };
             });
-            var report = await measure(speed, backends, progress, CancellationToken.None);
+            var report = await measure(speed, backends, progress, cancellationToken);
+            if (report.Cancelled)
+            {
+                Log.SpeedCancelled(_logger, report.Results.Count);
+                if (report.Results.Count == 0)
+                {
+                    return ProbeRunResult.Completed;
+                }
+            }
+            else
+            {
+                Log.SpeedCompleted(_logger, report.Results.Count);
+            }
+
             await SpeedReportStore.WriteAsync(report, SpeedPath, CancellationToken.None);
             await SaveSpeedHistoryAsync(report);
-            Log.SpeedCompleted(_logger, report.Results.Count);
+            return ProbeRunResult.Completed;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Cancelled before measuring started, while checking ffmpeg.
             return ProbeRunResult.Completed;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -639,9 +745,13 @@ public sealed partial class ProbeService : IDisposable
             {
                 _speedRunning = null;
                 _speedSoFar.Clear();
+                _speedCancel?.Dispose();
+                _speedCancel = null;
+                _speedPause = null;
+                _measuringSince = null;
             }
 
-            _status = _status with { State = ProbeState.Idle, LastCompletedUtc = _time.GetUtcNow(), Done = null, Total = null };
+            _status = _status with { State = ProbeState.Idle, LastCompletedUtc = _time.GetUtcNow(), Done = null, Total = null, Preparing = null };
             _gate.Release();
         }
     }

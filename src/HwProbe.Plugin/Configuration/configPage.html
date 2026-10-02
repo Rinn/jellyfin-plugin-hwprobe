@@ -797,7 +797,21 @@
                         const bar = jf('<div class="itemProgressBar hwprobe-progress"><div class="itemProgressBarForeground"></div></div>');
                         bar.firstElementChild.style.width = (speedProgress.Total ? Math.round(100 * speedProgress.Done / speedProgress.Total) : 0) + '%';
                         line.appendChild(bar);
-                        line.appendChild(el('span', speedProgressText(speedProgress.Done, speedProgress.Total), 'secondaryText'));
+                        line.appendChild(el('span', speedProgressText(speedProgress), 'secondaryText'));
+                        const cancel = action('Cancel', () => {
+                            cancel.disabled = true;
+                            ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed/Cancel') }).then(loadStatus, loadStatus);
+                        });
+                        const cancelling = speedProgress.Phase === 'Cancelling';
+                        cancel.disabled = cancelling;
+                        const paused = speedProgress.Phase === 'Paused' || speedProgress.Phase === 'Pausing';
+                        const pause = action(paused ? 'Resume' : 'Pause', () => {
+                            pause.disabled = true;
+                            ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl(paused ? 'HwProbe/Speed/Resume' : 'HwProbe/Speed/Pause') }).then(loadStatus, loadStatus);
+                        });
+                        pause.disabled = cancelling;
+                        line.appendChild(pause);
+                        line.appendChild(cancel);
                         speedResults.appendChild(line);
                     }
                     const shown = speedLive || speedReport;
@@ -981,6 +995,9 @@
                     if (!speedHistory.length && !speedLive) {
                         div.appendChild(el('p', 'Measured ' + new Date(r.generatedUtc).toLocaleString() + ', ' + methodName(r.method).toLowerCase() + ' accuracy', 'secondaryText'));
                     }
+                    if (r.cancelled) {
+                        div.appendChild(el('div', 'Cancelled: these are the measurements finished before then.', 'infoBanner'));
+                    }
                     if (r.settings) {
                         const used = fold(div, 'Settings used');
                         const table = el('table');
@@ -1002,6 +1019,8 @@
                     const speedOf = x => x.fps && x.frameRate ? x.fps / x.frameRate : null;
                     // Fast accuracy derives the stream count from the speed, so only Standard and Thorough get a column for it.
                     const counted = r.method !== 'Quick';
+                    // Results run in their planned order, so the first pending one is being measured.
+                    const current = speedProgress && (speedProgress.Phase === 'Measuring' || speedProgress.Phase === 'Pausing') ? r.results.find(x => x.pending) : null;
                     const per = counted ? 2 : 1;
                     // Per backend: concurrent streams kept up with, when counted, and one transcode's speed.
                     const cellsFor = (x, best, baseline) => {
@@ -1009,6 +1028,11 @@
                         const streams = el('td', null, 'hwprobe-num' + bold);
                         const speedCell = el('td', null, 'hwprobe-num' + bold);
                         if (!x) {
+                            return counted ? [streams, speedCell] : [speedCell];
+                        }
+                        if (x.pending) {
+                            speedCell.textContent = x === current ? 'Measuring\u2026' : '\u2026';
+                            speedCell.classList.add('secondaryText');
                             return counted ? [streams, speedCell] : [speedCell];
                         }
                         const speed = speedOf(x);
@@ -1137,9 +1161,43 @@
                     ].map(([key, value]) => [settingLabels[key] || key, value]);
                 }
 
-                // The run makes or downloads its test videos before it knows how many measurements apply.
-                function speedProgressText(done, total) {
-                    return total ? 'Measured ' + done + ' of ' + total : 'Preparing test videos\u2026';
+                // Status of a running speed run: test videos being prepared, then measurements with the time left.
+                function speedProgressText(s) {
+                    if (s.Phase === 'Cancelling') {
+                        return 'Cancelling\u2026';
+                    }
+                    if (s.Phase === 'Paused') {
+                        return 'Paused after ' + (s.Done || 0) + ' of ' + s.Total;
+                    }
+                    if (s.Phase === 'Pausing') {
+                        return 'Pausing when this measurement finishes\u2026';
+                    }
+                    if (s.Phase === 'Preparing' || !s.Total) {
+                        return (s.Preparing || 'Preparing test videos') + '\u2026';
+                    }
+                    const done = s.Done || 0;
+                    const left = timeLeft(s);
+                    return 'Measured ' + done + ' of ' + s.Total + (left ? ', ' + left : '');
+                }
+
+                // From the measurements so far; before the first, from the accuracy's typical time per measurement.
+                function timeLeft(s) {
+                    const done = s.Done || 0;
+                    const remaining = s.Total - done;
+                    if (remaining <= 0) {
+                        return '';
+                    }
+                    let seconds;
+                    if (done > 0 && s.MeasuringSeconds) {
+                        seconds = s.MeasuringSeconds / done * remaining;
+                    } else {
+                        const per = methodSeconds[speedLive ? speedLive.method : speedMethod] || [20, 60];
+                        seconds = remaining * (per[0] + per[1]) / 2 * (speedLive && speedLive.repeats ? speedLive.repeats : 1);
+                    }
+                    const minutes = Math.round(seconds / 60);
+                    return seconds < 60 ? 'under a minute left'
+                        : minutes < 90 ? 'about ' + minutes + ' minute' + (minutes === 1 ? '' : 's') + ' left'
+                        : 'about ' + Math.round(minutes / 60) + ' hours left';
                 }
 
                 function streamsText(x) {
@@ -1221,7 +1279,7 @@
                         runButton.disabled = running;
                         if (running) {
                             const text = s.Activity === 'Speed'
-                                ? speedProgressText(s.Done || 0, s.Total)
+                                ? speedProgressText(s)
                                 : 'Probing\u2026';
                             statusText.textContent = text;
                             speedUpdate();
@@ -1232,7 +1290,7 @@
                                 loadReport();
                             }
                             if (s.Activity === 'Speed') {
-                                speedProgress = { Done: s.Done || 0, Total: s.Total || 0 };
+                                speedProgress = s;
                                 ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedProgress'), dataType: 'json' })
                                     .then(r => { speedLive = r; }, () => {}).then(renderSpeedResults);
                             }

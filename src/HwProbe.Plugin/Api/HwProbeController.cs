@@ -79,6 +79,27 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
         var other => Problem($"Unexpected result {other}."),
     };
 
+    /// <summary>Pauses the running speed run when its current measurement finishes.</summary>
+    /// <returns>204 when pausing; 409 when no speed run is running.</returns>
+    [HttpPost("Speed/Pause")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public ActionResult PauseSpeed() => service.PauseSpeed(true) ? NoContent() : Conflict("No speed run is running.");
+
+    /// <summary>Resumes a paused speed run.</summary>
+    /// <returns>204 when resuming; 409 when no speed run is running.</returns>
+    [HttpPost("Speed/Resume")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public ActionResult ResumeSpeed() => service.PauseSpeed(false) ? NoContent() : Conflict("No speed run is running.");
+
+    /// <summary>Cancels the running speed run, keeping the measurements already finished.</summary>
+    /// <returns>204 when cancelling; 409 when no speed run is running.</returns>
+    [HttpPost("Speed/Cancel")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public ActionResult CancelSpeed() => service.CancelSpeed() ? NoContent() : Conflict("No speed run is running.");
+
     /// <summary>Returns everything the page lists: speed videos, outputs and choices, and the labels for backends and results.</summary>
     /// <returns>The catalog.</returns>
     [HttpGet("Catalog")]

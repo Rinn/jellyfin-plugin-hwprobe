@@ -58,6 +58,9 @@ public sealed class FixtureBuilder
         _timeout = timeout;
     }
 
+    /// <summary>Gets what receives each download and encode of a clip that isn't cached, or null.</summary>
+    internal IProgress<FixtureStep>? Progress { get; init; }
+
     /// <summary>Ensures every buildable fixture exists in the cache for this key, generating as needed.</summary>
     /// <param name="cacheKey">Cache partition, normally the host fingerprint.</param>
     /// <param name="availableEncoders">Encoder names in this ffmpeg build, from build enumeration.</param>
@@ -197,6 +200,7 @@ public sealed class FixtureBuilder
         FixtureResult generated;
         try
         {
+            Progress?.Report(new FixtureStep(spec, FixtureAction.Making, 0, 0));
             generated = await GenerateAsync(spec, path, piece, cancellationToken);
         }
         finally
@@ -225,8 +229,10 @@ public sealed class FixtureBuilder
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(spec.GenerateTimeout ?? _timeout);
-            header = await _downloader.DownloadRangeAsync(piece.Url, 0, piece.HeaderLength, timeout.Token);
-            body = await _downloader.DownloadRangeAsync(piece.Url, piece.Start, piece.Length, timeout.Token);
+            Progress?.Report(new FixtureStep(spec, FixtureAction.Downloading, 0, piece.Size));
+            header = await _downloader.DownloadRangeAsync(piece.Url, 0, piece.HeaderLength, null, timeout.Token);
+            var bodyProgress = Progress is { } report ? new StepProgress(n => report.Report(new FixtureStep(spec, FixtureAction.Downloading, piece.HeaderLength + n, piece.Size))) : null;
+            body = await _downloader.DownloadRangeAsync(piece.Url, piece.Start, piece.Length, bodyProgress, timeout.Token);
         }
         catch (HttpRequestException ex)
         {
@@ -328,6 +334,7 @@ public sealed class FixtureBuilder
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(_timeout);
+            Progress?.Report(new FixtureStep(spec, FixtureAction.Downloading, 0, 0));
             bytes = await _downloader.DownloadAsync(url, timeout.Token);
         }
         catch (HttpRequestException ex)
@@ -407,5 +414,14 @@ public sealed class FixtureBuilder
         File.Move(manifestPartial, manifestPath, overwrite: true);
 
         return new FixtureResult(spec, FixtureStatus.Available, path, null);
+    }
+
+    /// <summary>Reports byte counts on the caller's thread, in order.</summary>
+    /// <param name="report">Applies one count.</param>
+    /// <remarks><see cref="Progress{T}"/> posts to the thread pool, so counts could arrive out of order.</remarks>
+    private sealed class StepProgress(Action<long> report) : IProgress<long>
+    {
+        /// <inheritdoc/>
+        public void Report(long value) => report(value);
     }
 }

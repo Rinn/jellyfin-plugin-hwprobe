@@ -79,33 +79,56 @@ public sealed class SpeedEngine : IDisposable
 
         var host = new HostInfoReader(_platform).Read();
         var tests = speed.Resolve();
-        var clips = await BuildClipsAsync(options, caps, tests, speed.Comparisons, cancellationToken);
-
         List<(HwType Type, string Device)> measured = [.. backends.Where(b => b.Type != HwType.none), (HwType.none, string.Empty)];
-        var total = measured.Sum(b => tests.Sum(t => 1 + (MissingClip(t, clips) is null ? SpeedVariants.For(b.Type, t, SpeedVariants.Base(t, speed.Settings, Placeholders(t)), speed.Comparisons, Paths(clips)).Count() : 0)));
-        var done = 0;
-        progress?.Report(new SpeedProgress(0, total, null));
-        List<SpeedResult> results = [];
-        foreach (var (type, device) in measured)
+
+        // Planned before any clip exists, assuming every clip can be made, so the page can show the whole table from the start.
+        var plan = measured.Select(b => (b.Type, b.Device, Tests: tests.Select(t => (Test: t, Labels: Labels(b.Type, t, speed))).ToList())).ToList();
+        var total = plan.Sum(b => b.Tests.Sum(t => t.Labels.Count));
+        progress?.Report(new SpeedProgress(0, total, null)
         {
-            var traits = await OpenAsync(options, type, device, host.Os, cancellationToken);
-            var source = traits is null ? null : _arguments.Create(caps, traits);
-            foreach (var test in tests)
+            Planned = [.. plan.SelectMany(b => b.Tests.SelectMany(t => t.Labels.Select(label => Describe(t.Test, new SpeedResult(b.Type, b.Device, t.Test.Key, label, null, null, false, null) { Pending = true }))))],
+        });
+
+        var done = 0;
+        var cancelled = false;
+        List<SpeedResult> results = [];
+        try
+        {
+            var names = tests.Where(t => t.Fixture is not null).GroupBy(t => t.Fixture!.FileName).ToDictionary(g => g.Key, g => g.First().Name ?? g.Key, StringComparer.Ordinal);
+            var clips = await BuildClipsAsync(options, caps, tests, speed.Comparisons, progress is null ? null : new StepProgress(step => progress.Report(new SpeedProgress(0, total, null) { Preparing = Preparing(step, names) })), cancellationToken);
+            progress?.Report(new SpeedProgress(0, total, null));
+            foreach (var (type, device, planned) in plan)
             {
-                var missing = MissingClip(test, clips);
-                var cell = missing is null ? SpeedVariants.Base(test, speed.Settings, Paths(clips)) : null;
-                List<(string Label, ProbeCell? Cell)> runs = [(string.Empty, cell), .. cell is null ? [] : SpeedVariants.For(type, test, cell, speed.Comparisons, Paths(clips)).Select(v => (v.Label, (ProbeCell?)v.Cell))];
-                string? baseCommand = null;
-                foreach (var (label, variant) in runs)
+                var traits = await OpenAsync(options, type, device, host.Os, cancellationToken);
+                var source = traits is null ? null : _arguments.Create(caps, traits);
+                foreach (var (test, labels) in planned)
                 {
-                    var result = source is null ? new SpeedResult(type, device, test.Key, label, null, null, false, "The device didn't open.")
-                        : variant is null ? new SpeedResult(type, device, test.Key, label, null, null, false, missing)
-                        : await MeasureRepeatedAsync(options, speed, source, type, device, test, label, variant, () => baseCommand, c => baseCommand ??= c, cancellationToken);
-                    var described = result with { Label = test.Label, Video = test.Name, Output = test.OutputLabel, Input = SpeedTestText.Input(test), FrameRate = test.FrameRate, Credit = test.Credit, LicenseUrl = test.LicenseUrl };
-                    results.Add(described);
-                    progress?.Report(new SpeedProgress(++done, total, described));
+                    var missing = MissingClip(test, clips);
+                    var cell = missing is null ? SpeedVariants.Base(test, speed.Settings, Paths(clips)) : null;
+                    var variants = cell is null ? [] : SpeedVariants.For(type, test, cell, speed.Comparisons, Paths(clips)).ToDictionary(v => v.Label, v => v.Cell, StringComparer.Ordinal);
+                    string? baseCommand = null;
+                    foreach (var label in labels)
+                    {
+                        if (speed.Pause is { } pause)
+                        {
+                            await pause.WaitAsync(cancellationToken);
+                        }
+
+                        var variant = label.Length == 0 ? cell : variants.GetValueOrDefault(label);
+                        var result = source is null ? new SpeedResult(type, device, test.Key, label, null, null, false, "The device didn't open.")
+                            : cell is null ? new SpeedResult(type, device, test.Key, label, null, null, false, missing)
+                            : variant is null ? new SpeedResult(type, device, test.Key, label, null, null, false, MissingSubtitles(clips))
+                            : await MeasureRepeatedAsync(options, speed, source, type, device, test, label, variant, () => baseCommand, c => baseCommand ??= c, cancellationToken);
+                        var described = Describe(test, result);
+                        results.Add(described);
+                        progress?.Report(new SpeedProgress(++done, total, described));
+                    }
                 }
             }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            cancelled = true;
         }
 
         return new SpeedReport(
@@ -116,6 +139,7 @@ public sealed class SpeedEngine : IDisposable
         {
             Settings = speed.Settings,
             Repeats = speed.Repeats,
+            Cancelled = cancelled,
         };
     }
 
@@ -137,27 +161,62 @@ public sealed class SpeedEngine : IDisposable
     private static Dictionary<string, string> Paths(Dictionary<string, FixtureResult> clips) =>
         clips.Values.Where(c => c.Path is not null).ToDictionary(c => c.Spec.FileName, c => c.Path!, StringComparer.Ordinal);
 
-    /// <summary>Returns stand-in paths for a test's clips, for counting its comparisons before any clip exists.</summary>
+    /// <summary>Returns the variants planned for a backend and test, the base first, as if every clip can be made.</summary>
+    /// <param name="type">The backend.</param>
     /// <param name="test">The test.</param>
-    /// <returns>Each clip's file name, as its own path.</returns>
-    private static Dictionary<string, string> Placeholders(SpeedTest test) =>
-        SpeedVariants.Clips([test], SpeedComparison.None).ToDictionary(f => f.FileName, f => f.FileName, StringComparer.Ordinal);
+    /// <param name="speed">The settings and comparisons.</param>
+    /// <returns>The variant labels; empty for the base.</returns>
+    private static List<string> Labels(HwType type, SpeedTest test, SpeedOptions speed)
+    {
+        // Each clip's file name stands in for its path.
+        var placeholders = SpeedVariants.Clips([test], speed.Comparisons).ToDictionary(f => f.FileName, f => f.FileName, StringComparer.Ordinal);
+        return [string.Empty, .. SpeedVariants.For(type, test, SpeedVariants.Base(test, speed.Settings, placeholders), speed.Comparisons, placeholders).Select(v => v.Label)];
+    }
+
+    /// <summary>Adds what the page and report show about a test to its result.</summary>
+    /// <param name="test">The test.</param>
+    /// <param name="result">The result.</param>
+    /// <returns>The described result.</returns>
+    private static SpeedResult Describe(SpeedTest test, SpeedResult result) =>
+        result with { Label = test.Label, Video = test.Name, Output = test.OutputLabel, Input = SpeedTestText.Input(test), FrameRate = test.FrameRate, Credit = test.Credit, LicenseUrl = test.LicenseUrl };
+
+    /// <summary>Describes a clip being made or downloaded.</summary>
+    /// <param name="step">The step.</param>
+    /// <param name="names">Video names by clip file name.</param>
+    /// <returns>e.g. <c>Downloading Animation: 5 of 14 MB</c>.</returns>
+    private static string Preparing(FixtureStep step, Dictionary<string, string> names)
+    {
+        var name = names.GetValueOrDefault(step.Spec.FileName)
+            ?? (step.Spec.FileName == SpeedCatalog.TextSubtitles.FileName ? "text subtitles" : step.Spec.FileName == SpeedCatalog.ImageSubtitles.FileName ? "PGS subtitles" : step.Spec.FileName);
+        return step.Action == FixtureAction.Making ? "Making " + name
+            : step.Total > 0 ? string.Create(CultureInfo.InvariantCulture, $"Downloading {name}: {step.Done / 1_000_000} of {Math.Round(step.Total / 1_000_000.0):0} MB")
+            : "Downloading " + name;
+    }
+
+    /// <summary>Says why a subtitle variation couldn't run.</summary>
+    /// <param name="clips">Every clip built.</param>
+    /// <returns>The reason, from the subtitle clip that failed.</returns>
+    private static string MissingSubtitles(Dictionary<string, FixtureResult> clips) =>
+        clips.Values.FirstOrDefault(c => c.Status != FixtureStatus.Available && (c.Spec == SpeedCatalog.TextSubtitles || c.Spec == SpeedCatalog.ImageSubtitles)) is { } missing
+            ? $"No {missing.Spec.FileName}: {missing.Reason}"
+            : "The subtitle file couldn't be made.";
 
     /// <summary>Makes or downloads the clips the tests need.</summary>
     /// <param name="options">Cache locations and timeouts.</param>
     /// <param name="caps">Build capabilities, for the software encoders.</param>
     /// <param name="tests">The tests.</param>
     /// <param name="comparisons">The comparisons, for the subtitle clips.</param>
+    /// <param name="progress">Receives each clip being made or downloaded, or null.</param>
     /// <param name="cancellationToken">Cancels generation.</param>
     /// <returns>Each clip by file name.</returns>
-    private async Task<Dictionary<string, FixtureResult>> BuildClipsAsync(EngineOptions options, FfmpegCapabilities caps, IReadOnlyList<SpeedTest> tests, SpeedComparison comparisons, CancellationToken cancellationToken)
+    private async Task<Dictionary<string, FixtureResult>> BuildClipsAsync(EngineOptions options, FfmpegCapabilities caps, IReadOnlyList<SpeedTest> tests, SpeedComparison comparisons, IProgress<FixtureStep>? progress, CancellationToken cancellationToken)
     {
         var clips = SpeedVariants.Clips(tests, comparisons);
         var key = Fingerprint.Compute(new FingerprintInputs(options.Ffmpeg.Path, caps.VersionLine, null, null, null, null, null, null));
         Dictionary<string, FixtureResult> built = new(StringComparer.Ordinal);
         foreach (var group in clips.GroupBy(c => c.KeepAcrossBuilds))
         {
-            var builder = new FixtureBuilder(_runner, options.Ffmpeg.Path, options.FixturesDirectory, options.FixtureTimeout, FixtureDownloader, [.. group], null);
+            var builder = new FixtureBuilder(_runner, options.Ffmpeg.Path, options.FixturesDirectory, options.FixtureTimeout, FixtureDownloader, [.. group], null) { Progress = progress };
             foreach (var clip in await builder.BuildAsync(group.Key ? SamplesCacheKey : key, caps.Encoders, cancellationToken))
             {
                 built[clip.Spec.FileName] = clip;
@@ -299,4 +358,12 @@ public sealed class SpeedEngine : IDisposable
                 return new SpeedResult(type, device, test.Key, label, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note);
             },
             cancellationToken);
+
+    /// <summary>Reports clip steps on the caller's thread, in order.</summary>
+    /// <param name="report">Applies one step.</param>
+    private sealed class StepProgress(Action<FixtureStep> report) : IProgress<FixtureStep>
+    {
+        /// <inheritdoc/>
+        public void Report(FixtureStep value) => report(value);
+    }
 }

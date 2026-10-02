@@ -14,6 +14,9 @@ public sealed record SpeedOptions(SpeedMethod Method, IReadOnlyList<string> Vide
     /// <summary>Gets how long each measurement, repeats included, may take before it reports what it has, or null for no limit.</summary>
     public TimeSpan? TimeLimit { get; init; }
 
+    /// <summary>Gets what pauses the run between measurements, or null when it can't be paused.</summary>
+    public SpeedPause? Pause { get; init; }
+
     /// <summary>Gets the library file the <c>library</c> video reads, or null.</summary>
     public SpeedFile? File { get; init; }
 

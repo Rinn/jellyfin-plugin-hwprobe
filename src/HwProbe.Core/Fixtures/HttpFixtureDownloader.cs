@@ -17,7 +17,7 @@ public sealed class HttpFixtureDownloader : IFixtureDownloader
         Disabled ? throw Off(url) : _client.GetByteArrayAsync(url, cancellationToken);
 
     /// <inheritdoc/>
-    public async Task<byte[]> DownloadRangeAsync(Uri url, long start, long length, CancellationToken cancellationToken)
+    public async Task<byte[]> DownloadRangeAsync(Uri url, long start, long length, IProgress<long>? progress, CancellationToken cancellationToken)
     {
         if (Disabled)
         {
@@ -34,8 +34,22 @@ public sealed class HttpFixtureDownloader : IFixtureDownloader
             throw new HttpRequestException($"{url} answered {(int)response.StatusCode} to a range request.");
         }
 
-        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-        return bytes.LongLength == length ? bytes : throw new HttpRequestException($"{url} sent {bytes.LongLength} bytes, not {length}.");
+        var bytes = new byte[length];
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        var received = 0;
+        while (received < length)
+        {
+            var read = await stream.ReadAsync(bytes.AsMemory(received), cancellationToken);
+            if (read == 0)
+            {
+                break;
+            }
+
+            received += read;
+            progress?.Report(received);
+        }
+
+        return received == length && await stream.ReadAsync(new byte[1], cancellationToken) == 0 ? bytes : throw new HttpRequestException($"{url} sent a different length from the {length} bytes asked for.");
     }
 
     /// <summary>The error for a download refused because downloads are off.</summary>

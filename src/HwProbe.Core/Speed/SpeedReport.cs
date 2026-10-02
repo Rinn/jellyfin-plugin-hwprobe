@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Jellyfin.Plugin.HwProbe.Core.Report;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
@@ -14,6 +15,10 @@ public sealed record SpeedReport(DateTimeOffset GeneratedUtc, FfmpegSummary Ffmp
 
     /// <summary>Gets how many times each measurement ran.</summary>
     public int Repeats { get; init; } = 1;
+
+    /// <summary>Gets a value indicating whether the run was cancelled, so its results are the ones finished before then.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Cancelled { get; init; }
 
     /// <summary>Gets the version of HwProbe that measured it.</summary>
     public string HwProbeVersion { get; init; } = CapabilityReport.CurrentHwProbeVersion;

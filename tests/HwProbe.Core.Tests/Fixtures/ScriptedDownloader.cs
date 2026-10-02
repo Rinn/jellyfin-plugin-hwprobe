@@ -20,7 +20,7 @@ internal sealed class ScriptedDownloader(byte[]? bytes) : IFixtureDownloader
     }
 
     /// <inheritdoc/>
-    public Task<byte[]> DownloadRangeAsync(Uri url, long start, long length, CancellationToken cancellationToken)
+    public Task<byte[]> DownloadRangeAsync(Uri url, long start, long length, IProgress<long>? progress, CancellationToken cancellationToken)
     {
         Calls++;
         return bytes is null ? throw new HttpRequestException("network is unreachable") : Task.FromResult(bytes[(int)start..(int)(start + length)]);

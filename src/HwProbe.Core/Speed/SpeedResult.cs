@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
@@ -33,4 +34,8 @@ public sealed record SpeedResult(HwType Type, string Device, string Test, string
 
     /// <summary>Gets the sample's licence, or null.</summary>
     public Uri? LicenseUrl { get; init; }
+
+    /// <summary>Gets a value indicating whether it's planned and not measured yet; only in a running run's results.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Pending { get; init; }
 }
