@@ -265,13 +265,13 @@
                             const pending = configured ? settings.filter(x => x.section === group && differs(x)) : [];
                             const cell = el('td');
                             if (pending.length > 1) {
-                                cell.appendChild(action('Fix all ' + pending.length, () => apply(pending)));
+                                cell.appendChild(action('Apply all', () => apply(pending)));
                             }
                             row(table, [el('td'), el('td', group), el('td'), el('td'), cell]).className = 'hwprobe-group';
                         }
                         const cell = el('td');
                         if (configured && differs(a)) {
-                            cell.appendChild(action(a.state === 'TurnOn' ? 'Turn on' : 'Turn off', () => apply([a])));
+                            cell.appendChild(action('Apply', () => apply([a])));
                         }
                         row(table, [mark(a.state), a.label, el('td', a.note, 'hwprobe-reason'), fixCell(a.fix), cell]);
                     }
