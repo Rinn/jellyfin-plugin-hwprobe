@@ -24,6 +24,9 @@
             #HwProbeConfigPage .hwprobe-tabs button { margin: 0 0.5em 0.75em 0; padding: 0.4em 1em; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 0.2em; background: transparent; color: inherit; font: inherit; cursor: pointer; }
             #HwProbeConfigPage .hwprobe-tabs button.hwprobe-selected { background: #00a4dc; border-color: #00a4dc; color: #fff; }
             #HwProbeConfigPage details { margin-top: 2em; }
+            #HwProbeConfigPage details.hwprobe-change { margin: 0 0 1em; }
+            #HwProbeConfigPage details.hwprobe-change summary { cursor: pointer; }
+            #HwProbeConfigPage details.hwprobe-change table { margin: 0.25em 0 0 1.5em; }
             #HwProbeConfigPage .hwprobe-action { padding: 0 0.6em; line-height: 1.5; font-size: 0.9em; border: 1px solid #00a4dc; border-radius: 0.2em; background: transparent; color: #00a4dc; font: inherit; cursor: pointer; }
             #HwProbeConfigPage .hwprobe-action:disabled { opacity: 0.5; cursor: default; }
             #HwProbeConfigPage .hwprobe-action.hwprobe-danger { border-color: #c62828; color: #c62828; font-weight: bold; }
@@ -211,9 +214,9 @@
                 function action(text, onClick) {
                     const button = el('button', text, 'hwprobe-action');
                     button.type = 'button';
-                    button.addEventListener('click', () => {
+                    button.addEventListener('click', e => {
                         button.disabled = true;
-                        onClick();
+                        onClick(e);
                     });
                     return button;
                 }
@@ -300,19 +303,23 @@
                     if (!last) {
                         return;
                     }
-                    const line = el('p', 'Last change: ' + new Date(last.TimeUtc).toLocaleString() + ' ');
-                    line.appendChild(action('Revert', () => post('HwProbe/Revert')));
-                    changeText.appendChild(line);
+                    const details = el('details', null, 'hwprobe-change');
+                    const summary = el('summary', 'Last change: ' + new Date(last.TimeUtc).toLocaleString() + ' ');
+                    // A button in a summary would also open or close the list.
+                    summary.appendChild(action('Revert', e => { e.preventDefault(); post('HwProbe/Revert'); }));
+                    details.appendChild(summary);
 
-                    const details = el('details');
-                    const count = last.Changes.length;
-                    details.appendChild(el('summary', count + (count === 1 ? ' setting' : ' settings')));
+                    // What Revert sets each option to, marked as on the settings list.
                     const table = el('table');
-                    row(table, [el('th', 'Option'), el('th', 'Now'), el('th', 'After revert')]);
                     for (const c of last.Changes) {
                         // Revert leaves a setting that was changed again since; the server skips it too.
                         const kept = currentText(c.Setting) !== undefined && currentText(c.Setting) !== c.NewValue;
-                        row(table, [c.Label || settingLabel(c.Setting), valueText(c.Setting, kept ? currentText(c.Setting) : c.NewValue), kept ? el('td', 'Changed since, kept', 'hwprobe-reason') : valueText(c.Setting, c.OldValue)]);
+                        const value = kept ? currentText(c.Setting) : c.OldValue;
+                        const flag = value === 'true' || value === 'false';
+                        const label = c.Label || settingLabel(c.Setting);
+                        const note = kept ? 'Changed since, kept' : (flag ? '' : valueText(c.Setting, value));
+                        const marker = kept ? mark('NotTested') : flag ? mark(value === 'true' ? 'TurnOn' : 'LeaveOff') : el('td');
+                        row(table, [marker, label, el('td', note, 'hwprobe-reason')]);
                     }
                     details.appendChild(table);
                     changeText.appendChild(details);
