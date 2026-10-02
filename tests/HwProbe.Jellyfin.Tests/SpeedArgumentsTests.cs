@@ -59,6 +59,11 @@ public sealed class SpeedArgumentsTests
         Assert.Contains("overlay", args.FilterArgs, StringComparison.Ordinal);
     }
 
+    /// <summary>A subtitle inside the file is overlaid from its own stream, whatever tracks come before it.</summary>
+    [Fact]
+    public void InternalImageSubtitleUsesItsStream() =>
+        Assert.Contains("[0:3]", Build(_cell with { InternalSubtitleIndex = 3, InternalSubtitleCodec = "PGSSUB" }).FilterArgs, StringComparison.Ordinal);
+
     /// <summary>Double-rate deinterlacing changes the deinterlace filter.</summary>
     [Fact]
     public void DoubleRateChangesTheFilter()

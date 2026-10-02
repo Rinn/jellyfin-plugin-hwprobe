@@ -81,7 +81,7 @@ public sealed class SpeedEngine : IDisposable
         var clips = await BuildClipsAsync(options, caps, tests, cancellationToken);
 
         List<(HwType Type, string Device)> measured = [.. backends.Where(b => b.Type != HwType.none), (HwType.none, string.Empty)];
-        var total = measured.Sum(b => tests.Sum(t => 1 + SpeedVariants.For(b.Type, t, SpeedVariants.Base(t, speed.Settings, Placeholders(t)), speed.Comparisons).Count()));
+        var total = measured.Sum(b => tests.Sum(t => 1 + (MissingClip(t, clips) is null ? SpeedVariants.For(b.Type, t, SpeedVariants.Base(t, speed.Settings, Placeholders(t)), speed.Comparisons).Count() : 0)));
         var done = 0;
         List<SpeedResult> results = [];
         foreach (var (type, device) in measured)

@@ -37,9 +37,10 @@ public sealed class LibraryFiles(ILibraryManager library, IMediaSourceManager me
             return null;
         }
 
+        // The real frame rate can read double (47.952 for 23.976 content), which would halve the streams counted.
         var audio = streams.FirstOrDefault(s => s.Type == MediaStreamType.Audio && s.Index == source.DefaultAudioStreamIndex)
             ?? streams.FirstOrDefault(s => s.Type == MediaStreamType.Audio);
-        return new SpeedFile(source.Path, name, TimeSpan.FromTicks(source.RunTimeTicks ?? 0), new SpeedFileVideo(video.Index, video.Codec, video.BitDepth ?? 8, width, height, video.RealFrameRate ?? video.AverageFrameRate ?? 24)
+        return new SpeedFile(source.Path, name, TimeSpan.FromTicks(source.RunTimeTicks ?? 0), new SpeedFileVideo(video.Index, video.Codec, video.BitDepth ?? 8, width, height, video.AverageFrameRate ?? video.RealFrameRate ?? 24)
         {
             Profile = video.Profile,
             PixelFormat = video.PixelFormat,

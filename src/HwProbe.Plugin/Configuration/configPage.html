@@ -88,6 +88,8 @@
                 let speedMethod = 'Confirm';
                 let speedChosen = null;
                 let speedItem = null;
+                // The current Speed section's estimate; one listener calls it, however often the section is redrawn.
+                let speedUpdate = () => {};
                 let speedFileTests = [];
                 const speedCompared = new Set();
                 const methods = {
@@ -672,6 +674,8 @@
                     return line;
                 }
 
+                results.addEventListener('hwprobe-speed-changed', () => speedUpdate());
+
                 function allSpeedTests() {
                     return speedTests.concat(speedFileTests);
                 }
@@ -777,7 +781,7 @@
                     container.appendChild(estimate);
                     container.appendChild(renderCache());
                     update();
-                    results.addEventListener('hwprobe-speed-changed', update);
+                    speedUpdate = update;
 
                     if (speedReport) {
                         container.appendChild(speedTable(speedReport));

@@ -64,7 +64,7 @@ public static class SyntheticJob
             Protocol = MediaProtocol.File,
             VideoType = VideoType.VideoFile,
             Path = sourcePath,
-            MediaStreams = [.. new[] { stream, audio, subtitle }.OfType<MediaStream>()],
+            MediaStreams = Streams(stream, audio, subtitle),
         };
 
         return new EncodingJobInfo(TranscodingJobType.Progressive)
@@ -83,5 +83,24 @@ public static class SyntheticJob
             OutputAudioChannels = audio is null ? null : 2,
             BaseRequest = new BaseEncodingJobOptions { MaxWidth = cell.MaxWidth, MaxHeight = cell.MaxHeight, VideoBitRate = cell.VideoBitrate, EnableAudioVbrEncoding = true },
         };
+    }
+
+    /// <summary>Lists the streams in index order, with a placeholder for every index in between.</summary>
+    /// <param name="video">The video stream.</param>
+    /// <param name="audio">The audio stream, or null.</param>
+    /// <param name="subtitle">The subtitle stream, or null.</param>
+    /// <returns>The list.</returns>
+    /// <remarks>
+    /// EncodingHelper.FindIndex (v12.1) maps a stream to ffmpeg's <c>[0:N]</c> by its position among streams with the same
+    /// path, not by its index, so a real file's other tracks must be there for a subtitle at index 3 to be <c>[0:3]</c>.
+    /// </remarks>
+    private static List<MediaStream> Streams(MediaStream video, MediaStream? audio, MediaStream? subtitle)
+    {
+        List<MediaStream> known = [.. new[] { video, audio, subtitle }.OfType<MediaStream>()];
+        var inside = known.Where(s => !s.IsExternal).ToList();
+        var last = inside.Max(s => s.Index);
+        List<MediaStream> streams = [.. Enumerable.Range(0, last + 1).Select(i => inside.Find(s => s.Index == i) ?? new MediaStream { Index = i, Type = MediaStreamType.Data })];
+        streams.AddRange(known.Where(s => s.IsExternal));
+        return streams;
     }
 }

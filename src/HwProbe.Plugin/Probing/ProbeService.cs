@@ -507,7 +507,7 @@ public sealed class ProbeService : IDisposable
         _status = _status with { State = ProbeState.Running, Activity = ProbeActivity.Speed, LastStartedUtc = _time.GetUtcNow(), LastError = null, Done = 0, Total = null };
         try
         {
-            var progress = new Progress<(int Done, int Total)>(p => _status = _status with { Done = p.Done, Total = p.Total });
+            var progress = new DirectProgress(p => _status = _status with { Done = p.Done, Total = p.Total });
             var report = await measure(speed, backends, progress, CancellationToken.None);
             await SpeedReportStore.WriteAsync(report, SpeedPath, CancellationToken.None);
             Log.SpeedCompleted(_logger, report.Results.Count);
@@ -525,5 +525,14 @@ public sealed class ProbeService : IDisposable
             _status = _status with { State = ProbeState.Idle, LastCompletedUtc = _time.GetUtcNow(), Done = null, Total = null };
             _gate.Release();
         }
+    }
+
+    /// <summary>Reports progress on the caller's thread, in order.</summary>
+    /// <param name="report">Applies one report.</param>
+    /// <remarks><see cref="Progress{T}"/> posts to the thread pool, so a late report could mark a finished run as running again.</remarks>
+    private sealed class DirectProgress(Action<(int Done, int Total)> report) : IProgress<(int Done, int Total)>
+    {
+        /// <inheritdoc/>
+        public void Report((int Done, int Total) value) => report(value);
     }
 }

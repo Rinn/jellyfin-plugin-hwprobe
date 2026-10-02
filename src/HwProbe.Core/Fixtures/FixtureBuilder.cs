@@ -194,11 +194,18 @@ public sealed class FixtureBuilder
             }
         }
 
-        var generated = await GenerateAsync(spec, path, piece, cancellationToken);
-        if (piece is not null)
+        FixtureResult generated;
+        try
         {
-            // The encode is cached; the piece is only its source.
-            DeleteIfExists(piece);
+            generated = await GenerateAsync(spec, path, piece, cancellationToken);
+        }
+        finally
+        {
+            // The encode is cached; the piece is only its source, and can be 100 MB.
+            if (piece is not null)
+            {
+                DeleteIfExists(piece);
+            }
         }
 
         return generated.Status == FixtureStatus.Available ? generated : await OrDownloadAsync(spec, generated, cancellationToken);

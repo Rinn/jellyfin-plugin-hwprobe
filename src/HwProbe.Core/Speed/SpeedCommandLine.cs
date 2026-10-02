@@ -32,7 +32,9 @@ public static partial class SpeedCommandLine
         var output = decodeOnly
             ? " -an"
             : $"{args.FilterArgs} -c:v {args.VideoEncoder}{args.EncoderArgs}{(args.AudioArgs.Length > 0 ? args.AudioArgs : " -an")}";
-        return $"-hide_banner -v warning -nostats -progress pipe:1 {looped} -t {seconds}{output} -f null -".Replace("  ", " ", StringComparison.Ordinal);
+
+        // No blanket space clean-up: a library path may hold two spaces in a row.
+        return $"-hide_banner -v warning -nostats -progress pipe:1 {looped} -t {seconds}{output} -f null -";
     }
 
     /// <summary>Matches each <c>-i</c> option.</summary>

@@ -108,6 +108,12 @@ internal static class HwProbeApp
         if (options.Speed is { } requested)
         {
             var speed = requested;
+            if (options.SpeedFilePath is null && speed.Tests.Any(t => t.StartsWith("file-", StringComparison.Ordinal)))
+            {
+                await stderr.WriteLineAsync("hwprobe: file-… speed tests need --speed-file.".AsMemory(), cancellationToken);
+                return (int)HwProbeExitCode.UsageError;
+            }
+
             if (options.SpeedFilePath is { } path)
             {
                 SpeedFile file;
@@ -123,6 +129,12 @@ internal static class HwProbeApp
 
                 // Without named file tests, measure the file's own transcodes as well as the chosen ones.
                 var fileTests = SpeedFileTests.For(file).Select(t => t.Key).ToList();
+                if (speed.Tests.FirstOrDefault(t => t.StartsWith("file-", StringComparison.Ordinal) && !fileTests.Contains(t)) is { } unknown)
+                {
+                    await stderr.WriteLineAsync($"hwprobe: {file.Name} has no test {unknown}. It has: {string.Join(", ", fileTests)}.".AsMemory(), cancellationToken);
+                    return (int)HwProbeExitCode.UsageError;
+                }
+
                 speed = speed with { Tests = speed.Tests.Any(t => fileTests.Contains(t)) ? speed.Tests : [.. speed.Tests, .. fileTests], File = file };
             }
 

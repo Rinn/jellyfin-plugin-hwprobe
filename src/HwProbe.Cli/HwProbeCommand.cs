@@ -42,7 +42,7 @@ internal sealed class HwProbeCommand
         CustomParser = ParseComparisons,
     };
 
-    private readonly Option<string?> _speedFile = new("--speed-file") { Description = "A real video file to measure with --speed; adds its tests (file-720p-h264 and others) to --speed-tests unless they're named." };
+    private readonly Option<string?> _speedFile = new("--speed-file") { Description = "A real video file to measure with --speed; adds all its tests (file-720p-h264 and others) unless --speed-tests names some." };
     private readonly Option<string?> _speedJson = new("--speed-json") { Description = "Also write the speed report to this file." };
     private readonly Option<int> _timeout = new("--timeout") { Description = "Per-probe hard timeout, seconds.", DefaultValueFactory = _ => 15 };
     private readonly Option<int> _fixtureTimeout = new("--fixture-timeout") { Description = "Fixture generation timeout, seconds.", DefaultValueFactory = _ => 120 };
@@ -129,7 +129,9 @@ internal sealed class HwProbeCommand
     private static List<string> ParseTests(System.CommandLine.Parsing.ArgumentResult result)
     {
         var keys = result.Tokens.SelectMany(t => t.Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).ToList();
-        foreach (var unknown in keys.Where(k => SpeedCatalog.Find(k) is null))
+
+        // A file's tests (file-…) are checked once --speed-file has been read.
+        foreach (var unknown in keys.Where(k => SpeedCatalog.Find(k) is null && !k.StartsWith("file-", StringComparison.Ordinal)))
         {
             result.AddError($"Unknown speed test '{unknown}'. Expected: {string.Join(", ", SpeedCatalog.All.Select(t => t.Key))}.");
         }
