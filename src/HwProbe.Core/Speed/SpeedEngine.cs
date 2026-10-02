@@ -336,15 +336,18 @@ public sealed class SpeedEngine : IDisposable
                     return new SpeedResult(type, device, test.Key, label, null, null, false, "Burning in a file's own text subtitles needs Jellyfin; measure it from the plugin.");
                 }
 
-                // A hardware column shows only work done on the GPU; software is measured in its own column.
+                // A hardware column needs the step it's about on the GPU: the encode for a transcode, the decode for a decode test. Software has its own column.
+                var softwareDecode = type != HwType.none && args.Hwaccel is null && args.HardwareDecoder is null;
                 var softwareStep = type == HwType.none ? null
-                    : args.Hwaccel is null && args.HardwareDecoder is null ? "decodes"
-                    : !test.DecodeOnly && !args.HardwareEncoder ? "encodes"
-                    : null;
+                    : test.DecodeOnly ? (softwareDecode ? "decodes" : null)
+                    : args.HardwareEncoder ? null
+                    : "encodes";
                 if (softwareStep is not null)
                 {
                     return new SpeedResult(type, device, test.Key, label, null, null, false, $"Not measured: Jellyfin {softwareStep} this in software with this backend.");
                 }
+
+                var note = softwareDecode ? "Jellyfin decodes this in software with this backend, then encodes on the GPU." : null;
 
                 string Command(TimeSpan content) => SpeedCommandLine.Build(args, content, test.DecodeOnly, test.StartAt);
 
@@ -365,7 +368,7 @@ public sealed class SpeedEngine : IDisposable
                 }
 
                 var measured = await SpeedMeter.MeasureAsync(LaunchAsync, method, test.FrameRate, !test.DecodeOnly, ct, timeUp);
-                return new SpeedResult(type, device, test.Key, label, measured.Fps, measured.Streams, measured.Capped, measured.Note);
+                return new SpeedResult(type, device, test.Key, label, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note);
             },
             cancellationToken);
 
