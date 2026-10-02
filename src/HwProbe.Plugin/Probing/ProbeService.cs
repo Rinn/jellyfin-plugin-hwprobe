@@ -59,6 +59,9 @@ public sealed class ProbeService : IDisposable
     /// <summary>Gets the current status.</summary>
     public ProbeStatus Status => _status;
 
+    /// <summary>Gets the probe started by <see cref="Start"/>, or a completed task when none was.</summary>
+    internal Task Background => _background ?? Task.CompletedTask;
+
     /// <summary>Runs a probe now and waits for it.</summary>
     /// <param name="cancellationToken">Cancels the probe; running ffmpeg trees are killed.</param>
     /// <returns><see cref="ProbeRunResult.Completed"/>, or why it didn't run or failed.</returns>

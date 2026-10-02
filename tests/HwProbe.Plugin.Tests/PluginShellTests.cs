@@ -27,8 +27,9 @@ public sealed class PluginShellTests : IDisposable
     }
 
     /// <summary>Run answers 202 when idle and 409 while transcoding.</summary>
+    /// <returns>A task representing the test.</returns>
     [Fact]
-    public void RunMapsResultsToStatusCodes()
+    public async Task RunMapsResultsToStatusCodes()
     {
         using var release = new SemaphoreSlim(0);
         using var idle = Service(
@@ -45,6 +46,9 @@ public sealed class PluginShellTests : IDisposable
         Assert.IsType<ConflictObjectResult>(new HwProbeController(idle, settings.Service).Run());
         Assert.IsType<ConflictObjectResult>(new HwProbeController(busy, settings.Service).Run());
         release.Release();
+
+        // The started probe writes its report in the background; cleanup must not race it.
+        await idle.Background;
     }
 
     /// <summary>Report answers 404 before any probe and the saved JSON after one.</summary>

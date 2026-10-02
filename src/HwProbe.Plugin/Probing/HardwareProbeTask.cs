@@ -13,7 +13,7 @@ public sealed class HardwareProbeTask(ProbeService service) : IScheduledTask
     public string Key => "HwProbeHardwareProbe";
 
     /// <inheritdoc/>
-    public string Description => "Tests which hardware transcoding backends and codecs actually work. Run while nothing is playing.";
+    public string Description => "Tests which hardware transcoding options work on this server. Run while nothing is playing.";
 
     /// <inheritdoc/>
     public string Category => "HwProbe";
