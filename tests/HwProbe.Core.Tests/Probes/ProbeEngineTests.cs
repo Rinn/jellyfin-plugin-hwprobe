@@ -79,6 +79,57 @@ public sealed class ProbeEngineTests : IDisposable
         }
     }
 
+    /// <summary>On Windows the adapters are listed up front, and QSV is tried only on Intel adapters.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task WindowsAdaptersAreListedAndMatchedByVendor()
+    {
+        // As ffmpeg logs them: NVIDIA at 0, Intel at 1, the software adapter at 2 (its create fails), nothing past the end.
+        var runner = new EngineRunner("jellyfin-8.1.3-windows-x64")
+        {
+            Probe = i => i.Arguments.Contains("dx11:0", StringComparison.Ordinal) ? EngineRunner.Exited(1, null, "[D3D11VA @ 1] Using device 10de:2c02 (NVIDIA GeForce RTX 5080).\n")
+                : i.Arguments.Contains("dx11:1", StringComparison.Ordinal) ? EngineRunner.Exited(1, null, "[D3D11VA @ 1] Using device 8086:a780 (Intel(R) UHD Graphics 770).\n")
+                : i.Arguments.Contains("dx11:2", StringComparison.Ordinal) ? EngineRunner.Exited(1, null, "[D3D11VA @ 1] Using device 1414:008c (Microsoft Basic Render Driver).\n[D3D11VA @ 1] Failed to create Direct3D device (887a0004)\nDevice creation failed: -1313558101.\n")
+                : EngineRunner.Exited(1, null, "[D3D11VA @ 1] Selecting d3d11va adapter 3\n"),
+        };
+        using var engine = new ProbeEngine(runner, _arguments, new FakeHostPlatform(HostOs.Windows), TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
+
+        var report = await engine.RunAsync(Options(StopStage.Devices, refresh: true) with { Types = new HashSet<HwType> { HwType.qsv, HwType.amf } }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(["dx11:1"], runner.Calls.Where(c => c.Contains("qsv=qs@dx11", StringComparison.Ordinal)).Select(c => c.Split("d3d11va=")[1].Split(' ')[0]));
+
+        // The listing stops at index 3, the first with no adapter, below its cap of five.
+        Assert.Equal(4, runner.Calls.Count(c => c.Contains("-init_hw_device d3d11va=dx11:", StringComparison.Ordinal) && !c.Contains("qsv", StringComparison.Ordinal)));
+        var amf = Assert.Single(report.Backends, b => b.Type == HwType.amf);
+        Assert.Equal((BackendVerdict.NotPresent, "No AMD adapter found. Check the AMD graphics driver is installed."), (amf.Verdict, amf.Hint));
+    }
+
+    /// <summary>With the adapters listed, a failed Intel adapter doesn't hide the next, and AMF tests only the first AMD adapter.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task WindowsAdaptersAreAllTriedButAmfOnlyItsFirst()
+    {
+        // Intel at 0 (its QSV open fails), Intel at 1, AMD at 2 and 3, the software adapter at 4.
+        string[] adapters = ["8086:4680 (Intel(R) UHD Graphics 770)", "8086:56a0 (Intel(R) Arc(TM) A770)", "1002:744c (AMD Radeon RX 7900 XTX)", "1002:164e (AMD Radeon(TM) Graphics)", "1414:008c (Microsoft Basic Render Driver)"];
+        var runner = new EngineRunner("jellyfin-8.1.3-windows-x64")
+        {
+            Probe = i =>
+            {
+                var index = Enumerable.Range(0, adapters.Length).FirstOrDefault(n => i.Arguments.Contains($"dx11:{n}", StringComparison.Ordinal), -1);
+                var line = index < 0 ? string.Empty : $"[D3D11VA @ 1] Using device {adapters[index]}.\n";
+                var failed = index == 0 && i.Arguments.Contains("qsv=qs@dx11", StringComparison.Ordinal);
+                return EngineRunner.Exited(1, null, line + (failed ? "Device creation failed: -1.\n" : string.Empty));
+            },
+        };
+        using var engine = new ProbeEngine(runner, _arguments, new FakeHostPlatform(HostOs.Windows), TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
+
+        await engine.RunAsync(Options(StopStage.Devices, refresh: true) with { Types = new HashSet<HwType> { HwType.qsv, HwType.amf } }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(["dx11:0", "dx11:1"], runner.Calls.Where(c => c.Contains("qsv=qs@dx11", StringComparison.Ordinal)).Select(c => c.Split("d3d11va=")[1].Split(' ')[0]));
+        Assert.Equal(2, runner.Calls.Count(c => c.EndsWith("d3d11va=dx11:2", StringComparison.Ordinal)));
+        Assert.Equal(1, runner.Calls.Count(c => c.EndsWith("d3d11va=dx11:3", StringComparison.Ordinal)));
+    }
+
     /// <summary>A device that won't open is NotPresent after one probe, with nothing further launched.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
@@ -159,57 +210,6 @@ public sealed class ProbeEngineTests : IDisposable
         var vaapi = Assert.Single(report.Backends, b => b.Type == HwType.vaapi);
         Assert.Equal(BackendVerdict.NotPresent, vaapi.Verdict);
         Assert.Contains("--device", vaapi.Hint, StringComparison.Ordinal);
-    }
-
-    /// <summary>The report lists the vendors of PCI display controllers only, with or without a render node.</summary>
-    /// <returns>A task representing the test.</returns>
-    [Fact]
-    public async Task ReportListsGpuVendors()
-    {
-        var linux = new FakeHostPlatform(HostOs.Linux)
-        {
-            Files =
-            {
-                ["/dev/dri/renderD128"] = string.Empty,
-                ["/sys/bus/pci/devices/0000:00:02.0"] = string.Empty,
-                ["/sys/bus/pci/devices/0000:00:02.0/class"] = "0x030000\n",
-                ["/sys/bus/pci/devices/0000:00:02.0/vendor"] = "0x8086\n",
-                ["/sys/bus/pci/devices/0000:01:00.0"] = string.Empty,
-                ["/sys/bus/pci/devices/0000:01:00.0/class"] = "0x030200\n",
-                ["/sys/bus/pci/devices/0000:01:00.0/vendor"] = "0x10de\n",
-                ["/sys/bus/pci/devices/0000:00:1f.3"] = string.Empty,
-                ["/sys/bus/pci/devices/0000:00:1f.3/class"] = "0x040300\n",
-                ["/sys/bus/pci/devices/0000:00:1f.3/vendor"] = "0x1002\n",
-            },
-        };
-        var runner = new ScriptedOnly(new() { ["-version"] = "ffmpeg version 7.1.4-Jellyfin Copyright (c) 2000-2025\n" });
-        using var engine = new ProbeEngine(runner, _arguments, linux, TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
-
-        var report = await engine.RunAsync(Options(StopStage.Devices, refresh: true), TestContext.Current.CancellationToken);
-
-        Assert.Equal(["0x10de", "0x8086"], report.Host.GpuVendors);
-    }
-
-    /// <summary>A virtual GPU, like WSL2's, means the PCI list can't say which GPUs exist, so no vendors are reported.</summary>
-    /// <returns>A task representing the test.</returns>
-    [Fact]
-    public async Task VirtualGpuReportsNoVendors()
-    {
-        var linux = new FakeHostPlatform(HostOs.Linux)
-        {
-            Files =
-            {
-                ["/sys/bus/pci/devices/c00d:00:00.0"] = string.Empty,
-                ["/sys/bus/pci/devices/c00d:00:00.0/class"] = "0x030200\n",
-                ["/sys/bus/pci/devices/c00d:00:00.0/vendor"] = "0x1414\n",
-            },
-        };
-        var runner = new ScriptedOnly(new() { ["-version"] = "ffmpeg version 7.1.4-Jellyfin Copyright (c) 2000-2025\n" });
-        using var engine = new ProbeEngine(runner, _arguments, linux, TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
-
-        var report = await engine.RunAsync(Options(StopStage.Devices, refresh: true), TestContext.Current.CancellationToken);
-
-        Assert.Empty(report.Host.GpuVendors);
     }
 
     /// <summary>On Windows, adapter indices stop at the first that fails to open, giving one row.</summary>

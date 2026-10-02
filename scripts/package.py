@@ -15,7 +15,7 @@ import sys
 import time
 import zipfile
 
-CLI_RIDS = ["linux-x64", "linux-arm64", "osx-arm64", "win-x64"]
+CLI_RIDS = ["linux-x64", "linux-arm64", "osx-arm64", "win-x64", "win-arm64"]
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
