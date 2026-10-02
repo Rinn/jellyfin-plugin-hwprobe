@@ -796,6 +796,9 @@
                     const tests = Object.fromEntries(speedTests.map(t => [t.Key, t]));
                     const backendName = x => x.type === 'none' ? 'Software' : (names[x.type] || x.type) + (x.device ? ' ' + x.device : '');
                     div.appendChild(el('p', 'Measured ' + new Date(r.generatedUtc).toLocaleString() + ', ' + r.method.toLowerCase() + ' method.', 'hwprobe-reason'));
+                    if (r.settings) {
+                        div.appendChild(el('p', 'With this server\u2019s settings: ' + settingsText(r.settings) + '.', 'hwprobe-reason'));
+                    }
 
                     // One line per transcode: which backend kept the most streams, then the fastest.
                     const base = r.results.filter(x => !x.variant);
@@ -855,6 +858,21 @@
                         div.appendChild(line);
                     }
                     return div;
+                }
+
+                function settingsText(t) {
+                    const onOff = on => on ? 'on' : 'off';
+                    return [
+                        'transcoding threads ' + (t.encodingThreadCount > 0 ? t.encodingThreadCount : 'automatic'),
+                        'encoder preset ' + (t.encoderPreset || 'auto (veryfast)'),
+                        'CRF H.264 ' + t.h264Crf + ', HEVC ' + t.h265Crf,
+                        'VBR audio ' + onOff(t.audioVbr),
+                        'tone mapping ' + onOff(t.tonemap) + (t.vppTonemap ? ' (VPP)' : ''),
+                        'Intel low power H.264 ' + onOff(t.lowPowerH264) + ', HEVC ' + onOff(t.lowPowerHevc),
+                        'deinterlacing ' + (t.bwdif ? 'BWDIF' : 'YADIF') + (t.doubleRate ? ', double rate' : ''),
+                        'OS native decoders ' + onOff(t.preferNativeDecoder),
+                        'enhanced NVDEC ' + onOff(t.enhancedNvdec)
+                    ].join('; ');
                 }
 
                 function streamsText(x) {

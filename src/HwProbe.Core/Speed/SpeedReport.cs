@@ -9,6 +9,9 @@ namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 /// <param name="Results">One row per backend, test and variant.</param>
 public sealed record SpeedReport(DateTimeOffset GeneratedUtc, FfmpegSummary Ffmpeg, SpeedMethod Method, IReadOnlyList<SpeedResult> Results)
 {
+    /// <summary>Gets the Jellyfin settings the run started from, or null in reports from before they were recorded.</summary>
+    public SpeedSettings? Settings { get; init; }
+
     /// <summary>Gets the version of HwProbe that measured it.</summary>
     public string HwProbeVersion { get; init; } = CapabilityReport.CurrentHwProbeVersion;
 }

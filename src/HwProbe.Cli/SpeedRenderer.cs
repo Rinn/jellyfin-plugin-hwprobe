@@ -23,6 +23,11 @@ internal static class SpeedRenderer
         var text = new StringBuilder();
         text.Append(CultureInfo.InvariantCulture, $"\nspeed   {report.Method} method. Streams: transcodes kept at real time at once. Speed: one alone, as a multiple of real time.\n        Change: speed against the base settings. Test-pattern clips encode faster than real video.\n\n");
 
+        if (report.Settings is { } settings)
+        {
+            text.Append(CultureInfo.InvariantCulture, $"settings {Settings(settings)}\n\n");
+        }
+
         var bases = report.Results.Where(r => r.Variant.Length == 0).ToList();
         foreach (var test in bases.Select(r => r.Test).Distinct(StringComparer.Ordinal))
         {
@@ -79,6 +84,28 @@ internal static class SpeedRenderer
             result.Variant.Length == 0 ? string.Empty : Change(result.Fps, baseFps),
             result.Note ?? string.Empty,
         ];
+    }
+
+    /// <summary>Describes the settings a run started from, in Jellyfin's words.</summary>
+    /// <param name="settings">The settings.</param>
+    /// <returns>One line.</returns>
+    private static string Settings(SpeedSettings settings)
+    {
+        static string OnOff(bool on) => on ? "on" : "off";
+        var threads = settings.EncodingThreadCount <= 0 ? "automatic" : settings.EncodingThreadCount.ToString(CultureInfo.InvariantCulture);
+        return string.Join(", ", new[]
+        {
+            $"threads {threads}",
+            $"preset {settings.EncoderPreset ?? "auto (veryfast)"}",
+            string.Create(CultureInfo.InvariantCulture, $"CRF H.264 {settings.H264Crf} / HEVC {settings.H265Crf}"),
+            $"VBR audio {OnOff(settings.AudioVbr)}",
+            $"tone-mapping {OnOff(settings.Tonemap)}",
+            $"VPP tone-mapping {OnOff(settings.VppTonemap)}",
+            $"low power H.264 {OnOff(settings.LowPowerH264)} / HEVC {OnOff(settings.LowPowerHevc)}",
+            $"deinterlace {(settings.Bwdif ? "BWDIF" : "YADIF")}{(settings.DoubleRate ? " double rate" : string.Empty)}",
+            $"OS native decoders {OnOff(settings.PreferNativeDecoder)}",
+            $"enhanced NVDEC {OnOff(settings.EnhancedNvdec)}",
+        });
     }
 
     /// <summary>Names a backend.</summary>

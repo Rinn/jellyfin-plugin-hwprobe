@@ -109,7 +109,10 @@ public sealed class SpeedEngine : IDisposable
             _time.GetUtcNow(),
             new FfmpegSummary(ffmpeg, options.Ffmpeg.Source.ToString(), caps.Version?.ToString() ?? "unknown", caps.IsJellyfinBuild),
             speed.Method,
-            results);
+            results)
+        {
+            Settings = speed.Settings,
+        };
     }
 
     /// <inheritdoc/>
