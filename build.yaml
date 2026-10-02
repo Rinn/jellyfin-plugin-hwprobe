@@ -13,6 +13,5 @@ artifacts:
 - "Jellyfin.Plugin.HwProbe.dll"
 - "Jellyfin.Plugin.HwProbe.Core.dll"
 - "Jellyfin.Plugin.HwProbe.Jellyfin.dll"
-# Fallback only: a release's changelog is its GitHub release notes. The version comes from the tag.
 changelog: >
   See the release notes.

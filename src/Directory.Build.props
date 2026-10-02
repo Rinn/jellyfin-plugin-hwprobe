@@ -2,8 +2,7 @@
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
   <PropertyGroup>
-    <!-- The platforms the CLI is published for. Every shipped project lists them so its lock file covers
-         a publish with -r, which also restores the libraries the CLI references. -->
+    <!-- Listed in every shipped project so the lock files cover a publish with -r. -->
     <RuntimeIdentifiers>linux-x64;linux-arm64;osx-arm64;win-x64</RuntimeIdentifiers>
   </PropertyGroup>
 </Project>

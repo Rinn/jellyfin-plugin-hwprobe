@@ -29,7 +29,6 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
 
-      # The tag is the only source of the version; every build below is stamped with it.
       - name: Read the version from the tag
         id: version
         run: |

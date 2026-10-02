@@ -88,10 +88,7 @@ def main():
     stamp = f"-p:Version={version}"
     plugin_zip = f"hwprobe-plugin_{version}.0.zip"
 
-    # One restore covers every publish: the CLI lists all its platforms, and SelfContained pulls their
-    # runtime packs. The publishes then run in parallel without restoring; each platform builds into its
-    # own obj/ and bin/ folders.
-    # The restore records project versions for deps.json, so it needs the version too.
+    # The restore records project versions in deps.json, so it needs the version too.
     run("dotnet", "restore", "src/HwProbe.Plugin", stamp)
     run("dotnet", "restore", "src/HwProbe.Cli", "-p:SelfContained=true", stamp)
     plugin = os.path.join(work, "plugin")
@@ -104,7 +101,6 @@ def main():
         for output in pool.map(lambda command: run_captured(*command), publishes):
             print(output, end="")
 
-    # Compression is most of the remaining time; zlib releases the GIL, so the archives are written in parallel too.
     dlls = [(n, os.path.join(plugin, n)) for n in os.listdir(plugin) if n.startswith("Jellyfin.Plugin.HwProbe") and n.endswith(".dll")]
     archives = [lambda: write_zip(os.path.join(out, plugin_zip), dlls, epoch)]
     for rid in CLI_RIDS:
