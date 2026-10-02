@@ -134,6 +134,24 @@ public sealed class SettingsAdvisorTests
         Assert.Null(Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerH264HwEncoder").Fix);
     }
 
+    /// <summary>Low-power encoders a GPU's generation doesn't have get no firmware fix; unknown GPUs keep it.</summary>
+    /// <param name="support">The generation's low-power support.</param>
+    /// <param name="h264Fix">Whether a failed low-power H.264 gets the fix.</param>
+    /// <param name="hevcFix">Whether a failed low-power HEVC gets the fix.</param>
+    [Theory]
+    [InlineData(LowPowerSupport.Unknown, true, true)]
+    [InlineData(LowPowerSupport.H264Only, true, false)]
+    [InlineData(LowPowerSupport.None, false, false)]
+    public void LowPowerFixFollowsGeneration(LowPowerSupport support, bool h264Fix, bool hevcFix)
+    {
+        var encode = new Dictionary<string, ProbeOutcome>(_apolloLakeQsv.Encode) { ["h264_lowpower"] = U, ["hevc_lowpower"] = U };
+
+        var advice = SettingsAdvisor.For(_apolloLakeQsv with { Encode = encode }, _docker with { IntelLowPower = support });
+
+        Assert.Equal(h264Fix, Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerH264HwEncoder").Fix is not null);
+        Assert.Equal(hevcFix, Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerHevcHwEncoder").Fix is not null);
+    }
+
     /// <summary>Each backend gets the options its Transcoding page shows, and a backend that doesn't work gets none.</summary>
     [Fact]
     public void OptionsDependOnBackend()

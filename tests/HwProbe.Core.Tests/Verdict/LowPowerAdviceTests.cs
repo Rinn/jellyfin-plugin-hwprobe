@@ -23,7 +23,7 @@ public sealed class LowPowerAdviceTests
     {
         var encode = new Dictionary<string, ProbeOutcome> { ["h264"] = normal, ["h264_lowpower"] = lowPower };
 
-        var codes = LowPowerAdvice.Findings(HwType.qsv, "/dev/dri/renderD128", encode, HostOs.Linux, inContainer: false, "-1").Select(f => f.Code);
+        var codes = LowPowerAdvice.Findings(HwType.qsv, "/dev/dri/renderD128", encode, HostOs.Linux, inContainer: false, "-1", LowPowerSupport.Unknown).Select(f => f.Code);
 
         Assert.Equal(string.IsNullOrEmpty(expectedCode) ? [] : [expectedCode], codes);
     }
@@ -32,8 +32,21 @@ public sealed class LowPowerAdviceTests
     [Fact]
     public void HevcRemedyNamesGen9Limit()
     {
-        Assert.StartsWith("Gen 9 Intel graphics", LowPowerAdvice.Remedy("hevc", HostOs.Linux, inContainer: true, "0"), StringComparison.Ordinal);
-        Assert.Equal(LowPowerAdvice.Remedy(HostOs.Linux, inContainer: true, "0"), LowPowerAdvice.Remedy("h264", HostOs.Linux, inContainer: true, "0"));
+        Assert.StartsWith("Gen 9 Intel graphics", LowPowerAdvice.Remedy("hevc", HostOs.Linux, inContainer: true, "0", LowPowerSupport.Unknown), StringComparison.Ordinal);
+        Assert.Equal(LowPowerAdvice.Remedy(HostOs.Linux, inContainer: true, "0"), LowPowerAdvice.Remedy("h264", HostOs.Linux, inContainer: true, "0", LowPowerSupport.Unknown));
+    }
+
+    /// <summary>On a known Gen 9 GPU failed low-power HEVC is expected, and on Gen 8 or older both are; neither gets a firmware remedy.</summary>
+    [Fact]
+    public void OlderGenerationsHaveNoRemedy()
+    {
+        var gen9Hevc = LowPowerAdvice.Remedy("hevc", HostOs.Linux, inContainer: true, "0", LowPowerSupport.H264Only);
+        var gen8H264 = LowPowerAdvice.Remedy("h264", HostOs.Linux, inContainer: true, "0", LowPowerSupport.None);
+
+        Assert.StartsWith("This GPU is Gen 9 Intel graphics", gen9Hevc, StringComparison.Ordinal);
+        Assert.StartsWith("This GPU is Gen 8 Intel graphics or older", gen8H264, StringComparison.Ordinal);
+        Assert.DoesNotContain("enable_guc", gen9Hevc + gen8H264, StringComparison.Ordinal);
+        Assert.Equal(LowPowerAdvice.Remedy(HostOs.Linux, inContainer: true, "0"), LowPowerAdvice.Remedy("h264", HostOs.Linux, inContainer: true, "0", LowPowerSupport.H264Only));
     }
 
     /// <summary>On Linux with i915, the remedy names the firmware, enable_guc=2 and its current value, and links the guide.</summary>

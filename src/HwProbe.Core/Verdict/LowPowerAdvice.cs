@@ -24,10 +24,15 @@ public static class LowPowerAdvice
     /// <param name="os">The host OS.</param>
     /// <param name="inContainer">Whether the probe ran in a container.</param>
     /// <param name="enableGuc">The i915 <c>enable_guc</c> value, or null when the i915 driver isn't loaded.</param>
+    /// <param name="support">The low-power encoders the device's generation has.</param>
     /// <returns>Remedy text.</returns>
     /// <remarks>From Jellyfin's Intel guide, which says Gen 9.x graphics support "non-LP and LP (H.264 only) encoding".</remarks>
-    public static string Remedy(string codec, HostOs os, bool inContainer, string? enableGuc) =>
-        codec == "hevc"
+    public static string Remedy(string codec, HostOs os, bool inContainer, string? enableGuc, LowPowerSupport support) =>
+        support == LowPowerSupport.None
+            ? "This GPU is Gen 8 Intel graphics or older, which has no low-power encoders, so this is expected and no firmware change helps."
+        : codec == "hevc" && support == LowPowerSupport.H264Only
+            ? "This GPU is Gen 9 Intel graphics, which has low-power H.264 only, so this is expected and no firmware change helps."
+        : codec == "hevc"
             ? "Gen 9 Intel graphics (Skylake to Comet Lake, Apollo Lake, Gemini Lake) have low-power H.264 only, so there this is expected and no firmware change helps. On newer GPUs: " + Remedy(os, inContainer, enableGuc)
             : Remedy(os, inContainer, enableGuc);
 
@@ -61,8 +66,9 @@ public static class LowPowerAdvice
     /// <param name="os">The host OS.</param>
     /// <param name="inContainer">Whether the probe ran in a container.</param>
     /// <param name="enableGuc">The i915 <c>enable_guc</c> value, or null.</param>
+    /// <param name="support">The low-power encoders the device's generation has.</param>
     /// <returns>One finding per codec that has both results.</returns>
-    public static IEnumerable<Finding> Findings(HwType type, string device, IReadOnlyDictionary<string, ProbeOutcome> encode, HostOs os, bool inContainer, string? enableGuc)
+    public static IEnumerable<Finding> Findings(HwType type, string device, IReadOnlyDictionary<string, ProbeOutcome> encode, HostOs os, bool inContainer, string? enableGuc, LowPowerSupport support)
     {
         ArgumentNullException.ThrowIfNull(encode);
 
@@ -88,7 +94,7 @@ public static class LowPowerAdvice
             }
             else if (normalOk && !lowPowerOk)
             {
-                yield return new Finding(FindingSeverity.Info, $"lowpower-unavailable-{codec}", prefix + $"leave '{option}' off. " + Remedy(codec, os, inContainer, enableGuc));
+                yield return new Finding(FindingSeverity.Info, $"lowpower-unavailable-{codec}", prefix + $"leave '{option}' off. " + Remedy(codec, os, inContainer, enableGuc, support));
             }
         }
     }
