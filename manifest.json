@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.6.0.0",
+        "changelog": "Shows what Revert would change. Asks to reload an open page after HwProbe is updated. HwProbe's API responses are no longer cached.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.6.0/hwprobe-plugin_0.6.0.0.zip",
+        "checksum": "5d97c8ceff7acf10a05686713bb468f8",
+        "timestamp": "2026-10-02T12:45:13Z"
+      },
+      {
         "version": "0.5.0.0",
         "changelog": "V4L2 says ARM devices only on x86. Results from an older HwProbe or a different ffmpeg are no longer shown; run the probe again after either changes.",
         "targetAbi": "12.1.0.0",
