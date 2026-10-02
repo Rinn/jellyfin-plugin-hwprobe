@@ -23,6 +23,12 @@ public sealed record SpeedVideo(string Key, string Name, FixtureSpec? Fixture, f
     /// <summary>Gets the credit a sample's licence requires, or null.</summary>
     public string? Credit { get; init; }
 
+    /// <summary>Gets the sample's title, e.g. <c>Tears of Steel</c>, or null.</summary>
+    public string? Title { get; init; }
+
+    /// <summary>Gets the page the sample comes from, with its credit and licence, or null.</summary>
+    public Uri? SourceUrl { get; init; }
+
     /// <summary>Gets the sample's licence, or null.</summary>
     public Uri? LicenseUrl { get; init; }
 }

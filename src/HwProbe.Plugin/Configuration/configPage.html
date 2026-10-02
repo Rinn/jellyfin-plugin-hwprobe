@@ -131,18 +131,21 @@
                 // The current Speed section's estimate; one listener calls it, however often the section is redrawn.
                 let speedUpdate = () => {};
                 const speedCompared = new Set();
+                // The server's method names, shown by how much they check.
                 const methods = {
-                    Quick: 'Quick: one transcode, streams estimated from its fps',
-                    Confirm: 'Confirm: the estimate is checked by running that many at once',
-                    Full: 'Full: 1, 2, 4, 8 and 16 at once, then narrowed down'
+                    Quick: ['Fast', 'Fast: estimates the stream count from one run'],
+                    Confirm: ['Standard', 'Standard: estimates, then checks by running that many at once'],
+                    Full: ['Thorough', 'Thorough: runs 1, 2, 4, 8 and 16 at once to find the limit; takes longest']
                 };
+                const methodName = m => (methods[m] || [m])[0];
+                // Jellyfin's own setting names, and the values measured beside the server's.
                 const comparisons = {
-                    AudioVbr: 'VBR audio on and off',
-                    Preset: 'Encoder preset one step faster and slower',
-                    Quality: 'CRF 18 and 28 (software)',
-                    Bitrate: 'Lowest and highest bitrate',
-                    Deinterlace: 'Double-rate deinterlacing, BWDIF',
-                    Paths: 'Decoder and encoder choices (low power, VPP, QSV and NVIDIA decoders)'
+                    AudioVbr: ['Enable VBR audio encoding', 'On and off'],
+                    Preset: ['Encoder preset', 'One step faster and one step slower'],
+                    Quality: ['H.264 and HEVC encoding CRF', '18 and 28 (software encoding only)'],
+                    Bitrate: ['Bitrate', 'Lowest and highest offered for the output resolution'],
+                    Deinterlace: ['Double the frame rate when deinterlacing, Deinterlacing method', 'On, and BWDIF (interlaced input only)'],
+                    Paths: ['Intel low-power encoders, VPP tone mapping, QSV and NVIDIA decoders', 'Each switched (where the backend has it)']
                 };
 
                 // The names and order of Jellyfin's Hardware acceleration dropdown.
@@ -794,7 +797,7 @@
                     if (speedHistory.length) {
                         const runs = themedSelect(title, 'Run');
                         for (const h of speedHistory) {
-                            const option = el('option', new Date(h.GeneratedUtc).toLocaleString() + ' · ' + h.Method.toLowerCase() + ' · ' + h.Tests + ' test' + (h.Tests === 1 ? '' : 's') + (h.Current ? '' : ' (another HwProbe or ffmpeg)'));
+                            const option = el('option', new Date(h.GeneratedUtc).toLocaleString() + ' · ' + methodName(h.Method) + ' · ' + h.Tests + ' test' + (h.Tests === 1 ? '' : 's') + (h.Current ? '' : ' (another HwProbe or ffmpeg)'));
                             option.value = h.Id;
                             option.selected = speedViewing ? h.Id === speedViewing : h === speedHistory[0];
                             runs.appendChild(option);
@@ -868,6 +871,30 @@
                     return td;
                 }
 
+                // A download links to where it comes from, with the credit its licence asks for.
+                function sourceCell(v) {
+                    const td = el('td', null, 'secondaryText');
+                    if (!v.SourceUrl) {
+                        td.textContent = v.Origin;
+                        return td;
+                    }
+                    const link = el('a', v.Title, 'button-link');
+                    link.href = v.SourceUrl;
+                    link.target = '_blank';
+                    link.rel = 'noopener noreferrer';
+                    td.appendChild(link);
+                    td.appendChild(document.createTextNode(', ' + v.Origin + ' from Wikimedia Commons'));
+                    const credit = el('div', v.Credit.substring(v.Title.length + 2).replace(/, via Wikimedia Commons$/, '') + ' (', 'hwprobe-small');
+                    const licence = el('a', 'licence', 'button-link');
+                    licence.href = v.LicenseUrl;
+                    licence.target = '_blank';
+                    licence.rel = 'noopener noreferrer';
+                    credit.appendChild(licence);
+                    credit.appendChild(document.createTextNode(')'));
+                    td.appendChild(credit);
+                    return td;
+                }
+
                 function renderSpeedSetup(container, viable) {
                     let button = null;
                     const estimate = el('span', null, 'secondaryText');
@@ -885,33 +912,37 @@
                     };
                     const pick = (set, key) => on => { if (on) { set.add(key); } else { set.delete(key); } update(); };
 
-                    container.appendChild(el('h3', 'Video', 'sectionTitle'));
-                    const videos = el('table');
-                    row(videos, [el('th'), el('th', 'Video'), el('th', 'Input'), el('th', 'Source')]);
-                    const box = (key, enabled) => {
+                    const box = (set, key, enabled) => {
                         const td = el('td');
-                        const check = checkbox('', chosenVideos.has(key), pick(chosenVideos, key));
+                        const check = checkbox('', set.has(key), pick(set, key));
                         check.firstElementChild.disabled = !enabled;
                         td.appendChild(check);
                         return td;
                     };
-                    for (const v of speedVideos) {
-                        row(videos, [box(v.Key, true), v.Name, el('td', v.Input, 'secondaryText'), el('td', v.Origin, 'secondaryText')]);
-                    }
-                    row(videos, [box('library', !!libraryVideo), libraryCell(update), el('td', libraryVideo ? libraryVideo.Input : '', 'secondaryText'), el('td', 'Library', 'secondaryText')]);
-                    const scroll = el('div', null, 'hwprobe-scroll');
-                    scroll.appendChild(videos);
-                    container.appendChild(scroll);
+                    const list = (title, description, headers, rows) => {
+                        container.appendChild(el('h3', title, 'sectionTitle'));
+                        if (description) {
+                            container.appendChild(el('div', description, 'fieldDescription'));
+                        }
+                        const table = el('table');
+                        row(table, [el('th')].concat(headers.map(h => el('th', h))));
+                        rows.forEach(r => row(table, r));
+                        const scroll = el('div', null, 'hwprobe-scroll');
+                        scroll.appendChild(table);
+                        container.appendChild(scroll);
+                    };
 
-                    container.appendChild(el('h3', 'Output', 'sectionTitle'));
-                    container.appendChild(el('div', 'Each output is made from every video above, as a client playing it at that quality would ask for.', 'fieldDescription'));
-                    container.appendChild(chips(speedOutputs.map(o => checkbox(o.Label, chosenOutputs.has(o.Key), pick(chosenOutputs, o.Key)))));
+                    list('Input', null, ['Input', 'Format', 'Source'],
+                        speedVideos.map(v => [box(chosenVideos, v.Key, true), v.Name, el('td', v.Input, 'secondaryText'), sourceCell(v)])
+                            .concat([[box(chosenVideos, 'library', !!libraryVideo), libraryCell(update), el('td', libraryVideo ? libraryVideo.Input : '', 'secondaryText'), el('td', 'Library', 'secondaryText')]]));
+                    list('Output', 'Every selected output is made from every selected input.', ['Output', 'Details'],
+                        speedOutputs.map(o => [box(chosenOutputs, o.Key, true), o.Label, el('td', o.Detail, 'secondaryText')]));
+                    list('Variations', 'Each selected variation measures again with one setting changed from the server\u2019s.', ['Setting', 'Measured'],
+                        Object.entries(comparisons).map(([key, [name, values]]) => [box(speedCompared, key, true), name, el('td', values, 'secondaryText')]));
 
-                    container.appendChild(el('h3', 'Also measure with one setting changed', 'sectionTitle'));
-                    container.appendChild(chips(Object.entries(comparisons).map(([key, text]) => checkbox(text, speedCompared.has(key), pick(speedCompared, key)))));
-
-                    const method = themedSelect(container, 'How to count streams');
-                    for (const [key, text] of Object.entries(methods)) {
+                    container.appendChild(el('h3', 'Accuracy', 'sectionTitle'));
+                    const method = themedSelect(container, 'Accuracy');
+                    for (const [key, [, text]] of Object.entries(methods)) {
                         const option = el('option', text);
                         option.value = key;
                         option.selected = key === speedMethod;
@@ -957,7 +988,7 @@
                     const columnName = b => b.type === 'none' ? 'Software' : (names[b.type] || b.type) + (sameType(b) ? ' ' + b.device : '');
 
                     if (!speedHistory.length && !speedLive) {
-                        div.appendChild(el('p', 'Measured ' + new Date(r.generatedUtc).toLocaleString() + ', ' + r.method.toLowerCase() + ' method', 'secondaryText'));
+                        div.appendChild(el('p', 'Measured ' + new Date(r.generatedUtc).toLocaleString() + ', ' + methodName(r.method).toLowerCase() + ' accuracy', 'secondaryText'));
                     }
                     if (r.settings) {
                         const used = fold(div, 'Settings used');

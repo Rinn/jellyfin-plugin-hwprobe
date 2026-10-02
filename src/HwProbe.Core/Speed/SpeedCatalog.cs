@@ -130,23 +130,23 @@ public static class SpeedCatalog
         Pattern("pattern-av1", "Test video, AV1", Av1At1080, null),
         Pattern("pattern-1080i", "Test video, interlaced", H264At1080i, Surround) with { FrameRate = 25 },
         Pattern("pattern-4k-hdr", "Test video, 4K HDR", Hdr10At2160, Surround) with { Width = 3840, Height = 2160 },
-        Sample("live-action", "Live action: Tears of Steel", LiveAction, 858, "Tears of Steel, Blender Foundation (mango.blender.org), CC BY 3.0, via Wikimedia Commons", _ccBy3),
-        Sample("digital-animation", "Digital animation: Sintel", DigitalAnimation, 818, "Sintel, Blender Foundation (durian.blender.org), CC BY 3.0, via Wikimedia Commons", _ccBy3),
-        Sample("anime", "Anime: Sol Levante", Anime, 1080, "Sol Levante, Netflix and Production I.G, CC BY 4.0, via Wikimedia Commons", _ccBy4),
-        Sample("anime-4k", "Anime 4K HDR: Sol Levante", Anime4k, 2160, "Sol Levante, Netflix and Production I.G, CC BY 4.0, via Wikimedia Commons", _ccBy4) with { Width = 3840 },
+        Sample("live-action", "Live action", LiveAction, 858, "Tears of Steel, Blender Foundation (mango.blender.org), CC BY 3.0, via Wikimedia Commons", _ccBy3, "Tears_of_Steel_in_4k_-_Official_Blender_Foundation_release.webm"),
+        Sample("digital-animation", "3D animation", DigitalAnimation, 818, "Sintel, Blender Foundation (durian.blender.org), CC BY 3.0, via Wikimedia Commons", _ccBy3, "Sintel_movie_4K.webm"),
+        Sample("anime", "Animation", Anime, 1080, "Sol Levante, Netflix and Production I.G, CC BY 4.0, via Wikimedia Commons", _ccBy4, "Sol_Levante.webm"),
+        Sample("anime-4k", "Animation 4K HDR", Anime4k, 2160, "Sol Levante, Netflix and Production I.G, CC BY 4.0, via Wikimedia Commons", _ccBy4, "Sol_Levante.webm") with { Width = 3840 },
     ];
 
     /// <summary>Gets every output, in the order the page lists them.</summary>
     /// <remarks>Bitrates are jellyfin-web's top choices for the height (src/components/qualityOptions.js); the range is its lowest and highest.</remarks>
     public static IReadOnlyList<SpeedOutput> Outputs { get; } =
     [
-        new("720p-h264", "720p H.264, 4 Mbps", "h264", 720, 4_000_000, (1_500_000, 4_000_000)),
-        new("720p-hevc", "720p HEVC, 4 Mbps", "hevc", 720, 4_000_000, (1_500_000, 4_000_000)),
-        new("720p-av1", "720p AV1, 4 Mbps", "av1", 720, 4_000_000, (1_500_000, 4_000_000)),
-        new("1080p-h264", "1080p H.264, 8 Mbps", "h264", 1080, 8_000_000, (6_000_000, 8_000_000)),
-        new("720p-h264-text", "720p H.264, 4 Mbps, text subtitles burned in", "h264", 720, 4_000_000, (1_500_000, 4_000_000)) { Subtitles = "text" },
-        new("720p-h264-pgs", "720p H.264, 4 Mbps, PGS subtitles burned in", "h264", 720, 4_000_000, (1_500_000, 4_000_000)) { Subtitles = "image" },
-        new("decode", "Decode only, no encode", null, 0, 0, (0, 0)),
+        new("720p-h264", "720p H.264, 4 Mbps", "h264", 720, 4_000_000, (1_500_000, 4_000_000)) { Detail = Encoded("720p", "H.264") },
+        new("720p-hevc", "720p HEVC, 4 Mbps", "hevc", 720, 4_000_000, (1_500_000, 4_000_000)) { Detail = Encoded("720p", "HEVC") },
+        new("720p-av1", "720p AV1, 4 Mbps", "av1", 720, 4_000_000, (1_500_000, 4_000_000)) { Detail = Encoded("720p", "AV1") },
+        new("1080p-h264", "1080p H.264, 8 Mbps", "h264", 1080, 8_000_000, (6_000_000, 8_000_000)) { Detail = Encoded("1080p", "H.264") },
+        new("720p-h264-text", "720p H.264, 4 Mbps, text subtitles", "h264", 720, 4_000_000, (1_500_000, 4_000_000)) { Subtitles = "text", Detail = Encoded("720p", "H.264") + ", ASS subtitles burned into the picture" },
+        new("720p-h264-pgs", "720p H.264, 4 Mbps, PGS subtitles", "h264", 720, 4_000_000, (1_500_000, 4_000_000)) { Subtitles = "image", Detail = Encoded("720p", "H.264") + ", PGS subtitles burned into the picture" },
+        new("decode", "Decode only", null, 0, 0, (0, 0)) { Detail = "Video decoded, nothing encoded" },
     ];
 
     /// <summary>Gets the videos chosen when none are asked for.</summary>
@@ -215,6 +215,12 @@ public static class SpeedCatalog
     /// <returns>The output, or null.</returns>
     public static SpeedOutput? FindOutput(string key) => Outputs.FirstOrDefault(o => string.Equals(o.Key, key, StringComparison.Ordinal));
 
+    /// <summary>Describes an encoded output.</summary>
+    /// <param name="resolution">e.g. <c>720p</c>.</param>
+    /// <param name="codec">e.g. <c>H.264</c>.</param>
+    /// <returns>The detail; HDR input is also tone-mapped to SDR.</returns>
+    private static string Encoded(string resolution, string codec) => $"Video encoded to {resolution} {codec}, audio to stereo AAC; HDR is tone-mapped";
+
     /// <summary>A test video made on the server.</summary>
     /// <param name="key">The key.</param>
     /// <param name="name">The name.</param>
@@ -231,9 +237,10 @@ public static class SpeedCatalog
     /// <param name="height">Its height after encoding (films are wider than 16:9).</param>
     /// <param name="credit">The credit its licence requires.</param>
     /// <param name="license">Its licence.</param>
+    /// <param name="commonsFile">Its file name on Wikimedia Commons, whose page has the credit and licence.</param>
     /// <returns>The video.</returns>
-    private static SpeedVideo Sample(string key, string name, FixtureSpec fixture, int height, string credit, Uri license) =>
-        new(key, name, fixture, 24, 1920, height) { Audio = Stereo, Origin = Megabytes(fixture) + " download", Credit = credit, LicenseUrl = license };
+    private static SpeedVideo Sample(string key, string name, FixtureSpec fixture, int height, string credit, Uri license, string commonsFile) =>
+        new(key, name, fixture, 24, 1920, height) { Audio = Stereo, Origin = Megabytes(fixture) + " download", Credit = credit, LicenseUrl = license, Title = credit[..credit.IndexOf(',', StringComparison.Ordinal)], SourceUrl = new Uri("https://commons.wikimedia.org/wiki/File:" + commonsFile) };
 
     /// <summary>A 30-second piece of a film on Wikimedia Commons, checked against its pinned hash and encoded the same way for every 1080p sample.</summary>
     /// <param name="fileName">The cached file name.</param>

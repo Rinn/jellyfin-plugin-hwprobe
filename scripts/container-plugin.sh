@@ -151,6 +151,8 @@ for _ in $(seq 1 150); do
 done
 check "speed run finished" Idle "$state"
 check "speed run error" None "$(curl -sf "$base/HwProbe/Status" -H "$h" | json 'j.get("LastError")')"
+check "speed run in history" True "$(curl -sf "$base/HwProbe/SpeedHistory" -H "$h" | json 'len(j) >= 1')"
+check "cache size" True "$(curl -sf "$base/HwProbe/Cache" -H "$h" | json 'j["Files"] > 0')"
 check "software decode measured" True "$(curl -sf "$base/HwProbe/Speed" -H "$h" | json 'any(r["type"] == "none" and r["test"] == "pattern|decode" and (r["fps"] or 0) > 0 for r in j["results"])')"
 check "every failure has a remedy" True "$(printf "%s" "$report" | json 'all(b["hint"] for b in j["backends"] if b["verdict"] != "Viable")')"
 

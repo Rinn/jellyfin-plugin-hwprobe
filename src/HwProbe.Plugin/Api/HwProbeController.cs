@@ -102,6 +102,39 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult SpeedProgress() => service.RunningSpeedJson() is { } json ? Content(json, "application/json") : NotFound();
 
+    /// <summary>Lists the saved speed runs, newest first.</summary>
+    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <returns>The runs.</returns>
+    [HttpGet("SpeedHistory")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<SpeedHistoryEntry>>> SpeedHistoryAsync(CancellationToken cancellationToken) =>
+        Ok(await service.SpeedHistoryAsync(cancellationToken));
+
+    /// <summary>Returns one saved speed run.</summary>
+    /// <param name="id">The run.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The speed report JSON, or 404.</returns>
+    [HttpGet("SpeedHistory/{id}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> SpeedHistoryRunAsync([FromRoute] string id, CancellationToken cancellationToken) =>
+        await service.SpeedHistoryJsonAsync(id, cancellationToken) is { } json ? Content(json, "application/json") : NotFound();
+
+    /// <summary>Returns the size of the cached test clips and samples.</summary>
+    /// <returns>Bytes and files.</returns>
+    [HttpGet("Cache")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<CacheSize> Cache() => service.FixtureCacheSize();
+
+    /// <summary>Deletes the cached test clips and samples.</summary>
+    /// <param name="cancellationToken">Cancels waiting.</param>
+    /// <returns>204 when deleted; 409 while a probe or speed run uses them.</returns>
+    [HttpDelete("Cache")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult> PurgeCacheAsync(CancellationToken cancellationToken) =>
+        await service.PurgeFixtureCacheAsync(cancellationToken) ? NoContent() : Conflict("A probe or speed run is using the cache.");
+
     /// <summary>Returns the latest speed report.</summary>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The speed report JSON, or 404 when none was measured with this HwProbe and ffmpeg.</returns>
