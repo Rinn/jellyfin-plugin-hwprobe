@@ -43,11 +43,13 @@ HWPROBE_INSTALL=existing HWPROBE_BASE=http://host:18096 scripts/container-plugin
 ## Releasing
 
 ```sh
-gh release create v1.2.3 --target main --title v1.2.3 --notes "What changed"
+gh workflow run release.yml --ref main -f version=1.2.3 -f notes="What changed"
 ```
 
-- The tag sets the version. The release notes become the plugin's changelog.
-- `release.yml` attaches the plugin zip and CLI builds, and adds the version to `manifest.json` on the `manifest` branch.
+- `release.yml` builds the plugin zip and CLI builds, publishes them as release `v1.2.3`, and adds the version to `manifest.json` on the `manifest` branch.
+- The version comes only from this input. The notes become the plugin's changelog.
+- Add `-f prerelease=true` for a prerelease, which isn't added to the plugin repository.
+- Releases are immutable, so a version can't be reused once published.
 
 Builds are reproducible. To check a release, build its tag from a clone of the GitHub URL and compare hashes:
 
