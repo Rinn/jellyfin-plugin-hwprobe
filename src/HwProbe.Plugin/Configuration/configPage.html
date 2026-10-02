@@ -557,8 +557,11 @@
                 }
 
                 function renderReporting() {
+                    const div = el('div');
                     const p = el('p', 'To report results for this hardware, attach the diagnostics zip to a GitHub issue. ');
-                    p.appendChild(el('span', 'The zip isn\u2019t anonymised: it holds file paths, user and host names from this server. Check it before sharing. ', 'hwprobe-warn'));
+                    p.appendChild(el('span', 'The zip isn\u2019t anonymised: it holds file paths, user and host names from this server. Check it before sharing.', 'hwprobe-warn'));
+                    div.appendChild(p);
+                    const buttons = el('p');
                     const download = action('Download diagnostics', () => {
                         // ApiClient.ajax returns the raw response for a non-JSON request, with the session's token sent.
                         ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Diagnostics') })
@@ -572,13 +575,14 @@
                             }, () => { messageText.textContent = 'Could not download diagnostics: run a probe first.'; })
                             .then(() => { download.disabled = false; });
                     });
-                    p.appendChild(download);
-                    p.appendChild(document.createTextNode(' '));
+                    buttons.appendChild(download);
+                    buttons.appendChild(document.createTextNode(' '));
                     const issue = el('a', 'Report on GitHub', 'button-link');
                     issue.href = 'https://github.com/Rinn/jellyfin-plugin-hwprobe/issues/new?template=hardware-report.yml';
                     issue.target = '_blank';
-                    p.appendChild(issue);
-                    return p;
+                    buttons.appendChild(issue);
+                    div.appendChild(buttons);
+                    return div;
                 }
 
                 function loadReport() {
