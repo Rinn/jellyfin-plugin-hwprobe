@@ -49,7 +49,7 @@ public sealed class HwProbeAppTests : IDisposable
         Assert.Equal(report.Fingerprint, ReportStore.Deserialize(await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken))!.Fingerprint);
     }
 
-    /// <summary>--diagnostics writes a zip with the report, the capability listings and the cache path scrubbed.</summary>
+    /// <summary>--diagnostics writes a zip with the report and the capability listings.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact(Skip = "Requires Linux or macOS: the ffmpeg wrapper is a shell script.", SkipUnless = nameof(TestEnvironment.IsPosix), SkipType = typeof(TestEnvironment))]
     public async Task DiagnosticsZipIsWritten()
@@ -62,11 +62,6 @@ public sealed class HwProbeAppTests : IDisposable
         using var zip = await ZipFile.OpenReadAsync(file, TestContext.Current.CancellationToken);
         Assert.Contains(zip.Entries, e => e.FullName == "report.json");
         Assert.Contains(zip.Entries, e => e.FullName == "ffmpeg/hwaccels.txt");
-        foreach (var entry in zip.Entries)
-        {
-            using var reader = new StreamReader(await entry.OpenAsync(TestContext.Current.CancellationToken));
-            Assert.DoesNotContain(_host.Directory, await reader.ReadToEndAsync(TestContext.Current.CancellationToken), StringComparison.Ordinal);
-        }
     }
 
     /// <summary>An ffmpeg below 4.4 exits 2.</summary>

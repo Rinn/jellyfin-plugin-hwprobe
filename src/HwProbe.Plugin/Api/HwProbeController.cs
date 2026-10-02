@@ -36,14 +36,8 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> GetDiagnosticsAsync(CancellationToken cancellationToken)
     {
-        var path = await service.LatestDiagnosticsAsync(cancellationToken);
-        if (path is null)
-        {
-            return NotFound();
-        }
-
-        // Read whole, so the file isn't held open while the download runs and Windows lets the next probe replace it.
-        return File(await System.IO.File.ReadAllBytesAsync(path, cancellationToken), "application/zip", "hwprobe-diagnostics.zip");
+        var zip = await service.LatestDiagnosticsAsync(cancellationToken);
+        return zip is null ? NotFound() : File(zip, "application/zip", "hwprobe-diagnostics.zip");
     }
 
     /// <summary>Returns whether a probe is running and how the last one ended.</summary>

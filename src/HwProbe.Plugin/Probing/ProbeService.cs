@@ -132,11 +132,22 @@ public sealed class ProbeService : IDisposable
         return report?.HwProbeVersion == CapabilityReport.CurrentHwProbeVersion && IsCurrentFfmpeg(report.Ffmpeg) ? json : null;
     }
 
-    /// <summary>Returns the latest probe's diagnostics zip, unless its report isn't shown.</summary>
-    /// <param name="cancellationToken">Cancels the check.</param>
-    /// <returns>The file path, or null when there's no zip or <see cref="LatestJsonAsync"/> returns null.</returns>
-    public async Task<string?> LatestDiagnosticsAsync(CancellationToken cancellationToken) =>
-        File.Exists(DiagnosticsPath) && await LatestJsonAsync(cancellationToken) is not null ? DiagnosticsPath : null;
+    /// <summary>Returns the latest probe's diagnostics zip, if it was made by the probe that wrote the report shown.</summary>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The zip, or null when there's none, <see cref="LatestJsonAsync"/> returns null, or the zip is from another probe.</returns>
+    /// <remarks>The zip and report are saved separately, so either can be left from an earlier probe when the other fails to save.</remarks>
+    public async Task<byte[]?> LatestDiagnosticsAsync(CancellationToken cancellationToken)
+    {
+        if (!File.Exists(DiagnosticsPath) || await LatestJsonAsync(cancellationToken) is not { } json)
+        {
+            return null;
+        }
+
+        var bytes = await File.ReadAllBytesAsync(DiagnosticsPath, cancellationToken);
+        var latest = ReportStore.Deserialize(json);
+        var bundled = await DiagnosticsBundle.ReadReportAsync(bytes, cancellationToken);
+        return bundled is not null && bundled.GeneratedUtc == latest?.GeneratedUtc ? bytes : null;
+    }
 
     /// <inheritdoc/>
     public void Dispose() => _gate.Dispose();
@@ -197,8 +208,7 @@ public sealed class ProbeService : IDisposable
 
         try
         {
-            var scrubber = DiagnosticsScrubber.ForCurrentHost((root, "<cache>"), (paths.ProgramDataPath, "<data>"));
-            await DiagnosticsBundle.WriteAsync(DiagnosticsPathFor(LatestPath(paths)), report, recorder.Runs, scrubber, cancellationToken);
+            await DiagnosticsBundle.WriteAsync(DiagnosticsPathFor(LatestPath(paths)), report, recorder.Runs, cancellationToken);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

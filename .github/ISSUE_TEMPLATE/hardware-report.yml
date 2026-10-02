@@ -3,7 +3,7 @@ description: Share HwProbe results from your hardware, especially AMD, Rockchip 
 body:
   - type: markdown
     attributes:
-      value: "Get the diagnostics zip from the plugin page (**Download diagnostics**, after a probe) or the command line (`hwprobe --diagnostics hwprobe-diagnostics.zip`). Home and cache directories, the user name and the host name are removed from it; look through it before attaching it."
+      value: "Get the diagnostics zip from the plugin page (**Download diagnostics**, after a probe) or the command line (`hwprobe --diagnostics hwprobe-diagnostics.zip`). It isn't anonymised: it holds file paths and the server's user and host names. Check it before attaching it."
   - type: input
     id: gpu
     attributes:

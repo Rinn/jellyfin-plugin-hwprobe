@@ -91,8 +91,16 @@ internal static class HwProbeApp
 
         if (recorder is not null)
         {
-            var scrubber = DiagnosticsScrubber.ForCurrentHost((cacheRoot, "<cache>"), (options.FixturesDirectory, "<cache>/fixtures"));
-            await DiagnosticsBundle.WriteAsync(options.DiagnosticsPath!, report, recorder.Runs, scrubber, cancellationToken);
+            try
+            {
+                await DiagnosticsBundle.WriteAsync(options.DiagnosticsPath!, report, recorder.Runs, cancellationToken);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                await stderr.WriteLineAsync($"hwprobe: couldn't write {options.DiagnosticsPath}: {ex.Message}".AsMemory(), cancellationToken);
+                return (int)HwProbeExitCode.InternalError;
+            }
+
             await stderr.WriteLineAsync($"hwprobe: wrote {options.DiagnosticsPath}. Attach it to an issue: {DiagnosticsBundle.IssueUrl}".AsMemory(), cancellationToken);
         }
 

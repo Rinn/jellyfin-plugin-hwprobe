@@ -35,7 +35,7 @@ To share results, especially from AMD, Rockchip or other hardware HwProbe hasn't
 ## Privacy
 
 - Nothing is sent anywhere.
-- The diagnostics zip is only downloaded when you ask for it. It holds the report and every ffmpeg log from the last probe, with home and cache directories, the user name and the host name removed. Device names and driver versions are kept.
+- The diagnostics zip is only downloaded when you ask for it. It holds the report and every ffmpeg log from the last probe, including file paths and the server's user and host names. Check it before sharing.
 - Test clips may be downloaded from [FFmpeg's sample suite](https://fate-suite.ffmpeg.org/) when they can't be made on the server. Each is downloaded once and checked against a pinned hash.
 
 ## Status

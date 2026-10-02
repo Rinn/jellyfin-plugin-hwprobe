@@ -45,10 +45,10 @@ HWPROBE_INSTALL=existing HWPROBE_BASE=http://host:18096 scripts/container-plugin
 A user's zip (plugin **Download diagnostics**, or `--diagnostics`) is laid out like `tests/Corpus`:
 
 - `ffmpeg/*.txt`: the capability listings. Copy them to `tests/Corpus/ffmpeg/<build>/` for `ScriptedFfmpegRunner.FromCorpus`.
-- `stderr/NNN-<probe>.txt`: every launch in order, with `#` lines for the arguments, environment, probe outcome and result, then the complete stderr. Copy one to `tests/Corpus/stderr/`, replacing the header with an `# Observed:` line naming the host and build.
+- `stderr/NNN-<probe>.txt`: every launch in order (`NNN-launch.txt` for launches that aren't probes, such as making test clips), with `#` lines for the arguments, environment, probe outcome and result, then the complete stderr. Copy one to `tests/Corpus/stderr/`, replacing the header with an `# Observed:` line naming the host and build.
 - `report.json`: the report.
 
-`DiagnosticsScrubber` removes the home and cache directories, the user name and the host name. Check a zip before committing anything from it.
+Nothing is removed from a zip. Take out user names, host names and home paths before committing anything from one.
 
 ## Releasing
 

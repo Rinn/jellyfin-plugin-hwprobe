@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.HwProbe.Core.Diagnostics;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Probing;
@@ -65,26 +66,29 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal(kept, await service.LatestJsonAsync(TestContext.Current.CancellationToken) is not null);
     }
 
-    /// <summary>The diagnostics zip is offered only beside a report that's shown.</summary>
-    /// <param name="version">The HwProbe version the report records.</param>
+    /// <summary>The diagnostics zip is offered only beside the report it was made with, and only when that report is shown.</summary>
+    /// <param name="version">The HwProbe version the report records, or null for this one.</param>
     /// <param name="zip">Whether a zip was saved.</param>
+    /// <param name="sameProbe">Whether the zip holds the shown report rather than an earlier one.</param>
     /// <param name="offered">Whether the zip is offered.</param>
     /// <returns>A task representing the test.</returns>
     [Theory]
-    [InlineData(null, true, true)]
-    [InlineData(null, false, false)]
-    [InlineData("0.0.1.0", true, false)]
-    public async Task DiagnosticsFollowTheReport(string? version, bool zip, bool offered)
+    [InlineData(null, true, true, true)]
+    [InlineData(null, false, true, false)]
+    [InlineData(null, true, false, false)]
+    [InlineData("0.0.1.0", true, true, false)]
+    public async Task DiagnosticsFollowTheReport(string? version, bool zip, bool sameProbe, bool offered)
     {
-        var report = Reports.Sample();
-        using var service = Create(_ => Task.FromResult(version is null ? report : report with { HwProbeVersion = version }), transcoding: false);
+        var report = version is null ? Reports.Sample() : Reports.Sample() with { HwProbeVersion = version };
+        using var service = Create(_ => Task.FromResult(report), transcoding: false);
         await service.RunAsync(TestContext.Current.CancellationToken);
         if (zip)
         {
-            await File.WriteAllBytesAsync(service.DiagnosticsPath, [], TestContext.Current.CancellationToken);
+            var bundled = sameProbe ? report : report with { GeneratedUtc = report.GeneratedUtc.AddHours(-1) };
+            await DiagnosticsBundle.WriteAsync(service.DiagnosticsPath, bundled, [], TestContext.Current.CancellationToken);
         }
 
-        Assert.Equal(offered ? service.DiagnosticsPath : null, await service.LatestDiagnosticsAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(offered, await service.LatestDiagnosticsAsync(TestContext.Current.CancellationToken) is not null);
     }
 
     /// <summary>Nothing runs while a session is transcoding.</summary>

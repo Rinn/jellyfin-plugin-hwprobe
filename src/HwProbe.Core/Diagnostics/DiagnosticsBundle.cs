@@ -20,10 +20,9 @@ public static partial class DiagnosticsBundle
     /// <param name="path">Destination zip.</param>
     /// <param name="report">The probe's report.</param>
     /// <param name="runs">Every launch the probe made, in order.</param>
-    /// <param name="scrubber">Removes identifying paths and names.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>A task that completes when the file is in place.</returns>
-    public static async Task WriteAsync(string path, CapabilityReport report, IReadOnlyList<RecordedRun> runs, DiagnosticsScrubber scrubber, CancellationToken cancellationToken)
+    public static async Task WriteAsync(string path, CapabilityReport report, IReadOnlyList<RecordedRun> runs, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
         var directory = Path.GetDirectoryName(Path.GetFullPath(path))!;
@@ -33,7 +32,7 @@ public static partial class DiagnosticsBundle
         {
             await using (var file = File.Create(temp))
             {
-                await WriteAsync(file, report, runs, scrubber, cancellationToken);
+                await WriteAsync(file, report, runs, cancellationToken);
             }
 
             File.Move(temp, path, overwrite: true);
@@ -48,19 +47,17 @@ public static partial class DiagnosticsBundle
     /// <param name="destination">The stream; left open.</param>
     /// <param name="report">The probe's report.</param>
     /// <param name="runs">Every launch the probe made, in order.</param>
-    /// <param name="scrubber">Removes identifying paths and names.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>A task that completes when the zip is written.</returns>
-    public static async Task WriteAsync(Stream destination, CapabilityReport report, IReadOnlyList<RecordedRun> runs, DiagnosticsScrubber scrubber, CancellationToken cancellationToken)
+    public static async Task WriteAsync(Stream destination, CapabilityReport report, IReadOnlyList<RecordedRun> runs, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(destination);
         ArgumentNullException.ThrowIfNull(report);
         ArgumentNullException.ThrowIfNull(runs);
-        ArgumentNullException.ThrowIfNull(scrubber);
 
         await using var zip = await ZipArchive.CreateAsync(destination, ZipArchiveMode.Create, leaveOpen: true, entryNameEncoding: null, cancellationToken);
-        await AddAsync(zip, "README.txt", scrubber.Scrub(Readme(report)), cancellationToken);
-        await AddAsync(zip, "report.json", scrubber.Scrub(ReportStore.Serialize(report)), cancellationToken);
+        await AddAsync(zip, "README.txt", Readme(report), cancellationToken);
+        await AddAsync(zip, "report.json", ReportStore.Serialize(report), cancellationToken);
 
         var unmatched = report.Probes.Where(p => p.CommandLine is not null).ToList();
         var number = 0;
@@ -68,7 +65,7 @@ public static partial class DiagnosticsBundle
         {
             if (ListingName(run.Invocation.Arguments) is { } listing)
             {
-                await AddAsync(zip, $"ffmpeg/{listing}.txt", scrubber.Scrub(run.Result.Stdout), cancellationToken);
+                await AddAsync(zip, $"ffmpeg/{listing}.txt", run.Result.Stdout, cancellationToken);
                 continue;
             }
 
@@ -82,7 +79,32 @@ public static partial class DiagnosticsBundle
             number++;
             var label = probe is null ? "launch" : UnsafeFileCharacters().Replace(probe.ProbeId, "_");
             var name = $"stderr/{number.ToString("D3", CultureInfo.InvariantCulture)}-{label}.txt";
-            await AddAsync(zip, name, scrubber.Scrub(Header(run, probe) + run.Result.Stderr), cancellationToken);
+            await AddAsync(zip, name, Header(run, probe) + run.Result.Stderr, cancellationToken);
+        }
+    }
+
+    /// <summary>Reads the report a bundle holds.</summary>
+    /// <param name="zip">The bundle.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The report, or null when the zip or its report can't be read.</returns>
+    public static async Task<CapabilityReport?> ReadReportAsync(byte[] zip, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(zip);
+        try
+        {
+            using var stream = new MemoryStream(zip, writable: false);
+            await using var archive = await ZipArchive.CreateAsync(stream, ZipArchiveMode.Read, leaveOpen: false, entryNameEncoding: null, cancellationToken);
+            if (archive.GetEntry("report.json") is not { } entry)
+            {
+                return null;
+            }
+
+            using var reader = new StreamReader(await entry.OpenAsync(cancellationToken));
+            return ReportStore.Deserialize(await reader.ReadToEndAsync(cancellationToken));
+        }
+        catch (InvalidDataException)
+        {
+            return null;
         }
     }
 
@@ -138,7 +160,7 @@ public static partial class DiagnosticsBundle
         ffmpeg/      What this ffmpeg was built with: -version, -hwaccels, -encoders, -decoders, -filters, and the -h filter= pages Jellyfin reads.
         stderr/      Every ffmpeg launch in order: its arguments, environment and result, then its complete output.
 
-        Home and cache directories, the user name and the host name are replaced with ~, <cache>, <user> and <host>. Device names, driver versions and file paths outside those directories are kept. Look through the files before sharing them.
+        Nothing has been removed: file paths, user and host names, device names and driver versions appear as ffmpeg and HwProbe saw them.
 
         """;
 
