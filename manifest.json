@@ -1,0 +1,20 @@
+[
+  {
+    "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
+    "versions": [
+      {
+        "version": "0.1.0.0",
+        "changelog": "First release.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.1.0/hwprobe-plugin_0.1.0.0.zip",
+        "checksum": "eeef980f816538612a171dc56bec883c",
+        "timestamp": "2026-10-02T02:46:13Z"
+      }
+    ],
+    "name": "HwProbe",
+    "description": "Runs short real transcodes on each hardware backend and device, and reports which ones work, which filter pipeline Jellyfin would use, and how to fix the ones that don't.",
+    "overview": "Tests which hardware transcoding backends actually work",
+    "owner": "Rinn",
+    "category": "General"
+  }
+]
