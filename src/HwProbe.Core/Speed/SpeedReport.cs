@@ -12,6 +12,12 @@ public sealed record SpeedReport(DateTimeOffset GeneratedUtc, FfmpegSummary Ffmp
     /// <summary>Gets the Jellyfin settings the run started from, or null in reports from before they were recorded.</summary>
     public SpeedSettings? Settings { get; init; }
 
+    /// <summary>Gets why the run stopped before measuring everything, or null when it finished.</summary>
+    public string? Stopped { get; init; }
+
+    /// <summary>Gets how many times each measurement ran.</summary>
+    public int Repeats { get; init; } = 1;
+
     /// <summary>Gets the version of HwProbe that measured it.</summary>
     public string HwProbeVersion { get; init; } = CapabilityReport.CurrentHwProbeVersion;
 }

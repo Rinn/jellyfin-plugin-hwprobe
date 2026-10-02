@@ -23,6 +23,11 @@ internal static class SpeedRenderer
         var text = new StringBuilder();
         text.Append(CultureInfo.InvariantCulture, $"\nspeed   {report.Method} method. Streams: transcodes kept at real time at once. Speed: one alone, as a multiple of real time.\n        Change: speed against the base settings. Test-pattern clips encode faster than real video.\n\n");
 
+        if (report.Stopped is { } stopped)
+        {
+            text.Append(CultureInfo.InvariantCulture, $"stopped {stopped}\n");
+        }
+
         if (report.Settings is { } settings)
         {
             text.Append(CultureInfo.InvariantCulture, $"settings {Settings(settings)}\n\n");

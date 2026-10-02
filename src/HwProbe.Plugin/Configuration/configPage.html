@@ -121,6 +121,8 @@
                 let speedLive = null;
                 let speedProgress = null;
                 let speedMethod = 'Confirm';
+                let speedRepeats = 1;
+                let speedTimeLimit = null;
                 let chosenVideos = null;
                 let chosenOutputs = null;
                 let speedItem = null;
@@ -907,7 +909,13 @@
                         const videos = allVideos().filter(v => chosenVideos.has(v.Key)).length;
                         const outputs = chosenOutputs.size;
                         const runs = speedRuns(viable);
-                        estimate.textContent = videos + ' video' + (videos === 1 ? '' : 's') + ' × ' + outputs + ' output' + (outputs === 1 ? '' : 's') + ' on ' + (viable.length + 1) + ' backend' + (viable.length ? 's' : '') + ': up to ' + runs + ' measurement' + (runs === 1 ? '' : 's') + ', 10 to 60 s each';
+                        // Seconds per measurement by accuracy, from runs on real hosts; generating or downloading clips adds to the first run.
+                        const per = { Quick: [10, 30], Confirm: [20, 60], Full: [50, 120] }[speedMethod] || [20, 60];
+                        const minutes = n => Math.max(1, Math.round(n / 60));
+                        const low = minutes(runs * per[0] * speedRepeats);
+                        const high = minutes(runs * per[1] * speedRepeats);
+                        const span = low === high ? 'about ' + low : 'about ' + low + ' to ' + high;
+                        estimate.textContent = videos + ' input' + (videos === 1 ? '' : 's') + ' \u00d7 ' + outputs + ' output' + (outputs === 1 ? '' : 's') + ' on ' + (viable.length + 1) + ' backend' + (viable.length ? 's' : '') + ': ' + runs + ' measurement' + (runs === 1 ? '' : 's') + ', ' + span + ' minute' + (high === 1 ? '' : 's') + (speedTimeLimit ? ', stopping at ' + speedTimeLimit + ' minutes' : '');
                         button.disabled = runs === 0 || running;
                     };
                     const pick = (set, key) => on => { if (on) { set.add(key); } else { set.delete(key); } update(); };
@@ -940,18 +948,24 @@
                     list('Variations', 'Each selected variation measures again with one setting changed from the server\u2019s.', ['Setting', 'Measured'],
                         Object.entries(comparisons).map(([key, [name, values]]) => [box(speedCompared, key, true), name, el('td', values, 'secondaryText')]));
 
-                    container.appendChild(el('h3', 'Accuracy', 'sectionTitle'));
-                    const method = themedSelect(container, 'Accuracy');
-                    for (const [key, [, text]] of Object.entries(methods)) {
-                        const option = el('option', text);
-                        option.value = key;
-                        option.selected = key === speedMethod;
-                        method.appendChild(option);
-                    }
-                    method.addEventListener('change', () => { speedMethod = method.value; });
+                    container.appendChild(el('h3', 'Accuracy and time', 'sectionTitle'));
+                    const options = (label, values, current, onChange) => {
+                        const select = themedSelect(container, label);
+                        for (const [value, text] of values) {
+                            const option = el('option', text);
+                            option.value = String(value);
+                            option.selected = value === current;
+                            select.appendChild(option);
+                        }
+                        select.addEventListener('change', () => { onChange(select.value); update(); });
+                    };
+                    options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });
+                    options('Repeats', [[1, 'Measure each once'], [2, 'Measure each twice, report the median'], [3, 'Measure each three times, report the median']], speedRepeats, v => { speedRepeats = Number(v); });
+                    options('Time limit', [['', 'No limit'], [5, 'Stop after 5 minutes'], [15, 'Stop after 15 minutes'], [30, 'Stop after 30 minutes'], [60, 'Stop after 1 hour']], speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); });
+                    container.appendChild(el('div', 'At the time limit the run stops and keeps everything measured so far.', 'fieldDescription'));
 
                     button = action('Measure speed', () => {
-                        const body = { Method: speedMethod, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: speedOutputs.filter(o => chosenOutputs.has(o.Key)).map(o => o.Key), Comparisons: [...speedCompared], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
+                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitMinutes: speedTimeLimit, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: speedOutputs.filter(o => chosenOutputs.has(o.Key)).map(o => o.Key), Comparisons: [...speedCompared], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
                         ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed'), data: JSON.stringify(body), contentType: 'application/json' })
                             .then(loadStatus, response => (response && response.text ? response.text() : Promise.resolve('')).then(text => {
                                 setMessage('Could not start: ' + (text.replace(/^"|"$/g, '') || 'a probe is running or a session is transcoding.'));
@@ -989,6 +1003,9 @@
 
                     if (!speedHistory.length && !speedLive) {
                         div.appendChild(el('p', 'Measured ' + new Date(r.generatedUtc).toLocaleString() + ', ' + methodName(r.method).toLowerCase() + ' accuracy', 'secondaryText'));
+                    }
+                    if (r.stopped) {
+                        div.appendChild(el('div', r.stopped, 'infoBanner'));
                     }
                     if (r.settings) {
                         const used = fold(div, 'Settings used');

@@ -8,6 +8,12 @@ namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 /// <param name="Settings">The Jellyfin settings to start from.</param>
 public sealed record SpeedOptions(SpeedMethod Method, IReadOnlyList<string> Videos, IReadOnlyList<string> Outputs, SpeedComparison Comparisons, SpeedSettings Settings)
 {
+    /// <summary>Gets how many times each measurement runs; more than once reports the median.</summary>
+    public int Repeats { get; init; } = 1;
+
+    /// <summary>Gets when to stop the whole run, keeping what's measured, or null for no limit.</summary>
+    public TimeSpan? TimeLimit { get; init; }
+
     /// <summary>Gets the library file the <c>library</c> video reads, or null.</summary>
     public SpeedFile? File { get; init; }
 

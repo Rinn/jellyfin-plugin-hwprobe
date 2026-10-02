@@ -378,7 +378,17 @@ public sealed partial class ProbeService : IDisposable
             comparisons |= comparison;
         }
 
-        return new SpeedOptions(method, videos, outputs, comparisons, new SpeedSettings()) { File = file };
+        if (request.Repeats is < 1 or > 3 || request.TimeLimitMinutes is < 1 or > 600)
+        {
+            return null;
+        }
+
+        return new SpeedOptions(method, videos, outputs, comparisons, new SpeedSettings())
+        {
+            File = file,
+            Repeats = request.Repeats,
+            TimeLimit = request.TimeLimitMinutes is { } minutes ? TimeSpan.FromMinutes(minutes) : null,
+        };
     }
 
     /// <summary>Reads the speed run's starting settings from the server's encoding options.</summary>

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Jellyfin.Plugin.HwProbe.Core.Devices;
 using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
 using Jellyfin.Plugin.HwProbe.Core.Fixtures;
@@ -69,6 +70,7 @@ public sealed class SpeedEngine : IDisposable
         ArgumentNullException.ThrowIfNull(speed);
         ArgumentNullException.ThrowIfNull(backends);
 
+        var clock = System.Diagnostics.Stopwatch.StartNew();
         var ffmpeg = options.Ffmpeg.Path;
         var caps = await new FfmpegCapabilityProbe(_runner, options.ProbeTimeout).ProbeAsync(ffmpeg, cancellationToken);
         if (caps.Validation != FfmpegValidation.Valid)
@@ -83,22 +85,40 @@ public sealed class SpeedEngine : IDisposable
         List<(HwType Type, string Device)> measured = [.. backends.Where(b => b.Type != HwType.none), (HwType.none, string.Empty)];
         var total = measured.Sum(b => tests.Sum(t => 1 + (MissingClip(t, clips) is null ? SpeedVariants.For(b.Type, t, SpeedVariants.Base(t, speed.Settings, Placeholders(t)), speed.Comparisons).Count() : 0)));
         var done = 0;
+        string? stopped = null;
         List<SpeedResult> results = [];
         foreach (var (type, device) in measured)
         {
+            if (stopped is not null)
+            {
+                break;
+            }
+
             var traits = await OpenAsync(options, type, device, host.Os, cancellationToken);
             var source = traits is null ? null : _arguments.Create(caps, traits);
             foreach (var test in tests)
             {
+                if (stopped is not null)
+                {
+                    break;
+                }
+
                 var missing = MissingClip(test, clips);
                 var cell = missing is null ? SpeedVariants.Base(test, speed.Settings, Paths(clips)) : null;
                 List<(string Label, ProbeCell? Cell)> runs = [(string.Empty, cell), .. cell is null ? [] : SpeedVariants.For(type, test, cell, speed.Comparisons).Select(v => (v.Label, (ProbeCell?)v.Cell))];
                 string? baseCommand = null;
                 foreach (var (label, variant) in runs)
                 {
+                    // The limit counts the whole run, making clips included, but a run always measures something.
+                    if (speed.TimeLimit is { } limit && done > 0 && clock.Elapsed >= limit)
+                    {
+                        stopped = string.Create(CultureInfo.InvariantCulture, $"Stopped at the {limit.TotalMinutes:0}-minute limit: {done} of {total} measured.");
+                        break;
+                    }
+
                     var result = source is null ? new SpeedResult(type, device, test.Key, label, null, null, false, "The device didn't open.")
                         : variant is null ? new SpeedResult(type, device, test.Key, label, null, null, false, missing)
-                        : await MeasureAsync(options, speed.Method, source, type, device, test, label, variant, baseCommand, c => baseCommand ??= c, cancellationToken);
+                        : await MeasureRepeatedAsync(options, speed, source, type, device, test, label, variant, () => baseCommand, c => baseCommand ??= c, cancellationToken);
                     var described = result with { Label = test.Label, Video = test.Name, Output = test.OutputLabel, Input = SpeedTestText.Input(test), FrameRate = test.FrameRate, Credit = test.Credit, LicenseUrl = test.LicenseUrl };
                     results.Add(described);
                     progress?.Report(new SpeedProgress(++done, total, described));
@@ -113,6 +133,8 @@ public sealed class SpeedEngine : IDisposable
             results)
         {
             Settings = speed.Settings,
+            Stopped = stopped,
+            Repeats = speed.Repeats,
         };
     }
 
@@ -180,6 +202,40 @@ public sealed class SpeedEngine : IDisposable
         var invocation = new FfmpegInvocation(options.Ffmpeg.Path, arguments, _environment.Baseline, options.ProbeTimeout);
         var open = DeviceOpenProbe.Evaluate(type, await _gate.RunAsync(ct => _runner.RunAsync(invocation, ct), cancellationToken));
         return open.Outcome == ProbeOutcome.Pass ? new DeviceTraits(open.Driver) : null;
+    }
+
+    /// <summary>Measures a variant as many times as asked and reports the median.</summary>
+    /// <param name="options">The ffmpeg.</param>
+    /// <param name="speed">What to measure, for the method and repeats.</param>
+    /// <param name="source">The device's argument source.</param>
+    /// <param name="type">The backend.</param>
+    /// <param name="device">The device.</param>
+    /// <param name="test">The test.</param>
+    /// <param name="label">The comparison label, or empty for the base.</param>
+    /// <param name="cell">The cell to generate.</param>
+    /// <param name="baseCommand">Reads the base variant's command.</param>
+    /// <param name="remember">Records the base variant's command.</param>
+    /// <param name="cancellationToken">Cancels the measurement.</param>
+    /// <returns>The median result, by fps.</returns>
+    private async Task<SpeedResult> MeasureRepeatedAsync(EngineOptions options, SpeedOptions speed, IArgumentSource source, HwType type, string device, SpeedTest test, string label, ProbeCell cell, Func<string?> baseCommand, Action<string> remember, CancellationToken cancellationToken)
+    {
+        List<SpeedResult> runs = [];
+        for (var i = 0; i < Math.Max(1, speed.Repeats); i++)
+        {
+            var run = await MeasureAsync(options, speed.Method, source, type, device, test, label, cell, baseCommand(), remember, cancellationToken);
+            runs.Add(run);
+
+            // Nothing to repeat when it couldn't be measured.
+            if (run.Fps is null)
+            {
+                return run;
+            }
+        }
+
+        var sorted = runs.OrderBy(r => r.Fps).ToList();
+        var median = sorted[sorted.Count / 2];
+        var streams = runs.Select(r => r.Streams ?? 0).Order().ToList()[runs.Count / 2];
+        return median with { Streams = median.Streams is null ? null : streams };
     }
 
     /// <summary>Generates one variant's arguments and measures them, inside the probe lock.</summary>

@@ -111,7 +111,7 @@ public sealed class ProbeServiceTests : IDisposable
             },
             ServerSpeedSettings = () => new SpeedSettings { EncoderPreset = "fast" },
         };
-        var request = new SpeedRequest("full", [], [], ["Bitrate", "AudioVbr"]);
+        var request = new SpeedRequest("full", [], [], ["Bitrate", "AudioVbr"]) { Repeats = 2, TimeLimitMinutes = 15 };
 
         Assert.Equal(ProbeRunResult.NoReport, await service.StartSpeedAsync(request, ct));
         await service.RunAsync(ct);
@@ -119,6 +119,8 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Videos = ["8k-h266"] }, ct));
         Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Outputs = ["8k-h266"] }, ct));
         Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Videos = ["library"] }, ct));
+        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Repeats = 4 }, ct));
+        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { TimeLimitMinutes = 0 }, ct));
         Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Comparisons = ["None"] }, ct));
 
         Assert.Equal(ProbeRunResult.Started, await service.StartSpeedAsync(request, ct));
@@ -127,6 +129,7 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal(Reports.Sample().Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device)), measured);
         Assert.Equal((SpeedMethod.Full, SpeedComparison.Bitrate | SpeedComparison.AudioVbr, "fast"), (asked!.Method, asked.Comparisons, asked.Settings.EncoderPreset));
         Assert.Equal((SpeedCatalog.DefaultVideos, SpeedCatalog.DefaultOutputs), (asked.Videos, asked.Outputs));
+        Assert.Equal((2, TimeSpan.FromMinutes(15)), (asked.Repeats, asked.TimeLimit!.Value));
         Assert.Null(service.RunningSpeedJson());
         Assert.Equal(ProbeActivity.Speed, service.Status.Activity);
         Assert.Null(service.Status.Total);

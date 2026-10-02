@@ -50,6 +50,8 @@ internal sealed class HwProbeCommand
     };
 
     private readonly Option<string?> _speedFile = new("--speed-file") { Description = "A video file to measure with --speed, as the library video." };
+    private readonly Option<int> _speedRepeats = new("--speed-repeats") { Description = "Run each speed measurement 1 to 3 times and report the median.", DefaultValueFactory = _ => 1 };
+    private readonly Option<int?> _speedTimeLimit = new("--speed-time-limit") { Description = "Stop the speed run after this many minutes, keeping what's measured." };
     private readonly Option<string?> _speedJson = new("--speed-json") { Description = "Also write the speed report to this file." };
     private readonly Option<int> _timeout = new("--timeout") { Description = "Per-probe hard timeout, seconds.", DefaultValueFactory = _ => 15 };
     private readonly Option<int> _fixtureTimeout = new("--fixture-timeout") { Description = "Fixture generation timeout, seconds.", DefaultValueFactory = _ => 120 };
@@ -68,10 +70,24 @@ internal sealed class HwProbeCommand
     {
         _timeout.Validators.Add(r => RequirePositive(r, "--timeout"));
         _fixtureTimeout.Validators.Add(r => RequirePositive(r, "--fixture-timeout"));
+        _speedRepeats.Validators.Add(r =>
+        {
+            if (r.GetValueOrDefault<int>() is < 1 or > 3)
+            {
+                r.AddError("--speed-repeats must be 1, 2 or 3.");
+            }
+        });
+        _speedTimeLimit.Validators.Add(r =>
+        {
+            if (r.GetValueOrDefault<int?>() is <= 0)
+            {
+                r.AddError("--speed-time-limit must be a positive number of minutes.");
+            }
+        });
 
         Root = new RootCommand("Device-verified hardware transcode detection for Jellyfin.")
         {
-            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _speed, _speedVideos, _speedOutputs, _speedCompare, _speedFile, _speedJson, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
+            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _speed, _speedVideos, _speedOutputs, _speedCompare, _speedFile, _speedRepeats, _speedTimeLimit, _speedJson, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
         };
     }
 
@@ -100,7 +116,7 @@ internal sealed class HwProbeCommand
             result.GetValue(_verbose))
         {
             DiagnosticsPath = result.GetValue(_diagnostics),
-            Speed = result.GetValue(_speed) is { } method ? new SpeedOptions(method, result.GetValue(_speedVideos)!, result.GetValue(_speedOutputs)!, result.GetValue(_speedCompare), new SpeedSettings()) : null,
+            Speed = result.GetValue(_speed) is { } method ? SpeedFrom(result, method) : null,
             SpeedJsonPath = result.GetValue(_speedJson),
             SpeedFilePath = result.GetValue(_speedFile) is { } file ? Path.GetFullPath(file) : null,
         };
@@ -191,4 +207,15 @@ internal sealed class HwProbeCommand
             result.AddError($"{name} must be a positive number of seconds.");
         }
     }
+
+    /// <summary>Binds the speed options.</summary>
+    /// <param name="result">The parse result.</param>
+    /// <param name="method">The chosen method.</param>
+    /// <returns>The options.</returns>
+    private SpeedOptions SpeedFrom(ParseResult result, SpeedMethod method) =>
+        new(method, result.GetValue(_speedVideos)!, result.GetValue(_speedOutputs)!, result.GetValue(_speedCompare), new SpeedSettings())
+        {
+            Repeats = result.GetValue(_speedRepeats),
+            TimeLimit = result.GetValue(_speedTimeLimit) is { } minutes ? TimeSpan.FromMinutes(minutes) : null,
+        };
 }
