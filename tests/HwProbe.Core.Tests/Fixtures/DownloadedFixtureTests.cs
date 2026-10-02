@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
 using Jellyfin.Plugin.HwProbe.Core.Fixtures;
 using Jellyfin.Plugin.HwProbe.Core.Tests.Probes;
 using Xunit;
@@ -65,6 +66,72 @@ public sealed class DownloadedFixtureTests : IDisposable
         Assert.Contains("network is unreachable", result.Reason, StringComparison.Ordinal);
     }
 
+    /// <summary>A clip that fails to generate falls back to its pinned sample, cached with the URL's extension.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task FailedGenerationFallsBackToDownload()
+    {
+        var downloader = new ScriptedDownloader(_sample);
+
+        var result = await BuildAsync(new EncodingRunner { ExitCode = 1 }, downloader, Generated(Hash(_sample)), ["libx264"]);
+
+        Assert.Equal(FixtureStatus.Available, result.Status);
+        Assert.EndsWith(".jsv", result.Path, StringComparison.Ordinal);
+        Assert.Equal(1, downloader.Calls);
+    }
+
+    /// <summary>A build without the encoder falls back to the pinned sample.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task MissingEncoderFallsBackToDownload()
+    {
+        var runner = new EncodingRunner();
+
+        var result = await BuildAsync(runner, new ScriptedDownloader(_sample), Generated(Hash(_sample)), []);
+
+        Assert.Equal(FixtureStatus.Available, result.Status);
+        Assert.Empty(runner.Invocations);
+    }
+
+    /// <summary>When the download fails too, the generation failure stands with both reasons.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task FailedFallbackKeepsBothReasons()
+    {
+        var result = await BuildAsync(new EncodingRunner { ExitCode = 1 }, ScriptedDownloader.Offline, Generated(Hash(_sample)), ["libx264"]);
+
+        Assert.Equal(FixtureStatus.Failed, result.Status);
+        Assert.Contains("Unknown encoder", result.Reason, StringComparison.Ordinal);
+        Assert.Contains("; download: could not download", result.Reason, StringComparison.Ordinal);
+    }
+
+    /// <summary>A clip that generates never downloads its sample.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task GeneratedClipIsNotDownloaded()
+    {
+        var downloader = new ScriptedDownloader(_sample);
+
+        var result = await BuildAsync(new EncodingRunner(), downloader, Generated(Hash(_sample)), ["libx264"]);
+
+        Assert.Equal(FixtureStatus.Available, result.Status);
+        Assert.Equal(0, downloader.Calls);
+    }
+
+    /// <summary>Every catalog sample is a FATE URL with a pinned hash.</summary>
+    [Fact]
+    public void CatalogSamplesArePinnedFateUrls()
+    {
+        var downloadable = FixtureCatalog.All.Where(f => f.DownloadUrl is not null).ToList();
+
+        Assert.Equal(10, downloadable.Count);
+        Assert.All(downloadable, f =>
+        {
+            Assert.StartsWith("https://fate-suite.ffmpeg.org/", f.DownloadUrl!.ToString(), StringComparison.Ordinal);
+            Assert.Matches("^[0-9a-f]{64}$", f.Sha256);
+        });
+    }
+
     /// <summary>The catalog's VC-1 sample is a pinned download, not a generated clip.</summary>
     [Fact]
     public void Vc1IsAPinnedDownload()
@@ -87,6 +154,25 @@ public sealed class DownloadedFixtureTests : IDisposable
     /// <returns>The spec.</returns>
     private static FixtureSpec Spec(string sha256) =>
         new("sample.vc1", "vc1", 8, false, null, string.Empty, null) { DownloadUrl = new Uri("https://example.invalid/sample.vc1"), Sha256 = sha256 };
+
+    /// <summary>A generated fixture spec with a pinned fallback sample.</summary>
+    /// <param name="sha256">The pinned hash.</param>
+    /// <returns>The spec.</returns>
+    private static FixtureSpec Generated(string sha256) =>
+        new("sample.mp4", "h264", 8, false, "libx264", "-c:v libx264", null) { DownloadUrl = new Uri("https://example.invalid/sample.jsv"), Sha256 = sha256 };
+
+    /// <summary>Builds a one-fixture catalog with a given runner and encoder set.</summary>
+    /// <param name="runner">The ffmpeg runner.</param>
+    /// <param name="downloader">The downloader.</param>
+    /// <param name="spec">The fixture.</param>
+    /// <param name="encoders">Encoders in the build.</param>
+    /// <returns>Its result.</returns>
+    private async Task<FixtureResult> BuildAsync(IFfmpegRunner runner, IFixtureDownloader downloader, FixtureSpec spec, HashSet<string> encoders)
+    {
+        var results = await new FixtureBuilder(runner, "/fake/ffmpeg", _root, TimeSpan.FromSeconds(5), downloader, [spec], null)
+            .BuildAsync("key", encoders, TestContext.Current.CancellationToken);
+        return Assert.Single(results);
+    }
 
     /// <summary>Builds a one-fixture catalog.</summary>
     /// <param name="downloader">The downloader.</param>

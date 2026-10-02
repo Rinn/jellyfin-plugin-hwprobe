@@ -24,7 +24,7 @@ public sealed class FixtureBuilderTests : IDisposable
         var results = await BuildAsync(_allEncoders);
 
         Assert.Equal(FixtureCatalog.All.Count, results.Count);
-        Assert.All(results.Where(r => r.Spec.UntestedReason is null && r.Spec.DownloadUrl is null), r =>
+        Assert.All(results.Where(r => r.Spec.UntestedReason is null && r.Spec.RequiredEncoder is not null), r =>
         {
             Assert.Equal(FixtureStatus.Available, r.Status);
             Assert.True(File.Exists(r.Path));
@@ -70,7 +70,7 @@ public sealed class FixtureBuilderTests : IDisposable
         var results = await BuildAsync(_allEncoders);
 
         Assert.Empty(_runner.Invocations);
-        Assert.All(results.Where(r => r.Spec.UntestedReason is null && r.Spec.DownloadUrl is null), r => Assert.Equal(FixtureStatus.Available, r.Status));
+        Assert.All(results.Where(r => r.Spec.UntestedReason is null && r.Spec.RequiredEncoder is not null), r => Assert.Equal(FixtureStatus.Available, r.Status));
     }
 
     /// <summary>A truncated cached fixture fails its manifest check and is regenerated.</summary>

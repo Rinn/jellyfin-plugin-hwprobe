@@ -22,7 +22,7 @@ Requires Jellyfin 12.1 or newer.
 
 ## Privacy
 
-Nothing is sent anywhere. The only download is a 124 KB VC-1 test clip from [FFmpeg's sample suite](https://fate-suite.ffmpeg.org/vc1/), once, checked against a pinned hash.
+Nothing is sent anywhere. Short test clips may be downloaded from [FFmpeg's sample suite](https://fate-suite.ffmpeg.org/) when they can't be made on your server, each once and checked against a pinned hash.
 
 ## Status
 
