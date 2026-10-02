@@ -321,9 +321,14 @@ public sealed class SpeedEngine : IDisposable
                 {
                     args = source.Build(type, device.Length == 0 ? null : device, cell);
                 }
-                catch (Exception ex) when (ex is ArgumentConstructionException or UnsafeProbeException)
+                catch (ArgumentConstructionException)
                 {
-                    return new SpeedResult(type, device, test.Key, label, null, null, false, test.DecodeOnly ? "Not measured: Jellyfin decodes this in software with this backend." : ex.Message);
+                    // No hardware arguments at all: Jellyfin would do the whole job in software.
+                    return new SpeedResult(type, device, test.Key, label, null, null, false, test.DecodeOnly ? "Not measured: Jellyfin decodes this in software with this backend." : "Not measured: Jellyfin decodes and encodes this in software with this backend.");
+                }
+                catch (UnsafeProbeException ex)
+                {
+                    return new SpeedResult(type, device, test.Key, label, null, null, false, ex.Message);
                 }
                 catch (NotSupportedException)
                 {
