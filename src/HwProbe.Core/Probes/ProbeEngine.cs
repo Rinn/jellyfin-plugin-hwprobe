@@ -394,17 +394,27 @@ public sealed class ProbeEngine : IDisposable
             return;
         }
 
-        var tier = candidate.Type == HwType.videotoolbox
-            ? VideoToolboxTier.Resolve(run.Caps.SupportsHwaccel, run.Caps.SupportsFilter)
-            : ResolveTier(run, candidate.Type, open.Driver);
+        var tier = candidate.Type switch
+        {
+            HwType.videotoolbox => VideoToolboxTier.Resolve(run.Caps.SupportsHwaccel, run.Caps.SupportsFilter),
+            HwType.nvenc => CudaTier.Resolve(run.Caps.SupportsHwaccel, run.Caps.SupportsFilter, run.Caps.SupportsFilterWithOption),
+            _ => ResolveTier(run, candidate.Type, open.Driver),
+        };
         if (tier == PipelineTier.LegacyCopyBack)
         {
-            var remedy = candidate.Type == HwType.videotoolbox
-                ? $"Filters run in software (copy-back). This ffmpeg lacks {string.Join(", ", VideoToolboxTier.MissingFilters(run.Caps.SupportsFilter))}; use jellyfin-ffmpeg for the Metal pipeline."
-                : Hints.LegacyCopyBack;
+            // VideoToolbox and CUDA only drop to copy-back for a build missing filters; Intel and AMD for OpenCL.
+            var missing = candidate.Type switch
+            {
+                HwType.videotoolbox => VideoToolboxTier.MissingFilters(run.Caps.SupportsHwaccel, run.Caps.SupportsFilter),
+                HwType.nvenc => CudaTier.Missing(run.Caps.SupportsHwaccel, run.Caps.SupportsFilter, run.Caps.SupportsFilterWithOption),
+                _ => null,
+            };
+            var remedy = missing is null
+                ? Hints.LegacyCopyBack
+                : $"Filters run in software (copy-back). This ffmpeg lacks {string.Join(", ", missing)}; use jellyfin-ffmpeg for the {(candidate.Type == HwType.nvenc ? "CUDA" : "Metal")} pipeline.";
             run.Findings.Add(new Finding(FindingSeverity.Warn, "legacy-copyback", $"{candidate.Type}{DevicePrefix(candidate.Device)}{remedy}")
             {
-                Fix = candidate.Type == HwType.videotoolbox ? new Fix("Use jellyfin-ffmpeg", null) : Hints.OpenclFix(inContainer),
+                Fix = missing is null ? Hints.OpenclFix(inContainer) : new Fix("Use jellyfin-ffmpeg", null),
             });
         }
 

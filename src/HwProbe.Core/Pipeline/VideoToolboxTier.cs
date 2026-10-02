@@ -17,15 +17,17 @@ public static class VideoToolboxTier
         ArgumentNullException.ThrowIfNull(hwaccel);
         ArgumentNullException.ThrowIfNull(filter);
 
-        return MissingFilters(filter).Count == 0 && hwaccel("videotoolbox") ? PipelineTier.FullMetal : PipelineTier.LegacyCopyBack;
+        return MissingFilters(hwaccel, filter).Count == 0 ? PipelineTier.FullMetal : PipelineTier.LegacyCopyBack;
     }
 
     /// <summary>Returns the filters the full pipeline needs that this build lacks.</summary>
+    /// <param name="hwaccel">Whether the build has a hwaccel.</param>
     /// <param name="filter">Reports whether a filter is built.</param>
     /// <returns>The missing filter names, in upstream's check order.</returns>
-    public static IReadOnlyList<string> MissingFilters(Func<string, bool> filter)
+    public static IReadOnlyList<string> MissingFilters(Func<string, bool> hwaccel, Func<string, bool> filter)
     {
+        ArgumentNullException.ThrowIfNull(hwaccel);
         ArgumentNullException.ThrowIfNull(filter);
-        return [.. _requiredFilters.Where(f => !filter(f))];
+        return [.. hwaccel("videotoolbox") ? [] : new[] { "the videotoolbox hwaccel" }, .. _requiredFilters.Where(f => !filter(f))];
     }
 }

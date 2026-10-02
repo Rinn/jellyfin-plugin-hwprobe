@@ -9,6 +9,7 @@
         <style>
             #HwProbeConfigPage table { border-collapse: collapse; margin: 0.25em 0 1em; }
             #HwProbeConfigPage td, #HwProbeConfigPage th { padding: 0.2em 1.5em 0.2em 0; text-align: left; vertical-align: middle; height: 1.8em; }
+            #HwProbeConfigPage .hwprobe-scroll { overflow-x: auto; }
             #HwProbeConfigPage th { font-weight: 500; opacity: 0.7; }
             #HwProbeConfigPage .hwprobe-section { margin-top: 2em; }
             #HwProbeConfigPage .hwprobe-backends td:first-child, #HwProbeConfigPage .hwprobe-backends th:first-child { width: 18em; }
@@ -30,9 +31,20 @@
             #HwProbeConfigPage .hwprobe-change-list { margin: 0 0 1em 1em; }
             #HwProbeConfigPage .hwprobe-change-list table { margin: 0.2em 0 0; }
             #HwProbeConfigPage .hwprobe-arrow { display: inline-block; width: 1em; }
-            #HwProbeConfigPage .hwprobe-action { padding: 0 0.6em; line-height: 1.5; border: 1px solid #00a4dc; border-radius: 0.2em; background: transparent; color: #00a4dc; font: inherit; font-size: 0.9em; cursor: pointer; }
+            #HwProbeConfigPage .hwprobe-action { padding: 0 0.6em; line-height: 1.5; border: 1px solid #00a4dc; border-radius: 0.2em; background: transparent; color: #00a4dc; font: inherit; font-size: 0.9em; white-space: nowrap; cursor: pointer; }
             #HwProbeConfigPage .hwprobe-action:disabled { opacity: 0.5; cursor: default; }
             #HwProbeConfigPage .hwprobe-action.hwprobe-danger { border-color: #c62828; color: #c62828; font-weight: bold; }
+            /* Below about 336px the settings table only fits if "Apply section" may take two lines. */
+            @media (max-width: 21em) {
+                #HwProbeConfigPage .hwprobe-action { white-space: normal; }
+            }
+
+            /* Phones: let columns size to their content and wrap, so nothing runs off the screen. */
+            @media (max-width: 40em) {
+                #HwProbeConfigPage td, #HwProbeConfigPage th { padding-right: 0.5em; }
+                #HwProbeConfigPage .hwprobe-backends td:first-child, #HwProbeConfigPage .hwprobe-backends th:first-child,
+                #HwProbeConfigPage .hwprobe-backends td:nth-child(2), #HwProbeConfigPage .hwprobe-backends th:nth-child(2) { width: auto; }
+            }
         </style>
         <div data-role="content">
             <div class="content-primary">
@@ -83,6 +95,7 @@
                     FullOpencl: 'Full GPU pipeline (OpenCL)',
                     FullVulkan: 'Full GPU pipeline (Vulkan)',
                     FullMetal: 'Full GPU pipeline (Metal)',
+                    FullCuda: 'Full GPU pipeline (CUDA)',
                     Limited: 'GPU scaling only, no GPU tone mapping',
                     LegacyCopyBack: 'Copy-back: filters run on the CPU'
                 };
@@ -131,7 +144,7 @@
                     const table = el('table', null, 'hwprobe-backends');
                     row(table, [el('th', 'Backend'), el('th', 'Device'), el('th', 'Status')]);
                     for (const [type, device, status, fix] of rows) {
-                        row(table, [names[type] || type, device || '-', resultCell(status, fix, 'hwprobe-reason')]);
+                        row(table, [names[type] || type, breakable(device || '-'), resultCell(status, fix, 'hwprobe-reason')]);
                     }
                     return table;
                 }
@@ -171,6 +184,19 @@
                     const gpus = (report.host.gpuVendors || []).map(v => v.toLowerCase());
                     const vendor = vendors[type];
                     return vendor && gpus.length && gpus.indexOf(vendor[0]) === -1 ? vendor[1] : null;
+                }
+
+                // A path that may wrap after each slash on a narrow screen, so it never breaks mid-word.
+                function breakable(text) {
+                    const td = el('td');
+                    text.split('/').forEach((part, i, parts) => {
+                        td.appendChild(document.createTextNode(part + (i < parts.length - 1 ? '/' : '')));
+                        // Not after a leading slash, which would let "/" sit alone on a line.
+                        if (part && i < parts.length - 1) {
+                            td.appendChild(document.createElement('wbr'));
+                        }
+                    });
+                    return td;
                 }
 
                 // A result with a fix links to the fix's guide; the fix's action is the tooltip.
@@ -458,7 +484,7 @@
                     }
                     groupRow(table, 'Also tested');
                     outcomeRow(table, 'Hardware deinterlacing', firstOutcome(selected.deinterlace));
-                    outcomeRow(table, 'Subtitle burn-in', firstOutcome(selected.subtitles));
+                    outcomeRow(table, 'Subtitle burn‑in', firstOutcome(selected.subtitles));
                     container.appendChild(table);
                 }
 
@@ -475,7 +501,10 @@
                             }
                         }
                     }
-                    details.appendChild(table);
+                    // Five columns of ids and outcomes don't fit a phone, and breaking them mid-word reads worse than scrolling.
+                    const scroll = el('div', null, 'hwprobe-scroll');
+                    scroll.appendChild(table);
+                    details.appendChild(scroll);
                     return details;
                 }
 
