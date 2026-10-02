@@ -123,24 +123,28 @@
                 // Available and Unavailable share one layout: backend, device, status.
                 function backendTable(rows) {
                     const table = el('table', null, 'hwprobe-backends');
-                    const fixes = rows.some(r => r[3]);
-                    row(table, [el('th', 'Backend'), el('th', 'Device'), el('th', 'Status'), el('th', fixes ? 'Fix' : '')]);
+                    row(table, [el('th', 'Backend'), el('th', 'Device'), el('th', 'Status')]);
                     for (const [type, device, status, fix] of rows) {
-                        row(table, [names[type] || type, device || '-', el('td', status, 'hwprobe-reason'), fixCell(fix)]);
+                        row(table, [names[type] || type, device || '-', resultCell(status, fix, 'hwprobe-reason')]);
                     }
                     return table;
                 }
 
-                function fixCell(fix) {
-                    const td = el('td');
+                // A result with a fix links to the fix's guide; the fix's action is the tooltip.
+                function resultCell(text, fix, className) {
+                    const td = el('td', null, className);
                     if (fix && fix.url) {
-                        const a = el('a', fix.action, 'button-link');
+                        const a = el('a', text || fix.action, 'button-link');
                         a.href = fix.url;
                         a.target = '_blank';
                         a.rel = 'noopener noreferrer';
+                        a.title = fix.action;
                         td.appendChild(a);
-                    } else if (fix) {
-                        td.textContent = fix.action;
+                    } else {
+                        td.textContent = text || '';
+                        if (fix) {
+                            td.title = fix.action;
+                        }
                     }
                     return td;
                 }
@@ -159,7 +163,7 @@
                 function outcomeRow(table, label, outcome) {
                     const state = outcome === 'Pass' ? 'TurnOn' : (outcome ? 'LeaveOff' : 'NotTested');
                     const reason = outcome === 'Pass' ? '' : (outcome ? 'Test failed' : 'Not tested');
-                    row(table, [mark(state), label, el('td', reason, 'hwprobe-reason'), el('td'), el('td')]);
+                    row(table, [mark(state), label, el('td', reason, 'hwprobe-reason'), el('td')]);
                 }
 
                 function firstOutcome(cells) {
@@ -298,7 +302,7 @@
                     if (everything.length > 1) {
                         header.appendChild(action('Apply all', () => apply(everything)));
                     }
-                    row(table, [el('th'), el('th', 'Option'), el('th', 'Result'), el('th', 'Fix'), header]);
+                    row(table, [el('th'), el('th', 'Option'), el('th', 'Result'), header]);
                     let group = null;
                     for (const a of settings.filter(x => !x.hidden || differs(x))) {
                         if (a.section !== group) {
@@ -308,13 +312,13 @@
                             if (pending.length > 1) {
                                 cell.appendChild(action('Apply section', () => apply(pending)));
                             }
-                            row(table, [el('td'), el('td', group), el('td'), el('td'), cell]).className = 'hwprobe-group';
+                            row(table, [el('td'), el('td', group), el('td'), cell]).className = 'hwprobe-group';
                         }
                         const cell = el('td');
                         if (configured && differs(a)) {
                             cell.appendChild(action('Apply', () => apply([a])));
                         }
-                        row(table, [mark(a.state), a.label, el('td', a.note, 'hwprobe-reason'), fixCell(a.fix), cell]);
+                        row(table, [mark(a.state), a.label, resultCell(a.note, a.fix, 'hwprobe-reason'), cell]);
                     }
                     groupRow(table, 'Also tested');
                     outcomeRow(table, 'Hardware deinterlacing', firstOutcome(selected.deinterlace));
@@ -351,10 +355,10 @@
                         return;
                     }
                     const table = el('table');
-                    row(table, [el('th', 'Note'), el('th', 'Backends'), el('th', 'Fix')]);
+                    row(table, [el('th', 'Note'), el('th', 'Backends')]);
                     for (const code of codes) {
                         const g = grouped[code];
-                        row(table, [el('td', notes[code] || g.finding.message, g.finding.severity === 'Warn' ? 'hwprobe-warn' : ''), g.backends.join(', '), fixCell(g.finding.fix)]);
+                        row(table, [resultCell(notes[code] || g.finding.message, g.finding.fix, g.finding.severity === 'Warn' ? 'hwprobe-warn' : ''), g.backends.join(', ')]);
                     }
                     section('Notes').appendChild(table);
                 }
