@@ -496,8 +496,17 @@
                     return Promise.all([config, server, data, changes, pending]).then(() => { renderChange(); render(); });
                 }
 
+                // jellyfin-web keeps a loaded plugin page until the browser reloads, so after an update this tab could
+                // still be running the old page.
+                let loadedVersion = null;
+
                 function loadStatus() {
                     return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Status'), dataType: 'json' }).then(s => {
+                        loadedVersion = loadedVersion || s.HwProbeVersion;
+                        if (s.HwProbeVersion && s.HwProbeVersion !== loadedVersion) {
+                            messageText.replaceChildren(document.createTextNode('HwProbe was updated. Reload the page to see the new version. '));
+                            messageText.appendChild(action('Reload', () => location.reload()));
+                        }
                         if (s.State === 'Running') {
                             statusText.textContent = 'Probing…';
                             pollTimer = setTimeout(loadStatus, 3000);
