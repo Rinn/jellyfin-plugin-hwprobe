@@ -98,7 +98,8 @@ public sealed class FfmpegRunnerTests : IDisposable
         var pidFile = _host.PathFor("pids.txt");
         var env = _host.Scenario(new { Default = new { SpawnChild = true, PidFile = pidFile, Hang = true } });
 
-        var result = await RunAsync(env, TimeSpan.FromSeconds(2));
+        // Long enough for a cold start to write both PIDs before the runner's timeout kills the tree.
+        var result = await RunAsync(env, TimeSpan.FromSeconds(10));
 
         Assert.Equal(FfmpegRunStatus.TimedOut, result.Status);
         Assert.Null(result.ExitCode);
@@ -113,11 +114,24 @@ public sealed class FfmpegRunnerTests : IDisposable
         var pidFile = _host.PathFor("pids.txt");
         var env = _host.Scenario(new { Default = new { SpawnChild = true, PidFile = pidFile, Hang = true } });
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        cts.CancelAfter(TimeSpan.FromSeconds(1));
         var invocation = new FfmpegInvocation(FakeFfmpegHost.ExecutablePath, "-i x", env, _generous);
+        var run = _runner.RunAsync(invocation, cts.Token);
 
+        // Cancel only once both processes exist; a fixed delay raced a slow cold start.
+        await WaitForPidsAsync(pidFile);
         var stopwatch = Stopwatch.StartNew();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => _runner.RunAsync(invocation, cts.Token));
+        await cts.CancelAsync();
+        OperationCanceledException? canceled = null;
+        try
+        {
+            await run;
+        }
+        catch (OperationCanceledException ex)
+        {
+            canceled = ex;
+        }
+
+        Assert.NotNull(canceled);
 
         Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(10), $"cancellation took {stopwatch.Elapsed}");
         await AssertAllDeadAsync(pidFile);
@@ -125,6 +139,26 @@ public sealed class FfmpegRunnerTests : IDisposable
 
     /// <inheritdoc/>
     public void Dispose() => _host.Dispose();
+
+    /// <summary>Waits until FakeFfmpeg has written both PIDs.</summary>
+    /// <param name="pidFile">File of PIDs written by FakeFfmpeg.</param>
+    /// <returns>A task that completes when the file holds two PIDs.</returns>
+    private static async Task WaitForPidsAsync(string pidFile)
+    {
+        var deadline = DateTime.UtcNow + _generous;
+        while (DateTime.UtcNow < deadline)
+        {
+            var lines = File.Exists(pidFile) ? await File.ReadAllLinesAsync(pidFile, TestContext.Current.CancellationToken) : [];
+            if (lines.Length == 2 && lines.All(l => int.TryParse(l, out _)))
+            {
+                return;
+            }
+
+            await Task.Delay(50, TestContext.Current.CancellationToken);
+        }
+
+        Assert.Fail($"FakeFfmpeg never wrote two PIDs to {pidFile}");
+    }
 
     /// <summary>Waits briefly for every PID in the file to disappear, failing if any survives.</summary>
     /// <param name="pidFile">File of PIDs written by FakeFfmpeg.</param>
