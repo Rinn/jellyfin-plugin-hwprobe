@@ -139,6 +139,34 @@ public sealed class FixtureBuilderTests : IDisposable
         Assert.Equal(FixtureCatalog.All.Count - 1, _runner.Invocations.Count);
     }
 
+    /// <summary>An AV1 encode that crashes is retried with SVT-AV1's C code, and the clip is made.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task CrashedAv1EncodeIsRetriedWithCCode()
+    {
+        _runner.Crashes = i => i.Arguments.Contains("libsvtav1", StringComparison.Ordinal) && !i.Arguments.Contains("asm=c", StringComparison.Ordinal);
+
+        var results = await BuildAsync(_allEncoders);
+
+        Assert.All(results.Where(r => r.Spec.Codec == "av1"), r => Assert.Equal(FixtureStatus.Available, r.Status));
+        Assert.Equal(4, _runner.Invocations.Count(i => i.Arguments.Contains("libsvtav1", StringComparison.Ordinal)));
+    }
+
+    /// <summary>When the retry also fails, both reasons are reported and nothing is cached.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task FailedRetryReportsBothReasons()
+    {
+        _runner.Crashes = i => i.Arguments.Contains("libsvtav1", StringComparison.Ordinal);
+
+        var results = await BuildAsync(_allEncoders);
+
+        var av1 = results.Single(r => r.Spec.FileName == "av1_8bit.mp4");
+        Assert.Equal(FixtureStatus.Failed, av1.Status);
+        Assert.Contains("retry: ffmpeg exited 139", av1.Reason, StringComparison.Ordinal);
+        Assert.Empty(Directory.EnumerateFiles(_root, "av1_8bit*", SearchOption.AllDirectories));
+    }
+
     /// <summary>Encodes write to a temp name with the real extension, never the final path.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

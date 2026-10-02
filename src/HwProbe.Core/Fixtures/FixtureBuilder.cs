@@ -119,7 +119,8 @@ public sealed class FixtureBuilder
     {
         await using var stream = File.OpenRead(path);
         var hash = await SHA256.HashDataAsync(stream, cancellationToken);
-        var recipe = SHA256.HashData(Encoding.UTF8.GetBytes($"{spec.RequiredEncoder}\n{spec.EncodeArguments}"));
+        var text = $"{spec.RequiredEncoder}\n{spec.EncodeArguments}" + (spec.FallbackArguments is null ? string.Empty : $"\n{spec.FallbackArguments}");
+        var recipe = SHA256.HashData(Encoding.UTF8.GetBytes(text));
         return string.Create(CultureInfo.InvariantCulture, $"{stream.Length} {Convert.ToHexStringLower(hash)} {Convert.ToHexStringLower(recipe)}");
     }
 
@@ -228,6 +229,24 @@ public sealed class FixtureBuilder
         return new FixtureResult(spec, FixtureStatus.Available, path, null);
     }
 
+    /// <summary>Runs one encode to the temp path.</summary>
+    /// <param name="arguments">ffmpeg arguments before the output path.</param>
+    /// <param name="partial">The temp output path.</param>
+    /// <param name="cancellationToken">Cancels the encode.</param>
+    /// <returns>Null when it wrote output; otherwise why it failed, with the temp file removed.</returns>
+    private async Task<string?> EncodeAsync(string arguments, string partial, CancellationToken cancellationToken)
+    {
+        var invocation = new FfmpegInvocation(_ffmpegPath, $"{arguments} \"{partial}\"", new Dictionary<string, string?>(), _timeout);
+        var result = await _runner.RunAsync(invocation, cancellationToken);
+        if (result.Status == FfmpegRunStatus.Exited && result.ExitCode == 0 && File.Exists(partial) && new FileInfo(partial).Length > 0)
+        {
+            return null;
+        }
+
+        DeleteIfExists(partial);
+        return Describe(result);
+    }
+
     /// <summary>Encodes a fixture to a temp name, then moves it into place and writes its manifest.</summary>
     /// <param name="spec">The fixture.</param>
     /// <param name="path">Final cached path.</param>
@@ -241,18 +260,16 @@ public sealed class FixtureBuilder
         DeleteIfExists(manifestPath);
         DeleteIfExists(partial);
 
-        var arguments = $"{spec.EncodeArguments} \"{partial}\"";
-        var invocation = new FfmpegInvocation(_ffmpegPath, arguments, new Dictionary<string, string?>(), _timeout);
-        var result = await _runner.RunAsync(invocation, cancellationToken);
-
-        var succeeded = result.Status == FfmpegRunStatus.Exited
-            && result.ExitCode == 0
-            && File.Exists(partial)
-            && new FileInfo(partial).Length > 0;
-        if (!succeeded)
+        var result = await EncodeAsync(spec.EncodeArguments, partial, cancellationToken);
+        if (result is not null && spec.FallbackArguments is not null)
         {
-            DeleteIfExists(partial);
-            return new FixtureResult(spec, FixtureStatus.Failed, null, Describe(result));
+            var fallback = await EncodeAsync(spec.FallbackArguments, partial, cancellationToken);
+            result = fallback is null ? null : $"{result}; retry: {fallback}";
+        }
+
+        if (result is not null)
+        {
+            return new FixtureResult(spec, FixtureStatus.Failed, null, result);
         }
 
         // Manifest last: a run killed before this leaves a file that won't validate.
