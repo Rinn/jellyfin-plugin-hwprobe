@@ -6,9 +6,6 @@ namespace Jellyfin.Plugin.HwProbe.Core.Report;
 /// <param name="Container">Container runtime, or null on bare metal.</param>
 public sealed record HostSummary(string Os, string Kernel, string? Container)
 {
-    /// <summary>Gets the GPU vendor IDs, e.g. <c>0x8086</c>: on Linux every PCI display controller, driver loaded or not; on Windows every Direct3D adapter. Empty on macOS, for non-PCI GPUs, with a VM's virtual GPU, and with a Windows GPU that has no driver.</summary>
-    public IReadOnlyList<string> GpuVendors { get; init; } = [];
-
     /// <summary>Gets the CPU architecture, e.g. <c>x64</c> or <c>arm64</c>; <c>unknown</c> in reports from before it was recorded.</summary>
     public string Architecture { get; init; } = "unknown";
 }

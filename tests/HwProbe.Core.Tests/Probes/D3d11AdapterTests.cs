@@ -18,16 +18,4 @@ public sealed class D3d11AdapterTests
     [InlineData("[D3D11VA @ 0000020a] Selecting d3d11va adapter 4\n", null, null)]
     public void ParsesTheAdapter(string stderr, string? vendor, string? device) =>
         Assert.Equal(vendor is null ? null : (vendor, device!), D3d11Adapter.Parse(stderr));
-
-    /// <summary>The software adapter listed last is left out; any other Microsoft adapter (a GPU without its driver) or a VM's GPU means no claim.</summary>
-    [Fact]
-    public void VendorsLeaveOutTheSoftwareAdapterAndTrustNoVirtualGpu()
-    {
-        Assert.Equal(["0x10de", "0x8086"], D3d11Adapter.Vendors([("0x8086", "0xa780"), ("0x10de", "0x2c02"), ("0x1414", "0x008c")]));
-
-        // A driverless Intel iGPU shows as Microsoft Basic Display Adapter, with the software adapter's IDs, before it.
-        Assert.Empty(D3d11Adapter.Vendors([("0x10de", "0x2c02"), ("0x1414", "0x008c"), ("0x1414", "0x008c")]));
-        Assert.Empty(D3d11Adapter.Vendors([("0x1414", "0x008c"), ("0x10de", "0x2c02")]));
-        Assert.Empty(D3d11Adapter.Vendors([("0x15ad", "0x0405"), ("0x1414", "0x008c")]));
-    }
 }

@@ -79,7 +79,7 @@ public sealed class ProbeEngineTests : IDisposable
         }
     }
 
-    /// <summary>On Windows the adapters are listed up front: vendors come from that list, and QSV is tried only on Intel adapters.</summary>
+    /// <summary>On Windows the adapters are listed up front, and QSV is tried only on Intel adapters.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
     public async Task WindowsAdaptersAreListedAndMatchedByVendor()
@@ -96,7 +96,6 @@ public sealed class ProbeEngineTests : IDisposable
 
         var report = await engine.RunAsync(Options(StopStage.Devices, refresh: true) with { Types = new HashSet<HwType> { HwType.qsv, HwType.amf } }, TestContext.Current.CancellationToken);
 
-        Assert.Equal(["0x10de", "0x8086"], report.Host.GpuVendors);
         Assert.Equal(["dx11:1"], runner.Calls.Where(c => c.Contains("qsv=qs@dx11", StringComparison.Ordinal)).Select(c => c.Split("d3d11va=")[1].Split(' ')[0]));
 
         // The listing stops at index 3, the first with no adapter, below its cap of five.
@@ -211,57 +210,6 @@ public sealed class ProbeEngineTests : IDisposable
         var vaapi = Assert.Single(report.Backends, b => b.Type == HwType.vaapi);
         Assert.Equal(BackendVerdict.NotPresent, vaapi.Verdict);
         Assert.Contains("--device", vaapi.Hint, StringComparison.Ordinal);
-    }
-
-    /// <summary>The report lists the vendors of PCI display controllers only, with or without a render node.</summary>
-    /// <returns>A task representing the test.</returns>
-    [Fact]
-    public async Task ReportListsGpuVendors()
-    {
-        var linux = new FakeHostPlatform(HostOs.Linux)
-        {
-            Files =
-            {
-                ["/dev/dri/renderD128"] = string.Empty,
-                ["/sys/bus/pci/devices/0000:00:02.0"] = string.Empty,
-                ["/sys/bus/pci/devices/0000:00:02.0/class"] = "0x030000\n",
-                ["/sys/bus/pci/devices/0000:00:02.0/vendor"] = "0x8086\n",
-                ["/sys/bus/pci/devices/0000:01:00.0"] = string.Empty,
-                ["/sys/bus/pci/devices/0000:01:00.0/class"] = "0x030200\n",
-                ["/sys/bus/pci/devices/0000:01:00.0/vendor"] = "0x10de\n",
-                ["/sys/bus/pci/devices/0000:00:1f.3"] = string.Empty,
-                ["/sys/bus/pci/devices/0000:00:1f.3/class"] = "0x040300\n",
-                ["/sys/bus/pci/devices/0000:00:1f.3/vendor"] = "0x1002\n",
-            },
-        };
-        var runner = new ScriptedOnly(new() { ["-version"] = "ffmpeg version 7.1.4-Jellyfin Copyright (c) 2000-2025\n" });
-        using var engine = new ProbeEngine(runner, _arguments, linux, TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
-
-        var report = await engine.RunAsync(Options(StopStage.Devices, refresh: true), TestContext.Current.CancellationToken);
-
-        Assert.Equal(["0x10de", "0x8086"], report.Host.GpuVendors);
-    }
-
-    /// <summary>A virtual GPU, like WSL2's, means the PCI list can't say which GPUs exist, so no vendors are reported.</summary>
-    /// <returns>A task representing the test.</returns>
-    [Fact]
-    public async Task VirtualGpuReportsNoVendors()
-    {
-        var linux = new FakeHostPlatform(HostOs.Linux)
-        {
-            Files =
-            {
-                ["/sys/bus/pci/devices/c00d:00:00.0"] = string.Empty,
-                ["/sys/bus/pci/devices/c00d:00:00.0/class"] = "0x030200\n",
-                ["/sys/bus/pci/devices/c00d:00:00.0/vendor"] = "0x1414\n",
-            },
-        };
-        var runner = new ScriptedOnly(new() { ["-version"] = "ffmpeg version 7.1.4-Jellyfin Copyright (c) 2000-2025\n" });
-        using var engine = new ProbeEngine(runner, _arguments, linux, TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
-
-        var report = await engine.RunAsync(Options(StopStage.Devices, refresh: true), TestContext.Current.CancellationToken);
-
-        Assert.Empty(report.Host.GpuVendors);
     }
 
     /// <summary>On Windows, adapter indices stop at the first that fails to open, giving one row.</summary>

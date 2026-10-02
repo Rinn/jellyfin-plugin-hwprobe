@@ -13,7 +13,6 @@ public sealed class DeviceEnumerator
     public const int AdapterCount = 4;
 
     private const string DriDirectory = "/dev/dri";
-    private const string PciDirectory = "/sys/bus/pci/devices";
 
     private readonly IHostPlatform _platform;
 
@@ -40,7 +39,7 @@ public sealed class DeviceEnumerator
             candidates.AddRange(DevicesFor(type, nodes, indices).Select(d => new DeviceCandidate(type, d)));
         }
 
-        return new DeviceEnumeration(candidates, listing?.Access, [.. nodes.Select(Identify)]) { GpuVendors = GpuVendors() };
+        return new DeviceEnumeration(candidates, listing?.Access, [.. nodes.Select(Identify)]);
     }
 
     /// <summary>Orders render nodes by numeric suffix, so renderD1000 sorts after renderD129.</summary>
@@ -67,25 +66,6 @@ public sealed class DeviceEnumerator
         (HwType.rkmpp or HwType.v4l2m2m, HostOs.Linux) => [string.Empty],
         _ => [],
     };
-
-    /// <summary>Reads the vendors of PCI display controllers (class 0x03xxxx), which are listed whether or not their driver is loaded.</summary>
-    /// <returns>Distinct vendor IDs, sorted; empty off Linux, without a PCI bus, or in a VM with a virtual GPU.</returns>
-    private List<string> GpuVendors()
-    {
-        var listing = _platform.Os == HostOs.Linux ? _platform.ListDirectory(PciDirectory, "*") : null;
-        if (listing is not { Access: DirectoryAccess.Ok })
-        {
-            return [];
-        }
-
-        List<string> vendors = [.. listing.Entries
-            .Where(d => ReadField($"{d}/class").StartsWith("0x03", StringComparison.OrdinalIgnoreCase))
-            .Select(d => ReadField($"{d}/vendor"))
-            .Where(v => v != Unknown)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Order(StringComparer.Ordinal)];
-        return vendors.Exists(v => VirtualGpus.Vendors.Contains(v, StringComparer.OrdinalIgnoreCase)) ? [] : vendors;
-    }
 
     /// <summary>Reads a render node's PCI vendor and device IDs from sysfs.</summary>
     /// <param name="node">The render node path.</param>

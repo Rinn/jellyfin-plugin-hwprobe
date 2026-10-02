@@ -105,7 +105,6 @@ public sealed class ProbeEngine : IDisposable
             new FfmpegSummary(ffmpeg, options.Ffmpeg.Source.ToString(), caps.Version?.ToString() ?? "unknown", caps.IsJellyfinBuild),
             new HostSummary(OsName(host.Os), host.Kernel, host.Container)
             {
-                GpuVendors = host.Os == HostOs.Windows ? D3d11Adapter.Vendors(run.Adapters) : devices.GpuVendors,
                 Architecture = host.Architecture,
             },
             new StageASummary([.. caps.Hwaccels.Order(StringComparer.Ordinal)], caps.BuildStatus, caps.FilterOptions),

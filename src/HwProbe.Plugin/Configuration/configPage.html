@@ -162,9 +162,7 @@
 
                 function notBuilt(type) {
                     const platform = platforms[type];
-                    // The platform first: AMF on a Linux AMD machine is unusable because it's Windows only.
                     return (platform && platform[0].indexOf(report.host.os) === -1 ? platform[1] : null)
-                        || wrongVendor(type)
                         || wrongArchitecture(type)
                         || 'Not built into ffmpeg';
                 }
@@ -177,15 +175,6 @@
                     return armOnly[type] && arch !== 'unknown' && arch.indexOf('arm') !== 0 ? armOnly[type] : null;
                 }
 
-                // Linux lists every PCI display controller, driver or not, and containers see them too; Windows lists every
-                // Direct3D adapter. Where no vendors were read, nothing is said.
-                const vendors = { qsv: ['0x8086', 'Intel only'], nvenc: ['0x10de', 'NVIDIA only'], amf: ['0x1002', 'AMD only'] };
-
-                function wrongVendor(type) {
-                    const gpus = (report.host.gpuVendors || []).map(v => v.toLowerCase());
-                    const vendor = vendors[type];
-                    return vendor && gpus.length && gpus.indexOf(vendor[0]) === -1 ? vendor[1] : null;
-                }
 
                 // A path that may wrap after each slash on a narrow screen, so it never breaks mid-word.
                 function breakable(text) {
@@ -551,11 +540,11 @@
                     }
 
                     const unavailable = report.backends.filter(b => b.verdict !== 'Viable')
-                        .map(b => b.verdict === 'NotPresent' && (wrongVendor(b.type) || wrongArchitecture(b.type))
-                            ? [b.type, '', wrongVendor(b.type) || wrongArchitecture(b.type)]
+                        .map(b => b.verdict === 'NotPresent' && wrongArchitecture(b.type)
+                            ? [b.type, '', wrongArchitecture(b.type)]
                             : [b.type, b.verdict === 'NotPresent' ? '' : b.device, verdicts[b.verdict] || b.verdict, b.fix])
                         .concat(Object.entries(report.stageA.types || {}).filter(([, s]) => s === 'NotBuilt').map(([t]) => [t, '', notBuilt(t)]))
-                        // A wrong-vendor status replaces each adapter's own, which would repeat one line per adapter.
+                        // A NotPresent row per adapter would repeat the same line.
                         .filter((r, i, all) => all.findIndex(o => o[0] === r[0] && o[1] === r[1] && o[2] === r[2]) === i)
                         .sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
                     if (unavailable.length) {
