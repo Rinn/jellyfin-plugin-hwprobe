@@ -20,6 +20,7 @@ internal sealed class HwProbeCommand
     private readonly Option<string?> _device = new("--device") { Description = "Restrict to one device node or adapter index." };
     private readonly Option<OutputFormat> _format = new("--format") { Description = "Stdout format.", DefaultValueFactory = _ => OutputFormat.Table };
     private readonly Option<string?> _json = new("--json") { Description = "Also write the JSON report to this file." };
+    private readonly Option<string?> _diagnostics = new("--diagnostics") { Description = "Also write a zip of the report and every ffmpeg log, to attach to an issue. Runs a fresh probe." };
     private readonly Option<int> _timeout = new("--timeout") { Description = "Per-probe hard timeout, seconds.", DefaultValueFactory = _ => 15 };
     private readonly Option<int> _fixtureTimeout = new("--fixture-timeout") { Description = "Fixture generation timeout, seconds.", DefaultValueFactory = _ => 120 };
     private readonly Option<bool> _refresh = new("--refresh") { Description = "Ignore cached results for this fingerprint." };
@@ -40,7 +41,7 @@ internal sealed class HwProbeCommand
 
         Root = new RootCommand("Device-verified hardware transcode detection for Jellyfin.")
         {
-            _ffmpeg, _stage, _types, _device, _format, _json, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
+            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
         };
     }
 
@@ -66,7 +67,10 @@ internal sealed class HwProbeCommand
             result.GetValue(_refresh),
             Path.GetFullPath(result.GetValue(_fixtures)!),
             result.GetValue(_expectHw),
-            result.GetValue(_verbose));
+            result.GetValue(_verbose))
+        {
+            DiagnosticsPath = result.GetValue(_diagnostics),
+        };
     }
 
     /// <summary>Parses a comma-separated backend list.</summary>

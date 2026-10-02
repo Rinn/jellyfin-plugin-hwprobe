@@ -553,6 +553,31 @@
 
                     renderNotes();
                     results.appendChild(renderDetails(report));
+                    results.appendChild(renderReporting());
+                }
+
+                function renderReporting() {
+                    const p = el('p', 'To report results for this hardware, attach the diagnostics zip to a GitHub issue. ');
+                    const download = action('Download diagnostics', () => {
+                        // ApiClient.ajax returns the raw response for a non-JSON request, with the session's token sent.
+                        ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Diagnostics') })
+                            .then(response => response.blob())
+                            .then(blob => {
+                                const a = document.createElement('a');
+                                a.href = URL.createObjectURL(blob);
+                                a.download = 'hwprobe-diagnostics.zip';
+                                a.click();
+                                setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+                            }, () => { messageText.textContent = 'Could not download diagnostics: run a probe first.'; })
+                            .then(() => { download.disabled = false; });
+                    });
+                    p.appendChild(download);
+                    p.appendChild(document.createTextNode(' '));
+                    const issue = el('a', 'Report on GitHub', 'button-link');
+                    issue.href = 'https://github.com/Rinn/jellyfin-plugin-hwprobe/issues/new?template=hardware-report.yml';
+                    issue.target = '_blank';
+                    p.appendChild(issue);
+                    return p;
                 }
 
                 function loadReport() {

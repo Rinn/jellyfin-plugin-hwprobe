@@ -40,6 +40,16 @@ HWPROBE_INSTALL=existing HWPROBE_BASE=http://host:18096 scripts/container-plugin
 
 `src/HwProbe.Cli` runs the same probe without the plugin. Run it where Jellyfin runs (inside the container, for Docker). `--help` lists the options.
 
+## Diagnostics zips
+
+A user's zip (plugin **Download diagnostics**, or `--diagnostics`) is laid out like `tests/Corpus`:
+
+- `ffmpeg/*.txt`: the capability listings. Copy them to `tests/Corpus/ffmpeg/<build>/` for `ScriptedFfmpegRunner.FromCorpus`.
+- `stderr/NNN-<probe>.txt`: every launch in order, with `#` lines for the arguments, environment, probe outcome and result, then the complete stderr. Copy one to `tests/Corpus/stderr/`, replacing the header with an `# Observed:` line naming the host and build.
+- `report.json`: the report.
+
+`DiagnosticsScrubber` removes the home and cache directories, the user name and the host name. Check a zip before committing anything from it.
+
 ## Releasing
 
 ```sh

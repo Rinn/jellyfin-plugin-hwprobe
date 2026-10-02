@@ -22,6 +22,12 @@ internal static partial class Log
     [LoggerMessage(Level = LogLevel.Error, Message = "HwProbe failed.")]
     public static partial void Failed(ILogger logger, Exception exception);
 
+    /// <summary>Logs a diagnostics zip that couldn't be saved; the report is still saved.</summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="exception">The failure.</param>
+    [LoggerMessage(Level = LogLevel.Warning, Message = "HwProbe couldn't save its diagnostics zip.")]
+    public static partial void DiagnosticsFailed(ILogger logger, Exception exception);
+
     /// <summary>Logs one changed encoding setting.</summary>
     /// <param name="logger">The logger.</param>
     /// <param name="user">The admin who made the change.</param>

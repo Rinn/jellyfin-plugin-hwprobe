@@ -65,6 +65,28 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal(kept, await service.LatestJsonAsync(TestContext.Current.CancellationToken) is not null);
     }
 
+    /// <summary>The diagnostics zip is offered only beside a report that's shown.</summary>
+    /// <param name="version">The HwProbe version the report records.</param>
+    /// <param name="zip">Whether a zip was saved.</param>
+    /// <param name="offered">Whether the zip is offered.</param>
+    /// <returns>A task representing the test.</returns>
+    [Theory]
+    [InlineData(null, true, true)]
+    [InlineData(null, false, false)]
+    [InlineData("0.0.1.0", true, false)]
+    public async Task DiagnosticsFollowTheReport(string? version, bool zip, bool offered)
+    {
+        var report = Reports.Sample();
+        using var service = Create(_ => Task.FromResult(version is null ? report : report with { HwProbeVersion = version }), transcoding: false);
+        await service.RunAsync(TestContext.Current.CancellationToken);
+        if (zip)
+        {
+            await File.WriteAllBytesAsync(service.DiagnosticsPath, [], TestContext.Current.CancellationToken);
+        }
+
+        Assert.Equal(offered ? service.DiagnosticsPath : null, await service.LatestDiagnosticsAsync(TestContext.Current.CancellationToken));
+    }
+
     /// <summary>Nothing runs while a session is transcoding.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
