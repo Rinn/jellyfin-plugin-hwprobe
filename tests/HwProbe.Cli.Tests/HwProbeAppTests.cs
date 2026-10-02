@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using Jellyfin.Plugin.HwProbe.Core.Devices;
 using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
 using Jellyfin.Plugin.HwProbe.Core.Report;
@@ -46,6 +47,21 @@ public sealed class HwProbeAppTests : IDisposable
         var report = ReportStore.Deserialize(stdout);
         Assert.NotNull(report);
         Assert.Equal(report.Fingerprint, ReportStore.Deserialize(await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken))!.Fingerprint);
+    }
+
+    /// <summary>--diagnostics writes a zip with the report and the capability listings.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact(Skip = "Requires Linux or macOS: the ffmpeg wrapper is a shell script.", SkipUnless = nameof(TestEnvironment.IsPosix), SkipType = typeof(TestEnvironment))]
+    public async Task DiagnosticsZipIsWritten()
+    {
+        var file = _host.PathFor("diagnostics.zip");
+        var (code, _, stderr) = await RunAsync(SoftwareOnly(), ["--diagnostics", file]);
+
+        Assert.Equal(0, code);
+        Assert.Contains("hardware-report.yml", stderr, StringComparison.Ordinal);
+        using var zip = await ZipFile.OpenReadAsync(file, TestContext.Current.CancellationToken);
+        Assert.Contains(zip.Entries, e => e.FullName == "report.json");
+        Assert.Contains(zip.Entries, e => e.FullName == "ffmpeg/hwaccels.txt");
     }
 
     /// <summary>An ffmpeg below 4.4 exits 2.</summary>

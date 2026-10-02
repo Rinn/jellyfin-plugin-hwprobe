@@ -1,0 +1,37 @@
+name: Hardware report
+description: Share HwProbe results from your hardware, especially AMD, Rockchip and other GPUs HwProbe hasn't been tested on.
+body:
+  - type: markdown
+    attributes:
+      value: "Get the diagnostics zip from the plugin page (**Download diagnostics**, after a probe) or the command line (`hwprobe --diagnostics hwprobe-diagnostics.zip`). It isn't anonymised: it holds file paths and the server's user and host names. Check it before attaching it."
+  - type: input
+    id: gpu
+    attributes:
+      label: GPU
+      placeholder: AMD Radeon RX 7600, Intel N100, Rockchip RK3588
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS and how Jellyfin runs
+      placeholder: Ubuntu 24.04, Docker (jellyfin/jellyfin)
+    validations:
+      required: true
+  - type: input
+    id: jellyfin
+    attributes:
+      label: Jellyfin version
+      placeholder: "12.1.0"
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics zip
+      description: Drag the zip here.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: What's wrong, if anything
+      description: A result that doesn't match what happens when Jellyfin transcodes, or anything else.

@@ -28,4 +28,8 @@ internal sealed record CliOptions(
     bool Refresh,
     string FixturesDirectory,
     bool ExpectHardware,
-    bool Verbose);
+    bool Verbose)
+{
+    /// <summary>Gets where to write a diagnostics zip, or null for none.</summary>
+    public string? DiagnosticsPath { get; init; }
+}

@@ -1,4 +1,5 @@
 using Jellyfin.Plugin.HwProbe.Core.Devices;
+using Jellyfin.Plugin.HwProbe.Core.Diagnostics;
 using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
@@ -50,6 +51,8 @@ internal static class HwProbeApp
             return (int)HwProbeExitCode.FfmpegUnusable;
         }
 
+        // A cached report has no ffmpeg logs to bundle.
+        var refresh = options.Refresh || options.DiagnosticsPath is not null;
         var engineOptions = new EngineOptions(
             location,
             options.StopAfter,
@@ -59,12 +62,13 @@ internal static class HwProbeApp
             options.FixtureTimeout,
             options.FixturesDirectory,
             Path.Combine(cacheRoot, "reports"),
-            options.Refresh);
+            refresh);
 
+        var recorder = options.DiagnosticsPath is null ? null : new RecordingFfmpegRunner(new FfmpegRunner());
         CapabilityReport report;
         try
         {
-            using var engine = new ProbeEngine(new FfmpegRunner(), new ArgumentSourceFactory(), platform, TimeProvider.System, EnvironmentRules.Standalone());
+            using var engine = new ProbeEngine((IFfmpegRunner?)recorder ?? new FfmpegRunner(), new ArgumentSourceFactory(), platform, TimeProvider.System, EnvironmentRules.Standalone());
             report = await engine.RunAsync(engineOptions, cancellationToken);
         }
         catch (FfmpegUnusableException ex)
@@ -83,6 +87,21 @@ internal static class HwProbeApp
         if (options.JsonPath is not null)
         {
             await ReportStore.WriteAsync(report, options.JsonPath, cancellationToken);
+        }
+
+        if (recorder is not null)
+        {
+            try
+            {
+                await DiagnosticsBundle.WriteAsync(options.DiagnosticsPath!, report, recorder.Runs, cancellationToken);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                await stderr.WriteLineAsync($"hwprobe: couldn't write {options.DiagnosticsPath}: {ex.Message}".AsMemory(), cancellationToken);
+                return (int)HwProbeExitCode.InternalError;
+            }
+
+            await stderr.WriteLineAsync($"hwprobe: wrote {options.DiagnosticsPath}. Attach it to an issue: {DiagnosticsBundle.IssueUrl}".AsMemory(), cancellationToken);
         }
 
         var anyViable = report.Backends.Any(b => b.Verdict == BackendVerdict.Viable);

@@ -420,14 +420,32 @@
                     return value || 'Not set';
                 }
 
+                function restartPrompt() {
+                    const pending = el('p', 'Backend changed; Jellyfin needs a restart. ');
+                    const button = action('Restart Jellyfin', restart);
+                    button.classList.add('hwprobe-danger');
+                    pending.appendChild(button);
+                    return pending;
+                }
+
+                // A backend that failed every test still gets used for every transcode until it's changed.
+                function renderBrokenBackend(container, viable) {
+                    const type = encoding && encoding.HardwareAccelerationType;
+                    // Untested isn't a failure, so it gets no warning.
+                    if (!type || type === 'none' || viable.some(isConfigured)
+                        || report.backends.some(b => b.verdict === 'Untested' && isConfigured(b))) {
+                        return;
+                    }
+                    const warning = el('p', null, 'hwprobe-warn');
+                    warning.appendChild(document.createTextNode('Jellyfin is set to use ' + (names[type] || type) + ', which didn\u2019t work in the last probe. Transcodes that use it can fail. '));
+                    warning.appendChild(action('Use software (None)', () => post('HwProbe/UseBackend', { Type: 'none', Device: '' })));
+                    container.appendChild(warning);
+                }
+
                 function renderSettings(container, viable) {
                     container.replaceChildren();
                     if (restartRequired) {
-                        const pending = el('p', 'Backend changed; Jellyfin needs a restart. ');
-                        const button = action('Restart Jellyfin', restart);
-                        button.classList.add('hwprobe-danger');
-                        pending.appendChild(button);
-                        container.appendChild(pending);
+                        container.appendChild(restartPrompt());
                     }
                     if (viable.length > 1) {
                         const tabs = el('div', null, 'hwprobe-tabs');
@@ -526,7 +544,11 @@
 
                     const viable = report.backends.filter(b => b.verdict === 'Viable').sort(byDropdown);
                     const available = section('Available');
+                    renderBrokenBackend(available, viable);
                     if (viable.length === 0) {
+                        if (restartRequired) {
+                            available.appendChild(restartPrompt());
+                        }
                         available.appendChild(el('p', 'None'));
                     } else {
                         available.appendChild(backendTable(viable.map(b => [b.type, b.device, tiers[b.tier] || ''])));
@@ -553,6 +575,36 @@
 
                     renderNotes();
                     results.appendChild(renderDetails(report));
+                    results.appendChild(renderReporting());
+                }
+
+                function renderReporting() {
+                    const div = el('div');
+                    const p = el('p', 'To report results for this hardware, attach the diagnostics zip to a GitHub issue. ');
+                    p.appendChild(el('span', 'The zip isn\u2019t anonymised: it holds file paths, user and host names from this server. Check it before sharing.', 'hwprobe-warn'));
+                    div.appendChild(p);
+                    const buttons = el('p');
+                    const download = action('Download diagnostics', () => {
+                        // ApiClient.ajax returns the raw response for a non-JSON request, with the session's token sent.
+                        ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Diagnostics') })
+                            .then(response => response.blob())
+                            .then(blob => {
+                                const a = document.createElement('a');
+                                a.href = URL.createObjectURL(blob);
+                                a.download = 'hwprobe-diagnostics.zip';
+                                a.click();
+                                setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+                            }, () => { messageText.textContent = 'Could not download diagnostics: run a probe first.'; })
+                            .then(() => { download.disabled = false; });
+                    });
+                    buttons.appendChild(download);
+                    buttons.appendChild(document.createTextNode(' '));
+                    const issue = el('a', 'Report on GitHub', 'button-link');
+                    issue.href = 'https://github.com/Rinn/jellyfin-plugin-hwprobe/issues/new?template=hardware-report.yml';
+                    issue.target = '_blank';
+                    buttons.appendChild(issue);
+                    div.appendChild(buttons);
+                    return div;
                 }
 
                 function loadReport() {

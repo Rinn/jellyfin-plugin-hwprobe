@@ -28,6 +28,18 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
         return json is null ? NotFound() : Content(json, "application/json");
     }
 
+    /// <summary>Returns a zip of the latest probe's report and ffmpeg logs, to attach to an issue.</summary>
+    /// <param name="cancellationToken">Cancels the check.</param>
+    /// <returns>The zip, or 404 when no probe has completed.</returns>
+    [HttpGet("Diagnostics")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> GetDiagnosticsAsync(CancellationToken cancellationToken)
+    {
+        var zip = await service.LatestDiagnosticsAsync(cancellationToken);
+        return zip is null ? NotFound() : File(zip, "application/zip", "hwprobe-diagnostics.zip");
+    }
+
     /// <summary>Returns whether a probe is running and how the last one ended.</summary>
     /// <returns>The status.</returns>
     [HttpGet("Status")]
@@ -59,7 +71,7 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     public async Task<ActionResult<ApplyResult>> ApplyAsync([FromBody] IReadOnlyList<SettingChange> changes, CancellationToken cancellationToken) =>
         ToResponse(await settings.ApplyAsync(changes, UserName(), cancellationToken));
 
-    /// <summary>Switches the hardware acceleration backend and device to one the latest report found working.</summary>
+    /// <summary>Switches the hardware acceleration backend and device to one the latest report found working, or to software (<c>none</c>).</summary>
     /// <param name="choice">The backend and device.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>The result, with <c>RestartRequired</c> set.</returns>

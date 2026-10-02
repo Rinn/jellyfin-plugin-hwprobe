@@ -119,6 +119,7 @@ check "config page" 200 "$(code "$base/web/ConfigurationPage?name=HwProbe" -H "$
 check "sidebar entry" "HwProbe developer_board" "$(curl -sf "$base/web/ConfigurationPages?enableInMainMenu=true" -H "$h" | json 'next((p["DisplayName"] + " " + p["MenuIcon"] for p in j if p["Name"]=="HwProbe"), "missing")')"
 check "report without token" 401 "$(code "$base/HwProbe/Report")"
 check "report before a probe" 404 "$(code "$base/HwProbe/Report" -H "$h")"
+check "diagnostics before a probe" 404 "$(code "$base/HwProbe/Diagnostics" -H "$h")"
 check "start probe" 202 "$(code -X POST "$base/HwProbe/Run" -H "$h")"
 
 # A probe on real hardware runs the full matrix, which takes minutes.
@@ -136,6 +137,8 @@ printf "%s" "$report" | json '"\n".join("      %-8s %-8s %-12s %s" % (b["type"],
 check "report schema" 3 "$(printf "%s" "$report" | json 'j["schemaVersion"]')"
 check "ffmpeg source" Server "$(printf "%s" "$report" | json 'j["ffmpeg"]["source"]')"
 check "backends reported" True "$(printf "%s" "$report" | json 'len(j["backends"]) > 0')"
+curl -sf "$base/HwProbe/Diagnostics" -H "$h" -o "$work/diagnostics.zip"
+check "diagnostics zip" True "$(python3 -c "import sys,zipfile; n=zipfile.ZipFile(sys.argv[1]).namelist(); print('report.json' in n and 'ffmpeg/version.txt' in n and any(x.startswith('stderr/') for x in n))" "$work/diagnostics.zip")"
 check "every failure has a remedy" True "$(printf "%s" "$report" | json 'all(b["hint"] for b in j["backends"] if b["verdict"] != "Viable")')"
 
 before="$(curl -sf "$base/System/Configuration/encoding" -H "$h")"

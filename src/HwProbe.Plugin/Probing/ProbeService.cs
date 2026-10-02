@@ -1,5 +1,6 @@
 using Jellyfin.Plugin.HwProbe.Configuration;
 using Jellyfin.Plugin.HwProbe.Core.Devices;
+using Jellyfin.Plugin.HwProbe.Core.Diagnostics;
 using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
@@ -34,7 +35,7 @@ public sealed class ProbeService : IDisposable
     /// <param name="logger">Logger.</param>
     public ProbeService(IArgumentSourceFactory arguments, IMediaEncoder mediaEncoder, IApplicationPaths paths, ISessionManager sessions, ServerEnvironmentBaseline baseline, ILogger<ProbeService> logger)
         : this(
-            ct => RunEngineAsync(arguments, mediaEncoder, paths, baseline, ct),
+            ct => RunEngineAsync(arguments, mediaEncoder, paths, baseline, logger, ct),
             TranscodingCheck(sessions),
             LatestPath(paths),
             TimeProvider.System,
@@ -63,6 +64,9 @@ public sealed class ProbeService : IDisposable
 
     /// <summary>Gets the current status.</summary>
     public ProbeStatus Status => _status;
+
+    /// <summary>Gets where the latest probe's diagnostics zip is saved.</summary>
+    internal string DiagnosticsPath => DiagnosticsPathFor(_latestPath);
 
     /// <summary>Gets the ffmpeg path and version the server uses now, or null not to compare them.</summary>
     internal Func<(string Path, Version? Version)>? CurrentFfmpeg { get; init; }
@@ -128,6 +132,32 @@ public sealed class ProbeService : IDisposable
         return report?.HwProbeVersion == CapabilityReport.CurrentHwProbeVersion && IsCurrentFfmpeg(report.Ffmpeg) ? json : null;
     }
 
+    /// <summary>Returns the latest probe's diagnostics zip, if it was made by the probe that wrote the report shown.</summary>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The zip, or null when there's none, <see cref="LatestJsonAsync"/> returns null, or the zip is from another probe.</returns>
+    /// <remarks>The zip and report are saved separately, so either can be left from an earlier probe when the other fails to save.</remarks>
+    public async Task<byte[]?> LatestDiagnosticsAsync(CancellationToken cancellationToken)
+    {
+        if (!File.Exists(DiagnosticsPath) || await LatestJsonAsync(cancellationToken) is not { } json)
+        {
+            return null;
+        }
+
+        byte[] bytes;
+        try
+        {
+            bytes = await File.ReadAllBytesAsync(DiagnosticsPath, cancellationToken);
+        }
+        catch (FileNotFoundException)
+        {
+            return null;
+        }
+
+        var latest = ReportStore.Deserialize(json);
+        var bundled = await DiagnosticsBundle.ReadReportAsync(bytes, cancellationToken);
+        return bundled is not null && bundled.GeneratedUtc == latest?.GeneratedUtc ? bytes : null;
+    }
+
     /// <inheritdoc/>
     public void Dispose() => _gate.Dispose();
 
@@ -149,14 +179,20 @@ public sealed class ProbeService : IDisposable
         return Path.Combine(paths.DataPath, "hwprobe", "latest.json");
     }
 
-    /// <summary>Runs the probe engine against the server's ffmpeg.</summary>
+    /// <summary>Returns where the diagnostics zip is saved, beside the report.</summary>
+    /// <param name="latestPath">Where the report is saved.</param>
+    /// <returns>The file path.</returns>
+    private static string DiagnosticsPathFor(string latestPath) => Path.Combine(Path.GetDirectoryName(latestPath)!, "diagnostics.zip");
+
+    /// <summary>Runs the probe engine against the server's ffmpeg, and saves a diagnostics zip of its launches.</summary>
     /// <param name="arguments">Argument source factory.</param>
     /// <param name="mediaEncoder">The server's media encoder.</param>
     /// <param name="paths">Server paths.</param>
     /// <param name="baseline">Environment values captured when the plugin loaded.</param>
+    /// <param name="logger">Logs a zip that couldn't be saved.</param>
     /// <param name="cancellationToken">Cancels the probe.</param>
     /// <returns>The report.</returns>
-    private static async Task<CapabilityReport> RunEngineAsync(IArgumentSourceFactory arguments, IMediaEncoder mediaEncoder, IApplicationPaths paths, ServerEnvironmentBaseline baseline, CancellationToken cancellationToken)
+    private static async Task<CapabilityReport> RunEngineAsync(IArgumentSourceFactory arguments, IMediaEncoder mediaEncoder, IApplicationPaths paths, ServerEnvironmentBaseline baseline, ILogger logger, CancellationToken cancellationToken)
     {
         var config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
         var root = Path.Combine(paths.CachePath, "hwprobe");
@@ -172,8 +208,24 @@ public sealed class ProbeService : IDisposable
             Refresh: true);
 
         var environment = EnvironmentRules.InServer(baseline.Values, new Dictionary<string, string>());
-        using var engine = new ProbeEngine(new FfmpegRunner(), arguments, new HostPlatform(), TimeProvider.System, environment);
-        return await engine.RunAsync(options, cancellationToken);
+        var recorder = new RecordingFfmpegRunner(new FfmpegRunner());
+        CapabilityReport report;
+        using (var engine = new ProbeEngine(recorder, arguments, new HostPlatform(), TimeProvider.System, environment))
+        {
+            report = await engine.RunAsync(options, cancellationToken);
+        }
+
+        try
+        {
+            await DiagnosticsBundle.WriteAsync(DiagnosticsPathFor(LatestPath(paths)), report, recorder.Runs, cancellationToken);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // The report matters more than its logs.
+            Log.DiagnosticsFailed(logger, ex);
+        }
+
+        return report;
     }
 
     /// <summary>Reports whether a report's ffmpeg is the one the server uses now.</summary>
