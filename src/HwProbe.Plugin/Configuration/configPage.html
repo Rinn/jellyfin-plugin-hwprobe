@@ -514,8 +514,8 @@
                         return;
                     }
                     const warning = el('p', null, 'hwprobe-warn');
-                    warning.appendChild(document.createTextNode('Jellyfin is set to use ' + (names[type] || type) + ', which didn\u2019t work in the last probe. Transcodes that use it can fail. '));
-                    warning.appendChild(action('Use software (None)', () => post('HwProbe/UseBackend', { Type: 'none', Device: '' })));
+                    warning.appendChild(document.createTextNode('Didn\u2019t work in the last probe; transcodes that use it can fail. '));
+                    warning.appendChild(action('Switch to None', () => post('HwProbe/UseBackend', { Type: 'none', Device: '' })));
                     container.appendChild(warning);
                 }
 
@@ -618,13 +618,13 @@
                     const top = el('div', null, 'hwprobe-card-row');
                     const title = el('div', null, 'hwprobe-card-title');
                     if (!encoding) {
-                        title.textContent = 'Jellyfin settings unavailable';
+                        title.textContent = 'Hardware acceleration: unknown (Jellyfin\u2019s settings didn\u2019t load)';
                     } else if (!type || type === 'none') {
-                        title.textContent = 'Jellyfin uses software (no hardware acceleration)';
+                        title.textContent = 'Hardware acceleration: None';
                     } else {
                         const entry = report && report.backends.find(isConfigured);
                         const device = type === 'vaapi' ? encoding.VaapiDevice : (type === 'qsv' ? encoding.QsvDevice : '');
-                        title.appendChild(document.createTextNode('Jellyfin uses ' + (names[type] || type) + (device ? ' ' + device : '') + '  '));
+                        title.appendChild(document.createTextNode('Hardware acceleration: ' + (names[type] || type) + (device ? ' ' + device : '') + '  '));
                         if (entry && entry.verdict === 'Viable') {
                             title.appendChild(el('span', '\u2713 works', 'hwprobe-on'));
                             title.appendChild(el('span', '  ' + (tiers[entry.tier] || ''), 'hwprobe-reason'));
