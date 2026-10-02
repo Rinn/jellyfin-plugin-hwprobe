@@ -37,6 +37,7 @@ public sealed class SettingsService : IDisposable
     private readonly TimeProvider _time;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private bool _restartRequired;
 
     /// <summary>Initializes a new instance of the <see cref="SettingsService"/> class from server services.</summary>
     /// <param name="config">The server's configuration manager.</param>
@@ -77,6 +78,10 @@ public sealed class SettingsService : IDisposable
         _time = time;
         _logger = logger;
     }
+
+    /// <summary>Gets a value indicating whether HwProbe changed the backend or device since Jellyfin started.</summary>
+    /// <remarks>Kept in memory, so restarting Jellyfin clears it.</remarks>
+    public bool RestartRequired => _restartRequired;
 
     /// <summary>Applies options from the advice for the backend the server is configured to use.</summary>
     /// <param name="changes">The options and values; each must match the latest report's advice.</param>
@@ -298,10 +303,9 @@ public sealed class SettingsService : IDisposable
         }
 
         await WriteHistoryAsync(history, cancellationToken);
-        return new ApplyResult(ApplyOutcome.Applied, changed, null)
-        {
-            RestartRequired = changed.Any(c => _restartKeys.Contains(c.Setting)),
-        };
+        var restart = changed.Any(c => _restartKeys.Contains(c.Setting));
+        _restartRequired |= restart;
+        return new ApplyResult(ApplyOutcome.Applied, changed, null) { RestartRequired = restart };
     }
 
     /// <summary>Reads the history file.</summary>

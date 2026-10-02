@@ -77,6 +77,12 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     public async Task<ActionResult<ApplyResult>> RevertAsync(CancellationToken cancellationToken) =>
         ToResponse(await settings.RevertAsync(UserName(), cancellationToken));
 
+    /// <summary>Returns whether a backend or device change since Jellyfin started still needs a restart.</summary>
+    /// <returns>True until Jellyfin restarts.</returns>
+    [HttpGet("RestartRequired")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<bool> RestartRequired() => settings.RestartRequired;
+
     /// <summary>Returns every change HwProbe made, oldest first.</summary>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The history.</returns>
