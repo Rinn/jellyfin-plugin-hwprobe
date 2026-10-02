@@ -4,7 +4,7 @@
     "versions": [
       {
         "version": "0.3.0.0",
-        "changelog": "Advice for trickplay hardware decoding, MJPEG encoding and key-frame-only extraction, enhanced NVDEC and BWDIF deinterlacing; notes now say when Jellyfin, not the GPU, uses software; HEVC RExt tested in 4:2:2 and 4:4:4; NVIDIA and V4L2 confirmed on real hardware.",
+        "changelog": "Advice for trickplay (hardware decoding, MJPEG encoding, key frames only), enhanced NVDEC and BWDIF deinterlacing. Says when Jellyfin, not the GPU, uses software. Tests HEVC RExt in both 4:2:2 and 4:4:4. NVIDIA and V4L2 checked on real hardware.",
         "targetAbi": "12.1.0.0",
         "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.3.0/hwprobe-plugin_0.3.0.0.zip",
         "checksum": "ef04e64064583b556945c2726e4b213d",
@@ -12,7 +12,7 @@
       },
       {
         "version": "0.2.6.0",
-        "changelog": "Probe no longer starts during playback right after a client logs in again; the scheduled task no longer fails when the server is busy.",
+        "changelog": "A probe no longer starts during playback just after a client logs in again. The scheduled task no longer fails when the server is busy.",
         "targetAbi": "12.1.0.0",
         "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.2.6/hwprobe-plugin_0.2.6.0.zip",
         "checksum": "3fec6a47088490de662cadde5adf6378",
@@ -20,7 +20,7 @@
       },
       {
         "version": "0.2.4.0",
-        "changelog": "HwProbe in the dashboard sidebar; plugin icon and catalog image.",
+        "changelog": "HwProbe in the dashboard sidebar. Plugin icon and catalog image.",
         "targetAbi": "12.1.0.0",
         "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.2.4/hwprobe-plugin_0.2.4.0.zip",
         "checksum": "aedabaa29469d5e57480183970246187",
@@ -36,7 +36,7 @@
       },
       {
         "version": "0.2.2.0",
-        "changelog": "A render node the user can't open is reported as PermissionDenied with the render-group fix.",
+        "changelog": "Says when Jellyfin can't open the GPU because of permissions, and how to fix it.",
         "targetAbi": "12.1.0.0",
         "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.2.2/hwprobe-plugin_0.2.2.0.zip",
         "checksum": "915ad296d48c6d07bc59c40100ab1c38",
@@ -44,7 +44,7 @@
       },
       {
         "version": "0.2.1.0",
-        "changelog": "Restart button after a backend change; test clips download or retry when they can't be generated.",
+        "changelog": "Restart button after switching backend. Test clips are downloaded or retried when they can't be made.",
         "targetAbi": "12.1.0.0",
         "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.2.1/hwprobe-plugin_0.2.1.0.zip",
         "checksum": "dd7b9e4f734143438aa082e898d63978",
@@ -52,7 +52,7 @@
       },
       {
         "version": "0.2.0.0",
-        "changelog": "Apply settings from the plugin page.",
+        "changelog": "Apply and revert settings from the plugin page.",
         "targetAbi": "12.1.0.0",
         "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.2.0/hwprobe-plugin_0.2.0.0.zip",
         "checksum": "e2ef997f853169be62e97ead3cc51389",
@@ -60,7 +60,7 @@
       },
       {
         "version": "0.1.1.0",
-        "changelog": "Every assembly carries the release version; reproducible builds.",
+        "changelog": "Reproducible builds.",
         "targetAbi": "12.1.0.0",
         "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.1.1/hwprobe-plugin_0.1.1.0.zip",
         "checksum": "28d72100d9fafdc9a927b1e4271f5fcc",
