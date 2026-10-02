@@ -75,7 +75,7 @@ public sealed class SettingsAdvisorTests
     [InlineData("VP9 10bit", SettingState.LeaveOff, "Not supported by this GPU")]
     [InlineData("Prefer OS native DXVA or VA-API hardware decoders", SettingState.TurnOn, "")]
     [InlineData("Enable Intel Low-Power H.264 hardware encoder", SettingState.TurnOn, "")]
-    [InlineData("Enable Intel Low-Power HEVC hardware encoder", SettingState.LeaveOff, "Not supported by this GPU")]
+    [InlineData("Enable Intel Low-Power HEVC hardware encoder", SettingState.LeaveOff, "Needs HuC firmware")]
     [InlineData("Allow encoding in AV1 format", SettingState.LeaveOff, "Not supported by this GPU")]
     [InlineData("Enable Tone mapping", SettingState.TurnOn, "")]
     [InlineData("Enable VPP Tone mapping", SettingState.LeaveOff, "Test failed")]
@@ -148,8 +148,11 @@ public sealed class SettingsAdvisorTests
 
         var advice = SettingsAdvisor.For(_apolloLakeQsv with { Encode = encode }, _docker with { IntelLowPower = support });
 
-        Assert.Equal(h264Fix ? "Gen 9+: Enable HuC firmware" : null, Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerH264HwEncoder").Fix?.Action);
-        Assert.Equal(hevcFix ? "Gen 11+: Enable HuC firmware" : null, Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerHevcHwEncoder").Fix?.Action);
+        var h264 = Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerH264HwEncoder");
+        var hevc = Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerHevcHwEncoder");
+
+        Assert.Equal(h264Fix ? ("Gen 9+: Enable HuC firmware", "Needs HuC firmware") : (null, "Not supported by this GPU"), (h264.Fix?.Action, h264.Note));
+        Assert.Equal(hevcFix ? ("Gen 11+: Enable HuC firmware", "Needs HuC firmware") : (null, "Not supported by this GPU"), (hevc.Fix?.Action, hevc.Note));
     }
 
     /// <summary>Each backend gets the options its Transcoding page shows, and a backend that doesn't work gets none.</summary>
