@@ -16,6 +16,7 @@ public static class SettingsAdvisor
     private const string EncodingSection = "Hardware encoding options";
     private const string FormatSection = "Encoding format options";
     private const string TonemapSection = "Tone mapping";
+    private const string SubtitleSection = "Subtitles";
     private const string NotTested = "Not tested";
 
     // codecs.ts CODECS: the decoding checkboxes and the backends that show each one.
@@ -115,6 +116,7 @@ public static class SettingsAdvisor
             advice.Add(Tonemap(backend, "EnableVideoToolboxTonemapping", "Enable VideoToolbox Tone mapping"));
         }
 
+        advice.Add(SubtitleExtraction(backend));
         return advice;
     }
 
@@ -188,6 +190,20 @@ public static class SettingsAdvisor
     /// <returns>The outcome, or null when the cell wasn't tested.</returns>
     private static ProbeOutcome? Cell(IReadOnlyDictionary<string, ProbeOutcome> cells, string key) =>
         cells.TryGetValue(key, out var outcome) ? outcome : null;
+
+    /// <summary>Advice for "Allow subtitle extraction on the fly", the reverse of the burn-in result.</summary>
+    /// <param name="backend">The backend's results.</param>
+    /// <returns>Leave off when burn-in works on the GPU; turn on when it fails.</returns>
+    /// <remarks>jellyfin-web's help for the option: "Disable this to have embedded subtitles burned in with video transcoding".</remarks>
+    private static SettingAdvice SubtitleExtraction(BackendReport backend)
+    {
+        const string Setting = "EnableSubtitleExtraction";
+        const string Label = "Allow subtitle extraction on the fly";
+        var values = backend.Subtitles.Values.ToList();
+        return values.Count == 0 ? new(SubtitleSection, Setting, Label, SettingState.NotTested, NotTested)
+            : values.Contains(ProbeOutcome.Pass) ? new(SubtitleSection, Setting, Label, SettingState.LeaveOff, "Burn-in works on the GPU")
+            : new(SubtitleSection, Setting, Label, SettingState.TurnOn, "Burn-in failed");
+    }
 
     /// <summary>Names a decode cell the way the Transcoding page does.</summary>
     /// <param name="cell">The cell key, e.g. <c>hevc_10bit</c>.</param>

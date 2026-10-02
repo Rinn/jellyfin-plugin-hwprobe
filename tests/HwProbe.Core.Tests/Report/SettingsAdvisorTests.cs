@@ -60,6 +60,7 @@ public sealed class SettingsAdvisorTests
                 "Enable hardware encoding", "Enable Intel Low-Power H.264 hardware encoder", "Enable Intel Low-Power HEVC hardware encoder",
                 "Allow encoding in HEVC format", "Allow encoding in AV1 format",
                 "Enable Tone mapping", "Enable VPP Tone mapping",
+                "Allow subtitle extraction on the fly",
             ],
             labels);
     }
@@ -105,6 +106,26 @@ public sealed class SettingsAdvisorTests
         Assert.Equal(SettingState.NotTested, Assert.Single(advice, a => a.Setting == "EnableTonemapping").State);
         Assert.Equal("Needs HEVC 10bit decoding", Assert.Single(advice, a => a.Setting == "EnableTonemapping").Note);
         Assert.Equal(SettingState.NotTested, Assert.Single(advice, a => a.Setting == "HardwareDecodingCodecs:h264").State);
+    }
+
+    /// <summary>Subtitle extraction is the reverse of burn-in: off when burn-in works on the GPU, on when it fails.</summary>
+    /// <param name="burnIn">The burn-in result, or null for untested.</param>
+    /// <param name="state">The expected advice.</param>
+    [Theory]
+    [InlineData(ProbeOutcome.Pass, SettingState.LeaveOff)]
+    [InlineData(ProbeOutcome.FilterUnsupported, SettingState.TurnOn)]
+    [InlineData(null, SettingState.NotTested)]
+    public void SubtitleExtractionReversesBurnIn(ProbeOutcome? burnIn, SettingState state)
+    {
+        Dictionary<string, ProbeOutcome> subtitles = [];
+        if (burnIn is { } outcome)
+        {
+            subtitles["text"] = outcome;
+        }
+
+        var advice = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Subtitles = subtitles }, _docker), a => a.Setting == "EnableSubtitleExtraction");
+
+        Assert.Equal(state, advice.State);
     }
 
     /// <summary>Codecs the Transcoding page doesn't show for the backend are hidden and left off.</summary>

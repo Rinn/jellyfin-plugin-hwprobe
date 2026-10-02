@@ -26,6 +26,7 @@ public static class EncodingSettings
         [nameof(EncodingOptions.EnableTonemapping)] = (o => o.EnableTonemapping, (o, v) => o.EnableTonemapping = v),
         [nameof(EncodingOptions.EnableVppTonemapping)] = (o => o.EnableVppTonemapping, (o, v) => o.EnableVppTonemapping = v),
         [nameof(EncodingOptions.EnableVideoToolboxTonemapping)] = (o => o.EnableVideoToolboxTonemapping, (o, v) => o.EnableVideoToolboxTonemapping = v),
+        [nameof(EncodingOptions.EnableSubtitleExtraction)] = (o => o.EnableSubtitleExtraction, (o, v) => o.EnableSubtitleExtraction = v),
     };
 
     /// <summary>Reports whether a key names a value HwProbe may change.</summary>
