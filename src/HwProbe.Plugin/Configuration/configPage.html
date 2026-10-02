@@ -1127,7 +1127,12 @@
                     scroll.appendChild(table);
                     div.appendChild(scroll);
 
-                    footnotes.forEach((note, i) => div.appendChild(el('div', (i + 1) + ' ' + note, 'fieldDescription')));
+                    footnotes.forEach((note, i) => {
+                        const line = el('div', null, 'fieldDescription');
+                        line.appendChild(el('sup', String(i + 1)));
+                        line.appendChild(document.createTextNode(' ' + note));
+                        div.appendChild(line);
+                    });
                     const streamsLegend = counted
                         ? 'Concurrent streams: how many of that transcode the backend keeps up with when run together (16+ is the most measured). '
                         : 'Fast accuracy doesn\u2019t count concurrent streams; Standard and Thorough run transcodes together to count them. ';
