@@ -8,12 +8,12 @@ vars:
   audioOut: -map 0:v -map 1:a -c:a copy
   sampleAudio: -c:a aac -ac 2 -b:a 192k
   hdr10: -color_primaries bt2020 -color_trc smpte2084 -colorspace bt2020nc
-  testSource: "{quiet} -f lavfi -i testsrc2=size=1920x1080:rate=24 {audio} -t 30"
+  testSource: "{quiet} -f lavfi -i testsrc2=size=1920x1080:rate=24 {audio} -t 10"
   x265: -c:v libx265 -preset medium -x265-params log-level=error
 
 # Shared fields, merged into entries below with <<.
 templates:
-  # Clips are 30 s, as long as the samples, and looped with -stream_loop for longer runs. Encoded at about each encoder's middle preset, as typical files are, kept within minutes on a small CPU: VP9 realtime, SVT-AV1 9, and HEVC fast at 4K.
+  # Clips are 10 s, as long as one copy's run, and looped with -stream_loop for longer runs. Encoded at each encoder's middle preset, as typical files are.
   # Test videos carry 5.1 AAC, as films usually do, so the audio Jellyfin encodes (and its VBR setting) is part of the cost.
   testVideo: &testVideo
     frameRate: 24
@@ -33,7 +33,7 @@ templates:
     keepAcrossBuilds: true
 
 # The 5.1 AAC track every test video copies, made once (a 440 Hz tone).
-testAudio: { file: speed_audio_51.mka, codec: aac, encoder: aac, arguments: "{quiet} -f lavfi -i sine=frequency=440:sample_rate=48000 -t 30 -ac 6 -c:a aac -b:a 384k" }
+testAudio: { file: speed_audio_51.mka, codec: aac, encoder: aac, arguments: "{quiet} -f lavfi -i sine=frequency=440:sample_rate=48000 -t 10 -ac 6 -c:a aac -b:a 384k" }
 
 # Every video, in the order the page lists them; the library video is added from a chosen file.
 videos:
@@ -52,24 +52,24 @@ videos:
   - <<: *testVideo
     key: pattern-vp9
     name: Test video, VP9
-    clip: { file: speed_1080p_vp9.mkv, codec: vp9, bitDepth: 8, encoder: libvpx-vp9, arguments: "{testSource} -c:v libvpx-vp9 -deadline realtime -cpu-used 5 -row-mt 1 -b:v 4M -pix_fmt yuv420p {audioOut}", generateMinutes: 10 }
+    clip: { file: speed_1080p_vp9.mkv, codec: vp9, bitDepth: 8, encoder: libvpx-vp9, arguments: "{testSource} -c:v libvpx-vp9 -deadline good -cpu-used 4 -row-mt 1 -b:v 4M -pix_fmt yuv420p {audioOut}", generateMinutes: 10 }
   - <<: *testVideo
     key: pattern-av1
     name: Test video, AV1
     # SVT-AV1 runs its C code, as the matrix clips do.
-    clip: { file: speed_1080p_av1.mkv, codec: av1, bitDepth: 8, encoder: libsvtav1, arguments: "{testSource} -c:v libsvtav1 -preset 9 -svtav1-params asm=c -pix_fmt yuv420p {audioOut}", generateMinutes: 10 }
+    clip: { file: speed_1080p_av1.mkv, codec: av1, bitDepth: 8, encoder: libsvtav1, arguments: "{testSource} -c:v libsvtav1 -preset 8 -svtav1-params asm=c -pix_fmt yuv420p {audioOut}", generateMinutes: 10 }
   - <<: *testVideo
     key: pattern-1080i
     name: Test video, interlaced
     frameRate: 25
     # Top field first.
-    clip: { file: speed_1080i_h264.mkv, codec: h264, bitDepth: 8, encoder: libx264, interlaced: true, arguments: "{quiet} -f lavfi -i testsrc2=size=1920x1080:rate=25 {audio} -t 30 -vf setfield=tff -c:v libx264 -preset medium -flags +ildct+ilme -x264-params tff=1 -pix_fmt yuv420p {audioOut}", generateMinutes: 10 }
+    clip: { file: speed_1080i_h264.mkv, codec: h264, bitDepth: 8, encoder: libx264, interlaced: true, arguments: "{quiet} -f lavfi -i testsrc2=size=1920x1080:rate=25 {audio} -t 10 -vf setfield=tff -c:v libx264 -preset medium -flags +ildct+ilme -x264-params tff=1 -pix_fmt yuv420p {audioOut}", generateMinutes: 10 }
   - <<: *testVideo
     key: pattern-4k-hdr
     name: Test video, 4K HDR
     width: 3840
     height: 2160
-    clip: { file: speed_2160p_hdr10.mkv, codec: hevc, bitDepth: 10, hdr10: true, encoder: libx265, arguments: "{quiet} -f lavfi -i testsrc2=size=3840x2160:rate=24 {audio} -t 30 -c:v libx265 -preset fast -x265-params log-level=error -pix_fmt yuv420p10le {hdr10} {audioOut}", generateMinutes: 10 }
+    clip: { file: speed_2160p_hdr10.mkv, codec: hevc, bitDepth: 10, hdr10: true, encoder: libx265, arguments: "{quiet} -f lavfi -i testsrc2=size=3840x2160:rate=24 {audio} -t 10 {x265} -pix_fmt yuv420p10le {hdr10} {audioOut}", generateMinutes: 10 }
   - <<: *sampleVideo
     key: live-action
     name: Live-action + CGI
