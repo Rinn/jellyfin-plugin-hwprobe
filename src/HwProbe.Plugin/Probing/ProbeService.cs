@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text.RegularExpressions;
 using Jellyfin.Plugin.HwProbe.Configuration;
 using Jellyfin.Plugin.HwProbe.Core.Devices;
 using Jellyfin.Plugin.HwProbe.Core.Diagnostics;
@@ -18,8 +20,11 @@ using Microsoft.Extensions.Logging;
 namespace Jellyfin.Plugin.HwProbe.Probing;
 
 /// <summary>Runs one probe at a time inside the server and keeps the latest report.</summary>
-public sealed class ProbeService : IDisposable
+public sealed partial class ProbeService : IDisposable
 {
+    /// <summary>The most speed runs kept in the history.</summary>
+    internal const int SpeedHistoryLimit = 50;
+
     private readonly Func<CancellationToken, Task<CapabilityReport>> _probe;
     private readonly Func<bool> _isTranscoding;
     private readonly string _latestPath;
@@ -83,6 +88,9 @@ public sealed class ProbeService : IDisposable
 
     /// <summary>Gets where the latest speed report is saved.</summary>
     internal string SpeedPath => Path.Combine(Path.GetDirectoryName(_latestPath)!, "speed.json");
+
+    /// <summary>Gets where every speed run is kept.</summary>
+    internal string SpeedHistoryDirectory => Path.Combine(Path.GetDirectoryName(_latestPath)!, "speed-history");
 
     /// <summary>Gets the speed run, or null when this service can't measure speed.</summary>
     internal Func<SpeedOptions, IReadOnlyCollection<(HwType Type, string Device)>, IProgress<(int Done, int Total)>, CancellationToken, Task<SpeedReport>>? MeasureSpeed { get; init; }
@@ -243,6 +251,47 @@ public sealed class ProbeService : IDisposable
         return bundled is not null && bundled.GeneratedUtc == latest?.GeneratedUtc ? bytes : null;
     }
 
+    /// <summary>Lists the saved speed runs, newest first.</summary>
+    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <returns>The runs; unreadable files are left out.</returns>
+    public async Task<IReadOnlyList<SpeedHistoryEntry>> SpeedHistoryAsync(CancellationToken cancellationToken)
+    {
+        if (!Directory.Exists(SpeedHistoryDirectory))
+        {
+            return [];
+        }
+
+        List<SpeedHistoryEntry> entries = [];
+        foreach (var file in Directory.EnumerateFiles(SpeedHistoryDirectory, "*.json").Order(StringComparer.Ordinal).Reverse())
+        {
+            if (SpeedReportStore.Deserialize(await File.ReadAllTextAsync(file, cancellationToken)) is { } report)
+            {
+                var current = report.HwProbeVersion == CapabilityReport.CurrentHwProbeVersion && IsCurrentFfmpeg(report.Ffmpeg);
+                entries.Add(new SpeedHistoryEntry(Path.GetFileNameWithoutExtension(file), report.GeneratedUtc, report.Method.ToString(), report.Results.Select(r => r.Test).Distinct(StringComparer.Ordinal).Count(), current));
+            }
+        }
+
+        return entries;
+    }
+
+    /// <summary>Returns one saved speed run as JSON.</summary>
+    /// <param name="id">The run, as <see cref="SpeedHistoryAsync"/> lists it.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The JSON, or null for an unknown run.</returns>
+    public async Task<string?> SpeedHistoryJsonAsync(string id, CancellationToken cancellationToken)
+    {
+        // Only names this service writes, so the ID can't reach outside the folder.
+        if (string.IsNullOrEmpty(id) || !HistoryId().IsMatch(id))
+        {
+            return null;
+        }
+
+        var path = Directory.Exists(SpeedHistoryDirectory)
+            ? Directory.EnumerateFiles(SpeedHistoryDirectory, "*.json").FirstOrDefault(f => Path.GetFileNameWithoutExtension(f) == id)
+            : null;
+        return path is null ? null : await File.ReadAllTextAsync(path, cancellationToken);
+    }
+
     /// <summary>Returns the size of the test clips and samples cached for probes and speed runs.</summary>
     /// <returns>Bytes and files; zero when nothing is cached.</returns>
     public CacheSize FixtureCacheSize()
@@ -335,6 +384,11 @@ public sealed class ProbeService : IDisposable
         Tonemap = options.EnableTonemapping,
         EncodingThreadCount = options.EncodingThreadCount,
     };
+
+    /// <summary>Matches a history ID: the UTC time a run finished.</summary>
+    /// <returns>The pattern.</returns>
+    [GeneratedRegex(@"^\d{8}T\d{6}Z$")]
+    private static partial Regex HistoryId();
 
     /// <summary>Returns a check for any session that is transcoding.</summary>
     /// <param name="sessions">The session manager.</param>
@@ -495,6 +549,19 @@ public sealed class ProbeService : IDisposable
         }
     }
 
+    /// <summary>Keeps a speed run in the history, dropping the oldest beyond <see cref="SpeedHistoryLimit"/>.</summary>
+    /// <param name="report">The run.</param>
+    /// <returns>A task that completes when it's saved.</returns>
+    private async Task SaveSpeedHistoryAsync(SpeedReport report)
+    {
+        var id = report.GeneratedUtc.UtcDateTime.ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
+        await SpeedReportStore.WriteAsync(report, Path.Combine(SpeedHistoryDirectory, id + ".json"), CancellationToken.None);
+        foreach (var old in Directory.EnumerateFiles(SpeedHistoryDirectory, "*.json").Order(StringComparer.Ordinal).Reverse().Skip(SpeedHistoryLimit))
+        {
+            File.Delete(old);
+        }
+    }
+
     /// <summary>Runs a speed measurement; the caller already holds the gate, which this releases.</summary>
     /// <param name="measure">The speed run.</param>
     /// <param name="speed">What to measure.</param>
@@ -511,6 +578,7 @@ public sealed class ProbeService : IDisposable
             var progress = new DirectProgress(p => _status = _status with { Done = p.Done, Total = p.Total });
             var report = await measure(speed, backends, progress, CancellationToken.None);
             await SpeedReportStore.WriteAsync(report, SpeedPath, CancellationToken.None);
+            await SaveSpeedHistoryAsync(report);
             Log.SpeedCompleted(_logger, report.Results.Count);
             return ProbeRunResult.Completed;
         }

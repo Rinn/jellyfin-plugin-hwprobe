@@ -127,6 +127,11 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal(ProbeActivity.Speed, service.Status.Activity);
         Assert.Null(service.Status.Total);
         Assert.Equal(12, SpeedReportStore.Deserialize((await service.LatestSpeedJsonAsync(ct))!)!.Results[0].Streams);
+
+        var history = await service.SpeedHistoryAsync(ct);
+        Assert.Equal([("19700101T000000Z", "Full", 1, true)], history.Select(h => (h.Id, h.Method, h.Tests, h.Current)));
+        Assert.NotNull(await service.SpeedHistoryJsonAsync("19700101T000000Z", ct));
+        Assert.Null(await service.SpeedHistoryJsonAsync("../latest", ct));
     }
 
     /// <summary>A speed report from another HwProbe version isn't shown.</summary>

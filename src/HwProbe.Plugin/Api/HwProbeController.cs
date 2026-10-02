@@ -95,6 +95,24 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     public ActionResult<IReadOnlyList<SpeedTestInfo>> SpeedFileTests([FromQuery] Guid itemId) =>
         service.FindFile(itemId) is { } file ? Ok(Core.Speed.SpeedFileTests.For(file).Select(SpeedTestInfo.From).ToList()) : NotFound();
 
+    /// <summary>Lists the saved speed runs, newest first.</summary>
+    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <returns>The runs.</returns>
+    [HttpGet("SpeedHistory")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<SpeedHistoryEntry>>> SpeedHistoryAsync(CancellationToken cancellationToken) =>
+        Ok(await service.SpeedHistoryAsync(cancellationToken));
+
+    /// <summary>Returns one saved speed run.</summary>
+    /// <param name="id">The run.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The speed report JSON, or 404.</returns>
+    [HttpGet("SpeedHistory/{id}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> SpeedHistoryRunAsync([FromRoute] string id, CancellationToken cancellationToken) =>
+        await service.SpeedHistoryJsonAsync(id, cancellationToken) is { } json ? Content(json, "application/json") : NotFound();
+
     /// <summary>Returns the size of the cached test clips and samples.</summary>
     /// <returns>Bytes and files.</returns>
     [HttpGet("Cache")]
