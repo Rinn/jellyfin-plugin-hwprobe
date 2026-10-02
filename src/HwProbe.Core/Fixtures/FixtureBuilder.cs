@@ -168,14 +168,14 @@ public sealed class FixtureBuilder
             return new FixtureResult(spec, FixtureStatus.Untested, null, spec.UntestedReason);
         }
 
-        if (spec.DownloadUrl is { } url)
+        if (spec.RequiredEncoder is null && spec.DownloadUrl is { } url)
         {
-            return await DownloadAsync(spec, url, Path.Combine(_downloadDirectory, spec.Sha256 + Path.GetExtension(spec.FileName)), cancellationToken);
+            return await DownloadAsync(spec, url, cancellationToken);
         }
 
         if (spec.RequiredEncoder is { } encoder && !availableEncoders.Contains(encoder))
         {
-            return new FixtureResult(spec, FixtureStatus.Skipped, null, $"software encoder {encoder} is not in this ffmpeg build");
+            return await OrDownloadAsync(spec, new FixtureResult(spec, FixtureStatus.Skipped, null, $"software encoder {encoder} is not in this ffmpeg build"), cancellationToken);
         }
 
         var path = Path.Combine(directory, spec.FileName);
@@ -184,17 +184,35 @@ public sealed class FixtureBuilder
             return new FixtureResult(spec, FixtureStatus.Available, path, null);
         }
 
-        return await GenerateAsync(spec, path, cancellationToken);
+        var generated = await GenerateAsync(spec, path, cancellationToken);
+        return generated.Status == FixtureStatus.Available ? generated : await OrDownloadAsync(spec, generated, cancellationToken);
+    }
+
+    /// <summary>Falls back to the spec's pinned sample when the clip couldn't be generated.</summary>
+    /// <param name="spec">The fixture.</param>
+    /// <param name="failure">Why it couldn't be generated.</param>
+    /// <param name="cancellationToken">Cancels the download.</param>
+    /// <returns>The downloaded sample, or the original failure with the download's reason added.</returns>
+    private async Task<FixtureResult> OrDownloadAsync(FixtureSpec spec, FixtureResult failure, CancellationToken cancellationToken)
+    {
+        if (spec.DownloadUrl is not { } url)
+        {
+            return failure;
+        }
+
+        var downloaded = await DownloadAsync(spec, url, cancellationToken);
+        return downloaded.Status == FixtureStatus.Available ? downloaded : failure with { Reason = $"{failure.Reason}; download: {downloaded.Reason}" };
     }
 
     /// <summary>Returns a cached downloaded fixture, or downloads it and checks its pinned hash.</summary>
     /// <param name="spec">The fixture.</param>
     /// <param name="url">Where to download it from.</param>
-    /// <param name="path">Final cached path.</param>
     /// <param name="cancellationToken">Cancels the download.</param>
     /// <returns>Available, or Untested with the reason the sample couldn't be fetched.</returns>
-    private async Task<FixtureResult> DownloadAsync(FixtureSpec spec, Uri url, string path, CancellationToken cancellationToken)
+    /// <remarks>Cached by hash with the URL's extension, since a sample's format can differ from the generated clip's.</remarks>
+    private async Task<FixtureResult> DownloadAsync(FixtureSpec spec, Uri url, CancellationToken cancellationToken)
     {
+        var path = Path.Combine(_downloadDirectory, spec.Sha256 + Path.GetExtension(url.AbsolutePath));
         if (File.Exists(path) && Convert.ToHexStringLower(SHA256.HashData(await File.ReadAllBytesAsync(path, cancellationToken))) == spec.Sha256)
         {
             return new FixtureResult(spec, FixtureStatus.Available, path, null);

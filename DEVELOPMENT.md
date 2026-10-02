@@ -91,7 +91,12 @@ Extra arguments are passed to hwprobe. On Apple Silicon the Windows script needs
 
 ## Network access in development
 
-The tool itself makes one request: `GET https://fate-suite.ffmpeg.org/vc1/SA00050.vc1` (124 KB), on the first run only. No free VC-1 encoder exists, so that clip can't be generated like the others. It is checked against a pinned SHA-256 and cached under `<fixtures>/downloads`. Offline, VC-1 is reported as `Untested` and everything else still runs.
+The tool only downloads test clips from FFmpeg's FATE sample suite, each pinned by SHA-256 and cached under `<fixtures>/downloads`:
+
+- `vc1/SA00050.vc1` (124 KB), on the first run. No free VC-1 encoder exists, so this clip is never generated.
+- When a clip can't be generated (its encoder is missing or crashes): `h264-conformance/BA1_Sony_D.jsv`, `h264-conformance/CVFI1_Sony_D.jsv`, `hevc-conformance/WP_A_Toshiba_3.bit`, `hevc-conformance/WP_A_MAIN10_Toshiba_3.bit`, `hevc-conformance/Main_422_10_A_RExt_Sony_1.bin` (4 MB), `vp9-test-vectors/vp90-2-09-lf_deltas.webm`, `vp9-test-vectors/vp92-2-20-10bit-yuv420.webm`, `vp8-test-vectors-r1/vp80-00-comprehensive-001.ivf`, `av1-test-vectors/av1-1-b8-02-allintra.ivf` (1.5 MB).
+
+Offline, a clip that can't be made is reported as `Untested` or `Skipped` with the reason, and everything else still runs. HDR10, HEVC RExt 12-bit and AV1 10-bit have no suitable sample and are generate-only.
 
 The tests and scripts need more:
 
