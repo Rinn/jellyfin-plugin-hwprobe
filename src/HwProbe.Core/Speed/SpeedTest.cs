@@ -32,6 +32,15 @@ public sealed record SpeedTest(string Key, string Label, FixtureSpec? Fixture, f
     /// <summary>Gets an image subtitle clip to burn in, or null.</summary>
     public FixtureSpec? ImageSubtitles { get; init; }
 
+    /// <summary>Gets a short name for the test's source, e.g. <c>Test pattern</c> or <c>Live action: Tears of Steel</c>; the key when unset.</summary>
+    public string? Name { get; init; }
+
+    /// <summary>Gets the output's label, e.g. <c>720p H.264, 4 Mbps</c>.</summary>
+    public string? OutputLabel { get; init; }
+
+    /// <summary>Gets the source's audio as the page describes it, e.g. <c>5.1 AAC</c>, or null for none.</summary>
+    public string? SourceAudio { get; init; }
+
     /// <summary>Gets the credit a sample's licence requires, or null.</summary>
     public string? Credit { get; init; }
 
@@ -40,9 +49,6 @@ public sealed record SpeedTest(string Key, string Label, FixtureSpec? Fixture, f
 
     /// <summary>Gets the real file the test runs on, or null for a generated clip.</summary>
     public SpeedFile? File { get; init; }
-
-    /// <summary>Gets the file's subtitle stream to burn in, or null.</summary>
-    public SpeedFileSubtitle? FileSubtitle { get; init; }
 
     /// <summary>Gets a value indicating whether the source is interlaced.</summary>
     public bool Interlaced => Fixture?.Interlaced ?? File?.Video.Interlaced ?? false;

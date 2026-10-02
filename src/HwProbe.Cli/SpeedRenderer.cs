@@ -76,7 +76,7 @@ internal static class SpeedRenderer
         [
             Name(result.Type),
             result.Device.Length == 0 ? "-" : result.Device,
-            result.Test,
+            result.Label ?? result.Test,
             result.Variant.Length == 0 ? "-" : result.Variant,
             Streams(result),
             result.Fps is { } fps && frameRate is { } rate ? (fps / rate).ToString("0.0", CultureInfo.InvariantCulture) + "x" : "-",

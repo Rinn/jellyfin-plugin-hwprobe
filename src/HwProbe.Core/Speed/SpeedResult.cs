@@ -16,6 +16,15 @@ public sealed record SpeedResult(HwType Type, string Device, string Test, string
     /// <summary>Gets the test's label, so a report reads without the catalog (a file's tests aren't in it).</summary>
     public string? Label { get; init; }
 
+    /// <summary>Gets the video's name, e.g. <c>Test video</c>.</summary>
+    public string? Video { get; init; }
+
+    /// <summary>Gets the output's label, e.g. <c>720p H.264, 4 Mbps</c>.</summary>
+    public string? Output { get; init; }
+
+    /// <summary>Gets what the video is, e.g. <c>1080p H.264, 24 fps, 5.1 AAC</c>.</summary>
+    public string? Input { get; init; }
+
     /// <summary>Gets the source frame rate, so fps can be shown as a multiple of real time.</summary>
     public float? FrameRate { get; init; }
 

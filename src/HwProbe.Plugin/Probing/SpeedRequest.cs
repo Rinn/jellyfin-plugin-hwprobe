@@ -1,11 +1,12 @@
 namespace Jellyfin.Plugin.HwProbe.Probing;
 
-/// <summary>A speed run as the plugin page asks for it.</summary>
+/// <summary>A speed run as the plugin page asks for it: every chosen output from every chosen video.</summary>
 /// <param name="Method">quick, confirm or full.</param>
-/// <param name="Tests">Test keys; empty for the default.</param>
+/// <param name="Videos">Video keys; <c>library</c> for <see cref="ItemId"/>. Empty for the default.</param>
+/// <param name="Outputs">Output keys; empty for the default.</param>
 /// <param name="Comparisons">Comparison names: AudioVbr, Preset, Quality, Bitrate, Deinterlace, Paths.</param>
-public sealed record SpeedRequest(string Method, IReadOnlyList<string> Tests, IReadOnlyList<string> Comparisons)
+public sealed record SpeedRequest(string Method, IReadOnlyList<string> Videos, IReadOnlyList<string> Outputs, IReadOnlyList<string> Comparisons)
 {
-    /// <summary>Gets a library item whose <c>file-…</c> tests may be among <see cref="Tests"/>, or null.</summary>
+    /// <summary>Gets the library item the <c>library</c> video reads, or null.</summary>
     public Guid? ItemId { get; init; }
 }

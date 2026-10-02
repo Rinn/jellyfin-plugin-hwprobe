@@ -29,11 +29,18 @@ internal sealed class HwProbeCommand
         CustomParser = r => r.Tokens.Count == 0 ? SpeedMethod.Confirm : Enum.TryParse<SpeedMethod>(r.Tokens[0].Value, ignoreCase: true, out var m) ? m : Error<SpeedMethod?>(r, $"Unknown speed method '{r.Tokens[0].Value}'. Expected: quick, confirm, full."),
     };
 
-    private readonly Option<IReadOnlyList<string>> _speedTests = new("--speed-tests")
+    private readonly Option<IReadOnlyList<string>> _speedVideos = new("--speed-videos")
     {
-        Description = $"Speed tests, comma-separated. Default: {string.Join(',', SpeedCatalog.Default)}. All: {string.Join(',', SpeedCatalog.All.Select(t => t.Key))}.",
-        CustomParser = ParseTests,
-        DefaultValueFactory = _ => SpeedCatalog.Default,
+        Description = $"Videos to measure, comma-separated. Default: {string.Join(',', SpeedCatalog.DefaultVideos)}. All: {string.Join(',', SpeedCatalog.Videos.Select(v => v.Key))}, and library with --speed-file.",
+        CustomParser = r => ParseKeys(r, k => SpeedCatalog.FindVideo(k) is not null || k == SpeedCatalog.LibraryKey, "video", SpeedCatalog.Videos.Select(v => v.Key)),
+        DefaultValueFactory = _ => SpeedCatalog.DefaultVideos,
+    };
+
+    private readonly Option<IReadOnlyList<string>> _speedOutputs = new("--speed-outputs")
+    {
+        Description = $"Outputs to make from every video, comma-separated. Default: {string.Join(',', SpeedCatalog.DefaultOutputs)}. All: {string.Join(',', SpeedCatalog.Outputs.Select(o => o.Key))}.",
+        CustomParser = r => ParseKeys(r, k => SpeedCatalog.FindOutput(k) is not null, "output", SpeedCatalog.Outputs.Select(o => o.Key)),
+        DefaultValueFactory = _ => SpeedCatalog.DefaultOutputs,
     };
 
     private readonly Option<SpeedComparison> _speedCompare = new("--speed-compare")
@@ -42,7 +49,7 @@ internal sealed class HwProbeCommand
         CustomParser = ParseComparisons,
     };
 
-    private readonly Option<string?> _speedFile = new("--speed-file") { Description = "A real video file to measure with --speed; adds all its tests (file-720p-h264 and others) unless --speed-tests names some." };
+    private readonly Option<string?> _speedFile = new("--speed-file") { Description = "A video file to measure with --speed, as the library video." };
     private readonly Option<string?> _speedJson = new("--speed-json") { Description = "Also write the speed report to this file." };
     private readonly Option<int> _timeout = new("--timeout") { Description = "Per-probe hard timeout, seconds.", DefaultValueFactory = _ => 15 };
     private readonly Option<int> _fixtureTimeout = new("--fixture-timeout") { Description = "Fixture generation timeout, seconds.", DefaultValueFactory = _ => 120 };
@@ -64,7 +71,7 @@ internal sealed class HwProbeCommand
 
         Root = new RootCommand("Device-verified hardware transcode detection for Jellyfin.")
         {
-            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _speed, _speedTests, _speedCompare, _speedFile, _speedJson, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
+            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _speed, _speedVideos, _speedOutputs, _speedCompare, _speedFile, _speedJson, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
         };
     }
 
@@ -93,7 +100,7 @@ internal sealed class HwProbeCommand
             result.GetValue(_verbose))
         {
             DiagnosticsPath = result.GetValue(_diagnostics),
-            Speed = result.GetValue(_speed) is { } method ? new SpeedOptions(method, result.GetValue(_speedTests)!, result.GetValue(_speedCompare), new SpeedSettings()) : null,
+            Speed = result.GetValue(_speed) is { } method ? new SpeedOptions(method, result.GetValue(_speedVideos)!, result.GetValue(_speedOutputs)!, result.GetValue(_speedCompare), new SpeedSettings()) : null,
             SpeedJsonPath = result.GetValue(_speedJson),
             SpeedFilePath = result.GetValue(_speedFile) is { } file ? Path.GetFullPath(file) : null,
         };
@@ -123,17 +130,18 @@ internal sealed class HwProbeCommand
         return types;
     }
 
-    /// <summary>Parses a comma-separated speed test list.</summary>
+    /// <summary>Parses a comma-separated list of video or output keys.</summary>
     /// <param name="result">The option's argument result.</param>
-    /// <returns>The test keys, after reporting any unknown one.</returns>
-    private static List<string> ParseTests(System.CommandLine.Parsing.ArgumentResult result)
+    /// <param name="known">Whether a key exists.</param>
+    /// <param name="kind">What the keys name, for the error.</param>
+    /// <param name="all">Every key, for the error.</param>
+    /// <returns>The keys, after reporting any unknown one.</returns>
+    private static List<string> ParseKeys(System.CommandLine.Parsing.ArgumentResult result, Func<string, bool> known, string kind, IEnumerable<string> all)
     {
         var keys = result.Tokens.SelectMany(t => t.Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).ToList();
-
-        // A file's tests (file-…) are checked once --speed-file has been read.
-        foreach (var unknown in keys.Where(k => SpeedCatalog.Find(k) is null && !k.StartsWith("file-", StringComparison.Ordinal)))
+        foreach (var unknown in keys.Where(k => !known(k)))
         {
-            result.AddError($"Unknown speed test '{unknown}'. Expected: {string.Join(", ", SpeedCatalog.All.Select(t => t.Key))}.");
+            result.AddError($"Unknown speed {kind} '{unknown}'. Expected: {string.Join(", ", all)}.");
         }
 
         return keys;

@@ -59,11 +59,11 @@ public sealed class SpeedEngine : IDisposable
     /// <param name="options">The ffmpeg and cache locations; the stage and filters are ignored.</param>
     /// <param name="speed">What to measure.</param>
     /// <param name="backends">The backends and devices the probe found working.</param>
-    /// <param name="progress">Receives measurements done and the total, or null.</param>
+    /// <param name="progress">Receives each result as it's measured, with the count done and the total, or null.</param>
     /// <param name="cancellationToken">Cancels the run; running ffmpeg trees are killed.</param>
     /// <returns>The report.</returns>
     /// <exception cref="FfmpegUnusableException">ffmpeg is too old, Libav, or produced no version.</exception>
-    public async Task<SpeedReport> RunAsync(EngineOptions options, SpeedOptions speed, IReadOnlyCollection<(HwType Type, string Device)> backends, IProgress<(int Done, int Total)>? progress, CancellationToken cancellationToken)
+    public async Task<SpeedReport> RunAsync(EngineOptions options, SpeedOptions speed, IReadOnlyCollection<(HwType Type, string Device)> backends, IProgress<SpeedProgress>? progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(speed);
@@ -99,8 +99,9 @@ public sealed class SpeedEngine : IDisposable
                     var result = source is null ? new SpeedResult(type, device, test.Key, label, null, null, false, "The device didn't open.")
                         : variant is null ? new SpeedResult(type, device, test.Key, label, null, null, false, missing)
                         : await MeasureAsync(options, speed.Method, source, type, device, test, label, variant, baseCommand, c => baseCommand ??= c, cancellationToken);
-                    results.Add(result with { Label = test.Label, FrameRate = test.FrameRate, Credit = test.Credit, LicenseUrl = test.LicenseUrl });
-                    progress?.Report((++done, total));
+                    var described = result with { Label = test.Label, Video = test.Name, Output = test.OutputLabel, Input = SpeedTestText.Input(test), FrameRate = test.FrameRate, Credit = test.Credit, LicenseUrl = test.LicenseUrl };
+                    results.Add(described);
+                    progress?.Report(new SpeedProgress(++done, total, described));
                 }
             }
         }

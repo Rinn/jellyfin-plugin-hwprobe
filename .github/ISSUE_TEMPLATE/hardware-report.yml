@@ -1,5 +1,5 @@
 name: Hardware report
-description: Share HwProbe results from your hardware, especially AMD, Rockchip and other GPUs HwProbe hasn't been tested on.
+description: HwProbe results and diagnostics from a server.
 body:
   - type: markdown
     attributes:

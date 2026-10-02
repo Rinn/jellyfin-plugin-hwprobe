@@ -105,17 +105,20 @@ public sealed class ProbeServiceTests : IDisposable
             MeasureSpeed = (speed, backends, progress, _) =>
             {
                 (asked, measured) = (speed, backends);
-                progress.Report((1, 1));
-                return Task.FromResult(new SpeedReport(DateTimeOffset.UnixEpoch, Reports.Sample().Ffmpeg, speed.Method, [new SpeedResult(HwType.none, string.Empty, "1080p-h264", string.Empty, 300, 12, false, null)]));
+                var result = new SpeedResult(HwType.none, string.Empty, "pattern|720p-h264", string.Empty, 300, 12, false, null);
+                progress.Report(new SpeedProgress(1, 1, result));
+                return Task.FromResult(new SpeedReport(DateTimeOffset.UnixEpoch, Reports.Sample().Ffmpeg, speed.Method, [result]));
             },
             ServerSpeedSettings = () => new SpeedSettings { EncoderPreset = "fast" },
         };
-        var request = new SpeedRequest("full", [], ["Bitrate", "AudioVbr"]);
+        var request = new SpeedRequest("full", [], [], ["Bitrate", "AudioVbr"]);
 
         Assert.Equal(ProbeRunResult.NoReport, await service.StartSpeedAsync(request, ct));
         await service.RunAsync(ct);
         Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Method = "fastest" }, ct));
-        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Tests = ["8k-h266"] }, ct));
+        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Videos = ["8k-h266"] }, ct));
+        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Outputs = ["8k-h266"] }, ct));
+        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Videos = ["library"] }, ct));
         Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Comparisons = ["None"] }, ct));
 
         Assert.Equal(ProbeRunResult.Started, await service.StartSpeedAsync(request, ct));
@@ -123,7 +126,8 @@ public sealed class ProbeServiceTests : IDisposable
 
         Assert.Equal(Reports.Sample().Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device)), measured);
         Assert.Equal((SpeedMethod.Full, SpeedComparison.Bitrate | SpeedComparison.AudioVbr, "fast"), (asked!.Method, asked.Comparisons, asked.Settings.EncoderPreset));
-        Assert.Equal(SpeedCatalog.Default, asked.Tests);
+        Assert.Equal((SpeedCatalog.DefaultVideos, SpeedCatalog.DefaultOutputs), (asked.Videos, asked.Outputs));
+        Assert.Null(service.RunningSpeedJson());
         Assert.Equal(ProbeActivity.Speed, service.Status.Activity);
         Assert.Null(service.Status.Total);
         Assert.Equal(12, SpeedReportStore.Deserialize((await service.LatestSpeedJsonAsync(ct))!)!.Results[0].Streams);

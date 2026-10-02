@@ -1,3 +1,4 @@
+using System.Globalization;
 using Jellyfin.Plugin.HwProbe.Core.Fixtures;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
@@ -17,6 +18,10 @@ public static class SpeedCatalog
     private const string AudioOut = "-ac 6 -c:a aac -b:a 384k";
 
     private const string SampleAudio = "-c:a aac -ac 2 -b:a 192k";
+
+    private const string Surround = "5.1 AAC";
+
+    private const string Stereo = "stereo AAC";
 
     private static readonly Uri _ccBy3 = new("https://creativecommons.org/licenses/by/3.0/");
 
@@ -115,60 +120,120 @@ public static class SpeedCatalog
         KeepAcrossBuilds = true,
     };
 
-    /// <summary>Gets every test, in the order the page lists them.</summary>
-    public static IReadOnlyList<SpeedTest> All { get; } =
+    /// <summary>Gets every video, in the order the page lists them; the library video is added from a chosen file.</summary>
+    public static IReadOnlyList<SpeedVideo> Videos { get; } =
     [
-        Transcode("1080p-h264", "1080p H.264 to 720p H.264", H264At1080, "h264"),
-        Transcode("1080p-hevc", "1080p H.264 to 720p HEVC", H264At1080, "hevc"),
-        Transcode("1080p-av1", "1080p H.264 to 720p AV1", H264At1080, "av1"),
-        new("2160p-hdr10", "4K HEVC 10-bit HDR to 1080p H.264, tone-mapped", Hdr10At2160, 24, 3840, 2160)
-        {
-            OutputCodec = "h264",
-            OutputHeight = 1080,
-            Bitrate = 8_000_000,
-            BitrateRange = (6_000_000, 8_000_000),
-            Tonemap = true,
-        },
-        Transcode("1080i", "1080i H.264 to 720p H.264, deinterlaced", H264At1080i, "h264") with { FrameRate = 25 },
-        Transcode("1080p-text-subs", "1080p H.264 to 720p H.264, text subtitles burned in", H264At1080, "h264") with { TextSubtitles = TextSubtitles },
-        Transcode("1080p-pgs-subs", "1080p H.264 to 720p H.264, PGS subtitles burned in", H264At1080, "h264") with { ImageSubtitles = ImageSubtitles },
-        Transcode("sample-live-action", $"Live action (Tears of Steel, downloads {Megabytes(LiveAction)}) to 720p H.264", LiveAction, "h264") with { Height = 858, Credit = "Tears of Steel, Blender Foundation (mango.blender.org), CC BY 3.0, via Wikimedia Commons", LicenseUrl = _ccBy3 },
-        Transcode("sample-digital-animation", $"Digital animation (Sintel, downloads {Megabytes(DigitalAnimation)}) to 720p H.264", DigitalAnimation, "h264") with { Height = 818, Credit = "Sintel, Blender Foundation (durian.blender.org), CC BY 3.0, via Wikimedia Commons", LicenseUrl = _ccBy3 },
-        Transcode("sample-anime", $"Anime (Sol Levante, downloads {Megabytes(Anime)}) to 720p H.264", Anime, "h264") with { Credit = "Sol Levante, Netflix and Production I.G, CC BY 4.0, via Wikimedia Commons", LicenseUrl = _ccBy4 },
-        new("sample-anime-4k", $"Anime 4K HDR (Sol Levante, downloads {Megabytes(Anime4k)}) to 1080p H.264, tone-mapped", Anime4k, 24, 3840, 2160)
-        {
-            OutputCodec = "h264",
-            OutputHeight = 1080,
-            Bitrate = 8_000_000,
-            BitrateRange = (6_000_000, 8_000_000),
-            Tonemap = true,
-            Credit = "Sol Levante, Netflix and Production I.G, CC BY 4.0, via Wikimedia Commons",
-            LicenseUrl = _ccBy4,
-        },
-        new("decode-h264", "Decode 1080p H.264", H264At1080, 24, 1920, 1080),
-        new("decode-hevc", "Decode 1080p HEVC", HevcAt1080, 24, 1920, 1080),
-        new("decode-hevc10", "Decode 1080p HEVC 10-bit", Hevc10At1080, 24, 1920, 1080),
-        new("decode-vp9", "Decode 1080p VP9", Vp9At1080, 24, 1920, 1080),
-        new("decode-av1", "Decode 1080p AV1", Av1At1080, 24, 1920, 1080),
-        new("decode-2160p-hevc10", "Decode 4K HEVC 10-bit", Hdr10At2160, 24, 3840, 2160),
+        Pattern("pattern", "Test video", H264At1080, Surround),
+        Pattern("pattern-hevc", "Test video, HEVC", HevcAt1080, null),
+        Pattern("pattern-hevc10", "Test video, HEVC 10-bit", Hevc10At1080, null),
+        Pattern("pattern-vp9", "Test video, VP9", Vp9At1080, null),
+        Pattern("pattern-av1", "Test video, AV1", Av1At1080, null),
+        Pattern("pattern-1080i", "Test video, interlaced", H264At1080i, Surround) with { FrameRate = 25 },
+        Pattern("pattern-4k-hdr", "Test video, 4K HDR", Hdr10At2160, Surround) with { Width = 3840, Height = 2160 },
+        Sample("live-action", "Live action: Tears of Steel", LiveAction, 858, "Tears of Steel, Blender Foundation (mango.blender.org), CC BY 3.0, via Wikimedia Commons", _ccBy3),
+        Sample("digital-animation", "Digital animation: Sintel", DigitalAnimation, 818, "Sintel, Blender Foundation (durian.blender.org), CC BY 3.0, via Wikimedia Commons", _ccBy3),
+        Sample("anime", "Anime: Sol Levante", Anime, 1080, "Sol Levante, Netflix and Production I.G, CC BY 4.0, via Wikimedia Commons", _ccBy4),
+        Sample("anime-4k", "Anime 4K HDR: Sol Levante", Anime4k, 2160, "Sol Levante, Netflix and Production I.G, CC BY 4.0, via Wikimedia Commons", _ccBy4) with { Width = 3840 },
     ];
 
-    /// <summary>Gets the tests run when none are chosen.</summary>
-    public static IReadOnlyList<string> Default { get; } = ["1080p-h264"];
+    /// <summary>Gets every output, in the order the page lists them.</summary>
+    /// <remarks>Bitrates are jellyfin-web's top choices for the height (src/components/qualityOptions.js); the range is its lowest and highest.</remarks>
+    public static IReadOnlyList<SpeedOutput> Outputs { get; } =
+    [
+        new("720p-h264", "720p H.264, 4 Mbps", "h264", 720, 4_000_000, (1_500_000, 4_000_000)),
+        new("720p-hevc", "720p HEVC, 4 Mbps", "hevc", 720, 4_000_000, (1_500_000, 4_000_000)),
+        new("720p-av1", "720p AV1, 4 Mbps", "av1", 720, 4_000_000, (1_500_000, 4_000_000)),
+        new("1080p-h264", "1080p H.264, 8 Mbps", "h264", 1080, 8_000_000, (6_000_000, 8_000_000)),
+        new("720p-h264-text", "720p H.264, 4 Mbps, text subtitles burned in", "h264", 720, 4_000_000, (1_500_000, 4_000_000)) { Subtitles = "text" },
+        new("720p-h264-pgs", "720p H.264, 4 Mbps, PGS subtitles burned in", "h264", 720, 4_000_000, (1_500_000, 4_000_000)) { Subtitles = "image" },
+        new("decode", "Decode only, no encode", null, 0, 0, (0, 0)),
+    ];
 
-    /// <summary>Returns the test with a key.</summary>
+    /// <summary>Gets the videos chosen when none are asked for.</summary>
+    public static IReadOnlyList<string> DefaultVideos { get; } = ["pattern"];
+
+    /// <summary>Gets the outputs chosen when none are asked for.</summary>
+    public static IReadOnlyList<string> DefaultOutputs { get; } = ["720p-h264"];
+
+    /// <summary>Gets the key of the library video.</summary>
+    public static string LibraryKey => "library";
+
+    /// <summary>Describes a library file as a video.</summary>
+    /// <param name="file">The file.</param>
+    /// <returns>The video.</returns>
+    public static SpeedVideo LibraryVideo(SpeedFile file)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+        var audio = file.Audio is not { } track ? null : string.Create(CultureInfo.InvariantCulture, $"{track.Channels switch { 1 => "mono", 2 => "stereo", 6 => "5.1", 8 => "7.1", var n => n + " channel" }} {track.Codec.ToUpperInvariant()}");
+        return new SpeedVideo(LibraryKey, file.Name, null, file.Video.FrameRate, file.Video.Width, file.Video.Height) { File = file, Audio = audio, Origin = "Library" };
+    }
+
+    /// <summary>Pairs a video with an output.</summary>
+    /// <param name="video">The video.</param>
+    /// <param name="output">The output.</param>
+    /// <returns>The test, keyed <c>video|output</c>.</returns>
+    public static SpeedTest Test(SpeedVideo video, SpeedOutput output)
+    {
+        ArgumentNullException.ThrowIfNull(video);
+        ArgumentNullException.ThrowIfNull(output);
+        var hdr = video.File?.Video.IsHdr ?? video.Fixture?.IsHdr10 ?? false;
+        return new SpeedTest(video.Key + "|" + output.Key, video.Name + " \u2192 " + output.Label, video.Fixture, video.FrameRate, video.Width, video.Height)
+        {
+            File = video.File,
+            Name = video.Name,
+            OutputLabel = output.Label,
+            SourceAudio = video.Audio,
+            Credit = video.Credit,
+            LicenseUrl = video.LicenseUrl,
+            OutputCodec = output.Codec,
+            OutputHeight = output.Height,
+            Bitrate = output.Bitrate,
+            BitrateRange = output.BitrateRange,
+            Tonemap = hdr && output.Codec is not null,
+            TextSubtitles = output.Subtitles == "text" ? TextSubtitles : null,
+            ImageSubtitles = output.Subtitles == "image" ? ImageSubtitles : null,
+        };
+    }
+
+    /// <summary>Returns the test for a <c>video|output</c> key among the catalog's videos.</summary>
     /// <param name="key">The key.</param>
     /// <returns>The test, or null for an unknown key.</returns>
-    public static SpeedTest? Find(string key) => All.FirstOrDefault(t => string.Equals(t.Key, key, StringComparison.Ordinal));
+    public static SpeedTest? Find(string key)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        var parts = key.Split('|');
+        return parts.Length == 2 && FindVideo(parts[0]) is { } video && FindOutput(parts[1]) is { } output ? Test(video, output) : null;
+    }
 
-    /// <summary>A 1080p transcode to 720p at jellyfin-web's top 720p bitrate.</summary>
+    /// <summary>Returns a catalog video.</summary>
     /// <param name="key">The key.</param>
-    /// <param name="label">The label.</param>
-    /// <param name="fixture">The source clip.</param>
-    /// <param name="output">The output codec.</param>
-    /// <returns>The test.</returns>
-    private static SpeedTest Transcode(string key, string label, FixtureSpec fixture, string output) =>
-        new(key, label, fixture, 24, 1920, 1080) { OutputCodec = output, OutputHeight = 720, Bitrate = 4_000_000, BitrateRange = (1_500_000, 4_000_000) };
+    /// <returns>The video, or null.</returns>
+    public static SpeedVideo? FindVideo(string key) => Videos.FirstOrDefault(v => string.Equals(v.Key, key, StringComparison.Ordinal));
+
+    /// <summary>Returns an output.</summary>
+    /// <param name="key">The key.</param>
+    /// <returns>The output, or null.</returns>
+    public static SpeedOutput? FindOutput(string key) => Outputs.FirstOrDefault(o => string.Equals(o.Key, key, StringComparison.Ordinal));
+
+    /// <summary>A test video made on the server.</summary>
+    /// <param name="key">The key.</param>
+    /// <param name="name">The name.</param>
+    /// <param name="fixture">The clip.</param>
+    /// <param name="audio">Its audio, or null.</param>
+    /// <returns>The video.</returns>
+    private static SpeedVideo Pattern(string key, string name, FixtureSpec fixture, string? audio) =>
+        new(key, name, fixture, 24, 1920, 1080) { Audio = audio, Origin = "Generated" };
+
+    /// <summary>A downloaded sample.</summary>
+    /// <param name="key">The key.</param>
+    /// <param name="name">The name.</param>
+    /// <param name="fixture">The clip.</param>
+    /// <param name="height">Its height after encoding (films are wider than 16:9).</param>
+    /// <param name="credit">The credit its licence requires.</param>
+    /// <param name="license">Its licence.</param>
+    /// <returns>The video.</returns>
+    private static SpeedVideo Sample(string key, string name, FixtureSpec fixture, int height, string credit, Uri license) =>
+        new(key, name, fixture, 24, 1920, height) { Audio = Stereo, Origin = Megabytes(fixture) + " download", Credit = credit, LicenseUrl = license };
 
     /// <summary>A 30-second piece of a film on Wikimedia Commons, checked against its pinned hash and encoded the same way for every 1080p sample.</summary>
     /// <param name="fileName">The cached file name.</param>
@@ -194,9 +259,9 @@ public static class SpeedCatalog
 
     /// <summary>Formats a sample's download size for its label.</summary>
     /// <param name="spec">The sample.</param>
-    /// <returns>e.g. <c>about 11 MB</c>.</returns>
+    /// <returns>e.g. <c>11 MB</c>.</returns>
     private static string Megabytes(FixtureSpec spec) =>
-        string.Create(System.Globalization.CultureInfo.InvariantCulture, $"about {Math.Round(spec.Piece!.Size / 1_000_000.0):0} MB");
+        string.Create(CultureInfo.InvariantCulture, $"{Math.Round(spec.Piece!.Size / 1_000_000.0):0} MB");
 
     /// <summary>A 10-second 1080p clip without audio, for decode tests.</summary>
     /// <param name="fileName">The cached file name.</param>

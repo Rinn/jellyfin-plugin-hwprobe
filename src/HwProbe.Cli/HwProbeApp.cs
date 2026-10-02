@@ -108,9 +108,9 @@ internal static class HwProbeApp
         if (options.Speed is { } requested)
         {
             var speed = requested;
-            if (options.SpeedFilePath is null && speed.Tests.Any(t => t.StartsWith("file-", StringComparison.Ordinal)))
+            if (options.SpeedFilePath is null && speed.Videos.Contains(SpeedCatalog.LibraryKey))
             {
-                await stderr.WriteLineAsync("hwprobe: file-… speed tests need --speed-file.".AsMemory(), cancellationToken);
+                await stderr.WriteLineAsync("hwprobe: the library speed video needs --speed-file.".AsMemory(), cancellationToken);
                 return (int)HwProbeExitCode.UsageError;
             }
 
@@ -127,20 +127,13 @@ internal static class HwProbeApp
                     return (int)HwProbeExitCode.UsageError;
                 }
 
-                // Without named file tests, measure the file's own transcodes as well as the chosen ones.
-                var fileTests = SpeedFileTests.For(file).Select(t => t.Key).ToList();
-                if (speed.Tests.FirstOrDefault(t => t.StartsWith("file-", StringComparison.Ordinal) && !fileTests.Contains(t)) is { } unknown)
-                {
-                    await stderr.WriteLineAsync($"hwprobe: {file.Name} has no test {unknown}. It has: {string.Join(", ", fileTests)}.".AsMemory(), cancellationToken);
-                    return (int)HwProbeExitCode.UsageError;
-                }
-
-                speed = speed with { Tests = speed.Tests.Any(t => fileTests.Contains(t)) ? speed.Tests : [.. speed.Tests, .. fileTests], File = file };
+                // A given file is measured even when --speed-videos doesn't name it.
+                speed = speed with { Videos = speed.Videos.Contains(SpeedCatalog.LibraryKey) ? speed.Videos : [.. speed.Videos, SpeedCatalog.LibraryKey], File = file };
             }
 
             var viable = report.Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device)).ToList();
             using var engine = new SpeedEngine(new FfmpegRunner(), new ArgumentSourceFactory(), platform, TimeProvider.System, EnvironmentRules.Standalone());
-            var progress = new Progress<(int Done, int Total)>(p => stderr.Write($"\rhwprobe: speed {p.Done} of {p.Total}"));
+            var progress = new Progress<SpeedProgress>(p => stderr.Write($"\rhwprobe: speed {p.Done} of {p.Total}"));
             var measured = await engine.RunAsync(engineOptions, speed, viable, progress, cancellationToken);
             await stderr.WriteLineAsync(string.Empty.AsMemory(), cancellationToken);
             if (options.Format != OutputFormat.Json)

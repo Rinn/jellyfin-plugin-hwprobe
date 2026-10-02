@@ -7,7 +7,7 @@ Jellyfin lists every hardware acceleration option on every server, whether or no
 - whether it works on this server
 - how to fix it, if it doesn't
 
-You can apply the results to Jellyfin's settings and revert them later.
+Results can be applied to Jellyfin's settings and reverted later.
 
 ## Install
 
@@ -26,20 +26,20 @@ Requires Jellyfin 12.1 or newer.
 
 1. Make sure nothing is playing.
 2. Open **HwProbe** in the dashboard sidebar, under Plugins, and press **Run probe**. The first run takes a few minutes.
-3. Optionally, press **Apply** on the options you want to change.
+3. Optionally, press **Apply** on the options to change.
 
 If Jellyfin is set to a backend that didn't work, the page says so and offers **Switch to None**. Changing the backend needs a restart, which the page offers.
 
 After updating HwProbe or changing ffmpeg, run the probe again: older results are cleared.
 
-To see how fast the working options are, open the **Speed** tab, choose transcodes and press **Measure speed**. Earlier runs are kept and can be picked to view again. For each working backend and software it shows how many transcodes keep up with real time at once, and how fast one runs alone. Optional comparisons change one setting at a time, such as the encoder preset or VBR audio. Tests can use generated clips, a movie or episode from your library, or 30-second samples of freely licensed films (live action, digital animation and anime), downloaded only when chosen. For the best results, measure when nothing is playing and nothing else heavy is running. The command-line tool does the same with `--speed`, and `--speed-file <video>` for a file of your own.
+The **Speed** tab measures how fast the working options are. Choose videos (generated test videos, a library movie or episode, or 30-second samples of freely licensed films: live action, digital animation and anime, downloaded only when chosen) and outputs (720p or 1080p H.264, HEVC or AV1, with or without burned-in subtitles, or decoding alone), then press **Measure speed**. Every chosen output is made from every chosen video. For each working backend and software, the results show how many of each transcode keep up with playback at the same time, and how fast one runs alone; they fill in as each measurement finishes. Earlier runs are kept and can be picked to view again. Measure while nothing is playing and the server is otherwise idle. The command-line tool does the same with `--speed`, `--speed-videos`, `--speed-outputs` and `--speed-file <video>`.
 
-To share results, especially from AMD, Rockchip or other hardware HwProbe hasn't been tested on, press **Download diagnostics** and attach the zip to a [hardware report](../../issues/new?template=hardware-report.yml). The command-line tool writes the same zip with `--diagnostics <file.zip>`.
+To share results, press **Download diagnostics** under **Diagnostics** on the Probe tab and attach the zip to a [hardware report](../../issues/new?template=hardware-report.yml). The command-line tool writes the same zip with `--diagnostics <file.zip>`.
 
 ## Privacy
 
 - Nothing is sent anywhere.
-- The diagnostics zip is only downloaded when you ask for it. It holds the report and every ffmpeg log from the last probe, including file paths and the server's user and host names. Check it before sharing.
+- The diagnostics zip is only made when downloaded from the page or written with `--diagnostics`. It holds the report and every ffmpeg log from the last probe, including file paths and the server's user and host names. Check it before sharing.
 - Speed samples are only downloaded when chosen, from Wikimedia Commons: about 10 to 110 MB each, as each one's label says, and checked against a pinned hash. The page shows the cache's size and can delete it.
 - Test clips may be downloaded from [FFmpeg's sample suite](https://fate-suite.ffmpeg.org/) when they can't be made on the server. Each is downloaded once and checked against a pinned hash.
 

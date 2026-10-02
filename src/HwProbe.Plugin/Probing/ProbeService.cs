@@ -32,6 +32,8 @@ public sealed partial class ProbeService : IDisposable
     private readonly TimeSpan _settle;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly List<SpeedResult> _speedSoFar = [];
+    private SpeedOptions? _speedRunning;
     private ProbeStatus _status = new(ProbeState.Idle, null, null, null);
     private Task<ProbeRunResult>? _background;
 
@@ -93,7 +95,7 @@ public sealed partial class ProbeService : IDisposable
     internal string SpeedHistoryDirectory => Path.Combine(Path.GetDirectoryName(_latestPath)!, "speed-history");
 
     /// <summary>Gets the speed run, or null when this service can't measure speed.</summary>
-    internal Func<SpeedOptions, IReadOnlyCollection<(HwType Type, string Device)>, IProgress<(int Done, int Total)>, CancellationToken, Task<SpeedReport>>? MeasureSpeed { get; init; }
+    internal Func<SpeedOptions, IReadOnlyCollection<(HwType Type, string Device)>, IProgress<SpeedProgress>, CancellationToken, Task<SpeedReport>>? MeasureSpeed { get; init; }
 
     /// <summary>Gets where probes and speed runs cache their clips, or null when unknown.</summary>
     internal string? FixturesDirectory { get; init; }
@@ -180,6 +182,19 @@ public sealed partial class ProbeService : IDisposable
         List<(HwType, string)> backends = [.. report.Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device))];
         _background = Task.Run(() => RunSpeedHeldAsync(measure, speed with { Settings = ServerSpeedSettings() }, backends), CancellationToken.None);
         return ProbeRunResult.Started;
+    }
+
+    /// <summary>Returns the running speed run's results so far as a speed report, so the page fills in as they finish.</summary>
+    /// <returns>The JSON, or null when no speed run is running.</returns>
+    public string? RunningSpeedJson()
+    {
+        lock (_speedSoFar)
+        {
+            return _speedRunning is not { } speed ? null : SpeedReportStore.Serialize(new SpeedReport(_time.GetUtcNow(), new FfmpegSummary(string.Empty, "Server", "unknown", true), speed.Method, [.. _speedSoFar])
+            {
+                Settings = speed.Settings,
+            });
+        }
     }
 
     /// <summary>Returns the latest speed report as JSON, unless it's from another HwProbe version or ffmpeg.</summary>
@@ -344,9 +359,10 @@ public sealed partial class ProbeService : IDisposable
             return null;
         }
 
-        var tests = request.Tests.Count == 0 ? SpeedCatalog.Default : request.Tests;
-        var fileTests = file is null ? [] : SpeedFileTests.For(file);
-        if (tests.Any(t => SpeedCatalog.Find(t) is null && !fileTests.Any(f => f.Key == t)))
+        var videos = request.Videos.Count == 0 ? SpeedCatalog.DefaultVideos : request.Videos;
+        var outputs = request.Outputs.Count == 0 ? SpeedCatalog.DefaultOutputs : request.Outputs;
+        if (videos.Any(v => SpeedCatalog.FindVideo(v) is null && !(v == SpeedCatalog.LibraryKey && file is not null))
+            || outputs.Any(o => SpeedCatalog.FindOutput(o) is null))
         {
             return null;
         }
@@ -362,7 +378,7 @@ public sealed partial class ProbeService : IDisposable
             comparisons |= comparison;
         }
 
-        return new SpeedOptions(method, tests, comparisons, new SpeedSettings()) { File = file };
+        return new SpeedOptions(method, videos, outputs, comparisons, new SpeedSettings()) { File = file };
     }
 
     /// <summary>Reads the speed run's starting settings from the server's encoding options.</summary>
@@ -455,7 +471,7 @@ public sealed partial class ProbeService : IDisposable
     /// <param name="progress">Receives measurements done and the total.</param>
     /// <param name="cancellationToken">Cancels the run.</param>
     /// <returns>The speed report.</returns>
-    private static async Task<SpeedReport> RunSpeedEngineAsync(IArgumentSourceFactory arguments, IMediaEncoder mediaEncoder, IApplicationPaths paths, ServerEnvironmentBaseline baseline, SpeedOptions speed, IReadOnlyCollection<(HwType Type, string Device)> backends, IProgress<(int Done, int Total)> progress, CancellationToken cancellationToken)
+    private static async Task<SpeedReport> RunSpeedEngineAsync(IArgumentSourceFactory arguments, IMediaEncoder mediaEncoder, IApplicationPaths paths, ServerEnvironmentBaseline baseline, SpeedOptions speed, IReadOnlyCollection<(HwType Type, string Device)> backends, IProgress<SpeedProgress> progress, CancellationToken cancellationToken)
     {
         var environment = EnvironmentRules.InServer(baseline.Values, new Dictionary<string, string>());
         using var engine = new SpeedEngine(new FfmpegRunner(), arguments, new HostPlatform(), TimeProvider.System, environment);
@@ -568,14 +584,28 @@ public sealed partial class ProbeService : IDisposable
     /// <param name="backends">The working backends.</param>
     /// <returns>The result.</returns>
     private async Task<ProbeRunResult> RunSpeedHeldAsync(
-        Func<SpeedOptions, IReadOnlyCollection<(HwType Type, string Device)>, IProgress<(int Done, int Total)>, CancellationToken, Task<SpeedReport>> measure,
+        Func<SpeedOptions, IReadOnlyCollection<(HwType Type, string Device)>, IProgress<SpeedProgress>, CancellationToken, Task<SpeedReport>> measure,
         SpeedOptions speed,
         IReadOnlyCollection<(HwType Type, string Device)> backends)
     {
         _status = _status with { State = ProbeState.Running, Activity = ProbeActivity.Speed, LastStartedUtc = _time.GetUtcNow(), LastError = null, Done = 0, Total = null };
         try
         {
-            var progress = new DirectProgress(p => _status = _status with { Done = p.Done, Total = p.Total });
+            lock (_speedSoFar)
+            {
+                _speedSoFar.Clear();
+                _speedRunning = speed;
+            }
+
+            var progress = new DirectProgress(p =>
+            {
+                lock (_speedSoFar)
+                {
+                    _speedSoFar.Add(p.Result);
+                }
+
+                _status = _status with { Done = p.Done, Total = p.Total };
+            });
             var report = await measure(speed, backends, progress, CancellationToken.None);
             await SpeedReportStore.WriteAsync(report, SpeedPath, CancellationToken.None);
             await SaveSpeedHistoryAsync(report);
@@ -591,6 +621,12 @@ public sealed partial class ProbeService : IDisposable
         }
         finally
         {
+            lock (_speedSoFar)
+            {
+                _speedRunning = null;
+                _speedSoFar.Clear();
+            }
+
             _status = _status with { State = ProbeState.Idle, LastCompletedUtc = _time.GetUtcNow(), Done = null, Total = null };
             _gate.Release();
         }
@@ -599,9 +635,9 @@ public sealed partial class ProbeService : IDisposable
     /// <summary>Reports progress on the caller's thread, in order.</summary>
     /// <param name="report">Applies one report.</param>
     /// <remarks><see cref="Progress{T}"/> posts to the thread pool, so a late report could mark a finished run as running again.</remarks>
-    private sealed class DirectProgress(Action<(int Done, int Total)> report) : IProgress<(int Done, int Total)>
+    private sealed class DirectProgress(Action<SpeedProgress> report) : IProgress<SpeedProgress>
     {
         /// <inheritdoc/>
-        public void Report((int Done, int Total) value) => report(value);
+        public void Report(SpeedProgress value) => report(value);
     }
 }

@@ -23,7 +23,7 @@ internal static class SpeedVariants
         ArgumentNullException.ThrowIfNull(test);
         ArgumentNullException.ThrowIfNull(settings);
         var output = test.OutputCodec ?? "h264";
-        var cell = test.File is { } file ? FromFile(file, test, output, settings) : FromClip(test, output, clips);
+        var cell = test.File is { } file ? FromFile(file, test, output, settings, clips) : FromClip(test, output, clips);
         return cell with
         {
             SourceWidth = test.Width,
@@ -163,11 +163,11 @@ internal static class SpeedVariants
     /// <param name="test">The test.</param>
     /// <param name="output">The output codec.</param>
     /// <param name="settings">The settings, for whether HDR is tone-mapped.</param>
+    /// <param name="clips">Clip paths by file name, for burned-in subtitles.</param>
     /// <returns>The cell, before the other settings.</returns>
-    private static ProbeCell FromFile(SpeedFile file, SpeedTest test, string output, SpeedSettings settings)
+    private static ProbeCell FromFile(SpeedFile file, SpeedTest test, string output, SpeedSettings settings, IReadOnlyDictionary<string, string> clips)
     {
         var video = file.Video;
-        var subtitle = test.FileSubtitle;
         return new ProbeCell(video.Codec, video.BitDepth, output, HardwareDecode: true, HardwareEncode: true)
         {
             Profile = video.Profile,
@@ -184,10 +184,8 @@ internal static class SpeedVariants
             AudioChannels = file.Audio?.Channels ?? 2,
             SourcePath = file.Path,
             MediaSourceId = file.MediaSourceId,
-            SubtitlePath = subtitle is { ExternalPath: { } text, IsText: true } ? text : null,
-            GraphicalSubtitlePath = subtitle is { ExternalPath: { } image, IsText: false } ? image : null,
-            InternalSubtitleIndex = subtitle is { ExternalPath: null } ? subtitle.Index : null,
-            InternalSubtitleCodec = subtitle is { ExternalPath: null } ? subtitle.Codec : null,
+            SubtitlePath = test.TextSubtitles is { } text ? clips[text.FileName] : null,
+            GraphicalSubtitlePath = test.ImageSubtitles is { } image ? clips[image.FileName] : null,
         };
     }
 }
