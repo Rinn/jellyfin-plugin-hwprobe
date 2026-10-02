@@ -133,13 +133,11 @@ jobs:
 
   package:
     name: Package
-    needs: [build-test, real-ffmpeg, plugin-e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
-      # Same script and archives as a release, so a pull request shows what would ship.
       - name: Package
         run: python3 scripts/package.py --out artifacts/dist
       - uses: actions/upload-artifact@v7

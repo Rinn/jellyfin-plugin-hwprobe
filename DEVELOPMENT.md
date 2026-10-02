@@ -11,7 +11,7 @@ How to build, test and release hwprobe. For installing and using it, see the [RE
 | `src/HwProbe.Cli` | The `hwprobe` command-line tool. |
 | `src/HwProbe.Plugin` | The Jellyfin plugin: configuration page, scheduled task, admin API. |
 | `tests/` | Unit, fake-ffmpeg, real-ffmpeg and hardware tests, plus recorded ffmpeg output in `tests/Corpus`. |
-| `build.yaml` | Plugin metadata (name, GUID, version, target ABI) used to build the plugin repository manifest. |
+| `build.yaml` | Plugin metadata (name, GUID, target ABI) used to build the plugin repository manifest. |
 
 ## Command-line tool
 
@@ -41,7 +41,7 @@ To check a release, build its tagged commit from a clone whose `origin` is the G
 
 ```sh
 git clone https://github.com/Rinn/jellyfin-plugin-hwprobe && cd jellyfin-plugin-hwprobe && git checkout v1.2.3
-GITHUB_ACTIONS=true python3 scripts/package.py --out dist
+GITHUB_ACTIONS=true python3 scripts/package.py --version 1.2.3 --out dist
 shasum -a 256 dist/*
 ```
 
@@ -81,12 +81,11 @@ Extra arguments are passed to hwprobe. On Apple Silicon the Windows script needs
 
 `.github/workflows/release.yml` runs when a GitHub release is published.
 
-1. Set the version in `build.yaml` (`version: "1.2.3.0"`) and in `Directory.Build.props` (`<Version>1.2.3</Version>`, which every assembly gets), and merge that to `main`.
-2. Create a release with tag `v1.2.3`. Its description becomes the plugin's changelog in Jellyfin. For example: `gh release create v1.2.3 --target main --title v1.2.3 --notes "What changed"`.
-3. The workflow checks the tag matches both versions, builds and tests, and attaches to the release:
+1. Create a release with tag `v1.2.3` on `main`. The tag is the only place the version is set: the workflow stamps it on every assembly with `-p:Version`, and `Directory.Build.props` keeps the placeholder `0.0.0` for other builds. The release description becomes the plugin's changelog in Jellyfin. For example: `gh release create v1.2.3 --target main --title v1.2.3 --notes "What changed"`.
+2. The workflow checks the tag looks like `v1.2.3`, builds and tests, and attaches to the release:
    - `hwprobe-plugin_1.2.3.0.zip`
    - `hwprobe-linux-x64.gz`, `hwprobe-linux-arm64.gz`, `hwprobe-osx-arm64.gz`, `hwprobe-win-x64.zip`
-4. For a full release (not a pre-release), it adds the version to `manifest.json` on the `manifest` branch, keeping earlier versions. That file is the repository URL users add in Jellyfin. The workflow never pushes to `main`.
+3. For a full release (not a pre-release), it adds the version to `manifest.json` on the `manifest` branch, keeping earlier versions. That file is the repository URL users add in Jellyfin. The workflow never pushes to `main`.
 
 `scripts/manifest.py` writes the manifest. Its fields follow Jellyfin's `PackageInfo` and `VersionInfo`. The checksum is MD5, which Jellyfin checks before installing. Jellyfin writes the plugin's `meta.json` itself from the manifest, so the zip holds only the DLLs.
 

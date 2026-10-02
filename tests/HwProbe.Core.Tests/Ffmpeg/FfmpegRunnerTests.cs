@@ -148,10 +148,17 @@ public sealed class FfmpegRunnerTests : IDisposable
         var deadline = DateTime.UtcNow + _generous;
         while (DateTime.UtcNow < deadline)
         {
-            var lines = File.Exists(pidFile) ? await File.ReadAllLinesAsync(pidFile, TestContext.Current.CancellationToken) : [];
-            if (lines.Length == 2 && lines.All(l => int.TryParse(l, out _)))
+            try
             {
-                return;
+                var lines = await File.ReadAllLinesAsync(pidFile, TestContext.Current.CancellationToken);
+                if (lines.Length == 2 && lines.All(l => int.TryParse(l, out _)))
+                {
+                    return;
+                }
+            }
+            catch (IOException)
+            {
+                // Not written yet, or still open for writing (a sharing violation on Windows).
             }
 
             await Task.Delay(50, TestContext.Current.CancellationToken);

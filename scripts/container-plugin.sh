@@ -17,7 +17,7 @@ name=hwprobe-e2e
 repo=hwprobe-e2e-repo
 net=hwprobe-e2e-net
 install="${HWPROBE_INSTALL:-copy}"
-version="$(sed -n 's/^version: "\(.*\)"/\1/p' "$root/build.yaml")"
+version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' "$root/Directory.Build.props").0"
 guid="$(sed -n 's/^guid: "\(.*\)"/\1/p' "$root/build.yaml")"
 auth='MediaBrowser Client="hwprobe-e2e", Device="script", DeviceId="hwprobe-e2e", Version="1.0"'
 failures=0

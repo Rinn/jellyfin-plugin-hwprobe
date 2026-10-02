@@ -1,7 +1,6 @@
 ---
 name: "HwProbe"
 guid: "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93"
-version: "0.1.0.0"
 targetAbi: "12.1.0.0"
 framework: "net10.0"
 overview: "Tests which hardware transcoding backends actually work"
@@ -15,4 +14,4 @@ artifacts:
 - "Jellyfin.Plugin.HwProbe.Core.dll"
 - "Jellyfin.Plugin.HwProbe.Jellyfin.dll"
 changelog: >
-  Initial release: on-demand probe, report page, and admin API.
+  See the release notes.
