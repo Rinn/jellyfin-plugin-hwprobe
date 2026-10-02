@@ -1006,14 +1006,6 @@
                     if (r.cancelled) {
                         div.appendChild(el('div', 'Cancelled: these are the measurements finished before then.', 'infoBanner'));
                     }
-                    if (r.settings) {
-                        const used = fold(div, 'Settings used');
-                        const table = el('table');
-                        for (const [label, value] of settingsRows(r.settings)) {
-                            row(table, [label, el('td', value, 'secondaryText')]);
-                        }
-                        used.appendChild(table);
-                    }
 
                     // A note shared by cells becomes one numbered footnote.
                     const footnotes = [];
@@ -1045,7 +1037,7 @@
                         }
                         const speed = speedOf(x);
                         streams.textContent = speed ? streamsText(x) : '';
-                        speedCell.textContent = speed ? speed.toFixed(1) + '× real time' : '–';
+                        speedCell.textContent = speed ? speed.toFixed(1) + '\u00d7' : '\u2013';
                         if (baseline && speed) {
                             speedCell.appendChild(el('span', ' ' + speedChange(x.fps, baseline.fps), 'hwprobe-small secondaryText'));
                         }
@@ -1074,7 +1066,7 @@
                         top.appendChild(th);
                     }
                     table.appendChild(top);
-                    row(table, [el('th', 'Output')].concat(backends.flatMap(() => (counted ? [el('th', 'Concurrent streams', 'hwprobe-num secondaryText')] : []).concat([el('th', 'Speed', 'hwprobe-num secondaryText')]))));
+                    row(table, [el('th', 'Output')].concat(backends.flatMap(() => (counted ? [el('th', 'Concurrent streams', 'hwprobe-num secondaryText')] : []).concat([el('th', 'Speed (\u00d7 real time)', 'hwprobe-num secondaryText')]))));
                     let video = null;
                     for (const key of [...new Set(r.results.map(x => x.test))]) {
                         const base = backends.map(b => r.results.find(x => x.test === key && !x.variant && keyOf(x) === keyOf(b)));
@@ -1136,7 +1128,7 @@
                     const streamsLegend = counted
                         ? 'Concurrent streams: how many of that transcode the backend keeps up with when run together (16+ is the most measured). '
                         : 'Fast accuracy doesn\u2019t count concurrent streams; Standard and Thorough run transcodes together to count them. ';
-                    div.appendChild(el('div', 'Speed: one transcode on its own, as a multiple of playback (2\u00d7 real time is twice as fast as playing); point at it for frames a second. ' + streamsLegend + 'Bold is the best backend for that row. Test videos are easier to encode than real video, so their numbers run high.', 'fieldDescription'));
+                    div.appendChild(el('div', 'Speed: one transcode on its own, as a multiple of real time (2\u00d7 is twice as fast as playing); point at it for frames a second. ' + streamsLegend + 'Bold is the best backend for that row. Test videos are easier to encode than real video, so their numbers run high.', 'fieldDescription'));
 
                     const credits = new Map();
                     for (const x of r.results) {
@@ -1155,6 +1147,14 @@
                             line.appendChild(document.createTextNode(')'));
                         });
                         div.appendChild(line);
+                    }
+                    if (r.settings) {
+                        const used = fold(div, 'Settings used');
+                        const table = el('table');
+                        for (const [label, value] of settingsRows(r.settings)) {
+                            row(table, [label, el('td', value, 'secondaryText')]);
+                        }
+                        used.appendChild(table);
                     }
                     return div;
                 }
