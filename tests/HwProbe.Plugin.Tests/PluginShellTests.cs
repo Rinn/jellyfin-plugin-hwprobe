@@ -39,10 +39,11 @@ public sealed class PluginShellTests : IDisposable
                 return Reports.Sample();
             });
         using var busy = Service(transcoding: true, _ => Task.FromResult(Reports.Sample()));
+        using var settings = new SettingsHarness();
 
-        Assert.IsType<AcceptedResult>(new HwProbeController(idle).Run());
-        Assert.IsType<ConflictObjectResult>(new HwProbeController(idle).Run());
-        Assert.IsType<ConflictObjectResult>(new HwProbeController(busy).Run());
+        Assert.IsType<AcceptedResult>(new HwProbeController(idle, settings.Service).Run());
+        Assert.IsType<ConflictObjectResult>(new HwProbeController(idle, settings.Service).Run());
+        Assert.IsType<ConflictObjectResult>(new HwProbeController(busy, settings.Service).Run());
         release.Release();
     }
 
@@ -52,7 +53,8 @@ public sealed class PluginShellTests : IDisposable
     public async Task ReportIsNotFoundThenContent()
     {
         using var service = Service(transcoding: false, _ => Task.FromResult(Reports.Sample()));
-        var controller = new HwProbeController(service);
+        using var settings = new SettingsHarness();
+        var controller = new HwProbeController(service, settings.Service);
 
         Assert.IsType<NotFoundResult>(await controller.GetReportAsync(TestContext.Current.CancellationToken));
 
