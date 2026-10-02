@@ -100,17 +100,41 @@ public static class FixtureCatalog
         Sha256 = "91f796b1ef99c5391a4e1a2f3c5d64471290b642e272965201e7c7bb1bdac3be",
     };
 
+    /// <summary>Gets the 10-bit 4:4:4 HEVC range-extension clip, also under "HEVC RExt 8/10bit"; NVDEC decodes 4:4:4 but not 4:2:2.</summary>
+    public static FixtureSpec HevcRext10Yuv444 { get; } = new("hevc_rext_444_10bit.mp4", "hevc", 10, false, "libx265", $"{Source} -c:v libx265 -pix_fmt yuv444p10le", null)
+    {
+        PixelFormat = "yuv444p10le",
+        Profile = "Rext",
+        Key = "hevc_rext_444_10bit",
+        Bundled = true,
+        Sha256 = "2f89183ced50388fd27a4dfffa553452420811bafbce0f785ee7f41dace4b52f",
+    };
+
+    /// <summary>Gets the 12-bit 4:2:2 HEVC range-extension clip, also under "HEVC RExt 12bit".</summary>
+    public static FixtureSpec HevcRext12Yuv422 { get; } = new("hevc_rext_422_12bit.mp4", "hevc", 12, false, "libx265", $"{Source} -c:v libx265 -pix_fmt yuv422p12le", null)
+    {
+        PixelFormat = "yuv422p12le",
+        Profile = "Rext",
+        Key = "hevc_rext_422_12bit",
+        Bundled = true,
+        Sha256 = "7f9988df03b9f29710b5a9a011adbcd09921333b16de458de408892ffcf5fca9",
+    };
+
     /// <summary>Gets the 12-bit HEVC range-extension clip (4:4:4), Jellyfin's "HEVC RExt 12bit".</summary>
     public static FixtureSpec HevcRext12 { get; } = new("hevc_rext_12bit.mp4", "hevc", 12, false, "libx265", $"{Source} -c:v libx265 -pix_fmt yuv444p12le", null)
     {
         PixelFormat = "yuv444p12le",
         Profile = "Rext",
+        Bundled = true,
+        Sha256 = "005f1ec7358876ed5e99a229d047f7f00b346d24613f6c4a490d60eab351a4d0",
     };
 
     /// <summary>Gets the 10-bit AV1 clip.</summary>
     public static FixtureSpec Av110 { get; } = new("av1_10bit.mp4", "av1", 10, false, "libsvtav1", $"{Source} -c:v libsvtav1 -pix_fmt yuv420p10le", null)
     {
         FallbackArguments = $"{Source} -c:v libsvtav1 {Av1PortableCode} -pix_fmt yuv420p10le",
+        Bundled = true,
+        Sha256 = "993df9208fb9f03617a71cd1e0b63b52f700ac850a894896129d411f8bb0cc76",
     };
 
     /// <summary>Gets the 8-bit AV1 clip.</summary>
@@ -120,6 +144,20 @@ public static class FixtureCatalog
         DownloadUrl = Fate("av1-test-vectors/av1-1-b8-02-allintra.ivf"),
         Sha256 = "5fcd265fd9f9bdd0d3179340b4c4532f1422ca5e5d97741c7481b84cb5dc122f",
     };
+
+    /// <summary>Gets an H.264 clip with a key frame every second frame, for trickplay's key-frame-only decoding.</summary>
+    public static FixtureSpec H264KeyFrames { get; } = new("h264_keyframes.mp4", "h264", 8, false, "libx264", $"{Source} -c:v libx264 -g 2 -pix_fmt yuv420p", null)
+    {
+        Key = "h264_keyframes",
+        Bundled = true,
+        Sha256 = "d273d8ac623117c4df7af159fe2f437628a1f76802fe9d2d3f29c34e367652f9",
+    };
+
+    /// <summary>Gets the MPEG-4 Part 2 clip, from ffmpeg's built-in encoder.</summary>
+    public static FixtureSpec Mpeg4 { get; } = new("mpeg4.mp4", "mpeg4", 8, false, "mpeg4", $"{Source} -c:v mpeg4", null);
+
+    /// <summary>Gets the MPEG-1 clip, from ffmpeg's built-in encoder.</summary>
+    public static FixtureSpec Mpeg1 { get; } = new("mpeg1.mpg", "mpeg1video", 8, false, "mpeg1video", $"{Source} -c:v mpeg1video", null);
 
     /// <summary>Gets the MPEG-2 clip.</summary>
     public static FixtureSpec Mpeg2 { get; } = new("mpeg2.mpg", "mpeg2video", 8, false, "mpeg2video", $"{Source} -c:v mpeg2video", null);
@@ -136,7 +174,7 @@ public static class FixtureCatalog
     };
 
     /// <summary>Gets every fixture, including ones that can never be generated.</summary>
-    public static IReadOnlyList<FixtureSpec> All { get; } = [H264, H264Interlaced, SubtitlesAss, Hevc, Hevc10, HevcRext10, HevcRext12, Hdr10, Vp8, Vp9, Vp910, Av1, Av110, Mpeg2, Vc1];
+    public static IReadOnlyList<FixtureSpec> All { get; } = [H264, H264Interlaced, SubtitlesAss, Hevc, Hevc10, HevcRext10, HevcRext10Yuv444, HevcRext12, HevcRext12Yuv422, Hdr10, Vp8, Vp9, Vp910, Av1, Av110, Mpeg1, Mpeg2, Mpeg4, Vc1, H264KeyFrames];
 
     /// <summary>Returns the URL of a FATE sample.</summary>
     /// <param name="path">The sample's path in the suite.</param>

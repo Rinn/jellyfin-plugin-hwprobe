@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Verdict;
 using Xunit;
@@ -23,12 +24,24 @@ public sealed class StderrMarkersTests
     public void HardwareFormatPerBackend(HwType type, string? expected) =>
         Assert.Equal(expected, StderrMarkers.HardwareFormat(type));
 
-    /// <summary>Confirmation strings cover get_format, the decoder line and the filter-graph line; none without a format.</summary>
+    /// <summary>Confirmation strings cover get_format, the decoder line and the filter-graph line; v4l2m2m, encoder-only, is confirmed by its device open.</summary>
     [Fact]
     public void ConfirmationsCoverDecoderAndGraph()
     {
         Assert.Equal(["Format videotoolbox_vld chosen by get_format()", "pix_fmt: videotoolbox_vld", "pixfmt:videotoolbox_vld"], StderrMarkers.HardwareFrames(HwType.videotoolbox));
-        Assert.Empty(StderrMarkers.HardwareFrames(HwType.v4l2m2m));
+        Assert.Equal([StderrMarkers.V4l2Device], StderrMarkers.HardwareFrames(HwType.v4l2m2m));
+    }
+
+    /// <summary>A real V4L2 encode on a Raspberry Pi passes, though the encoder rejects optional rate control; with no device it fails.</summary>
+    [Fact]
+    public void RecordedV4l2EncodePasses()
+    {
+        var pass = CorpusFile.Load("stderr/v4l2m2m-bcm2835-h264-pass.txt");
+        var expectation = new ProbeExpectation(10, StderrMarkers.HardwareFrames(HwType.v4l2m2m));
+
+        Assert.Contains("Failed to set frame level rate control", pass, StringComparison.Ordinal);
+        Assert.Equal(ProbeOutcome.Pass, VerdictEvaluator.Evaluate(new(FfmpegRunStatus.Exited, 0, string.Empty, pass, 10, TimeSpan.Zero, null), expectation));
+        Assert.DoesNotContain(StderrMarkers.V4l2Device, CorpusFile.Load("stderr/jellyfin-linux-v4l2m2m-no-device.txt"), StringComparison.Ordinal);
     }
 
     /// <summary>The VideoToolbox confirmation strings match the recorded pass and not the recorded fallback.</summary>

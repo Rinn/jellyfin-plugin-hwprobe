@@ -23,16 +23,18 @@ public static class MatrixCatalog
     {
         if (type == HwType.v4l2m2m)
         {
-            // Encoder-only upstream: software decode, h264_v4l2m2m encode.
-            return [Encode(FixtureCatalog.H264, H264, hardwareDecode: false)];
+            // Encoder-only upstream: software decode, then the v4l2m2m encoder. The HEVC and AV1 ones back
+            // "Allow encoding in HEVC/AV1 format" (EncodingHelper.GetH26xOrAv1Encoder maps v4l2m2m too).
+            return [Encode(FixtureCatalog.H264, H264, hardwareDecode: false), Encode(FixtureCatalog.H264, "hevc", hardwareDecode: false), Encode(FixtureCatalog.H264, "av1", hardwareDecode: false)];
         }
 
         // One decode cell per Jellyfin "Enable hardware decoding for" option (EncodingOptions.HardwareDecodingCodecs
-        // and the EnableDecodingColorDepth* switches), plus 10-bit AV1, which the AV1 option also covers.
+        // and the EnableDecodingColorDepth* switches), plus 10-bit AV1, which the AV1 option also covers, and the RExt
+        // formats each RExt option covers.
         FixtureSpec[] decoded =
         [
-            FixtureCatalog.H264, FixtureCatalog.Hevc, FixtureCatalog.Mpeg2, FixtureCatalog.Vc1, FixtureCatalog.Vp8, FixtureCatalog.Vp9,
-            FixtureCatalog.Av1, FixtureCatalog.Hevc10, FixtureCatalog.Vp910, FixtureCatalog.HevcRext10, FixtureCatalog.HevcRext12, FixtureCatalog.Av110,
+            FixtureCatalog.H264, FixtureCatalog.Hevc, FixtureCatalog.Mpeg1, FixtureCatalog.Mpeg2, FixtureCatalog.Mpeg4, FixtureCatalog.Vc1, FixtureCatalog.Vp8, FixtureCatalog.Vp9,
+            FixtureCatalog.Av1, FixtureCatalog.Hevc10, FixtureCatalog.Vp910, FixtureCatalog.HevcRext10, FixtureCatalog.HevcRext10Yuv444, FixtureCatalog.HevcRext12, FixtureCatalog.HevcRext12Yuv422, FixtureCatalog.Av110,
         ];
 
         List<MatrixCell> cells =
@@ -53,6 +55,21 @@ public static class MatrixCatalog
             cells.AddRange(decoded.Select(f => new MatrixCell(MatrixGroup.Decode, Key(f) + "_qsvdecoder", f, Cell(f, H264, hardwareDecode: true) with { PreferNativeDecoder = false })));
         }
 
+        // Trickplay's "Only generate images from key frames" skips non-key frames in the hardware decoder.
+        cells.Add(new(MatrixGroup.Decode, FixtureCatalog.H264KeyFrames.Key!, FixtureCatalog.H264KeyFrames, Cell(FixtureCatalog.H264KeyFrames, H264, hardwareDecode: true) with { KeyFramesOnly = true }));
+
+        if (type == HwType.nvenc)
+        {
+            // "Enable enhanced NVDEC decoder" only changes NVENC: off means the cuvid decoders.
+            cells.AddRange(decoded.Select(f => new MatrixCell(MatrixGroup.Decode, Key(f) + "_cuvid", f, Cell(f, H264, hardwareDecode: true) with { EnhancedNvdec = false })));
+        }
+
+        if (type is HwType.nvenc or HwType.amf or HwType.videotoolbox)
+        {
+            // "Deinterlacing method" only reaches the CUDA, OpenCL and VideoToolbox deinterlacers (EncodingHelper.GetHwDeinterlaceFilter).
+            cells.Add(new(MatrixGroup.Deinterlace, "bwdif", FixtureCatalog.H264Interlaced, Cell(FixtureCatalog.H264Interlaced, H264, hardwareDecode: true) with { Bwdif = true }));
+        }
+
         if (type is HwType.qsv or HwType.vaapi)
         {
             // Jellyfin's "Enable VPP Tone mapping", Intel only; it falls back to OpenCL when VPP can't be used.
@@ -66,13 +83,20 @@ public static class MatrixCatalog
             }
         }
 
+        if (type is HwType.qsv or HwType.vaapi or HwType.videotoolbox or HwType.rkmpp)
+        {
+            // Trickplay's MJPEG encoding; EncodingHelper's _mjpegCodecMap has encoders for these backends only.
+            var mjpeg = Encode(FixtureCatalog.H264, "mjpeg", hardwareDecode: true);
+            cells.Add(mjpeg with { Cell = mjpeg.Cell with { MaxWidth = 320 } });
+        }
+
         return cells;
     }
 
     /// <summary>Report key for a fixture, e.g. <c>hevc_rext_12bit</c>; 8-bit 4:2:0 is the bare codec.</summary>
     /// <param name="fixture">The fixture.</param>
     /// <returns>The key.</returns>
-    private static string Key(FixtureSpec fixture) => Key(fixture.Codec, fixture.BitDepth, fixture.Profile);
+    private static string Key(FixtureSpec fixture) => fixture.Key ?? Key(fixture.Codec, fixture.BitDepth, fixture.Profile);
 
     /// <summary>Report key for a codec, bit depth and profile.</summary>
     /// <param name="codec">The codec.</param>

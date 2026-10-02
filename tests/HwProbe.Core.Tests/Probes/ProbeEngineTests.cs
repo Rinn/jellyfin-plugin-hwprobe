@@ -165,7 +165,7 @@ public sealed class ProbeEngineTests : IDisposable
         Assert.DoesNotContain(b.Probes, p => p.Stage == ProbeStage.Matrix);
     }
 
-    /// <summary>A codec upstream can't build args for is CodecUnsupported and is never launched.</summary>
+    /// <summary>A codec upstream can't build args for is NotUsed and is never launched.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
     public async Task UnconstructibleCellIsNotLaunched()
@@ -174,7 +174,7 @@ public sealed class ProbeEngineTests : IDisposable
 
         var report = await RunAsync(StopStage.Matrix);
 
-        Assert.Equal(ProbeOutcome.CodecUnsupported, report.Backends[0].Decode["av1"]);
+        Assert.Equal(ProbeOutcome.NotUsed, report.Backends[0].Decode["av1"]);
         Assert.DoesNotContain(_runner.Calls, c => c.Contains("-progress", StringComparison.Ordinal) && c.Contains("av1_8bit", StringComparison.Ordinal));
     }
 
@@ -188,10 +188,10 @@ public sealed class ProbeEngineTests : IDisposable
         var report = await RunAsync(StopStage.Matrix);
 
         Assert.Empty(report.Backends[0].Deinterlace);
-        Assert.Equal(ProbeOutcome.Skipped, Assert.Single(report.Probes, p => p.ProbeId.Contains("Deinterlace", StringComparison.Ordinal)).Outcome);
+        Assert.All(report.Probes.Where(p => p.ProbeId.Contains("Deinterlace", StringComparison.Ordinal)), p => Assert.Equal(ProbeOutcome.Skipped, p.Outcome));
     }
 
-    /// <summary>A codec Jellyfin won't hardware-decode is CodecUnsupported even with no fixture to test it.</summary>
+    /// <summary>A codec Jellyfin won't hardware-decode is NotUsed even with no fixture to test it.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
     public async Task SoftwareDecodedCodecNeedsNoFixture()
@@ -200,7 +200,7 @@ public sealed class ProbeEngineTests : IDisposable
 
         var report = await RunAsync(StopStage.Matrix);
 
-        Assert.Equal(ProbeOutcome.CodecUnsupported, report.Backends[0].Decode["vc1"]);
+        Assert.Equal(ProbeOutcome.NotUsed, report.Backends[0].Decode["vc1"]);
     }
 
     /// <summary>Environment overrides from arg generation reach the launched probe.</summary>

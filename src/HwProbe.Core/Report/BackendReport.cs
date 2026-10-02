@@ -10,7 +10,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Report;
 /// <param name="Decode">Decode cells by codec key, e.g. <c>hevc10</c>.</param>
 /// <param name="Encode">Encode cells by codec key, e.g. <c>h264_lowpower</c>.</param>
 /// <param name="Tonemap">Tone-map cells by method.</param>
-/// <param name="Deinterlace">Deinterlace cells by hardware filter family.</param>
+/// <param name="Deinterlace">Deinterlace cells by hardware filter family; the BWDIF test adds <c>_bwdif</c>.</param>
 /// <param name="Subtitles">Subtitle burn-in cells by subtitle kind, e.g. <c>text</c>.</param>
 /// <param name="Hint">Remedy for a non-viable verdict; empty otherwise.</param>
 public sealed record BackendReport(

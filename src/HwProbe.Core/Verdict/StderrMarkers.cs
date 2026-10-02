@@ -6,6 +6,9 @@ namespace Jellyfin.Plugin.HwProbe.Core.Verdict;
 /// <summary>The ffmpeg stderr strings the verdict rules key on, kept in one place.</summary>
 public static class StderrMarkers
 {
+    /// <summary>The line the V4L2 encoder logs when it opens its device (libavcodec/v4l2_m2m.c), confirming v4l2m2m's only hardware step.</summary>
+    public const string V4l2Device = "] Using device /dev/video";
+
     /// <summary>Prefix of the line naming the VAAPI driver once the display opens.</summary>
     /// <remarks>libavutil/hwcontext_vaapi.c, vaapi_device_connect, at verbose. Read from source, not observed.</remarks>
     public const string VaapiDriverPrefix = "VAAPI driver: ";
@@ -77,14 +80,25 @@ public static class StderrMarkers
     /// <summary>Lines that match a failure marker but don't affect the transcode; removed before matching.</summary>
     /// <remarks>
     /// Stream probing's own decoder open (libavformat, avformat_find_stream_info). Observed with jellyfin-ffmpeg
-    /// 8.1.3 on a VC-1 elementary stream that then decoded in hardware.
+    /// 8.1.3 on a VC-1 elementary stream that then decoded in hardware. VideoToolbox declining an optional speed
+    /// hint, logged as a warning before encoding carries on (libavcodec/videotoolboxenc.c). Observed with
+    /// jellyfin-ffmpeg 8.1.3 for mjpeg_videotoolbox on Apple silicon. A V4L2 encoder rejecting optional frame-level
+    /// rate control (libavcodec/v4l2_m2m_enc.c), and its device search skipping devices that don't fit
+    /// (libavcodec/v4l2_m2m.c), both observed with ffmpeg 7.1.5 on a Raspberry Pi's bcm2835-codec.
     /// </remarks>
-    public static readonly IReadOnlyList<string> Harmless = ["Failed to open codec in avformat_find_stream_info"];
+    public static readonly IReadOnlyList<string> Harmless =
+    [
+        "Failed to open codec in avformat_find_stream_info",
+        "PrioritizeEncodingSpeedOverQuality property is not supported on this device. Ignoring.",
+        "Failed to set frame level rate control: Invalid argument",
+        "v4l2 capture format not supported",
+        "v4l2 output format not supported",
+    ];
 
     /// <summary>Gets every failure marker, for picking the stderr lines that explain a failure.</summary>
     public static IReadOnlyList<string> AllFailures { get; } = [.. PermissionDenied, .. DeviceUnavailable, .. FilterUnsupported, .. CodecUnsupported, .. Generic];
 
-    /// <summary>Returns the stderr lines that prove the decoder produced hardware frames.</summary>
+    /// <summary>Returns the stderr lines that prove the decoder produced hardware frames, or for v4l2m2m that the encoder opened its device.</summary>
     /// <param name="type">The backend.</param>
     /// <returns>Alternative strings, any one of which confirms; empty when there is no hardware frame format.</returns>
     /// <remarks>
@@ -95,7 +109,8 @@ public static class StderrMarkers
     /// A failed hwaccel init also logs the get_format line, then "Failed setup for format", which the
     /// evaluator treats as a failure. Formats are upstream's <c>-hwaccel_output_format</c> values.
     /// </remarks>
-    public static IReadOnlyList<string> HardwareFrames(HwType type) => Confirmations(HardwareFormat(type));
+    public static IReadOnlyList<string> HardwareFrames(HwType type) =>
+        type == HwType.v4l2m2m ? [V4l2Device] : Confirmations(HardwareFormat(type));
 
     /// <summary>Returns stderr strings confirming hardware frames for a backend or for the hwaccel its arguments use.</summary>
     /// <param name="type">The backend.</param>

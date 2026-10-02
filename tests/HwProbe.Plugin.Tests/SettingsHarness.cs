@@ -22,8 +22,9 @@ internal sealed class SettingsHarness : IDisposable
     public SettingsHarness()
     {
         Service = new SettingsService(
-            () => Copy(Saved),
+            () => new ServerSettings(Copy(Saved), new TrickplayOptions { EnableHwAcceleration = SavedTrickplay.EnableHwAcceleration, EnableHwEncoding = SavedTrickplay.EnableHwEncoding, EnableKeyFrameOnlyExtraction = SavedTrickplay.EnableKeyFrameOnlyExtraction }),
             Save,
+            options => SavedTrickplay = options,
             _ => Task.FromResult<CapabilityReport?>(Report),
             () => Probing,
             () => EncoderPath,
@@ -45,7 +46,10 @@ internal sealed class SettingsHarness : IDisposable
         EnableTonemapping = false,
     };
 
-    /// <summary>Gets how many times the options were saved.</summary>
+    /// <summary>Gets or sets the server's saved trickplay options.</summary>
+    public TrickplayOptions SavedTrickplay { get; set; } = new();
+
+    /// <summary>Gets how many times the encoding options were saved.</summary>
     public int Saves { get; private set; }
 
     /// <summary>Gets or sets the latest report, or null for none.</summary>
@@ -57,7 +61,7 @@ internal sealed class SettingsHarness : IDisposable
     /// <summary>Gets or sets the server's ffmpeg path.</summary>
     public string EncoderPath { get; set; } = Ffmpeg;
 
-    /// <summary>Builds a report: VAAPI and QSV viable on the node, NVENC not present; VAAPI advice covers three options.</summary>
+    /// <summary>Builds a report: VAAPI and QSV viable on the node, NVENC not present; VAAPI advice covers four options.</summary>
     /// <returns>The report.</returns>
     public static CapabilityReport Sample()
     {
@@ -68,6 +72,8 @@ internal sealed class SettingsHarness : IDisposable
                 new("Enable hardware decoding for", "HardwareDecodingCodecs:hevc", "HEVC", SettingState.TurnOn, string.Empty),
                 new("Encoding format options", "AllowAv1Encoding", "Allow encoding in AV1 format", SettingState.LeaveOff, "Not supported by this GPU"),
                 new("Tone mapping", "EnableTonemapping", "Enable Tone mapping", SettingState.NotTested, "Not tested"),
+                new("Trickplay", "Trickplay:EnableHwAcceleration", "Enable hardware decoding", SettingState.TurnOn, string.Empty),
+                new("Trickplay", "Trickplay:EnableKeyFrameOnlyExtraction", "Only generate images from key frames", SettingState.Optional, "Works with hardware decoding; faster, less accurate timing"),
             ],
         };
         return Reports.Sample() with

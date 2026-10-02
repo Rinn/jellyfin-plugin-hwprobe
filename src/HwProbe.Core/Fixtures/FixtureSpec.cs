@@ -23,6 +23,13 @@ public sealed record FixtureSpec(
     /// <summary>Gets the profile Jellyfin's <c>MediaStream.Profile</c> reports, e.g. <c>Rext</c>, or null.</summary>
     public string? Profile { get; init; }
 
+    /// <summary>Gets a value indicating whether a copy ships in this assembly, used when the clip can't be generated.</summary>
+    /// <remarks>Made with <see cref="EncodeArguments"/> by scripts/make-bundled-fixtures.sh and pinned by <see cref="Sha256"/>.</remarks>
+    public bool Bundled { get; init; }
+
+    /// <summary>Gets a report key to use instead of the one built from codec, bit depth and profile, or null.</summary>
+    public string? Key { get; init; }
+
     /// <summary>Gets a value indicating whether the clip is interlaced.</summary>
     public bool Interlaced { get; init; }
 

@@ -1,0 +1,225 @@
+# Observed: macOS 27.0.1 arm64, jellyfin-ffmpeg 8.1.3-1 (portable macarm64).
+# ffmpeg -v debug -init_hw_device videotoolbox=vt -hwaccel videotoolbox -hwaccel_output_format videotoolbox_vld -noautorotate -i h264_8bit.mp4 -frames:v 10 -vf scale_vt=w=320:h=180 -c:v mjpeg_videotoolbox -an -f null -
+Splitting the commandline.
+Reading option '-hide_banner' ... matched as option 'hide_banner' (do not show program banner) with argument '1'.
+Reading option '-v' ... matched as option 'v' (set logging level) with argument 'debug'.
+Reading option '-nostats' ... matched as option 'stats' (print progress report during encoding) with argument 0.
+Reading option '-init_hw_device' ... matched as option 'init_hw_device' (initialise hardware device) with argument 'videotoolbox=vt'.
+Reading option '-hwaccel' ... matched as option 'hwaccel' (use HW accelerated decoding) with argument 'videotoolbox'.
+Reading option '-hwaccel_output_format' ... matched as option 'hwaccel_output_format' (select output format used with HW accelerated decoding) with argument 'videotoolbox_vld'.
+Reading option '-noautorotate' ... matched as option 'autorotate' (automatically insert correct rotate filters) with argument 0.
+Reading option '-i' ... matched as input url with argument 'h264_8bit.mp4'.
+Reading option '-frames:v' ... matched as option 'frames' (set the number of frames to output) with argument '10'.
+Reading option '-vf' ... matched as option 'vf' (alias for -filter:v (apply filters to video streams)) with argument 'scale_vt=w=320:h=180'.
+Reading option '-c:v' ... matched as option 'c' (select encoder/decoder ('copy' to copy stream without reencoding)) with argument 'mjpeg_videotoolbox'.
+Reading option '-an' ... matched as option 'an' (disable audio) with argument '1'.
+Reading option '-f' ... matched as option 'f' (force container format (auto-detected otherwise)) with argument 'null'.
+Reading option '-' ... matched as output url.
+Finished splitting the commandline.
+Parsing a group of options: global .
+Applying option hide_banner (do not show program banner) with argument 1.
+Applying option v (set logging level) with argument debug.
+Applying option nostats (print progress report during encoding) with argument 0.
+Applying option init_hw_device (initialise hardware device) with argument videotoolbox=vt.
+Successfully parsed a group of options.
+Parsing a group of options: input url h264_8bit.mp4.
+Applying option hwaccel (use HW accelerated decoding) with argument videotoolbox.
+Applying option hwaccel_output_format (select output format used with HW accelerated decoding) with argument videotoolbox_vld.
+Applying option noautorotate (automatically insert correct rotate filters) with argument 0.
+Successfully parsed a group of options.
+Opening an input file: h264_8bit.mp4.
+[in#0 @ 0x7b92c3c000] Opening 'h264_8bit.mp4' for reading
+[file @ 0x7b92c44000] Setting default whitelist 'file,crypto,data'
+[in#0 @ 0x7b92c3c000] Format mov,mp4,m4a,3gp,3g2,mj2 probed with size=2048 and score=100
+[in#0 @ 0x7b92c3c000] ISO: File Type Major Brand: isom
+[in#0 @ 0x7b92c3c000] Unknown dref type 0x206c7275 size 12
+[in#0 @ 0x7b92c3c000] Processing st: 0, edit list 0 - media time: 1024, duration: 12800
+[in#0 @ 0x7b92c3c000] Offset DTS by 1024 to make first pts zero.
+[in#0 @ 0x7b92c3c000] Setting codecpar->delay to 2 for stream st: 0
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7b92c3c000] Before avformat_find_stream_info() pos: 93499 bytes read:33896 seeks:1 nb_streams:1
+[h264 @ 0x7b92c74380] nal_unit_type: 7(SPS), nal_ref_idc: 3
+[h264 @ 0x7b92c74380] Decoding VUI
+[h264 @ 0x7b92c74380] nal_unit_type: 8(PPS), nal_ref_idc: 3
+[h264 @ 0x7b92c74380] nal_unit_type: 7(SPS), nal_ref_idc: 3
+[h264 @ 0x7b92c74380] Decoding VUI
+[h264 @ 0x7b92c74380] nal_unit_type: 8(PPS), nal_ref_idc: 3
+[h264 @ 0x7b92c74380] nal_unit_type: 6(SEI), nal_ref_idc: 0
+[h264 @ 0x7b92c74380] nal_unit_type: 5(IDR), nal_ref_idc: 3
+[h264 @ 0x7b92c74380] Format yuv420p chosen by get_format().
+[h264 @ 0x7b92c74380] Reinit context to 640x368, pix_fmt: yuv420p
+[h264 @ 0x7b92c74380] no picture 
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7b92c3c000] All info found
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7b92c3c000] After avformat_find_stream_info() pos: 8945 bytes read:66664 seeks:2 frames:1
+[vist#0:0/h264 @ 0x7b92d38000] Selecting decoder 'h264' because of requested hwaccel method videotoolbox
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'h264_8bit.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf62.12.103
+  Duration: 00:00:01.00, start: 0.000000, bitrate: 747 kb/s
+  Stream #0:0[0x1](und), 1, 1/12800: Video: h264 (High), 1 reference frame (avc1 / 0x31637661), yuv420p(progressive, left), 640x360 [SAR 1:1 DAR 16:9], 0/1, 738 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+    Metadata:
+      handler_name    : VideoHandler
+      encoder         : Lavc62.28.103 libx264
+Successfully opened the file.
+Parsing a group of options: output url -.
+Applying option frames:v (set the number of frames to output) with argument 10.
+Applying option vf (alias for -filter:v (apply filters to video streams)) with argument scale_vt=w=320:h=180.
+Applying option c:v (select encoder/decoder ('copy' to copy stream without reencoding)) with argument mjpeg_videotoolbox.
+Applying option an (disable audio) with argument 1.
+Applying option f (force container format (auto-detected otherwise)) with argument null.
+Successfully parsed a group of options.
+Opening an output file: -.
+[out#0/null @ 0x7b92c84000] No explicit maps, mapping streams automatically...
+[vost#0:0/mjpeg_videotoolbox @ 0x7b930c0000] Created video stream from input stream 0:0
+[AVFilterGraph @ 0x7b92c7c080] Setting 'w' to value '320'
+[AVFilterGraph @ 0x7b92c7c080] Setting 'h' to value '180'
+detected 10 logical cores
+[h264 @ 0x7b931c0000] nal_unit_type: 7(SPS), nal_ref_idc: 3
+[h264 @ 0x7b931c0000] Decoding VUI
+[h264 @ 0x7b931c0000] nal_unit_type: 8(PPS), nal_ref_idc: 3
+Successfully opened the file.
+Stream mapping:
+  Stream #0:0 -> #0:0 (h264 (native) -> mjpeg (mjpeg_videotoolbox))
+[vost#0:0/mjpeg_videotoolbox @ 0x7b930c0000] Starting thread...
+[vf#0:0 @ 0x7b9311c000] Starting thread...
+[vist#0:0/h264 @ 0x7b92d38000] [dec:h264 @ 0x7b92e08000] Starting thread...
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7b92c34000] Starting thread...
+Press [q] to stop, [?] for help
+[h264 @ 0x7b931c0000] nal_unit_type: 6(SEI), nal_ref_idc: 0
+[h264 @ 0x7b931c0000] nal_unit_type: 5(IDR), nal_ref_idc: 3
+[h264 @ 0x7b931c0000] Format videotoolbox_vld chosen by get_format().
+[h264 @ 0x7b931c0000] Format videotoolbox_vld requires hwaccel h264_videotoolbox initialisation.
+[h264 @ 0x7b931c0000] Reinit context to 640x368, pix_fmt: videotoolbox_vld
+[h264 @ 0x7b931c0000] no picture 
+[h264 @ 0x7b931c0380] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[h264 @ 0x7b931c0380] no picture 
+[h264 @ 0x7b931c0700] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[AVFilterGraph @ 0x7b93009300] Setting 'w' to value '320'
+[h264 @ 0x7b931c0a80] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[AVFilterGraph @ 0x7b93009300] Setting 'h' to value '180'
+[h264 @ 0x7b931c0e00] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[graph -1 input from stream 0:0 @ 0x7b9300cfc0] w:640 h:360 pixfmt:videotoolbox_vld tb:1/12800 fr:25/1 sar:1/1 csp:unknown range:unknown alpha:unspecified
+[format @ 0x7b9300d140] Setting 'pix_fmts' to value 'videotoolbox_vld|nv12|yuv420p'
+[format @ 0x7b9300d140] Setting 'color_ranges' to value 'tv|pc'
+Filter 'Parsed_scale_vt_0' formats:
+  in[0] 'default':
+    Pixel formats: videotoolbox_vld
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+  out[0] 'default':
+    Pixel formats: videotoolbox_vld
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+Filter 'graph -1 input from stream 0:0' formats:
+  out[0] 'default':
+    Pixel formats: videotoolbox_vld
+    Color spaces: unknown
+    Color ranges: unknown tv
+    Alpha modes: unspecified premultiplied straight
+Filter 'out_#0:0' formats:
+  in[0] 'default':
+    Pixel formats: yuv420p yuyv422 rgb24 bgr24 yuv422p yuv444p yuv410p yuv411p gray monow monob pal8 yuvj420p yuvj422p yuvj444p uyvy422 uyyvyy411 bgr8 bgr4 bgr4_byte rgb8 rgb4 rgb4_byte nv12 nv21 argb rgba abgr bgra gray16be gray16le yuv440p yuvj440p yuva420p rgb48be rgb48le rgb565be rgb565le rgb555be rgb555le bgr565be bgr565le bgr555be bgr555le vaapi yuv420p16le yuv420p16be yuv422p16le yuv422p16be yuv444p16le yuv444p16be dxva2_vld rgb444le rgb444be bgr444le bgr444be ya8 bgr48be bgr48le yuv420p9be yuv420p9le yuv420p10be yuv420p10le yuv422p10be yuv422p10le yuv444p9be yuv444p9le yuv444p10be yuv444p10le yuv422p9be yuv422p9le gbrp gbrp9be gbrp9le gbrp10be gbrp10le gbrp16be gbrp16le yuva422p yuva444p yuva420p9be yuva420p9le yuva422p9be yuva422p9le yuva444p9be yuva444p9le yuva420p10be yuva420p10le yuva422p10be yuva422p10le yuva444p10be yuva444p10le yuva420p16be yuva420p16le yuva422p16be yuva422p16le yuva444p16be yuva444p16le vdpau xyz12le xyz12be nv16 nv20le nv20be rgba64be rgba64le bgra64be bgra64le yvyu422 ya16be ya16le gbrap gbrap16be gbrap16le qsv mmal d3d11va_vld cuda 0rgb rgb0 0bgr bgr0 yuv420p12be yuv420p12le yuv420p14be yuv420p14le yuv422p12be yuv422p12le yuv422p14be yuv422p14le yuv444p12be yuv444p12le yuv444p14be yuv444p14le gbrp12be gbrp12le gbrp14be gbrp14le yuvj411p bayer_bggr8 bayer_rggb8 bayer_gbrg8 bayer_grbg8 bayer_bggr16le bayer_bggr16be bayer_rggb16le bayer_rggb16be bayer_gbrg16le bayer_gbrg16be bayer_grbg16le bayer_grbg16be yuv440p10le yuv440p10be yuv440p12le yuv440p12be ayuv64le ayuv64be videotoolbox_vld p010le p010be gbrap12be gbrap12le gbrap10be gbrap10le mediacodec gray12be gray12le gray10be gray10le p016le p016be d3d11 gray9be gray9le gbrpf32be gbrpf32le gbrapf32be gbrapf32le drm_prime opencl gray14be gray14le grayf32be grayf32le yuva422p12be yuva422p12le yuva444p12be yuva444p12le nv24 nv42 vulkan y210be y210le x2rgb10le x2rgb10be x2bgr10le x2bgr10be p210be p210le p410be p410le p216be p216le p416be p416le vuya rgbaf16be rgbaf16le vuyx p012le p012be y212be y212le xv30be xv30le xv36be xv36le rgbf32be rgbf32le rgbaf32be rgbaf32le p212be p212le p412be p412le gbrap14be gbrap14le d3d12 ayuv uyva vyu444 v30xbe v30xle rgbf16be rgbf16le rgba128be rgba128le rgb96be rgb96le y216be y216le xv48be xv48le gbrpf16be gbrpf16le gbrapf16be gbrapf16le grayf16be grayf16le amf gray32be gray32le yaf32be yaf32le yaf16be yaf16le gbrap32be gbrap32le yuv444p10msbbe yuv444p10msble yuv444p12msbbe yuv444p12msble gbrp10msbbe gbrp10msble gbrp12msbbe gbrp12msble ohcodec nv15 nv20
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+Filter 'format' formats:
+  in[0] 'default':
+    Pixel formats: videotoolbox_vld nv12 yuv420p
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: tv pc
+    Alpha modes: unspecified premultiplied straight
+  out[0] 'default':
+    Pixel formats: videotoolbox_vld nv12 yuv420p
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: tv pc
+    Alpha modes: unspecified premultiplied straight
+[AVFilterGraph @ 0x7b93009300] query_formats: 4 queried, 12 merged, 0 already done, 0 delayed
+[graph -1 input from stream 0:0 @ 0x7b9300cfc0] video frame properties congruent with link at pts_time: 0
+[vost#0:0/mjpeg_videotoolbox @ 0x7b930c0000] [enc:mjpeg_videotoolbox @ 0x7b92c38150] Using input frames context (format videotoolbox_vld) with mjpeg_videotoolbox encoder.
+[mjpeg_videotoolbox @ 0x7b92c74a80] Init the encoder: com.apple.videotoolbox.videoencoder.jpeg.ajpeg
+[mjpeg_videotoolbox @ 0x7b92c74a80] PrioritizeEncodingSpeedOverQuality property is not supported on this device. Ignoring.
+[mjpeg_videotoolbox @ 0x7b92c74a80] This device does not support the spatialaq option. Value ignored.
+Output #0, null, to 'pipe:':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf62.12.103
+  Stream #0:0(und), 0, 1/25: Video: mjpeg, 1 reference frame, nv12(tv, progressive, left), 320x180 [SAR 1:1 DAR 16:9], 0/1, q=2-31, 25 fps, 25 tbn (default)
+    Metadata:
+      encoder         : Lavc62.28.103 mjpeg_videotoolbox
+      handler_name    : VideoHandler
+[out#0/null @ 0x7b92c84000] Starting thread...
+[out#0/null @ 0x7b92c84000] sq: send 0 ts 0.04
+[out#0/null @ 0x7b92c84000] sq: receive 0 ts 0.04 queue head 0 ts 0.04
+[h264 @ 0x7b931c1180] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[h264 @ 0x7b931c1500] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[h264 @ 0x7b931c1880] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[h264 @ 0x7b931c1c00] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[h264 @ 0x7b931c1f80] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[h264 @ 0x7b931c2300] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[h264 @ 0x7b931c0000] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[h264 @ 0x7b931c0380] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[h264 @ 0x7b931c0700] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[h264 @ 0x7b931c0a80] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[out#0/null @ 0x7b92c84000] sq: send 0 ts 0.08
+[out#0/null @ 0x7b92c84000] sq: receive 0 ts 0.08 queue head 0 ts 0.08
+[h264 @ 0x7b931c0e00] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7b92c34000] EOF while reading input
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7b92c34000] Terminating thread with return code 0 (success)
+[out#0/null @ 0x7b92c84000] sq: send 0 ts 0.12
+[out#0/null @ 0x7b92c84000] sq: receive 0 ts 0.12 queue head 0 ts 0.12
+[h264 @ 0x7b931c1180] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[h264 @ 0x7b931c1500] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[out#0/null @ 0x7b92c84000] sq: send 0 ts 0.16
+[out#0/null @ 0x7b92c84000] sq: receive 0 ts 0.16 queue head 0 ts 0.16
+[h264 @ 0x7b931c1880] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[out#0/null @ 0x7b92c84000] sq: send 0 ts 0.2
+[out#0/null @ 0x7b92c84000] sq: receive 0 ts 0.2 queue head 0 ts 0.2
+[h264 @ 0x7b931c1c00] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[h264 @ 0x7b931c1f80] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[out#0/null @ 0x7b92c84000] sq: send 0 ts 0.24
+[out#0/null @ 0x7b92c84000] sq: receive 0 ts 0.24 queue head 0 ts 0.24
+[h264 @ 0x7b931c2300] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[out#0/null @ 0x7b92c84000] sq: send 0 ts 0.28
+[out#0/null @ 0x7b92c84000] sq: receive 0 ts 0.28 queue head 0 ts 0.28
+[h264 @ 0x7b931c0000] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[out#0/null @ 0x7b92c84000] sq: send 0 ts 0.32
+[out#0/null @ 0x7b92c84000] sq: receive 0 ts 0.32 queue head 0 ts 0.32
+[h264 @ 0x7b931c0380] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[out#0/null @ 0x7b92c84000] sq: send 0 ts 0.36
+[out#0/null @ 0x7b92c84000] sq: receive 0 ts 0.36 queue head 0 ts 0.36
+[h264 @ 0x7b931c0700] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[out#0/null @ 0x7b92c84000] sq: send 0 ts 0.4
+[out#0/null @ 0x7b92c84000] sq: 0 frames_max 10 reached
+[out#0/null @ 0x7b92c84000] sq: finish 0; head ts 0.4
+[out#0/null @ 0x7b92c84000] sq: finish queue
+[out#0/null @ 0x7b92c84000] sq: receive 0 ts 0.4 queue head 0 ts 0.4
+[out#0/null @ 0x7b92c84000] sq: 0 EOF
+[out#0/null @ 0x7b92c84000] sq: finish queue
+[vost#0:0/mjpeg_videotoolbox @ 0x7b930c0000] [enc:mjpeg_videotoolbox @ 0x7b92c38150] Encoder thread received EOF
+[vf#0:0 @ 0x7b9311c000] All consumers returned EOF
+[out#0/null @ 0x7b92c84000] sq: 0 EOF
+[out#0/null @ 0x7b92c84000] sq: finish queue
+[vf#0:0 @ 0x7b9311c000] Terminating thread with return code 0 (success)
+[vost#0:0/mjpeg_videotoolbox @ 0x7b930c0000] Terminating thread with return code 0 (success)
+[out#0/null @ 0x7b92c84000] All streams finished
+[out#0/null @ 0x7b92c84000] Terminating thread with return code 0 (success)
+[vist#0:0/h264 @ 0x7b92d38000] [dec:h264 @ 0x7b92e08000] Decoder thread received EOF packet
+[vist#0:0/h264 @ 0x7b92d38000] [dec:h264 @ 0x7b92e08000] Decoder returned EOF, finishing
+[vist#0:0/h264 @ 0x7b92d38000] [dec:h264 @ 0x7b92e08000] Terminating thread with return code 0 (success)
+[out#0/null @ 0x7b92c84000] Output file #0 (pipe:):
+[out#0/null @ 0x7b92c84000]   Output stream #0:0 (video): 10 frames encoded; 10 packets muxed (95583 bytes); 
+[out#0/null @ 0x7b92c84000]   Total: 10 packets (95583 bytes) muxed
+[out#0/null @ 0x7b92c84000] video:93KiB audio:0KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+frame=   10 fps=0.0 q=-0.0 Lsize=N/A time=00:00:00.36 bitrate=N/A speed=1.81x elapsed=0:00:00.19    
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7b92c34000] Input file #0 (h264_8bit.mp4):
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7b92c34000]   Input stream #0:0 (video): 25 packets read (92323 bytes); 14 frames decoded; 0 decode errors; 
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x7b92c34000]   Total: 25 packets (92323 bytes) demuxed
+[AVIOContext @ 0x7b92c4c000] Statistics: 127347 bytes read, 2 seeks
+
+Exiting with exit code 0

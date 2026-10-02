@@ -117,6 +117,33 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.True(_harness.Service.RestartRequired);
     }
 
+    /// <summary>A trickplay option is saved to the trickplay settings only, and reverts like any other.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task TrickplayIsSavedSeparately()
+    {
+        var result = await ApplyAsync(("Trickplay:EnableHwAcceleration", true));
+
+        Assert.Equal([new AppliedChange("Trickplay:EnableHwAcceleration", "false", "true")], result.Changes);
+        Assert.True(_harness.SavedTrickplay.EnableHwAcceleration);
+        Assert.Equal(0, _harness.Saves);
+        Assert.False(result.RestartRequired);
+
+        await _harness.Service.RevertAsync("admin", TestContext.Current.CancellationToken);
+        Assert.False(_harness.SavedTrickplay.EnableHwAcceleration);
+    }
+
+    /// <summary>An optional option can be turned on, but an untested one can't.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task OptionalCanBeTurnedOn()
+    {
+        var result = await ApplyAsync(("Trickplay:EnableKeyFrameOnlyExtraction", true));
+
+        Assert.Equal(ApplyOutcome.Applied, result.Outcome);
+        Assert.True(_harness.SavedTrickplay.EnableKeyFrameOnlyExtraction);
+    }
+
     /// <summary>Revert restores the last apply, leaves settings changed since, and then has nothing left.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

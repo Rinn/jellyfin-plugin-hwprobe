@@ -8,7 +8,8 @@ namespace Jellyfin.Plugin.HwProbe.Core.Report;
 /// <remarks>
 /// Which options appear for which backend, their labels and their headings follow jellyfin-web's Transcoding page
 /// (src/apps/dashboard/routes/playback/transcoding.tsx, features/playback/constants/codecs.ts and the en-us strings),
-/// read on 2026-10-01.
+/// read on 2026-10-01. Trickplay options follow the Trickplay page (routes/playback/trickplay.tsx) and
+/// MediaEncoder.ExtractVideoImagesOnIntervalAccelerated, read at v12.1 on 2026-10-02.
 /// </remarks>
 public static class SettingsAdvisor
 {
@@ -16,6 +17,11 @@ public static class SettingsAdvisor
     private const string EncodingSection = "Hardware encoding options";
     private const string FormatSection = "Encoding format options";
     private const string TonemapSection = "Tone mapping";
+    private const string TrickplaySection = "Trickplay";
+    private const string DeinterlaceSection = "Deinterlacing";
+    private const string EnhancedNvdec = "EnableEnhancedNvdecDecoder";
+    private const string NativeDecoder = "PreferSystemNativeHwDecoder";
+    private const string NotUsed = "Not used with this backend";
     private const string NotTested = "Not tested";
 
     // codecs.ts CODECS: the decoding checkboxes and the backends that show each one.
@@ -36,13 +42,13 @@ public static class SettingsAdvisor
     private static readonly HwType[] _tenBitTypes = [HwType.amf, HwType.nvenc, HwType.qsv, HwType.vaapi, HwType.rkmpp];
     private static readonly HwType[] _rextTypes = [HwType.nvenc, HwType.qsv, HwType.vaapi];
 
-    // The 10-bit and RExt options, with the decode cell that tests each.
-    private static readonly (string Label, string Setting, string Cell, HwType[] Types)[] _depthOptions =
+    // The 10-bit and RExt options, with the decode cells that test each; each RExt option covers 4:2:2 and 4:4:4.
+    private static readonly (string Label, string Setting, string[] Cells, HwType[] Types)[] _depthOptions =
     [
-        ("HEVC 10bit", "EnableDecodingColorDepth10Hevc", "hevc_10bit", _tenBitTypes),
-        ("VP9 10bit", "EnableDecodingColorDepth10Vp9", "vp9_10bit", _tenBitTypes),
-        ("HEVC RExt 8/10bit", "EnableDecodingColorDepth10HevcRext", "hevc_rext_10bit", _rextTypes),
-        ("HEVC RExt 12bit", "EnableDecodingColorDepth12HevcRext", "hevc_rext_12bit", _rextTypes),
+        ("HEVC 10bit", "EnableDecodingColorDepth10Hevc", ["hevc_10bit"], _tenBitTypes),
+        ("VP9 10bit", "EnableDecodingColorDepth10Vp9", ["vp9_10bit"], _tenBitTypes),
+        ("HEVC RExt 8/10bit", "EnableDecodingColorDepth10HevcRext", ["hevc_rext_10bit", "hevc_rext_444_10bit"], _rextTypes),
+        ("HEVC RExt 12bit", "EnableDecodingColorDepth12HevcRext", ["hevc_rext_12bit", "hevc_rext_422_12bit"], _rextTypes),
     ];
 
     /// <summary>Returns advice for every option Jellyfin's Transcoding page shows for this backend.</summary>
@@ -72,28 +78,33 @@ public static class SettingsAdvisor
             advice.Add(new SettingAdvice(DecodingSection, "HardwareDecodingCodecs:" + codec, label, SettingState.LeaveOff, "Not used with this backend") { Hidden = true });
         }
 
-        foreach (var (label, setting, cell, _) in _depthOptions.Where(o => o.Types.Contains(type)))
+        foreach (var (label, setting, cells, _) in _depthOptions.Where(o => o.Types.Contains(type)))
         {
-            advice.Add(Advise(DecodingSection, setting, label, Cell(backend.Decode, cell)));
+            advice.Add(Advise(DecodingSection, setting, label, Combined(cells.Select(c => Cell(backend.Decode, c)))));
+        }
+
+        if (type == HwType.nvenc)
+        {
+            advice.Add(DecoderChoice(backend, EnhancedNvdec, "Enable enhanced NVDEC decoder", "_cuvid", "cuvid"));
         }
 
         if (type == HwType.qsv)
         {
-            advice.Add(NativeDecoders(backend));
+            advice.Add(DecoderChoice(backend, NativeDecoder, "Prefer OS native DXVA or VA-API hardware decoders", "_qsvdecoder", "QSV"));
         }
 
         advice.Add(Advise(EncodingSection, "EnableHardwareEncoding", "Enable hardware encoding", Cell(backend.Encode, "h264")));
         if (intel)
         {
-            const string NotUsed = "Not used with this driver";
+            const string NotUsedByDriver = "Not used with this driver";
 
             // Jellyfin's Intel guide: on Linux, low-power mode needs the HuC firmware, and Gen 9 has low-power H.264 only.
             var huc = context.Os == HostOs.Linux ? new Uri(LowPowerAdvice.GuideUrl) : null;
             advice.Add(WithFix(
-                Advise(EncodingSection, "EnableIntelLowPowerH264HwEncoder", "Enable Intel Low-Power H.264 hardware encoder", Cell(backend.Encode, "h264_lowpower"), NotUsed),
+                Advise(EncodingSection, "EnableIntelLowPowerH264HwEncoder", "Enable Intel Low-Power H.264 hardware encoder", Cell(backend.Encode, "h264_lowpower"), NotUsedByDriver),
                 huc is null ? null : new Fix("Enable HuC firmware", huc)));
             advice.Add(WithFix(
-                Advise(EncodingSection, "EnableIntelLowPowerHevcHwEncoder", "Enable Intel Low-Power HEVC hardware encoder", Cell(backend.Encode, "hevc_lowpower"), NotUsed),
+                Advise(EncodingSection, "EnableIntelLowPowerHevcHwEncoder", "Enable Intel Low-Power HEVC hardware encoder", Cell(backend.Encode, "hevc_lowpower"), NotUsedByDriver),
                 huc is null ? null : new Fix("Gen 11+: enable HuC firmware", huc)));
         }
 
@@ -115,7 +126,67 @@ public static class SettingsAdvisor
             advice.Add(Tonemap(backend, "EnableVideoToolboxTonemapping", "Enable VideoToolbox Tone mapping"));
         }
 
+        // jellyfin-web says hardware deinterlacing ignores the method, but the CUDA, OpenCL and VideoToolbox
+        // deinterlacers use it (EncodingHelper.GetHwDeinterlaceFilter).
+        var bwdif = backend.Deinterlace.FirstOrDefault(c => c.Key.EndsWith("_bwdif", StringComparison.Ordinal));
+        if (bwdif.Key is not null)
+        {
+            advice.Add(Advise(DeinterlaceSection, "DeinterlaceMethod:bwdif", "Deinterlacing method: BWDIF", bwdif.Value));
+        }
+
+        advice.AddRange(Trickplay(backend, context, advice));
         return advice;
+    }
+
+    /// <summary>Advice for the Trickplay page's hardware options, which reuse the Transcoding page's settings.</summary>
+    /// <param name="backend">The backend's results.</param>
+    /// <param name="context">Host facts.</param>
+    /// <param name="transcoding">The Transcoding page advice already given.</param>
+    /// <returns>The trickplay advice.</returns>
+    private static IEnumerable<SettingAdvice> Trickplay(BackendReport backend, AdviceContext context, List<SettingAdvice> transcoding)
+    {
+        var type = backend.Type;
+        if (type == HwType.v4l2m2m)
+        {
+            yield return new(TrickplaySection, "Trickplay:EnableHwAcceleration", "Enable hardware decoding", SettingState.LeaveOff, NotUsed);
+            yield return new(TrickplaySection, "Trickplay:EnableHwEncoding", "Enable hardware accelerated MJPEG encoding", SettingState.LeaveOff, NotUsed);
+            yield break;
+        }
+
+        yield return Advise(TrickplaySection, "Trickplay:EnableHwAcceleration", "Enable hardware decoding", Cell(backend.Decode, "h264"));
+
+        // The MJPEG encoder is only picked with the Transcoding page's hardware encoding on (EncodingHelper.GetMjpegEncoder).
+        const string MjpegLabel = "Enable hardware accelerated MJPEG encoding";
+        var mjpeg = backend.Encode.ContainsKey("mjpeg")
+            ? Advise(TrickplaySection, "Trickplay:EnableHwEncoding", MjpegLabel, Cell(backend.Encode, "mjpeg"))
+            : new(TrickplaySection, "Trickplay:EnableHwEncoding", MjpegLabel, type is HwType.nvenc or HwType.amf ? SettingState.LeaveOff : SettingState.NotTested, type is HwType.nvenc or HwType.amf ? NotUsed : NotTested);
+        var encoding = transcoding.Find(a => a.Setting == "EnableHardwareEncoding");
+        yield return mjpeg.State == SettingState.TurnOn && encoding?.State != SettingState.TurnOn
+            ? mjpeg with { State = SettingState.LeaveOff, Note = "Needs hardware encoding" }
+            : mjpeg;
+
+        // Key-frame-only extraction quietly drops to software decoding on backends that can't do it.
+        const string KeyFrameSetting = "Trickplay:EnableKeyFrameOnlyExtraction";
+        const string KeyFrameLabel = "Only generate images from key frames";
+        const string SoftwareNote = "Turns off hardware decoding with this backend";
+        var decoder = type switch
+        {
+            HwType.qsv => NativeDecoder,
+            HwType.nvenc => EnhancedNvdec,
+            _ => null,
+        };
+        if ((decoder is not null && transcoding.Find(a => a.Setting == decoder)?.State != SettingState.TurnOn)
+            || (type == HwType.amf && context.Os != HostOs.Windows))
+        {
+            yield return new(TrickplaySection, KeyFrameSetting, KeyFrameLabel, SettingState.LeaveOff, SoftwareNote);
+            yield break;
+        }
+
+        // Faster but less accurate timing, so a pass only says it's safe to choose.
+        var keyFrames = Advise(TrickplaySection, KeyFrameSetting, KeyFrameLabel, Cell(backend.Decode, "h264_keyframes"));
+        yield return keyFrames.State == SettingState.TurnOn
+            ? keyFrames with { State = SettingState.Optional, Note = "Works with hardware decoding; faster, less accurate timing" }
+            : keyFrames;
     }
 
     /// <summary>Builds advice from one test's outcome.</summary>
@@ -131,6 +202,7 @@ public static class SettingsAdvisor
             ProbeOutcome.Pass => new(section, setting, label, SettingState.TurnOn, string.Empty),
             null or ProbeOutcome.Skipped or ProbeOutcome.Untested => new(section, setting, label, SettingState.NotTested, notTested),
             ProbeOutcome.CodecUnsupported => new(section, setting, label, SettingState.LeaveOff, "Not supported by this GPU"),
+            ProbeOutcome.NotUsed => new(section, setting, label, SettingState.LeaveOff, "Jellyfin uses software for this"),
             _ => new(section, setting, label, SettingState.LeaveOff, "Test failed"),
         };
 
@@ -141,30 +213,31 @@ public static class SettingsAdvisor
     private static SettingAdvice WithFix(SettingAdvice advice, Fix? fix) =>
         advice.State == SettingState.LeaveOff && fix is not null ? advice with { Fix = fix } : advice;
 
-    /// <summary>Advice for "Prefer OS native DXVA or VA-API hardware decoders", from the native and QSV decoder results.</summary>
-    /// <param name="backend">The QSV backend's results.</param>
-    /// <returns>Leave off when some codec decodes only with the QSV decoders.</returns>
-    private static SettingAdvice NativeDecoders(BackendReport backend)
+    /// <summary>Advice for an option that picks between two hardware decoders, from tests of each.</summary>
+    /// <param name="backend">The backend's results.</param>
+    /// <param name="setting">The option's key; on selects the plain decode cells.</param>
+    /// <param name="label">The option's label.</param>
+    /// <param name="suffix">The suffix of the decode cells run with the option off.</param>
+    /// <param name="other">Names the decoders used with the option off.</param>
+    /// <returns>Leave off when some codec decodes only with the option off.</returns>
+    private static SettingAdvice DecoderChoice(BackendReport backend, string setting, string label, string suffix, string other)
     {
-        const string Setting = "PreferSystemNativeHwDecoder";
-        const string Label = "Prefer OS native DXVA or VA-API hardware decoders";
-        const string Suffix = "_qsvdecoder";
         var pairs = backend.Decode.Keys
-            .Where(k => k.EndsWith(Suffix, StringComparison.Ordinal))
-            .Select(k => (Native: k[..^Suffix.Length], Qsv: k))
+            .Where(k => k.EndsWith(suffix, StringComparison.Ordinal))
+            .Select(k => (On: k[..^suffix.Length], Off: k))
             .ToList();
         if (pairs.Count == 0)
         {
-            return new(DecodingSection, Setting, Label, SettingState.NotTested, NotTested);
+            return new(DecodingSection, setting, label, SettingState.NotTested, NotTested);
         }
 
-        var onlyQsv = pairs
-            .Where(p => backend.Decode[p.Qsv] == ProbeOutcome.Pass && Cell(backend.Decode, p.Native) != ProbeOutcome.Pass)
-            .Select(p => CellLabel(p.Native))
+        var onlyOff = pairs
+            .Where(p => backend.Decode[p.Off] == ProbeOutcome.Pass && Cell(backend.Decode, p.On) != ProbeOutcome.Pass)
+            .Select(p => CellLabel(p.On))
             .ToList();
-        return onlyQsv.Count == 0
-            ? new(DecodingSection, Setting, Label, SettingState.TurnOn, string.Empty)
-            : new(DecodingSection, Setting, Label, SettingState.LeaveOff, "QSV decoders needed for " + string.Join(", ", onlyQsv));
+        return onlyOff.Count == 0
+            ? new(DecodingSection, setting, label, SettingState.TurnOn, string.Empty)
+            : new(DecodingSection, setting, label, SettingState.LeaveOff, $"{other} decoders needed for " + string.Join(", ", onlyOff));
     }
 
     /// <summary>Advice for a tone-mapping option, from any tone-map test except VPP.</summary>
@@ -182,6 +255,27 @@ public static class SettingsAdvisor
         return Advise(TonemapSection, setting, label, outcome, notTested);
     }
 
+    /// <summary>Combines the tests behind one option: formats Jellyfin decodes in software don't count, and every other one must pass.</summary>
+    /// <param name="outcomes">The tests' outcomes, null where a test didn't run.</param>
+    /// <returns>The first failure, else the first untested result, else a pass; NotUsed when Jellyfin uses software for all of them.</returns>
+    private static ProbeOutcome? Combined(IEnumerable<ProbeOutcome?> outcomes)
+    {
+        var all = outcomes.ToList();
+        var used = all.Where(o => o != ProbeOutcome.NotUsed).ToList();
+        if (used.Count == 0)
+        {
+            return all.Count > 0 ? ProbeOutcome.NotUsed : null;
+        }
+
+        if (used.Exists(o => o is not (null or ProbeOutcome.Pass or ProbeOutcome.Skipped or ProbeOutcome.Untested)))
+        {
+            return used.First(o => o is not (null or ProbeOutcome.Pass or ProbeOutcome.Skipped or ProbeOutcome.Untested));
+        }
+
+        // A missing test is null, which advises "not tested".
+        return used.Exists(o => o != ProbeOutcome.Pass) ? used.First(o => o != ProbeOutcome.Pass) : ProbeOutcome.Pass;
+    }
+
     /// <summary>Looks up a cell's outcome.</summary>
     /// <param name="cells">A column of results.</param>
     /// <param name="key">The cell key.</param>
@@ -194,6 +288,6 @@ public static class SettingsAdvisor
     /// <returns>The label, e.g. <c>HEVC 10bit</c>.</returns>
     private static string CellLabel(string cell) =>
         _codecs.FirstOrDefault(c => c.Codec == cell).Label
-        ?? _depthOptions.FirstOrDefault(o => o.Cell == cell).Label
+        ?? _depthOptions.FirstOrDefault(o => o.Cells?.Contains(cell) == true).Label
         ?? cell;
 }

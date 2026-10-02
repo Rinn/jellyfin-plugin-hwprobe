@@ -99,6 +99,8 @@ public sealed class ArgumentSource : IArgumentSource
             EnableVideoToolboxTonemapping = cell.Tonemap,
             EnableVppTonemapping = cell.Tonemap && cell.VppTonemap,
             PreferSystemNativeHwDecoder = cell.PreferNativeDecoder,
+            EnableEnhancedNvdecDecoder = cell.EnhancedNvdec,
+            DeinterlaceMethod = cell.Bwdif ? DeinterlaceMethod.bwdif : DeinterlaceMethod.yadif,
             AllowHevcEncoding = true,
             AllowAv1Encoding = true,
         };
@@ -169,6 +171,12 @@ public sealed class ArgumentSource : IArgumentSource
         // its plain cell by that flag alone.
         var lowPower = cell.LowPower
             && _helper.GetVideoQualityParam(state, encoder, options, EncoderPreset.veryfast).Contains(LowPowerArg, StringComparison.Ordinal);
+
+        // MediaEncoder.ExtractVideoImagesOnIntervalAccelerated puts this before the hwaccel arguments.
+        if (cell.KeyFramesOnly)
+        {
+            inputArgs = "-skip_frame nokey " + inputArgs;
+        }
 
         return new ProbeArguments(inputArgs, filterArgs, encoder, childEnvironment)
         {

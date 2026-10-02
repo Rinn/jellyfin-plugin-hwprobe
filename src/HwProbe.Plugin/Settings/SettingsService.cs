@@ -4,13 +4,14 @@ using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Probing;
 using MediaBrowser.Common.Configuration;
+using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Model.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.HwProbe.Settings;
 
-/// <summary>Writes the latest report's advice to Jellyfin's encoding settings, keeps a history, and reverts.</summary>
+/// <summary>Writes the latest report's advice to Jellyfin's encoding and trickplay settings, keeps a history, and reverts.</summary>
 public sealed class SettingsService : IDisposable
 {
     private const string EncodingKey = "encoding";
@@ -28,8 +29,9 @@ public sealed class SettingsService : IDisposable
         nameof(EncodingOptions.QsvDevice),
     ];
 
-    private readonly Func<EncodingOptions> _read;
-    private readonly Action<EncodingOptions> _save;
+    private readonly Func<ServerSettings> _read;
+    private readonly Action<EncodingOptions> _saveEncoding;
+    private readonly Action<TrickplayOptions> _saveTrickplay;
     private readonly Func<CancellationToken, Task<CapabilityReport?>> _report;
     private readonly Func<bool> _probing;
     private readonly Func<string> _encoderPath;
@@ -45,10 +47,15 @@ public sealed class SettingsService : IDisposable
     /// <param name="probes">The probe service, for the latest report and whether a probe is running.</param>
     /// <param name="paths">Server paths, for the history file.</param>
     /// <param name="logger">Logger.</param>
-    public SettingsService(IConfigurationManager config, IMediaEncoder mediaEncoder, ProbeService probes, IApplicationPaths paths, ILogger<SettingsService> logger)
+    public SettingsService(IServerConfigurationManager config, IMediaEncoder mediaEncoder, ProbeService probes, IApplicationPaths paths, ILogger<SettingsService> logger)
         : this(
-            () => Clone(config.GetEncodingOptions()),
+            () => new ServerSettings(Clone(config.GetEncodingOptions()), Clone(config.Configuration.TrickplayOptions)),
             options => config.SaveConfiguration(EncodingKey, options),
+            options =>
+            {
+                config.Configuration.TrickplayOptions = options;
+                config.SaveConfiguration();
+            },
             async ct => await probes.LatestJsonAsync(ct) is { } json ? ReportStore.Deserialize(json) : null,
             () => probes.Status.State == ProbeState.Running,
             () => mediaEncoder.EncoderPath,
@@ -59,18 +66,20 @@ public sealed class SettingsService : IDisposable
     }
 
     /// <summary>Initializes a new instance of the <see cref="SettingsService"/> class with injected behaviour.</summary>
-    /// <param name="read">Returns a copy of the current encoding options.</param>
-    /// <param name="save">Saves encoding options.</param>
+    /// <param name="read">Returns copies of the current encoding and trickplay options.</param>
+    /// <param name="saveEncoding">Saves encoding options.</param>
+    /// <param name="saveTrickplay">Saves trickplay options.</param>
     /// <param name="report">Loads the latest report.</param>
     /// <param name="probing">Reports whether a probe is running.</param>
     /// <param name="encoderPath">Returns the server's ffmpeg path.</param>
     /// <param name="historyPath">Where the history is kept.</param>
     /// <param name="time">Clock for history entries.</param>
     /// <param name="logger">Logger.</param>
-    internal SettingsService(Func<EncodingOptions> read, Action<EncodingOptions> save, Func<CancellationToken, Task<CapabilityReport?>> report, Func<bool> probing, Func<string> encoderPath, string historyPath, TimeProvider time, ILogger logger)
+    internal SettingsService(Func<ServerSettings> read, Action<EncodingOptions> saveEncoding, Action<TrickplayOptions> saveTrickplay, Func<CancellationToken, Task<CapabilityReport?>> report, Func<bool> probing, Func<string> encoderPath, string historyPath, TimeProvider time, ILogger logger)
     {
         _read = read;
-        _save = save;
+        _saveEncoding = saveEncoding;
+        _saveTrickplay = saveTrickplay;
         _report = report;
         _probing = probing;
         _encoderPath = encoderPath;
@@ -101,16 +110,16 @@ public sealed class SettingsService : IDisposable
                 }
 
                 var options = _read();
-                var backend = ConfiguredBackend(report, options);
+                var backend = ConfiguredBackend(report, options.Encoding);
                 if (backend is null)
                 {
-                    return Refuse($"The configured backend ({options.HardwareAccelerationType}) didn't work in the last probe.");
+                    return Refuse($"The configured backend ({options.Encoding.HardwareAccelerationType}) didn't work in the last probe.");
                 }
 
                 foreach (var change in changes)
                 {
                     var advice = backend.Settings.FirstOrDefault(a => a.Setting == change.Setting);
-                    if (advice is null || advice.State == SettingState.NotTested || change.Value != (advice.State == SettingState.TurnOn))
+                    if (advice is null || advice.State == SettingState.NotTested || change.Value != (advice.State is SettingState.TurnOn or SettingState.Optional))
                     {
                         return Refuse($"{change.Setting} = {EncodingSettings.Format(change.Value)} doesn't match the last probe.");
                     }
@@ -178,7 +187,7 @@ public sealed class SettingsService : IDisposable
                 // A setting changed again after the apply is someone else's choice now.
                 var options = _read();
                 var entry = history[index];
-                var current = entry.Changes.ToLookup(c => EncodingSettings.Read(options, c.Setting) == c.NewValue);
+                var current = entry.Changes.ToLookup(c => options.Read(c.Setting) == c.NewValue);
                 var values = current[true].Select(c => (c.Setting, c.OldValue)).ToList();
                 var skipped = current[false].Select(c => c.Setting).ToList();
 
@@ -205,11 +214,12 @@ public sealed class SettingsService : IDisposable
         return Path.Combine(paths.DataPath, "hwprobe", "history.json");
     }
 
-    /// <summary>Copies encoding options so a failed save leaves the server's copy untouched.</summary>
+    /// <summary>Copies options so a failed save leaves the server's copy untouched.</summary>
+    /// <typeparam name="T">The options type.</typeparam>
     /// <param name="options">The options.</param>
     /// <returns>A copy.</returns>
-    private static EncodingOptions Clone(EncodingOptions options) =>
-        JsonSerializer.Deserialize<EncodingOptions>(JsonSerializer.Serialize(options, _json), _json)!;
+    private static T Clone<T>(T options) =>
+        JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(options, _json), _json)!;
 
     /// <summary>Finds the report row for the backend and device the server is configured to use.</summary>
     /// <param name="report">The latest report.</param>
@@ -278,15 +288,15 @@ public sealed class SettingsService : IDisposable
     /// <param name="cancellationToken">Cancels the history write.</param>
     /// <param name="history">The history to append to, when the caller already changed it; null to read it.</param>
     /// <returns>The applied result.</returns>
-    private async Task<ApplyResult> WriteAsync(EncodingOptions options, IReadOnlyList<(string Setting, string Value)> values, HistoryKind kind, string user, CancellationToken cancellationToken, List<HistoryEntry>? history = null)
+    private async Task<ApplyResult> WriteAsync(ServerSettings options, IReadOnlyList<(string Setting, string Value)> values, HistoryKind kind, string user, CancellationToken cancellationToken, List<HistoryEntry>? history = null)
     {
         List<AppliedChange> changed = [];
         foreach (var (setting, value) in values)
         {
-            var old = EncodingSettings.Read(options, setting);
+            var old = options.Read(setting);
             if (old != value)
             {
-                EncodingSettings.Write(options, setting, value);
+                options.Write(setting, value);
                 changed.Add(new AppliedChange(setting, old, value));
             }
         }
@@ -294,7 +304,16 @@ public sealed class SettingsService : IDisposable
         history ??= await ReadHistoryAsync(cancellationToken);
         if (changed.Count > 0)
         {
-            _save(options);
+            if (changed.Any(c => !ServerSettings.IsTrickplay(c.Setting)))
+            {
+                _saveEncoding(options.Encoding);
+            }
+
+            if (changed.Any(c => ServerSettings.IsTrickplay(c.Setting)))
+            {
+                _saveTrickplay(options.Trickplay);
+            }
+
             history.Add(new HistoryEntry(_time.GetUtcNow(), user, kind, changed));
             foreach (var change in changed)
             {

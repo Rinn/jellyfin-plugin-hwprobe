@@ -56,6 +56,7 @@
                 let report = null;
                 // Only used to open the configured backend's settings first.
                 let encoding = null;
+                let trickplay = null;
                 let selected = null;
                 let history = [];
                 let restartRequired = false;
@@ -149,7 +150,7 @@
                 }
 
                 function mark(state) {
-                    if (state === 'TurnOn') {
+                    if (state === 'TurnOn' || state === 'Optional') {
                         return el('td', '✓', 'hwprobe-mark hwprobe-on');
                     }
                     return state === 'LeaveOff' ? el('td', '✗', 'hwprobe-mark hwprobe-off') : el('td', '–', 'hwprobe-mark hwprobe-none');
@@ -181,6 +182,12 @@
                     if (!encoding) {
                         return undefined;
                     }
+                    if (setting.indexOf('Trickplay:') === 0) {
+                        return trickplay ? trickplay[setting.substring('Trickplay:'.length)] : undefined;
+                    }
+                    if (setting === 'DeinterlaceMethod:bwdif') {
+                        return encoding.DeinterlaceMethod === 'bwdif';
+                    }
                     const prefix = 'HardwareDecodingCodecs:';
                     if (setting.indexOf(prefix) === 0) {
                         return (encoding.HardwareDecodingCodecs || []).indexOf(setting.substring(prefix.length)) !== -1;
@@ -190,7 +197,7 @@
 
                 function differs(advice) {
                     const value = current(advice.setting);
-                    return advice.state !== 'NotTested' && typeof value === 'boolean' && value !== (advice.state === 'TurnOn');
+                    return advice.state !== 'NotTested' && typeof value === 'boolean' && value !== (advice.state === 'TurnOn' || advice.state === 'Optional');
                 }
 
                 function isConfigured(backend) {
@@ -216,7 +223,7 @@
                 }
 
                 function apply(advice) {
-                    return post('HwProbe/Apply', advice.map(a => ({ Setting: a.setting, Value: a.state === 'TurnOn' })));
+                    return post('HwProbe/Apply', advice.map(a => ({ Setting: a.setting, Value: a.state === 'TurnOn' || a.state === 'Optional' })));
                 }
 
                 // The old server can still answer for a moment after the restart request, so wait until the
@@ -369,7 +376,7 @@
                             selected = viable.find(b => encoding && b.type === encoding.HardwareAccelerationType) || viable[0];
                         }
                         const container = el('div');
-                        section('Transcoding settings').appendChild(container);
+                        section('Settings').appendChild(container);
                         renderSettings(container, viable);
                     }
 
@@ -387,13 +394,14 @@
 
                 function loadReport() {
                     const config = ApiClient.getNamedConfiguration('encoding').then(c => { encoding = c; }, () => { encoding = null; });
+                    const server = ApiClient.getServerConfiguration().then(c => { trickplay = c.TrickplayOptions || null; }, () => { trickplay = null; });
                     const data = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Report'), dataType: 'json' })
                         .then(r => { report = r; }, () => { report = null; statusText.textContent = 'No probe has run yet.'; });
                     const changes = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/History'), dataType: 'json' })
                         .then(h => { history = h || []; }, () => { history = []; });
                     const pending = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/RestartRequired'), dataType: 'json' })
                         .then(r => { restartRequired = r === true; }, () => { restartRequired = false; });
-                    return Promise.all([config, data, changes, pending]).then(() => { renderChange(); render(); });
+                    return Promise.all([config, server, data, changes, pending]).then(() => { renderChange(); render(); });
                 }
 
                 function loadStatus() {
