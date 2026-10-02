@@ -23,6 +23,9 @@ public static class SpeedCatalog
     /// <summary>Gets the outputs chosen when none are asked for.</summary>
     public static IReadOnlyList<string> DefaultOutputs => Catalog.Default.DefaultOutputs;
 
+    /// <summary>Gets the 5.1 AAC track the test videos copy, made before them.</summary>
+    public static FixtureSpec TestAudio { get; } = Fixture(Catalog.Default.TestAudio!);
+
     /// <summary>Gets the text (ASS) subtitle the burn-in variation draws.</summary>
     public static FixtureSpec TextSubtitles { get; } = Fixture(Catalog.Default.Subtitles!.Text);
 

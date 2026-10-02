@@ -116,6 +116,13 @@ internal static class SpeedVariants
     public static IReadOnlyList<FixtureSpec> Clips(IEnumerable<SpeedTest> tests, SpeedComparison comparisons)
     {
         var all = tests.Select(t => t.Fixture).ToList();
+
+        // Clips that copy another are made after it.
+        if (all.Any(f => f?.EncodeArguments.Contains("{clip:", StringComparison.Ordinal) == true))
+        {
+            all.Insert(0, SpeedCatalog.TestAudio);
+        }
+
         if (comparisons.HasFlag(SpeedComparison.Subtitles))
         {
             all.Add(SpeedCatalog.TextSubtitles);

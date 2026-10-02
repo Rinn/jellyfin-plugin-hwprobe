@@ -69,6 +69,9 @@ public sealed partial class Catalog
     /// <summary>Gets shared fields the file merges into entries; not read after parsing.</summary>
     internal IReadOnlyDictionary<string, object> Templates { get; init; } = new Dictionary<string, object>();
 
+    /// <summary>Gets the audio track the test videos copy; null only in a file that leaves it out, which <see cref="Check"/> refuses.</summary>
+    internal CatalogClip? TestAudio { get; init; }
+
     /// <summary>Gets the speed videos, in the page's order.</summary>
     internal IReadOnlyList<CatalogVideo> Videos { get; init; } = [];
 
@@ -214,12 +217,12 @@ public sealed partial class Catalog
             throw new InvalidDataException("catalog.yaml: presets start with auto, and audio is transcode and copy.");
         }
 
-        if (Subtitles is null)
+        if (Subtitles is null || TestAudio is null)
         {
-            throw new InvalidDataException("catalog.yaml: subtitles are missing.");
+            throw new InvalidDataException("catalog.yaml: subtitles or testAudio are missing.");
         }
 
-        foreach (var clip in Videos.Select(v => v.Clip).Append(Subtitles.Text).Append(Subtitles.Image))
+        foreach (var clip in Videos.Select(v => v.Clip).Append(Subtitles.Text).Append(Subtitles.Image).Append(TestAudio))
         {
             var unknown = Placeholder().Matches(Expand(clip.Arguments)).Select(m => m.Groups[1].Value).Where(n => n != "piece" || clip.Piece is null).ToList();
             var hash = clip.Piece?.Sha256 ?? clip.Sha256;

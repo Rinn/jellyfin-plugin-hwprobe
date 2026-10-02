@@ -33,6 +33,21 @@ public sealed class PieceFixtureTests : IDisposable
         Assert.Equal(2, downloader.Calls);
     }
 
+    /// <summary>A clip that copies another reads it from the same cache directory, as <c>{clip:name}</c>.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task ClipReadsAnEarlierClip()
+    {
+        FixtureSpec audio = new("audio.mka", "aac", 8, false, "aac", "-y -f lavfi -i sine -c:a aac", null);
+        FixtureSpec video = new("video.mkv", "h264", 8, false, "libx264", "-y -f lavfi -i testsrc2 -i {clip:audio.mka} -c:a copy", null);
+
+        var results = await new FixtureBuilder(_runner, "/fake/ffmpeg", _root, FixtureBuilder.DefaultTimeout, new ScriptedDownloader(_file), [audio, video], null)
+            .BuildAsync("key", new HashSet<string> { "libx264", "aac" }, TestContext.Current.CancellationToken);
+
+        Assert.All(results, r => Assert.Equal(FixtureStatus.Available, r.Status));
+        Assert.Contains($"-i \"{Path.GetDirectoryName(results[0].Path)}{Path.DirectorySeparatorChar}audio.mka\" -c:a copy", _runner.Invocations[1].Arguments, StringComparison.Ordinal);
+    }
+
     /// <summary>A piece whose bytes changed isn't encoded.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

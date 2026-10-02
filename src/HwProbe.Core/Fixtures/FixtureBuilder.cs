@@ -1,12 +1,13 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Fixtures;
 
 /// <summary>Generates fixture clips with the ffmpeg under test and caches them with a verified manifest.</summary>
-public sealed class FixtureBuilder
+public sealed partial class FixtureBuilder
 {
     /// <summary>Default generation timeout; software 10-bit and AV1 encodes are slow on weak CPUs.</summary>
     public static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(120);
@@ -153,6 +154,11 @@ public sealed class FixtureBuilder
             File.Delete(path);
         }
     }
+
+    /// <summary>Matches <c>{clip:name}</c>, another clip in the same cache directory, made before this one.</summary>
+    /// <returns>The pattern.</returns>
+    [GeneratedRegex(@"\{clip:([^}]+)\}")]
+    private static partial Regex ClipPlaceholder();
 
     /// <summary>Returns a cached fixture, or generates it.</summary>
     /// <param name="spec">The fixture.</param>
@@ -394,6 +400,7 @@ public sealed class FixtureBuilder
 
         var timeout = spec.GenerateTimeout ?? _timeout;
         var arguments = piece is null ? spec.EncodeArguments : spec.EncodeArguments.Replace("{piece}", $"\"{piece}\"", StringComparison.Ordinal);
+        arguments = ClipPlaceholder().Replace(arguments, m => $"\"{Path.Combine(Path.GetDirectoryName(path)!, m.Groups[1].Value)}\"");
         var result = await EncodeAsync(arguments, partial, timeout, cancellationToken);
         if (result is not null && spec.FallbackArguments is not null)
         {
