@@ -17,6 +17,11 @@ public interface IHostPlatform
     /// <returns>True if the file exists.</returns>
     bool FileExists(string path);
 
+    /// <summary>Reports whether opening a file for reading and writing is refused for lack of permission.</summary>
+    /// <param name="path">Absolute path, e.g. a render node.</param>
+    /// <returns>True only for a permission failure; false when it opens, or fails for another reason.</returns>
+    bool IsAccessDenied(string path);
+
     /// <summary>Reads a text file.</summary>
     /// <param name="path">Absolute path.</param>
     /// <returns>The contents, or null when missing or unreadable.</returns>

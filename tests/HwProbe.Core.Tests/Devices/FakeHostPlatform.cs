@@ -27,8 +27,14 @@ internal sealed class FakeHostPlatform : IHostPlatform
     /// <summary>Gets directories that exist but cannot be listed.</summary>
     public HashSet<string> DeniedDirectories { get; } = [];
 
+    /// <summary>Gets files whose open is refused for lack of permission.</summary>
+    public HashSet<string> DeniedFiles { get; } = [];
+
     /// <inheritdoc/>
     public bool FileExists(string path) => Files.ContainsKey(path);
+
+    /// <inheritdoc/>
+    public bool IsAccessDenied(string path) => DeniedFiles.Contains(path);
 
     /// <inheritdoc/>
     public string? TryReadText(string path) => Files.GetValueOrDefault(path);
