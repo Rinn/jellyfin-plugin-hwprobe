@@ -14,7 +14,7 @@
     <IsPackable>false</IsPackable>
 
     <!-- One version for every assembly; the release workflow checks the tag and build.yaml against it. -->
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
 
     <!-- Reproducible builds: same source and SDK give byte-identical assemblies. CI also normalises
          source paths, and restores only what the committed lock files allow. -->
