@@ -44,7 +44,7 @@ public sealed class ProbeServiceTests : IDisposable
             transcoding: true);
 
         Assert.Equal(ProbeRunResult.ServerBusy, await service.RunAsync(TestContext.Current.CancellationToken));
-        Assert.Equal(ProbeRunResult.ServerBusy, service.Start());
+        Assert.Equal(ProbeRunResult.ServerBusy, await service.StartAsync(TestContext.Current.CancellationToken));
         Assert.False(ran);
     }
 
@@ -65,7 +65,7 @@ public sealed class ProbeServiceTests : IDisposable
         var first = service.RunAsync(TestContext.Current.CancellationToken);
         Assert.Equal(ProbeState.Running, service.Status.State);
         Assert.Equal(ProbeRunResult.AlreadyRunning, await service.RunAsync(TestContext.Current.CancellationToken));
-        Assert.Equal(ProbeRunResult.AlreadyRunning, service.Start());
+        Assert.Equal(ProbeRunResult.AlreadyRunning, await service.StartAsync(TestContext.Current.CancellationToken));
 
         release.Release();
         Assert.Equal(ProbeRunResult.Completed, await first);
@@ -97,6 +97,30 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Null(await service.LatestJsonAsync(TestContext.Current.CancellationToken));
     }
 
+    /// <summary>A transcode that appears only on the second check still blocks the probe.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task SecondCheckCatchesALateTranscode()
+    {
+        var checks = 0;
+        var ran = false;
+        using var service = new ProbeService(
+            _ =>
+            {
+                ran = true;
+                return Task.FromResult(Reports.Sample());
+            },
+            () => ++checks % 2 == 0,
+            Path.Combine(_directory, "latest.json"),
+            TimeProvider.System,
+            TimeSpan.Zero,
+            NullLogger.Instance);
+
+        Assert.Equal(ProbeRunResult.ServerBusy, await service.StartAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(2, checks);
+        Assert.False(ran);
+    }
+
     /// <inheritdoc/>
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
@@ -105,5 +129,5 @@ public sealed class ProbeServiceTests : IDisposable
     /// <param name="transcoding">Whether a session is transcoding.</param>
     /// <returns>The service.</returns>
     private ProbeService Create(Func<CancellationToken, Task<CapabilityReport>> probe, bool transcoding) =>
-        new(probe, () => transcoding, Path.Combine(_directory, "latest.json"), TimeProvider.System, NullLogger.Instance);
+        new(probe, () => transcoding, Path.Combine(_directory, "latest.json"), TimeProvider.System, TimeSpan.Zero, NullLogger.Instance);
 }

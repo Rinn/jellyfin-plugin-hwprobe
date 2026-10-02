@@ -26,10 +26,10 @@ public sealed class HardwareProbeTask(ProbeService service) : IScheduledTask
         var result = await service.RunAsync(cancellationToken);
         progress.Report(100);
 
-        // Surface failures in the dashboard's task history rather than reporting success.
-        if (result is ProbeRunResult.Failed or ProbeRunResult.ServerBusy or ProbeRunResult.AlreadyRunning)
+        // A busy server or a probe already running is a skip, logged by the service; only a failed probe fails the task.
+        if (result == ProbeRunResult.Failed)
         {
-            throw new InvalidOperationException(result == ProbeRunResult.Failed ? service.Status.LastError : $"Probe not run: {result}.");
+            throw new InvalidOperationException(service.Status.LastError);
         }
     }
 

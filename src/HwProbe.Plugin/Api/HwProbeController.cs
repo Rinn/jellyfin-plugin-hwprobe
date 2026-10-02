@@ -34,11 +34,12 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     public ActionResult<ProbeStatus> CurrentStatus() => service.Status;
 
     /// <summary>Starts a probe in the background.</summary>
+    /// <param name="cancellationToken">Cancels the busy check.</param>
     /// <returns>202 when started; 409 when one is running or a session is transcoding.</returns>
     [HttpPost("Run")]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public ActionResult Run() => service.Start() switch
+    public async Task<ActionResult> RunAsync(CancellationToken cancellationToken) => await service.StartAsync(cancellationToken) switch
     {
         ProbeRunResult.Started => Accepted(),
         ProbeRunResult.AlreadyRunning => Conflict("A probe is already running."),

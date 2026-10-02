@@ -19,6 +19,7 @@ public sealed class ProbeService : IDisposable
     private readonly Func<bool> _isTranscoding;
     private readonly string _latestPath;
     private readonly TimeProvider _time;
+    private readonly TimeSpan _settle;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private ProbeStatus _status = new(ProbeState.Idle, null, null, null);
@@ -37,6 +38,7 @@ public sealed class ProbeService : IDisposable
             TranscodingCheck(sessions),
             LatestPath(paths),
             TimeProvider.System,
+            TimeSpan.FromSeconds(2),
             logger)
     {
     }
@@ -46,20 +48,22 @@ public sealed class ProbeService : IDisposable
     /// <param name="isTranscoding">Reports whether any session is transcoding.</param>
     /// <param name="latestPath">Where the latest report is saved.</param>
     /// <param name="time">Clock for status timestamps.</param>
+    /// <param name="settle">How long to wait before checking for a transcode a second time.</param>
     /// <param name="logger">Logger.</param>
-    internal ProbeService(Func<CancellationToken, Task<CapabilityReport>> probe, Func<bool> isTranscoding, string latestPath, TimeProvider time, ILogger logger)
+    internal ProbeService(Func<CancellationToken, Task<CapabilityReport>> probe, Func<bool> isTranscoding, string latestPath, TimeProvider time, TimeSpan settle, ILogger logger)
     {
         _probe = probe;
         _isTranscoding = isTranscoding;
         _latestPath = latestPath;
         _time = time;
+        _settle = settle;
         _logger = logger;
     }
 
     /// <summary>Gets the current status.</summary>
     public ProbeStatus Status => _status;
 
-    /// <summary>Gets the probe started by <see cref="Start"/>, or a completed task when none was.</summary>
+    /// <summary>Gets the probe started by <see cref="StartAsync"/>, or a completed task when none was.</summary>
     internal Task Background => _background ?? Task.CompletedTask;
 
     /// <summary>Runs a probe now and waits for it.</summary>
@@ -67,7 +71,7 @@ public sealed class ProbeService : IDisposable
     /// <returns><see cref="ProbeRunResult.Completed"/>, or why it didn't run or failed.</returns>
     public async Task<ProbeRunResult> RunAsync(CancellationToken cancellationToken)
     {
-        if (_isTranscoding())
+        if (await IsBusyAsync(cancellationToken))
         {
             Log.SkippedBusy(_logger);
             return ProbeRunResult.ServerBusy;
@@ -82,21 +86,22 @@ public sealed class ProbeService : IDisposable
     }
 
     /// <summary>Starts a probe in the background if one can run now.</summary>
+    /// <param name="cancellationToken">Cancels the busy check; the probe itself runs to completion.</param>
     /// <returns><see cref="ProbeRunResult.Started"/>, or why it can't start.</returns>
-    public ProbeRunResult Start()
+    public async Task<ProbeRunResult> StartAsync(CancellationToken cancellationToken)
     {
-        if (_isTranscoding())
+        if (await IsBusyAsync(cancellationToken))
         {
             return ProbeRunResult.ServerBusy;
         }
 
         // Take the gate before returning, so two quick requests can't both be told "started".
-        if (!_gate.Wait(0))
+        if (!await _gate.WaitAsync(0, cancellationToken))
         {
             return ProbeRunResult.AlreadyRunning;
         }
 
-        _background = Task.Run(() => RunHeldAsync(CancellationToken.None));
+        _background = Task.Run(() => RunHeldAsync(CancellationToken.None), CancellationToken.None);
         return ProbeRunResult.Started;
     }
 
@@ -152,6 +157,24 @@ public sealed class ProbeService : IDisposable
         var environment = EnvironmentRules.InServer(baseline.Values, new Dictionary<string, string>());
         using var engine = new ProbeEngine(new FfmpegRunner(), arguments, new HostPlatform(), TimeProvider.System, environment);
         return await engine.RunAsync(options, cancellationToken);
+    }
+
+    /// <summary>Reports whether a session is transcoding, checking twice.</summary>
+    /// <param name="cancellationToken">Cancels the wait.</param>
+    /// <returns>True when either check finds a transcode.</returns>
+    /// <remarks>
+    /// A client that logs in again gets a new session without the transcode until ffmpeg's next progress report
+    /// (about a second); the second check covers that.
+    /// </remarks>
+    private async Task<bool> IsBusyAsync(CancellationToken cancellationToken)
+    {
+        if (_isTranscoding())
+        {
+            return true;
+        }
+
+        await Task.Delay(_settle, _time, cancellationToken);
+        return _isTranscoding();
     }
 
     /// <summary>Runs a probe; the caller already holds the gate, which this releases.</summary>
