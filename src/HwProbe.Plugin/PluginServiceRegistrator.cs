@@ -1,6 +1,7 @@
 using Jellyfin.Plugin.HwProbe.Core.Probes;
 using Jellyfin.Plugin.HwProbe.Jellyfin;
 using Jellyfin.Plugin.HwProbe.Probing;
+using Jellyfin.Plugin.HwProbe.Settings;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,5 +18,6 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton(new ServerEnvironmentBaseline(EncodingHelperEnvironment.Capture()));
         serviceCollection.AddSingleton<IArgumentSourceFactory, ServerArgumentSourceFactory>();
         serviceCollection.AddSingleton<ProbeService>();
+        serviceCollection.AddSingleton<SettingsService>();
     }
 }

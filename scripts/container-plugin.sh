@@ -137,6 +137,13 @@ check "ffmpeg source" Server "$(printf "%s" "$report" | json 'j["ffmpeg"]["sourc
 check "backends reported" True "$(printf "%s" "$report" | json 'len(j["backends"]) > 0')"
 check "every failure has a remedy" True "$(printf "%s" "$report" | json 'all(b["hint"] for b in j["backends"] if b["verdict"] != "Viable")')"
 
+before="$(curl -sf "$base/System/Configuration/encoding" -H "$h")"
+check "apply without a viable backend" 400 "$(code -X POST "$base/HwProbe/Apply" -H "$h" -H 'Content-Type: application/json' -d '[{"Setting":"AllowAv1Encoding","Value":false}]')"
+check "switch to a backend that didn't work" 400 "$(code -X POST "$base/HwProbe/UseBackend" -H "$h" -H 'Content-Type: application/json' -d '{"Type":"nvenc","Device":"0"}')"
+check "revert with no history" 409 "$(code -X POST "$base/HwProbe/Revert" -H "$h")"
+check "history" "[]" "$(curl -sf "$base/HwProbe/History" -H "$h")"
+check "refused changes left settings alone" True "$(curl -sf "$base/System/Configuration/encoding" -H "$h" | python3 -c "import json,sys; print(json.load(sys.stdin) == json.loads(sys.argv[1]))" "$before")"
+
 task_id="$(curl -sf "$base/ScheduledTasks" -H "$h" | json 'next(t["Id"] for t in j if t["Key"]=="HwProbeHardwareProbe")')"
 check "run task" 204 "$(code -X POST "$base/ScheduledTasks/Running/$task_id" -H "$h")"
 result=-

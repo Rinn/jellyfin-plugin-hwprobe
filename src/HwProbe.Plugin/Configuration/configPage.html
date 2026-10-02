@@ -8,12 +8,13 @@
     <div id="HwProbeConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-button">
         <style>
             #HwProbeConfigPage table { border-collapse: collapse; margin: 0.25em 0 1em; }
-            #HwProbeConfigPage td, #HwProbeConfigPage th { padding: 0.2em 1.5em 0.2em 0; text-align: left; vertical-align: top; }
+            #HwProbeConfigPage td, #HwProbeConfigPage th { padding: 0.2em 1.5em 0.2em 0; text-align: left; vertical-align: middle; height: 1.8em; }
             #HwProbeConfigPage th { font-weight: 500; opacity: 0.7; }
             #HwProbeConfigPage .hwprobe-section { margin-top: 2em; }
             #HwProbeConfigPage .hwprobe-backends td:first-child, #HwProbeConfigPage .hwprobe-backends th:first-child { width: 18em; }
             #HwProbeConfigPage .hwprobe-backends td:nth-child(2), #HwProbeConfigPage .hwprobe-backends th:nth-child(2) { width: 12em; }
-            #HwProbeConfigPage .hwprobe-group td { padding-top: 0.8em; font-weight: 500; opacity: 0.7; }
+            #HwProbeConfigPage .hwprobe-group td { padding-top: 0.8em; font-weight: 500; }
+            #HwProbeConfigPage .hwprobe-group td:nth-child(2) { opacity: 0.7; }
             #HwProbeConfigPage .hwprobe-mark { width: 1.2em; font-weight: bold; }
             #HwProbeConfigPage .hwprobe-on { color: #52b54b; }
             #HwProbeConfigPage .hwprobe-off { color: #e05555; }
@@ -23,15 +24,19 @@
             #HwProbeConfigPage .hwprobe-tabs button { margin: 0 0.5em 0.75em 0; padding: 0.4em 1em; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 0.2em; background: transparent; color: inherit; font: inherit; cursor: pointer; }
             #HwProbeConfigPage .hwprobe-tabs button.hwprobe-selected { background: #00a4dc; border-color: #00a4dc; color: #fff; }
             #HwProbeConfigPage details { margin-top: 2em; }
+            #HwProbeConfigPage .hwprobe-action { padding: 0 0.6em; line-height: 1.5; font-size: 0.9em; border: 1px solid #00a4dc; border-radius: 0.2em; background: transparent; color: #00a4dc; font: inherit; cursor: pointer; }
+            #HwProbeConfigPage .hwprobe-action:disabled { opacity: 0.5; cursor: default; }
         </style>
         <div data-role="content">
             <div class="content-primary">
                 <h2>HwProbe</h2>
-                <p>Tests which hardware transcoding options work on this server. Settings are not changed.</p>
+                <p>Tests which hardware transcoding options work on this server. Settings change only when you press Apply.</p>
                 <button is="emby-button" type="button" id="hwprobeRun" class="raised button-submit block">
                     <span>Run probe</span>
                 </button>
                 <p id="hwprobeStatus"></p>
+                <p id="hwprobeChange"></p>
+                <p id="hwprobeMessage" class="hwprobe-warn"></p>
                 <div id="hwprobeResults"></div>
             </div>
         </div>
@@ -43,12 +48,15 @@
                 const page = document.querySelector('#HwProbeConfigPage');
                 const statusText = page.querySelector('#hwprobeStatus');
                 const results = page.querySelector('#hwprobeResults');
+                const changeText = page.querySelector('#hwprobeChange');
+                const messageText = page.querySelector('#hwprobeMessage');
                 const columns = ['decode', 'encode', 'tonemap', 'deinterlace', 'subtitles'];
                 let pollTimer = null;
                 let report = null;
                 // Only used to open the configured backend's settings first.
                 let encoding = null;
                 let selected = null;
+                let history = [];
 
                 // The names and order of Jellyfin's Hardware acceleration dropdown.
                 const names = {
@@ -148,12 +156,83 @@
                 function outcomeRow(table, label, outcome) {
                     const state = outcome === 'Pass' ? 'TurnOn' : (outcome ? 'LeaveOff' : 'NotTested');
                     const reason = outcome === 'Pass' ? '' : (outcome ? 'Test failed' : 'Not tested');
-                    row(table, [mark(state), label, el('td', reason, 'hwprobe-reason'), el('td')]);
+                    row(table, [mark(state), label, el('td', reason, 'hwprobe-reason'), el('td'), el('td')]);
                 }
 
                 function firstOutcome(cells) {
                     const values = Object.values(cells || {});
                     return values.indexOf('Pass') !== -1 ? 'Pass' : values[0];
+                }
+
+                function action(text, onClick) {
+                    const button = el('button', text, 'hwprobe-action');
+                    button.type = 'button';
+                    button.addEventListener('click', () => {
+                        button.disabled = true;
+                        onClick();
+                    });
+                    return button;
+                }
+
+                // The server's current value for a setting key, or undefined when unknown.
+                function current(setting) {
+                    if (!encoding) {
+                        return undefined;
+                    }
+                    const prefix = 'HardwareDecodingCodecs:';
+                    if (setting.indexOf(prefix) === 0) {
+                        return (encoding.HardwareDecodingCodecs || []).indexOf(setting.substring(prefix.length)) !== -1;
+                    }
+                    return encoding[setting];
+                }
+
+                function differs(advice) {
+                    const value = current(advice.setting);
+                    return advice.state !== 'NotTested' && typeof value === 'boolean' && value !== (advice.state === 'TurnOn');
+                }
+
+                function isConfigured(backend) {
+                    if (!encoding || encoding.HardwareAccelerationType !== backend.type) {
+                        return false;
+                    }
+                    const device = backend.type === 'vaapi' ? encoding.VaapiDevice : (backend.type === 'qsv' ? encoding.QsvDevice : '');
+                    return !device || device === backend.device;
+                }
+
+                function post(path, body) {
+                    messageText.textContent = '';
+                    const request = { type: 'POST', url: ApiClient.getUrl(path), dataType: 'json' };
+                    if (body) {
+                        request.data = JSON.stringify(body);
+                        request.contentType = 'application/json';
+                    }
+                    return ApiClient.ajax(request).then(result => {
+                        const notes = [];
+                        if (result.RestartRequired) {
+                            notes.push('Restart Jellyfin to finish switching backend.');
+                        }
+                        if (result.Reason) {
+                            notes.push(result.Reason);
+                        }
+                        messageText.textContent = notes.join(' ');
+                    }, response => (response && response.json ? response.json() : Promise.resolve({})).then(
+                        result => { messageText.textContent = (result && result.Reason) || 'The change was refused.'; },
+                        () => { messageText.textContent = 'The change was refused.'; })).then(loadReport);
+                }
+
+                function apply(advice) {
+                    return post('HwProbe/Apply', advice.map(a => ({ Setting: a.setting, Value: a.state === 'TurnOn' })));
+                }
+
+                function renderChange() {
+                    changeText.replaceChildren();
+                    const last = history.filter(e => e.Kind !== 'Revert' && !e.RevertedUtc).pop();
+                    if (!last) {
+                        return;
+                    }
+                    const count = last.Changes.length;
+                    changeText.appendChild(document.createTextNode('Last change: ' + new Date(last.TimeUtc).toLocaleString() + ', ' + count + (count === 1 ? ' setting ' : ' settings ')));
+                    changeText.appendChild(action('Revert', () => post('HwProbe/Revert')));
                 }
 
                 function renderSettings(container, viable) {
@@ -169,15 +248,38 @@
                         container.appendChild(tabs);
                     }
 
+                    const configured = isConfigured(selected);
+                    if (!configured) {
+                        const switcher = el('p', 'Not the configured backend. ');
+                        switcher.appendChild(action('Use this backend', () => post('HwProbe/UseBackend', { Type: selected.type, Device: selected.device })));
+                        switcher.appendChild(el('span', ' Restart Jellyfin after switching.', 'hwprobe-reason'));
+                        container.appendChild(switcher);
+                    }
+
+                    const settings = selected.settings || [];
                     const table = el('table');
-                    row(table, [el('th'), el('th', 'Option'), el('th', 'Result'), el('th', 'Fix')]);
+                    const everything = configured ? settings.filter(differs) : [];
+                    const header = el('th');
+                    if (everything.length > 1) {
+                        header.appendChild(action('Apply all', () => apply(everything)));
+                    }
+                    row(table, [el('th'), el('th', 'Option'), el('th', 'Result'), el('th', 'Fix'), header]);
                     let group = null;
-                    for (const a of selected.settings || []) {
+                    for (const a of settings.filter(x => !x.hidden || differs(x))) {
                         if (a.section !== group) {
                             group = a.section;
-                            groupRow(table, group);
+                            const pending = configured ? settings.filter(x => x.section === group && differs(x)) : [];
+                            const cell = el('td');
+                            if (pending.length > 1) {
+                                cell.appendChild(action('Apply section', () => apply(pending)));
+                            }
+                            row(table, [el('td'), el('td', group), el('td'), el('td'), cell]).className = 'hwprobe-group';
                         }
-                        row(table, [mark(a.state), a.label, el('td', a.note, 'hwprobe-reason'), fixCell(a.fix)]);
+                        const cell = el('td');
+                        if (configured && differs(a)) {
+                            cell.appendChild(action('Apply', () => apply([a])));
+                        }
+                        row(table, [mark(a.state), a.label, el('td', a.note, 'hwprobe-reason'), fixCell(a.fix), cell]);
                     }
                     groupRow(table, 'Also tested');
                     outcomeRow(table, 'Hardware deinterlacing', firstOutcome(selected.deinterlace));
@@ -259,7 +361,9 @@
                     const config = ApiClient.getNamedConfiguration('encoding').then(c => { encoding = c; }, () => { encoding = null; });
                     const data = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Report'), dataType: 'json' })
                         .then(r => { report = r; }, () => { report = null; statusText.textContent = 'No probe has run yet.'; });
-                    return Promise.all([config, data]).then(render);
+                    const changes = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/History'), dataType: 'json' })
+                        .then(h => { history = h || []; }, () => { history = []; });
+                    return Promise.all([config, data, changes]).then(() => { renderChange(); render(); });
                 }
 
                 function loadStatus() {

@@ -21,4 +21,13 @@ internal static partial class Log
     /// <param name="exception">The failure.</param>
     [LoggerMessage(Level = LogLevel.Error, Message = "HwProbe failed.")]
     public static partial void Failed(ILogger logger, Exception exception);
+
+    /// <summary>Logs one changed encoding setting.</summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="user">The admin who made the change.</param>
+    /// <param name="setting">The setting key.</param>
+    /// <param name="oldValue">The value before.</param>
+    /// <param name="newValue">The value after.</param>
+    [LoggerMessage(Level = LogLevel.Information, Message = "HwProbe changed {Setting} from {OldValue} to {NewValue} for {User}.")]
+    public static partial void SettingChanged(ILogger logger, string user, string setting, string oldValue, string newValue);
 }
