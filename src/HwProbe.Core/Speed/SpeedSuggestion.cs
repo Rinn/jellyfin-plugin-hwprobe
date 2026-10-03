@@ -17,8 +17,8 @@ public sealed record SpeedSuggestion(SpeedSuggestionKind Kind, IReadOnlyList<str
     /// <summary>Gets the value suggested, as the catalog keys it.</summary>
     public string? Value { get; init; }
 
-    /// <summary>Gets the value it was compared with.</summary>
-    public string? Other { get; init; }
+    /// <summary>Gets the values it was compared with.</summary>
+    public IReadOnlyList<string> Others { get; init; } = [];
 
     /// <summary>Gets how much faster the suggestion measured, as a fraction; negative when slower.</summary>
     public double? Gain { get; init; }

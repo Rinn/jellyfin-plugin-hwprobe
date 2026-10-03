@@ -51,13 +51,29 @@ public sealed class SpeedAdvisorTests
         var onFast = SpeedAdvisor.Advise(fast, [medium, fast, threads], HwType.none, string.Empty, new SpeedSettings { EncoderPreset = "fast" });
 
         var faster = Assert.Single(onMedium, s => s.Kind == SpeedSuggestionKind.FasterSetting);
-        Assert.Equal(("EncoderPreset", "fast", "medium", 0.5, false), (faster.Setting, faster.Value, faster.Other, faster.Gain!.Value, faster.TestVideosOnly));
+        Assert.Equal(("EncoderPreset", "fast", "medium", 0.5, false), (faster.Setting, faster.Value, Assert.Single(faster.Others), faster.Gain!.Value, faster.TestVideosOnly));
 
         // Headroom comes from the film alone: the test video's 12x overstates it.
         var quality = Assert.Single(onFast, s => s.Kind == SpeedSuggestionKind.HigherQuality);
         Assert.Equal(("medium", 4.0), (quality.Value, quality.Speed!.Value));
         Assert.Equal([Film], quality.Outputs);
         Assert.DoesNotContain(onFast, s => s.Setting == "EncodingThreadCount");
+    }
+
+    /// <summary>Several comparisons that suggest the same value become one suggestion naming every value it beat.</summary>
+    [Fact]
+    public void MergesTheSameSuggestion()
+    {
+        const string Film = "live-action|h264-8mbps";
+        var medium = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.none, Film, 100));
+        var fast = Run(new SpeedSettings { EncoderPreset = "fast" }, Result(HwType.none, Film, 101));
+        var faster = Run(new SpeedSettings { EncoderPreset = "faster" }, Result(HwType.none, Film, 102));
+
+        var quality = Assert.Single(SpeedAdvisor.Advise(faster, [medium, fast, faster], HwType.none, string.Empty, new SpeedSettings { EncoderPreset = "faster" }), s => s.Value == "medium");
+
+        Assert.Equal(SpeedSuggestionKind.HigherQuality, quality.Kind);
+        Assert.Equal(["fast", "faster"], quality.Others.Order(StringComparer.Ordinal));
+        Assert.Equal([Film], quality.Outputs);
     }
 
     /// <summary>Returns a run.</summary>

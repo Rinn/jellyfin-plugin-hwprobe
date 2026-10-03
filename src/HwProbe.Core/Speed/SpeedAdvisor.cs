@@ -96,7 +96,17 @@ public static class SpeedAdvisor
             suggestions.Add(new SpeedSuggestion(SpeedSuggestionKind.FallsBehind, [.. behind.Select(r => Label(r, shown.Settings))]) { Type = type, Device = device, TestVideosOnly = behind.All(IsGenerated) });
         }
 
-        suggestions.AddRange(CompareSettings(runs, Configured, server));
+        // Comparisons against several other values, or from several runs, that suggest the same value become one suggestion.
+        suggestions.AddRange(CompareSettings(runs, Configured, server)
+            .GroupBy(s => (s.Kind, s.Setting, s.Value))
+            .Select(g => g.First() with
+            {
+                Others = [.. g.SelectMany(s => s.Others).Distinct(StringComparer.Ordinal)],
+                Outputs = [.. g.SelectMany(s => s.Outputs).Distinct(StringComparer.Ordinal)],
+                Gain = g.Min(s => s.Gain),
+                Speed = g.Min(s => s.Speed),
+                TestVideosOnly = g.All(s => s.TestVideosOnly),
+            }));
         return suggestions;
     }
 
@@ -153,7 +163,7 @@ public static class SpeedAdvisor
             var generated = group.All(s => s.Generated);
             if (gains.All(g => g > Noise))
             {
-                yield return new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, outputs) { Setting = key, Value = value, Other = other, Gain = median, Speed = group.Min(s => s.Speed), TestVideosOnly = generated };
+                yield return new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, outputs) { Setting = key, Value = value, Others = [other], Gain = median, Speed = group.Min(s => s.Speed), TestVideosOnly = generated };
                 continue;
             }
 
@@ -161,7 +171,7 @@ public static class SpeedAdvisor
             var real = group.Where(s => !s.Generated).ToList();
             if (IsBetterQuality(key, value, other) && real.Count > 0 && real.Min(s => s.Speed) >= Headroom)
             {
-                yield return new SpeedSuggestion(SpeedSuggestionKind.HigherQuality, [.. real.Select(s => s.Label).Distinct(StringComparer.Ordinal)]) { Setting = key, Value = value, Other = other, Gain = median, Speed = real.Min(s => s.Speed) };
+                yield return new SpeedSuggestion(SpeedSuggestionKind.HigherQuality, [.. real.Select(s => s.Label).Distinct(StringComparer.Ordinal)]) { Setting = key, Value = value, Others = [other], Gain = median, Speed = real.Min(s => s.Speed) };
             }
         }
     }

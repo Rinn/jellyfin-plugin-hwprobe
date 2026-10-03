@@ -16,7 +16,7 @@ public sealed class SettingsServiceTests : IDisposable
     [Fact]
     public async Task ApplyMeasuredNeedsASuggestion()
     {
-        _harness.Suggestions = [new SpeedSuggestion(SpeedSuggestionKind.HigherQuality, ["a"]) { Setting = "EncoderPreset", Value = "medium", Other = "fast" }];
+        _harness.Suggestions = [new SpeedSuggestion(SpeedSuggestionKind.HigherQuality, ["a"]) { Setting = "EncoderPreset", Value = "medium", Others = ["fast"] }];
 
         var refused = await _harness.Service.ApplyMeasuredAsync(new MeasuredChange("EncoderPreset", "veryslow"), "admin", TestContext.Current.CancellationToken);
         var applied = await _harness.Service.ApplyMeasuredAsync(new MeasuredChange("EncoderPreset", "medium"), "admin", TestContext.Current.CancellationToken);

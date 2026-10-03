@@ -1145,11 +1145,11 @@
                                 reason = 'Falls behind real time, so a player would buffer.';
                             } else if (s.Kind === 'FasterSetting') {
                                 title = label + ': ' + optionValueText(s.Setting, s.Value);
-                                reason = percent + ' faster than ' + optionValueText(s.Setting, s.Other) + (qualitySettings.indexOf(s.Setting) !== -1 ? ', at lower quality.' : '.');
+                                reason = percent + ' faster than ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + (qualitySettings.indexOf(s.Setting) !== -1 ? ', at lower quality.' : '.');
                                 actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }));
                             } else if (s.Kind === 'HigherQuality') {
                                 title = label + ': ' + optionValueText(s.Setting, s.Value);
-                                reason = 'Better quality than ' + optionValueText(s.Setting, s.Other) + '; ' + percent + ' slower, still ' + s.Speed.toFixed(1) + '\u00d7 real time.';
+                                reason = 'Better quality than ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + '; at most ' + percent + ' slower, still ' + s.Speed.toFixed(1) + '\u00d7 real time.';
                                 actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }));
                             }
                             text.appendChild(el('div', title));
