@@ -1379,7 +1379,8 @@
                         if (n) {
                             speedCell.appendChild(el('sup', String(n)));
                         }
-                        const reused = x.reusedFromUtc ? footnote('Reused from the run on ' + new Date(x.reusedFromUtc).toLocaleString() + '.') : null;
+                        // One footnote for every reused cell; each cell's date is in its details.
+                        const reused = x.reusedFromUtc ? footnote('Reused from an earlier run with the same settings; point at the value for when it was measured.') : null;
                         if (reused) {
                             speedCell.appendChild(el('sup', String(reused)));
                         }
@@ -1395,6 +1396,9 @@
                         }
                         if (x.note) {
                             facts.push(x.note);
+                        }
+                        if (x.reusedFromUtc) {
+                            facts.push('Measured ' + new Date(x.reusedFromUtc).toLocaleString());
                         }
                         speedCell.title = facts.join('. ');
                         return cells;
