@@ -122,7 +122,7 @@ public sealed class SpeedEngine : IDisposable
                     var missing = MissingClip(test, speed.Settings, clips);
                     var result = source is null ? new SpeedResult(type, device, test.Key, string.Empty, null, null, false, "The device didn't open.")
                         : missing is not null ? new SpeedResult(type, device, test.Key, string.Empty, null, null, false, missing)
-                        : await MeasureOrReuseAsync(options, speed, caps.VersionLine, resultsCache, source, type, device, test, SpeedVariants.ForBackend(type, test, SpeedVariants.Base(test, speed.Settings, Paths(clips)), speed.Settings), cancellationToken);
+                        : await MeasureDeferringAsync(speed.Pause, ct => MeasureOrReuseAsync(options, speed, caps.VersionLine, resultsCache, source, type, device, test, SpeedVariants.ForBackend(type, test, SpeedVariants.Base(test, speed.Settings, Paths(clips)), speed.Settings), ct), cancellationToken);
                     var described = Describe(test, result);
                     results.Add(described);
                     progress?.Report(new SpeedProgress(++done, total, described));
@@ -148,6 +148,52 @@ public sealed class SpeedEngine : IDisposable
 
     /// <inheritdoc/>
     public void Dispose() => _gate.Dispose();
+
+    /// <summary>Measures, deferring to the server's own transcodes: it waits while one runs, and a measurement one interrupts is stopped and started again once it ends.</summary>
+    /// <param name="pause">The run's pause, with the busy check; null or without one, this just measures.</param>
+    /// <param name="measure">Measures once.</param>
+    /// <param name="cancellationToken">Cancels the run.</param>
+    /// <returns>The result of a measurement nothing interrupted.</returns>
+    private static async Task<SpeedResult> MeasureDeferringAsync(SpeedPause? pause, Func<CancellationToken, Task<SpeedResult>> measure, CancellationToken cancellationToken)
+    {
+        if (pause?.Busy is not { } busy)
+        {
+            return await measure(cancellationToken);
+        }
+
+        while (true)
+        {
+            await pause.HoldWhileBusyAsync(cancellationToken);
+            using var interrupt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var watch = Task.Run(
+                async () =>
+                {
+                    while (!interrupt.IsCancellationRequested)
+                    {
+                        await Task.Delay(pause.BusyCheck, interrupt.Token);
+                        if (busy())
+                        {
+                            // Kills the running ffmpeg trees, so the server's transcode isn't competing with them.
+                            await interrupt.CancelAsync();
+                        }
+                    }
+                },
+                CancellationToken.None);
+            try
+            {
+                return await measure(interrupt.Token);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                // Interrupted by a transcode: wait for it to end, then measure this one again.
+            }
+            finally
+            {
+                await interrupt.CancelAsync();
+                await watch.ContinueWith(_ => { }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            }
+        }
+    }
 
     /// <summary>Returns why a test's clips aren't available, or null when they are.</summary>
     /// <param name="test">The test.</param>

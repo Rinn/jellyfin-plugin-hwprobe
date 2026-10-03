@@ -177,6 +177,7 @@
                 let speedMethod = null;
                 let speedRepeats = 1;
                 let speedReuse = false;
+                let speedDefer = true;
                 let speedTimeLimit = null;
                 // Null measures with the server's own thread count.
                 // Run options chosen on the page, by catalog key; one left out keeps the server's setting.
@@ -1332,10 +1333,11 @@
                     options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });
                     options('Repeats', repeatOptions, speedRepeats, v => { speedRepeats = Number(v); });
                     options('Earlier results', [['false', 'Measure everything again'], ['true', 'Reuse when the settings match']], String(speedReuse), v => { speedReuse = v === 'true'; }, 'Reuses a measurement from an earlier run with the same input, output, backend, accuracy, repeats, ffmpeg and plugin version, and the same values for the settings that affect it, so a repeated comparison runs faster. Measurements cut off by the time limit aren\u2019t reused.');
+                    options('When the server starts transcoding', [['true', 'Pause, then repeat the interrupted measurement'], ['false', 'Keep measuring']], String(speedDefer), v => { speedDefer = v === 'true'; }, 'Pausing stops the measurement running so the transcode has the hardware to itself, waits until nothing is transcoding, then measures it again. Keeping on measures alongside it, which slows both.');
                     options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); }, 'A measurement that reaches the limit stops and reports what it measured.');
 
                     button = action('Measure performance', () => {
-                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, ReuseResults: speedReuse, Options: speedSettings, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Backends: [...chosenBackends], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
+                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, ReuseResults: speedReuse, DeferToTranscodes: speedDefer, Options: speedSettings, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Backends: [...chosenBackends], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
                         ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed'), data: JSON.stringify(body), contentType: 'application/json' })
                             .then(() => {
                                 showTab(tabs[3][0]);
@@ -1618,6 +1620,9 @@
                 function speedProgressText(s) {
                     if (s.Phase === 'Cancelling') {
                         return 'Cancelling\u2026';
+                    }
+                    if (s.Phase === 'Deferring') {
+                        return 'Waiting: the server is transcoding. Measured ' + (s.Done || 0) + ' of ' + s.Total + '; the interrupted measurement runs again when it ends.';
                     }
                     if (s.Phase === 'Paused') {
                         return 'Paused after ' + (s.Done || 0) + ' of ' + s.Total;

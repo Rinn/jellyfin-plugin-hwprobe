@@ -103,6 +103,7 @@ public sealed partial class ProbeService : IDisposable
                 }
 
                 var phase = _speedCancel?.IsCancellationRequested == true ? SpeedPhase.Cancelling
+                    : pause.IsHolding ? SpeedPhase.Deferring
                     : pause.IsPaused ? (pause.IsWaiting ? SpeedPhase.Paused : SpeedPhase.Pausing)
                     : _measuringSince is null ? SpeedPhase.Preparing
                     : SpeedPhase.Measuring;
@@ -201,7 +202,8 @@ public sealed partial class ProbeService : IDisposable
             return ProbeRunResult.NoReport;
         }
 
-        if (await IsBusyAsync(cancellationToken))
+        // A run that defers to transcodes starts anyway and waits for the transcode to end.
+        if (!request.DeferToTranscodes && await IsBusyAsync(cancellationToken))
         {
             return ProbeRunResult.ServerBusy;
         }
@@ -213,7 +215,7 @@ public sealed partial class ProbeService : IDisposable
 
         List<(HwType, string)> backends = [.. report.Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device))];
         _speedCancel = new CancellationTokenSource();
-        _speedPause = new SpeedPause(_time);
+        _speedPause = new SpeedPause(_time) { Busy = request.DeferToTranscodes ? _isTranscoding : null };
         var settings = ServerSpeedSettings();
         foreach (var (key, value) in request.Options ?? new Dictionary<string, string>())
         {
