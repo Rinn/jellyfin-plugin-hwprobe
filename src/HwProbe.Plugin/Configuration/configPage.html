@@ -176,6 +176,7 @@
                 let speedProgress = null;
                 let speedMethod = null;
                 let speedRepeats = 1;
+                let speedReuse = false;
                 let speedTimeLimit = null;
                 // Null measures with the server's own thread count.
                 // Run options chosen on the page, by catalog key; one left out keeps the server's setting.
@@ -1272,10 +1273,11 @@
                     container.appendChild(el('h3', 'Accuracy and time', 'sectionTitle'));
                     options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });
                     options('Repeats', repeatOptions, speedRepeats, v => { speedRepeats = Number(v); });
+                    options('Earlier results', [['false', 'Measure everything again'], ['true', 'Reuse when the settings match']], String(speedReuse), v => { speedReuse = v === 'true'; }, 'Reuses a measurement from an earlier run with the same input, output, backend, settings, accuracy, ffmpeg and plugin version, so a repeated comparison runs faster.');
                     options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); }, 'A measurement that reaches the limit stops and reports what it measured.');
 
                     button = action('Measure performance', () => {
-                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, Options: speedSettings, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Backends: [...chosenBackends], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
+                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, ReuseResults: speedReuse, Options: speedSettings, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Backends: [...chosenBackends], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
                         ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed'), data: JSON.stringify(body), contentType: 'application/json' })
                             .then(() => {
                                 showTab(tabs[3][0]);
@@ -1376,6 +1378,10 @@
                         const n = footnote(x.note);
                         if (n) {
                             speedCell.appendChild(el('sup', String(n)));
+                        }
+                        const reused = x.reusedFromUtc ? footnote('Reused from the run on ' + new Date(x.reusedFromUtc).toLocaleString() + '.') : null;
+                        if (reused) {
+                            speedCell.appendChild(el('sup', String(reused)));
                         }
                         const facts = [];
                         if (speed && !values) {

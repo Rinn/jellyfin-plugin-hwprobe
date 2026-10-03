@@ -54,6 +54,7 @@ hwprobe --speed confirm --speed-videos pattern,live-action --speed-outputs h264-
 - Arguments come from `EncodingHelper` with `ProbeCell.FullQuality`, as a real request gets them. The output size goes through Jellyfin's `ResolutionNormalizer`, as `StreamingHelpers` does.
 - `SpeedCommandLine` loops the inputs and bounds each run with `-t`. `SpeedMeter` counts speed and concurrent streams, and is tested without ffmpeg.
 - A hardware backend only measures what it encodes (or, for decode tests, decodes) on the GPU.
+- Every full measurement is saved under `speed-results` beside the clip cache, keyed by a SHA-256 of what went into it (`SpeedResultCache.Key`: plugin version, ffmpeg path and version, backend, device, test, library file size and time, the generated cell, settings, accuracy, repeats and time limit). With **Earlier results: Reuse** (`ReuseResults`), a matching measurement is shown with the date it was made instead of being measured again. Entries from another version or ffmpeg are deleted at the start of each run; deleting the cache deletes them all.
 - A library file comes from the item's media source in the plugin, or from ffprobe with `--speed-file` in the CLI, and is read from a tenth of the way in.
 
 ## Test clips and downloads

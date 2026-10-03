@@ -56,6 +56,15 @@ public sealed class SpeedEngine : IDisposable
     /// <summary>Gets the downloader for clips that can't be generated, such as the PGS sample.</summary>
     public IFixtureDownloader FixtureDownloader { get; init; } = new HttpFixtureDownloader();
 
+    /// <summary>Returns where measurements are kept for reuse: beside the clip cache.</summary>
+    /// <param name="options">The cache locations.</param>
+    /// <returns>The cache.</returns>
+    public static SpeedResultCache ResultCacheFor(EngineOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        return new SpeedResultCache(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(options.FixturesDirectory))!, "speed-results"));
+    }
+
     /// <summary>Measures every backend, then software, on every chosen test.</summary>
     /// <param name="options">The ffmpeg and cache locations; the stage and filters are ignored.</param>
     /// <param name="speed">What to measure.</param>
@@ -95,6 +104,8 @@ public sealed class SpeedEngine : IDisposable
         try
         {
             var names = tests.Where(t => t.Fixture is not null).GroupBy(t => t.Fixture!.FileName).ToDictionary(g => g.Key, g => g.First().Name ?? g.Key, StringComparer.Ordinal);
+            var resultsCache = ResultCacheFor(options);
+            resultsCache.Prune(caps.VersionLine);
             var clips = await BuildClipsAsync(options, caps, tests, speed.Settings, progress is null ? null : new StepProgress(step => progress.Report(new SpeedProgress(0, total, null) { Preparing = Preparing(step, names) })), cancellationToken);
             progress?.Report(new SpeedProgress(0, total, null));
             foreach (var (type, device) in measured)
@@ -111,7 +122,7 @@ public sealed class SpeedEngine : IDisposable
                     var missing = MissingClip(test, speed.Settings, clips);
                     var result = source is null ? new SpeedResult(type, device, test.Key, string.Empty, null, null, false, "The device didn't open.")
                         : missing is not null ? new SpeedResult(type, device, test.Key, string.Empty, null, null, false, missing)
-                        : await MeasureRepeatedAsync(options, speed, source, type, device, test, SpeedVariants.ForBackend(type, test, SpeedVariants.Base(test, speed.Settings, Paths(clips)), speed.Settings), cancellationToken);
+                        : await MeasureOrReuseAsync(options, speed, caps.VersionLine, resultsCache, source, type, device, test, SpeedVariants.ForBackend(type, test, SpeedVariants.Base(test, speed.Settings, Paths(clips)), speed.Settings), cancellationToken);
                     var described = Describe(test, result);
                     results.Add(described);
                     progress?.Report(new SpeedProgress(++done, total, described));
@@ -255,6 +266,37 @@ public sealed class SpeedEngine : IDisposable
         var median = sorted[sorted.Count / 2];
         var streams = runs.Select(r => r.Streams ?? 0).Order().ToList()[runs.Count / 2];
         return median with { Streams = median.Streams is null ? null : streams };
+    }
+
+    /// <summary>Reuses a measurement an earlier run saved with exactly the same inputs when asked, or measures and saves it.</summary>
+    /// <param name="options">The ffmpeg.</param>
+    /// <param name="speed">The run.</param>
+    /// <param name="ffmpegVersion">The ffmpeg version line.</param>
+    /// <param name="cache">The saved measurements.</param>
+    /// <param name="source">The device's argument source.</param>
+    /// <param name="type">The backend.</param>
+    /// <param name="device">The device.</param>
+    /// <param name="test">The test.</param>
+    /// <param name="cell">The cell to generate.</param>
+    /// <param name="cancellationToken">Cancels the measurement.</param>
+    /// <returns>The result.</returns>
+    private async Task<SpeedResult> MeasureOrReuseAsync(EngineOptions options, SpeedOptions speed, string ffmpegVersion, SpeedResultCache cache, IArgumentSource source, HwType type, string device, SpeedTest test, ProbeCell cell, CancellationToken cancellationToken)
+    {
+        var key = SpeedResultCache.Key(options.Ffmpeg.Path, ffmpegVersion, type, device, test, cell, speed);
+        if (speed.ReuseResults && await cache.GetAsync(key, cancellationToken) is { } earlier)
+        {
+            return earlier.Result with { ReusedFromUtc = earlier.MeasuredUtc };
+        }
+
+        var result = await MeasureRepeatedAsync(options, speed, source, type, device, test, cell, cancellationToken);
+
+        // Only a full measurement is worth reusing; a failure may be fixed by the next run.
+        if (result.Fps is not null)
+        {
+            await cache.SaveAsync(key, new SpeedCacheEntry(_time.GetUtcNow(), CapabilityReport.CurrentHwProbeVersion, ffmpegVersion, result), cancellationToken);
+        }
+
+        return result;
     }
 
     /// <summary>Generates one variant's arguments and measures them, inside the probe lock.</summary>

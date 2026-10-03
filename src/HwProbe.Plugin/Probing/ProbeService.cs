@@ -69,6 +69,7 @@ public sealed partial class ProbeService : IDisposable
         ServerSpeedSettings = () => SettingsFrom(config.GetEncodingOptions());
         FindFile = files.Find;
         FixturesDirectory = ServerEngineOptions(mediaEncoder, paths).FixturesDirectory;
+        SpeedResultsDirectory = SpeedEngine.ResultCacheFor(ServerEngineOptions(mediaEncoder, paths)).Directory;
     }
 
     /// <summary>Initializes a new instance of the <see cref="ProbeService"/> class with injected behaviour.</summary>
@@ -123,6 +124,9 @@ public sealed partial class ProbeService : IDisposable
 
     /// <summary>Gets where probes and speed runs cache their clips, or null when unknown.</summary>
     internal string? FixturesDirectory { get; init; }
+
+    /// <summary>Gets where measurements are saved for reuse, or null when unset.</summary>
+    internal string? SpeedResultsDirectory { get; init; }
 
     /// <summary>Gets the lookup from a library item to its file.</summary>
     internal Func<Guid, SpeedFile?> FindFile { get; init; } = _ => null;
@@ -482,6 +486,12 @@ public sealed partial class ProbeService : IDisposable
                 Directory.Delete(directory, recursive: true);
             }
 
+            // Saved measurements go with the clips they were measured on.
+            if (SpeedResultsDirectory is { } results && Directory.Exists(results))
+            {
+                Directory.Delete(results, recursive: true);
+            }
+
             return true;
         }
         finally
@@ -537,6 +547,7 @@ public sealed partial class ProbeService : IDisposable
             Backends = request.Backends?.Select(Enum.Parse<HwType>).ToList(),
             Repeats = request.Repeats,
             TimeLimit = request.TimeLimitSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null,
+            ReuseResults = request.ReuseResults,
         };
     }
 

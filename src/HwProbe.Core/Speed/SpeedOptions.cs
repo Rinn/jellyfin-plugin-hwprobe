@@ -19,6 +19,9 @@ public sealed record SpeedOptions(SpeedMethod Method, IReadOnlyList<string> Vide
     /// <summary>Gets what pauses the run between measurements, or null when it can't be paused.</summary>
     public SpeedPause? Pause { get; init; }
 
+    /// <summary>Gets a value indicating whether a measurement saved by an earlier run with exactly the same settings is reused rather than measured again.</summary>
+    public bool ReuseResults { get; init; }
+
     /// <summary>Gets the library file the <c>library</c> video reads, or null.</summary>
     public SpeedFile? File { get; init; }
 
