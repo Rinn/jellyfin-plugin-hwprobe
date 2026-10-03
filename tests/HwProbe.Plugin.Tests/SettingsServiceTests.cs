@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.HwProbe.Core.Speed;
 using Jellyfin.Plugin.HwProbe.Settings;
 using MediaBrowser.Model.Entities;
 using Xunit;
@@ -9,6 +10,22 @@ namespace Jellyfin.Plugin.HwProbe.PluginTests;
 public sealed class SettingsServiceTests : IDisposable
 {
     private readonly SettingsHarness _harness = new();
+
+    /// <summary>A setting the performance tests suggest is saved with its label; one they don't is refused.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task ApplyMeasuredNeedsASuggestion()
+    {
+        _harness.Suggestions = [new SpeedSuggestion(SpeedSuggestionKind.HigherQuality, ["a"]) { Setting = "EncoderPreset", Value = "medium", Other = "fast" }];
+
+        var refused = await _harness.Service.ApplyMeasuredAsync(new MeasuredChange("EncoderPreset", "veryslow"), "admin", TestContext.Current.CancellationToken);
+        var applied = await _harness.Service.ApplyMeasuredAsync(new MeasuredChange("EncoderPreset", "medium"), "admin", TestContext.Current.CancellationToken);
+
+        Assert.Equal(ApplyOutcome.Rejected, refused.Outcome);
+        Assert.Equal(ApplyOutcome.Applied, applied.Outcome);
+        Assert.Equal(EncoderPreset.medium, _harness.Saved.EncoderPreset);
+        Assert.Equal([new AppliedChange("EncoderPreset", "auto", "medium") { Label = "Encoding preset" }], applied.Changes);
+    }
 
     /// <summary>Changes matching the advice are saved; other options are left as they were.</summary>
     /// <returns>A task representing the test.</returns>
