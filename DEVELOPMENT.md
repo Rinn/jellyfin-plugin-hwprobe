@@ -39,7 +39,7 @@ HWPROBE_INSTALL=existing HWPROBE_BASE=http://host:18096 scripts/container-plugin
 
 ## Command-line tool
 
-`src/HwProbe.Cli` runs the same probe without the plugin. Run it where Jellyfin runs (inside the container, for Docker). `--help` lists the options.
+`src/HwProbe.Cli` runs the same probe without the plugin. Each release has a build per platform (`hwprobe-<rid>.zip` for Windows, `.tar.gz` for macOS and Linux, unpacking to a runnable `hwprobe`). Run it where Jellyfin runs (inside the container, for Docker): `hwprobe` probes every backend, `hwprobe --speed confirm` also measures speed, and `--help` lists the options.
 
 ## Speed runs
 
