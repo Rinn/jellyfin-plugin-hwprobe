@@ -62,7 +62,6 @@
             #HwProbeConfigPage .hwprobe-change-list table { margin: 0.2em 0 0; }
             #HwProbeConfigPage .hwprobe-disclosure { display: inline-flex; align-items: center; gap: 0.3em; padding: 0; border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
             #HwProbeConfigPage .hwprobe-choices { display: flex; flex-wrap: wrap; gap: 0 1.5em; }
-            #HwProbeConfigPage .hwprobe-choices .emby-checkbox-label { width: auto; margin-right: 1.5em; }
             #HwProbeConfigPage .hwprobe-fold > summary { display: flex; align-items: center; gap: 0.3em; cursor: pointer; list-style: none; }
             #HwProbeConfigPage .hwprobe-fold > summary::-webkit-details-marker { display: none; }
             #HwProbeConfigPage .hwprobe-fold > summary .sectionTitle { margin-top: 0.5em; margin-bottom: 0.5em; }
@@ -914,23 +913,6 @@
                     renderSpeedSetup(speedTab, viable);
                 }
 
-                function checkbox(text, checked, onChange) {
-                    const label = jf('<label class="emby-checkbox-label"><input type="checkbox" is="emby-checkbox"><span></span></label>');
-                    const input = label.firstElementChild;
-                    input.checked = checked;
-                    input.addEventListener('change', () => onChange(input.checked));
-                    label.lastElementChild.textContent = text;
-                    return label;
-                }
-
-                function chips(items, className) {
-                    const div = el('div', null, 'hwprobe-choices' + (className ? ' ' + className : ''));
-                    for (const item of items) {
-                        div.appendChild(item);
-                    }
-                    return div;
-                }
-
                 // In codec then quality order, so a video's rows read H.264 8 Mbps, H.264 4 Mbps, HEVC 8 Mbps.
                 function selectedOutputs() {
                     const keys = speedCodecs.filter(c => chosenCodecs.has(c.Key)).flatMap(c => speedQualities.filter(q => chosenQualities.has(q.Key)).map(q => c.Key + '-' + q.Key));
@@ -1202,7 +1184,6 @@
                         estimate.textContent = videos + ' input' + (videos === 1 ? '' : 's') + ' \u00d7 ' + outputs + ' output' + (outputs === 1 ? '' : 's') + ' on ' + speedBackends(viable) + ' backend' + (speedBackends(viable) === 1 ? '' : 's') + ': ' + runs + ' measurement' + (runs === 1 ? '' : 's') + ', ' + span + ' minute' + (high === 1 ? '' : 's');
                         button.disabled = runs === 0 || running;
                     };
-                    const pick = (set, key) => on => { if (on) { set.add(key); } else { set.delete(key); } update(); };
 
 
                     // Help goes under its field, before the gap to the next one, as the dashboard's helper text does.
@@ -1243,9 +1224,9 @@
                     }
                     container.appendChild(el('h3', 'Backends', 'sectionTitle'));
                     const sameType = b => viable.filter(o => o.type === b.type).length > 1;
-                    container.appendChild(chips(viable.filter((b, i) => viable.findIndex(o => o.type === b.type) === i)
-                        .map(b => checkbox((names[b.type] || b.type) + (sameType(b) ? ' ' + b.device : ''), chosenBackends.has(b.type), pick(chosenBackends, b.type)))
-                        .concat([checkbox('Software', chosenBackends.has('none'), pick(chosenBackends, 'none'))])));
+                    multiSelect(container, 'Backends', viable.filter((b, i) => viable.findIndex(o => o.type === b.type) === i)
+                        .map(b => ({ key: b.type, text: (names[b.type] || b.type) + (sameType(b) ? ' ' + b.device : '') }))
+                        .concat([{ key: 'none', text: 'Software' }]), chosenBackends, () => update());
                     // Settings for one backend, shown when it works and its probe found the option supported.
                     const supported = o => viable.some(b => b.type === o.Backend && (b.settings || []).some(x => x.setting === o.Report && (x.state === 'TurnOn' || x.state === 'Optional')));
                     runOptions.filter(o => o.Backend && supported(o)).forEach(runOption);
