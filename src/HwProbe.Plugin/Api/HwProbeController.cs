@@ -141,6 +141,26 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     public async Task<ActionResult> SpeedHistoryRunAsync([FromRoute] string id, CancellationToken cancellationToken) =>
         await service.SpeedHistoryJsonAsync(id, cancellationToken) is { } json ? Content(json, "application/json") : NotFound();
 
+    /// <summary>Deletes one saved speed run.</summary>
+    /// <param name="id">The run.</param>
+    /// <param name="cancellationToken">Cancels waiting.</param>
+    /// <returns>204 when deleted; 404 when there's no such run; 409 while a probe or speed run is running.</returns>
+    [HttpDelete("SpeedHistory/{id}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult> DeleteSpeedRunAsync([FromRoute] string id, CancellationToken cancellationToken) =>
+        Deleted(await service.DeleteSpeedHistoryAsync(id, cancellationToken));
+
+    /// <summary>Deletes every saved speed run.</summary>
+    /// <param name="cancellationToken">Cancels waiting.</param>
+    /// <returns>204 when deleted; 409 while a probe or speed run is running.</returns>
+    [HttpDelete("SpeedHistory")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult> DeleteSpeedHistoryAsync(CancellationToken cancellationToken) =>
+        Deleted(await service.DeleteSpeedHistoryAsync(null, cancellationToken));
+
     /// <summary>Returns the size of the cached test clips and samples.</summary>
     /// <returns>Bytes and files.</returns>
     [HttpGet("Cache")]
@@ -232,4 +252,14 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     /// <summary>Returns the name of the admin making the request.</summary>
     /// <returns>The user name, or <c>unknown</c>.</returns>
     private string UserName() => User.Identity?.Name ?? "unknown";
+
+    /// <summary>Maps a delete outcome to its response.</summary>
+    /// <param name="outcome">The outcome.</param>
+    /// <returns>204, 404 or 409.</returns>
+    private ActionResult Deleted(DeleteOutcome outcome) => outcome switch
+    {
+        DeleteOutcome.Deleted => NoContent(),
+        DeleteOutcome.NotFound => NotFound(),
+        _ => Conflict("A probe or performance test is running."),
+    };
 }

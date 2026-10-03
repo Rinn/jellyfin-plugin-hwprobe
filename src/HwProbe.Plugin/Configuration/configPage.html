@@ -57,6 +57,7 @@
             #HwProbeConfigPage .hwprobe-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em 1em; margin: 1.5em 0 0.3em; }
             #HwProbeConfigPage .hwprobe-heading h2 { margin: 0; }
             #HwProbeConfigPage .hwprobe-heading .selectContainer { margin: 0; flex: 1 1 16em; max-width: 28em; }
+            #HwProbeConfigPage .hwprobe-heading .selectContainer.hwprobe-view { flex: 0 1 12em; }
             #HwProbeConfigPage .hwprobe-change { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em; }
             #HwProbeConfigPage .hwprobe-change-list { margin: 0 0 0.5em 1em; }
             #HwProbeConfigPage .hwprobe-change-list table { margin: 0.2em 0 0; }
@@ -1006,6 +1007,7 @@
                 function renderResultsTab(container) {
                     const title = heading(container, 'Results');
                     const view = themedSelect(title, 'View');
+                    view.parentNode.classList.add('hwprobe-view');
                     for (const [key, text] of speedViews) {
                         const option = el('option', text);
                         option.value = key;
@@ -1032,6 +1034,23 @@
                                 renderSpeedResults();
                             });
                         });
+                        const remove = url => ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl(url) })
+                            .then(loadReport, () => { setMessage('Could not delete: a probe or performance test is running.'); loadReport(); });
+                        title.appendChild(idleAction('Delete', () => remove('HwProbe/SpeedHistory/' + runs.value)));
+                        if (speedHistory.length > 1) {
+                            // Can't be undone, so the first press only asks.
+                            let sure = false;
+                            const all = idleAction('Delete all', () => {
+                                if (sure) {
+                                    remove('HwProbe/SpeedHistory');
+                                    return;
+                                }
+                                sure = true;
+                                all.firstElementChild.textContent = 'Delete all ' + speedHistory.length + ' runs';
+                                all.disabled = false;
+                            }, 'raised button-delete');
+                            title.appendChild(all);
+                        }
                     }
                     container.appendChild(speedResults);
                     renderSpeedResults();

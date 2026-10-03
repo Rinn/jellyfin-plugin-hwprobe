@@ -151,6 +151,7 @@ done
 check "speed run finished" Idle "$state"
 check "speed run error" None "$(curl -sf "$base/HwProbe/Status" -H "$h" | json 'j.get("LastError")')"
 check "speed run in history" True "$(curl -sf "$base/HwProbe/SpeedHistory" -H "$h" | json 'len(j) >= 1')"
+check "delete an unknown run" 404 "$(code -X DELETE "$base/HwProbe/SpeedHistory/20000101T000000Z" -H "$h")"
 check "cache size" True "$(curl -sf "$base/HwProbe/Cache" -H "$h" | json 'j["Files"] > 0')"
 check "cache contents named" True "$(curl -sf "$base/HwProbe/Cache/Contents" -H "$h" | json 'len(j) > 0 and any(e["Description"] for e in j)')"
 check "software decode measured" True "$(curl -sf "$base/HwProbe/Speed" -H "$h" | json 'any(r["type"] == "none" and r["test"] == "pattern|decode" and (r["fps"] or 0) > 0 for r in j["results"])')"

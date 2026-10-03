@@ -16,7 +16,7 @@ Open **Transcoding Diagnostics** in the dashboard sidebar while nothing is being
 - **Hardware Probe**: press **Run probe** to test each hardware acceleration option.
 - **Recommended Settings**: each option on the Transcoding and Trickplay pages, with whether it works. **Apply** changes it and **Revert** undoes the last change.
 - **Performance Tests**: pick what to measure and press **Measure performance**.
-- **Test Results**: the measurements, as bars, values or a share of the fastest.
+- **Test Results**: the measurements, as bars, values or a share of the fastest. Earlier runs can be viewed or deleted.
 - **Help**: download a zip to attach to a [hardware report](../../issues/new?template=hardware-report.yml) (it includes file paths and host names), and see or delete the cached test clips.
 
 No data leaves the server. Test samples are downloaded only when needed and checked against pinned hashes.
