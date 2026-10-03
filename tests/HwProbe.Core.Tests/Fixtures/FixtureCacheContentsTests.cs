@@ -43,6 +43,27 @@ public sealed class FixtureCacheContentsTests : IDisposable
         Assert.Equal("Being made or downloaded", Assert.Single(FixtureCacheContents.List(_root)).Description);
     }
 
+    /// <summary>Pruning keeps the current build's known clips, samples and known downloads, and deletes the rest.</summary>
+    [Fact]
+    public void PruneDeletesWhatThisVersionDoesNotUse()
+    {
+        var current = FixtureBuilder.SanitizeKey("current");
+        Write(current, FixtureCatalog.Hevc10.FileName, 1);
+        Write(current, FixtureCatalog.Hevc10.FileName + ".sha256", 1);
+        Write(current, "old_clip.mp4", 1);
+        Write(current, "old_clip.mp4.sha256", 1);
+        Write(current, FixtureCatalog.Vp8.FileName + ".partial", 1);
+        Write("sha256_older", FixtureCatalog.Hevc10.FileName, 1);
+        Write("downloads", SpeedCatalog.ImageSubtitles.Sha256 + ".sup", 1);
+        Write("downloads", "0000.sup", 1);
+
+        Assert.Equal(5, FixtureCacheContents.Prune(_root, "current"));
+
+        Assert.Equal(new[] { FixtureCatalog.Hevc10.FileName, SpeedCatalog.ImageSubtitles.Sha256 + ".sup" }.Order(StringComparer.Ordinal), FixtureCacheContents.List(_root).Select(e => e.File).Order(StringComparer.Ordinal));
+        Assert.True(File.Exists(Path.Combine(_root, current, FixtureCatalog.Hevc10.FileName + ".sha256")));
+        Assert.False(Directory.Exists(Path.Combine(_root, "sha256_older")));
+    }
+
     /// <inheritdoc/>
     public void Dispose() => Directory.Delete(_root, recursive: true);
 

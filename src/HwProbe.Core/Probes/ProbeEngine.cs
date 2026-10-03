@@ -88,8 +88,10 @@ public sealed class ProbeEngine : IDisposable
 
         if (run.Opened.Count > 0)
         {
+            var key = Fingerprint.Compute(new FingerprintInputs(ffmpeg, caps.VersionLine, null, null, null, null, null, null));
+            FixtureCacheContents.Prune(options.FixturesDirectory, key);
             var fixtures = await new FixtureBuilder(_runner, ffmpeg, options.FixturesDirectory, options.FixtureTimeout, FixtureDownloader)
-                .BuildAsync(Fingerprint.Compute(new FingerprintInputs(ffmpeg, caps.VersionLine, null, null, null, null, null, null)), caps.Encoders, cancellationToken);
+                .BuildAsync(key, caps.Encoders, cancellationToken);
             run.Fixtures = fixtures.ToDictionary(f => f.Spec.FileName, StringComparer.Ordinal);
 
             foreach (var (candidate, open) in run.Opened)

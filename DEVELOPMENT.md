@@ -58,7 +58,7 @@ hwprobe --speed confirm --speed-videos pattern,live-action --speed-outputs h264-
 
 ## Test clips and downloads
 
-Test clips are made with the server's ffmpeg and cached per ffmpeg build. A clip that can't be made comes from a copy bundled in the plugin, or from FFmpeg's FATE sample suite, pinned by SHA-256. The cache is under Jellyfin's cache folder in `hwprobe/fixtures`: a folder per ffmpeg build, `samples` (kept across builds) and `downloads` (named by SHA-256). The Help tab lists it through `HwProbe/Cache/Contents` (`FixtureCacheContents`, which names each file from the catalogs).
+Test clips are made with the server's ffmpeg and cached per ffmpeg build. A clip that can't be made comes from a copy bundled in the plugin, or from FFmpeg's FATE sample suite, pinned by SHA-256. The cache is under Jellyfin's cache folder in `hwprobe/fixtures`: a folder per ffmpeg build, `samples` (kept across builds) and `downloads` (named by SHA-256). The Help tab lists it through `HwProbe/Cache/Contents` (`FixtureCacheContents`, which names each file from the catalogs). Before each probe or performance test builds clips, `FixtureCacheContents.Prune` deletes other ffmpeg builds' folders, files this version doesn't use, and leftovers of interrupted writes.
 
 - Bundled (no public sample exists): HEVC RExt 4:4:4 10-bit, 4:2:2 12-bit and 4:4:4 12-bit, AV1 10-bit, and H.264 with frequent key frames. `scripts/make-bundled-fixtures.sh` remakes them; put the hashes it prints in `FixtureCatalog`.
 - Always downloaded: `vc1/SA00050.vc1` (no free VC-1 encoder exists).
