@@ -85,7 +85,7 @@ public static class SpeedAdvisor
             List<SpeedResult> beaten = type == HwType.none ? [.. best] : [.. best.Where(w => measured.FirstOrDefault(r => r.Test == w.Test && Configured(r)) is not { } mine || Gain(w, mine) > Noise)];
             if ((best.Key.Type != type || (!string.IsNullOrEmpty(device) && best.Key.Device != device)) && beaten.Count > 0)
             {
-                suggestions.Add(new SpeedSuggestion(SpeedSuggestionKind.FastestBackend, [.. beaten.Select(Label)]) { Type = best.Key.Type, Device = best.Key.Device, TestVideosOnly = beaten.All(IsGenerated) });
+                suggestions.Add(new SpeedSuggestion(SpeedSuggestionKind.FastestBackend, [.. beaten.Select(r => Label(r, shown.Settings))]) { Type = best.Key.Type, Device = best.Key.Device, TestVideosOnly = beaten.All(IsGenerated) });
             }
         }
 
@@ -93,7 +93,7 @@ public static class SpeedAdvisor
         var behind = measured.Where(r => Configured(r) && (Speed(r) < 1 || r.Streams == 0)).ToList();
         if (behind.Count > 0)
         {
-            suggestions.Add(new SpeedSuggestion(SpeedSuggestionKind.FallsBehind, [.. behind.Select(Label)]) { Type = type, Device = device, TestVideosOnly = behind.All(IsGenerated) });
+            suggestions.Add(new SpeedSuggestion(SpeedSuggestionKind.FallsBehind, [.. behind.Select(r => Label(r, shown.Settings))]) { Type = type, Device = device, TestVideosOnly = behind.All(IsGenerated) });
         }
 
         suggestions.AddRange(CompareSettings(runs, Configured, server));
@@ -133,7 +133,7 @@ public static class SpeedAdvisor
                     if (b.Results.FirstOrDefault(r => r.Test == mine.Test && r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && configured(r)) is { } theirs
                         && (mine.Command is null || mine.Command != theirs.Command))
                     {
-                        seen.Add((key, _values[key](a.Settings!), _values[key](b.Settings!), mine.Test, Label(mine), Gain(mine, theirs), Speed(mine), IsGenerated(mine)));
+                        seen.Add((key, _values[key](a.Settings!), _values[key](b.Settings!), mine.Test, Label(mine, a.Settings), Gain(mine, theirs), Speed(mine), IsGenerated(mine)));
                     }
                 }
             }
@@ -205,11 +205,22 @@ public static class SpeedAdvisor
     /// <returns>The speed; fps alone when the frame rate wasn't recorded.</returns>
     private static double Speed(SpeedResult r) => r.Fps!.Value / (r.FrameRate is > 0 and var rate ? rate : 1);
 
-    /// <summary>Returns what the results call an output.</summary>
+    /// <summary>Returns what was tested: the input, and the output with its audio.</summary>
     /// <param name="r">The result.</param>
-    /// <returns>For example <c>Live-action + CGI (1080p VP9, 24 fps, stereo Opus) → H.264, 8 Mbps</c>.</returns>
-    private static string Label(SpeedResult r) =>
-        r.Video is not null && r.Output is not null ? r.Video + (string.IsNullOrEmpty(r.Input) ? string.Empty : " (" + r.Input + ")") + " \u2192 " + r.Output : r.Label ?? r.Test;
+    /// <param name="settings">The run's settings, for the audio, or null when not recorded.</param>
+    /// <returns>For example <c>Live-action + CGI (1080p VP9, 24 fps, stereo Opus) → H.264, 8 Mbps, stereo AAC</c>.</returns>
+    private static string Label(SpeedResult r, SpeedSettings? settings)
+    {
+        if (r.Video is null || r.Output is null)
+        {
+            return r.Label ?? r.Test;
+        }
+
+        // A decode test has no output audio; the others transcode it or copy it, as the run's Audio option says.
+        var decodeOnly = SpeedCatalog.FindOutput(r.Test.Split('|')[^1]) is { Codec: null };
+        var audio = settings is null || decodeOnly ? string.Empty : settings.AudioCopy ? ", audio copied" : ", stereo AAC";
+        return r.Video + (string.IsNullOrEmpty(r.Input) ? string.Empty : " (" + r.Input + ")") + " \u2192 " + r.Output + audio;
+    }
 
     /// <summary>Formats a switch as the catalog keys it.</summary>
     /// <param name="on">The switch.</param>
