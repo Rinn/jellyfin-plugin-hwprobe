@@ -9,7 +9,7 @@ Requires Jellyfin 12.1 or newer.
 1. In **Dashboard > Plugins > Manage Repositories**, add `https://raw.githubusercontent.com/Rinn/jellyfin-plugin-hwprobe/manifest/manifest.json`
 2. Install **HwProbe** from **Plugins > Available** and restart Jellyfin.
 
-## Use
+## Usage
 
 Open **HwProbe** in the dashboard sidebar.
 
