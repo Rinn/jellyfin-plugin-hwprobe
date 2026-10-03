@@ -6,6 +6,9 @@ internal sealed class CatalogClip
     /// <summary>Gets the cached file name.</summary>
     public required string File { get; init; }
 
+    /// <summary>Gets how long the clip is, for the page, or null when it isn't a video.</summary>
+    public double? Seconds { get; init; }
+
     /// <summary>Gets the codec as Jellyfin reports it.</summary>
     public required string Codec { get; init; }
 

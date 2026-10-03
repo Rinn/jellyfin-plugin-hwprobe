@@ -14,6 +14,9 @@ public sealed partial class FixtureBuilder
 
     private const string ManifestSuffix = ".sha256";
 
+    // How long a piece download may go without receiving anything.
+    private static readonly TimeSpan _downloadStall = TimeSpan.FromSeconds(60);
+
     private readonly IFfmpegRunner _runner;
     private readonly string _ffmpegPath;
     private readonly string _cacheRoot;
@@ -245,12 +248,17 @@ public sealed partial class FixtureBuilder
         byte[] body;
         try
         {
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeout.CancelAfter(spec.GenerateTimeout ?? _timeout);
+            // A slow download that keeps arriving is let finish; one that stops is given up.
+            using var stalled = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            stalled.CancelAfter(_downloadStall);
             Progress?.Report(new FixtureStep(spec, FixtureAction.Downloading, 0, piece.Size));
-            header = await _downloader.DownloadRangeAsync(piece.Url, 0, piece.HeaderLength, null, timeout.Token);
-            var bodyProgress = Progress is { } report ? new StepProgress(n => report.Report(new FixtureStep(spec, FixtureAction.Downloading, piece.HeaderLength + n, piece.Size))) : null;
-            body = await _downloader.DownloadRangeAsync(piece.Url, piece.Start, piece.Length, bodyProgress, timeout.Token);
+            header = await _downloader.DownloadRangeAsync(piece.Url, 0, piece.HeaderLength, null, stalled.Token);
+            var bodyProgress = new StepProgress(n =>
+            {
+                stalled.CancelAfter(_downloadStall);
+                Progress?.Report(new FixtureStep(spec, FixtureAction.Downloading, piece.HeaderLength + n, piece.Size));
+            });
+            body = await _downloader.DownloadRangeAsync(piece.Url, piece.Start, piece.Length, bodyProgress, stalled.Token);
         }
         catch (HttpRequestException ex)
         {
@@ -258,7 +266,7 @@ public sealed partial class FixtureBuilder
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return new FixtureResult(spec, FixtureStatus.Untested, null, $"downloading {piece.Url} timed out");
+            return new FixtureResult(spec, FixtureStatus.Untested, null, $"downloading {piece.Url} stopped for {_downloadStall.TotalSeconds:0} s");
         }
 
         var hash = Convert.ToHexStringLower(SHA256.HashData([.. header, .. body]));

@@ -100,8 +100,8 @@ HwProbe only downloads test clips from FFmpeg's FATE sample suite, each pinned b
   - `av1-test-vectors/av1-1-b8-02-allintra.ivf`
 - Only for the PGS subtitle speed test: `sub/pgs_sub.sup`. ffmpeg has no PGS encoder.
 
-Speed samples, only when chosen: a pinned piece of each file (its WebM header and about 10 seconds of whole clusters, two range requests), checked by SHA-256 and measured as downloaded (`FixturePiece`), then cached. Tests never download them, and `HWPROBE_NO_DOWNLOADS=1` (set in CI and `scripts/container-plugin.sh`) turns off every download, so a fixture that only downloads, like the VC-1 sample, is reported as untested. To re-pin after Wikimedia re-encodes a file, find the cluster offsets around the wanted time and hash the header plus those bytes.
+Speed samples, only when chosen: a pinned piece of each file (its WebM header and 10 to 12 seconds of whole clusters, 5 for the 4K one, two range requests), checked by SHA-256 and measured as downloaded (`FixturePiece`), then cached. Tests never download them, and `HWPROBE_NO_DOWNLOADS=1` (set in CI and `scripts/container-plugin.sh`) turns off every download, so a fixture that only downloads, like the VC-1 sample, is reported as untested. To re-pin after Wikimedia re-encodes a file, find the cluster offsets around the wanted time and hash the header plus those bytes.
 
 - Wikimedia Commons 1080p VP9 transcodes with Opus audio: Tears of Steel (CC BY 3.0), Sintel (CC BY 3.0), Sol Levante (CC BY 4.0).
-- Wikimedia Commons' 4K HDR10 AV1 copy of Sol Levante (Professional profile, 4:4:4 12-bit, which GPUs don't decode; about 42 MB).
+- Wikimedia Commons' 4K HDR10 AV1 copy of Sol Levante (Professional profile, 4:4:4 12-bit, which GPUs don't decode; 5 s, about 21 MB).
 - Requests carry a descriptive User-Agent, as Wikimedia asks. Samples are cached apart from the ffmpeg build, so an ffmpeg update doesn't fetch them again.

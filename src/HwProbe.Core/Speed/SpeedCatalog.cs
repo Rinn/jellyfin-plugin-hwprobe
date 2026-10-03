@@ -112,7 +112,8 @@ public static class SpeedCatalog
     private static SpeedVideo Video(CatalogVideo video)
     {
         var fixture = Fixture(video.Clip);
-        var origin = fixture.Piece is { } piece ? string.Create(CultureInfo.InvariantCulture, $"{Math.Round(piece.Size / 1_000_000.0):0} MB download") : "Generated";
+        var length = video.Clip.Seconds is { } seconds ? string.Create(CultureInfo.InvariantCulture, $"{seconds:0.#} s") : null;
+        var origin = fixture.Piece is { } piece ? string.Create(CultureInfo.InvariantCulture, $"{length}, {Math.Round(piece.Size / 1_000_000.0):0} MB download") : $"Generated, {length}";
         return new SpeedVideo(video.Key, video.Name, fixture, video.FrameRate, video.Width, video.Height)
         {
             Audio = video.Audio,
