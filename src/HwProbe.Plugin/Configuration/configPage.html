@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Transcoding Diagnostics</title>
+    <title>HwProbe</title>
 </head>
 <body>
     <div id="HwProbeConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-button,emby-checkbox,emby-select,emby-input">
@@ -80,6 +80,7 @@
             #HwProbeConfigPage .hwprobe-variant td:first-child { padding-left: 1.2em; }
             #HwProbeConfigPage .hwprobe-small { font-size: 0.85em; }
             #HwProbeConfigPage .hwprobe-file { word-break: break-all; }
+            #HwProbeConfigPage .selectContainer .hwprobe-notes { margin: 0 14px; padding-left: 1.4em; }
             #HwProbeConfigPage .hwprobe-progress { position: relative; width: 16em; }
             #HwProbeConfigPage .hwprobe-inline { margin: 0 0 0 0.5em; padding: 0.2em 0.8em; }
             /* jellyfin-web's legacy buttons look the same when disabled; this follows the dashboard's MUI buttons. */
@@ -96,7 +97,7 @@
         </style>
         <div data-role="content">
             <div class="content-primary">
-                <h1>Transcoding Diagnostics</h1>
+                <h1>HwProbe</h1>
                 <div class="emby-tabs-slider hwprobe-tabbar" role="tablist">
                     <button is="emby-button" type="button" role="tab" id="hwprobeTabProbe" aria-controls="hwprobeProbeTab" aria-selected="true" class="emby-tab-button emby-button emby-tab-button-active"><div class="emby-button-foreground">Hardware Probe</div></button>
                     <button is="emby-button" type="button" role="tab" id="hwprobeTabSettings" aria-controls="hwprobeSettingsTab" aria-selected="false" class="emby-tab-button emby-button"><div class="emby-button-foreground">Recommended Settings</div></button>
@@ -1309,6 +1310,20 @@
                                 speedSettings[o.Key] = v;
                             }
                         }, o.Help);
+                        // What Auto means for each backend that works here, and software.
+                        if (o.BackendNotes) {
+                            const types = viable.map(b => b.type).filter((t, i, all) => all.indexOf(t) === i).concat(['none']);
+                            const notes = types.map(t => o.BackendNotes[t]).filter(n => n);
+                            if (notes.length) {
+                                const box = container.lastElementChild;
+                                box.appendChild(el('div', 'Auto:', 'fieldDescription'));
+                                const list = el('ul', null, 'fieldDescription hwprobe-notes');
+                                for (const n of notes) {
+                                    list.appendChild(el('li', n));
+                                }
+                                box.appendChild(list);
+                            }
+                        }
                     };
                     if (!chosenBackends) {
                         chosenBackends = new Set(viable.map(b => b.type).concat(['none']));
@@ -1738,7 +1753,7 @@
                     return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Status'), dataType: 'json' }).then(s => {
                         loadedVersion = loadedVersion || s.HwProbeVersion;
                         if (s.HwProbeVersion && s.HwProbeVersion !== loadedVersion) {
-                            setMessage('Transcoding Diagnostics was updated. Reload the page to see the new version. ');
+                            setMessage('HwProbe was updated. Reload the page to see the new version. ');
                             messageText.appendChild(action('Reload', () => location.reload(), 'raised'));
                         }
                         setRunning(s.State === 'Running');

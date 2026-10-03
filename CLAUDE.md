@@ -4,9 +4,9 @@ Operating manual for this repo: what it is, commands, conventions, the traps tha
 
 ## What this is
 
-A device-verified hardware-transcode detector for Jellyfin, shipped as a CLI (`src/HwProbe.Cli`) and a plugin (`src/HwProbe.Plugin`) over a shared engine (`src/HwProbe.Core`, with Jellyfin's own `EncodingHelper` wired in by `src/HwProbe.Jellyfin`). Jellyfin's hardware acceleration dropdown is a fixed list in jellyfin-web, so it offers backends that fail every job; HwProbe runs small real transcodes and reports what works, with a fix for each failure. The sidebar entry and page are titled **Transcoding Diagnostics** (`Plugin.DisplayName`); everything else keeps the name HwProbe (package name in build.yaml and `Plugin.Name`, assemblies, GUID, page URL key, API routes, data and cache folders, `HWPROBE_*`, the `hwprobe` CLI). The page has five tabs: Hardware Probe, Recommended Settings (Apply, history and Revert), Performance Tests and Test Results (transcode speed per backend, driven by `src/HwProbe.Core/Data/catalog.yaml`; "speed" in code, "performance" in user-facing text), and Help (diagnostics zip, cache contents).
+A device-verified hardware-transcode detector for Jellyfin, shipped as a CLI (`src/HwProbe.Cli`) and a plugin (`src/HwProbe.Plugin`) over a shared engine (`src/HwProbe.Core`, with Jellyfin's own `EncodingHelper` wired in by `src/HwProbe.Jellyfin`). Jellyfin's hardware acceleration dropdown is a fixed list in jellyfin-web, so it offers backends that fail every job; HwProbe runs small real transcodes and reports what works, with a fix for each failure. The page has five tabs: Hardware Probe, Recommended Settings (Apply, history and Revert), Performance Tests and Test Results (transcode speed per backend, driven by `src/HwProbe.Core/Data/catalog.yaml`; "speed" in code, "performance" in user-facing text), and Help (diagnostics zip, cache contents).
 
-Public at https://github.com/Rinn/jellyfin-plugin-hwprobe (`origin`). Latest release v0.12.0.
+Public at https://github.com/Rinn/jellyfin-plugin-hwprobe (`origin`).
 
 ## Commands
 
@@ -92,5 +92,6 @@ Pull files with `gh` and grep locally. WebFetch truncates `EncodingHelper.cs` (8
 
 Queued by the user on 2026-10-03, in no particular order:
 
+- **Test suites** (queued 2026-10-03): named sets of performance tests run in sequence to draw suggestions from, e.g. one input at every encoding preset to see which presets cost no speed. Defined in YAML (like catalog.yaml), mostly on real video (film samples or a library file) rather than test videos. Recommend suites to the user before adding them.
 - Trickplay generation as a Performance Tests output (deferred 2026-10-03). `MediaEncoder.ExtractVideoImagesOnIntervalAccelerated` takes its input, filter and encoder from EncodingHelper but assembles the command itself (skip_frame, setpts, qscale per encoder, image2), so it needs either a pinned copy of that assembly or a direct call limited to the configured backend.
 - Non-English use: find what breaks when the server or browser isn't in English, and consider translations, ideally reusing jellyfin-web's own strings. Include a non-English server locale: whether ffmpeg's output (stderr, progress, numbers) can be localized and break parsing, and whether .NET culture affects number formatting or parsing.

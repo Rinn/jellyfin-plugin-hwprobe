@@ -1,6 +1,6 @@
-# Developing Transcoding Diagnostics
+# Developing HwProbe
 
-The plugin's sidebar entry and page are titled Transcoding Diagnostics. Everything else keeps the original name HwProbe: the package name in the plugin repository and the Plugins list (Jellyfin removes an updated plugin's old folder by name, so a renamed package would leave both versions loaded), the assemblies, the plugin GUID, the page's URL key (`configurationpage?name=HwProbe`), the `HwProbe/` API routes, the data and cache folders, the `HWPROBE_*` variables and the `hwprobe` command-line tool. The performance tests are called speed runs in the code.
+The performance tests are called speed runs in the code. Never rename the package (build.yaml `name`, `Plugin.Name`): Jellyfin removes an updated plugin's old folder by name, so a renamed package would leave both versions loaded.
 
 ## Layout
 

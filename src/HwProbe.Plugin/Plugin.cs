@@ -8,15 +8,12 @@ using MediaBrowser.Model.Serialization;
 
 namespace Jellyfin.Plugin.HwProbe;
 
-/// <summary>The Transcoding Diagnostics plugin: device-verified hardware transcode detection and performance tests.</summary>
+/// <summary>The HwProbe plugin: device-verified hardware transcode detection and performance tests.</summary>
 [SuppressMessage("Naming", "CA1724:Type names should not match namespaces", Justification = "Jellyfin's plugin template names the plugin class Plugin; keep the ecosystem convention.")]
 public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 {
     /// <summary>The plugin ID; must never change once released.</summary>
     public const string PluginId = "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93";
-
-    /// <summary>The name the sidebar and the page show.</summary>
-    public const string DisplayName = "Transcoding Diagnostics";
 
     /// <summary>Initializes a new instance of the <see cref="Plugin"/> class.</summary>
     /// <param name="applicationPaths">Server paths.</param>
@@ -51,7 +48,7 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             Name = Name,
             EmbeddedResourcePath = $"{GetType().Namespace}.Configuration.configPage.html",
             EnableInMainMenu = true,
-            DisplayName = DisplayName,
+            DisplayName = Name,
 
             // A Material Icons name; the dashboard sidebar shows it next to the entry.
             MenuIcon = "developer_board",

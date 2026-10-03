@@ -116,7 +116,7 @@ fi
 check "plugin status" Active "$(curl -sf "$base/Plugins" -H "$h" | json 'next((p["Status"] for p in j if p["Name"]=="HwProbe"), "missing")')"
 check "plugin version" "$version" "$(curl -sf "$base/Plugins" -H "$h" | json 'next((p["Version"] for p in j if p["Name"]=="HwProbe"), "missing")')"
 check "config page" 200 "$(code "$base/web/ConfigurationPage?name=HwProbe" -H "$h")"
-check "sidebar entry" "Transcoding Diagnostics developer_board" "$(curl -sf "$base/web/ConfigurationPages?enableInMainMenu=true" -H "$h" | json 'next((p["DisplayName"] + " " + p["MenuIcon"] for p in j if p["Name"]=="HwProbe"), "missing")')"
+check "sidebar entry" "HwProbe developer_board" "$(curl -sf "$base/web/ConfigurationPages?enableInMainMenu=true" -H "$h" | json 'next((p["DisplayName"] + " " + p["MenuIcon"] for p in j if p["Name"]=="HwProbe"), "missing")')"
 check "report without token" 401 "$(code "$base/HwProbe/Report")"
 check "report before a probe" 404 "$(code "$base/HwProbe/Report" -H "$h")"
 check "diagnostics before a probe" 404 "$(code "$base/HwProbe/Diagnostics" -H "$h")"
@@ -172,6 +172,19 @@ check "no restart pending" false "$(curl -sf "$base/HwProbe/RestartRequired" -H 
 check "refused changes left settings alone" True "$(curl -sf "$base/System/Configuration/encoding" -H "$h" | python3 -c "import json,sys; print(json.load(sys.stdin) == json.loads(sys.argv[1]))" "$before")"
 
 check "no scheduled task" missing "$(curl -sf "$base/ScheduledTasks" -H "$h" | json 'next((t["Name"] for t in j if t["Key"]=="HwProbeHardwareProbe"), "missing")')"
+
+# Uninstalling only marks the plugin deleted; Jellyfin removes its folder and stops loading it at the next start.
+# Run last, and not against an existing server, which this would leave without the plugin.
+if [ "$install" != existing ]; then
+    check "uninstall" 204 "$(code -X DELETE "$base/Plugins/$guid/$version" -H "$h")"
+    podman restart "$name" >/dev/null
+    base="http://$(podman port "$name" 8096 | head -1)"
+    wait_healthy
+    check "uninstalled: not listed" missing "$(curl -sf "$base/Plugins" -H "$h" | json 'next((p["Status"] for p in j if p["Id"].replace("-", "")=="'"$(echo "$guid" | tr -d -)"'"), "missing")')"
+    check "uninstalled: folder removed" none "$(ls -d "$work"/config/plugins/HwProbe_* 2>/dev/null || echo none)"
+    check "uninstalled: no sidebar entry" missing "$(curl -sf "$base/web/ConfigurationPages?enableInMainMenu=true" -H "$h" | json 'next((p["DisplayName"] for p in j if p["Name"]=="HwProbe"), "missing")')"
+    check "uninstalled: API gone" 404 "$(code "$base/HwProbe/Status" -H "$h")"
+fi
 
 echo "$failures failed check(s)"
 [ "$failures" -eq 0 ]

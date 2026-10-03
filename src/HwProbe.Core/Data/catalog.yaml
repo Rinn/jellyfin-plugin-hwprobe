@@ -298,10 +298,19 @@ options:
       - { key: NightmodeDialogue, label: NightmodeDialogue }
       - { key: Rfc7845, label: RFC7845 }
       - { key: Ac4, label: AC-4 }
-  # Auto is veryfast for VOD (DynamicHlsController.DefaultVodEncoderPreset, v12.1).
+  # Auto, per encoder (EncodingHelper.GetEncoderParam, v12.1).
   - key: EncoderPreset
     label: Encoding preset
     server: EncoderPreset
+    backendNotes:
+      none: "Software: veryfast for H.264 and HEVC, preset 10 for AV1"
+      amf: "AMD AMF: speed"
+      nvenc: "Nvidia NVENC: p1, the fastest"
+      qsv: "Intel Quicksync (QSV): veryfast"
+      vaapi: "VAAPI: the driver's default"
+      rkmpp: "Rockchip MPP: the encoder's default"
+      videotoolbox: "Apple VideoToolBox: prio_speed 1 (speed first)"
+      v4l2m2m: "Video4Linux2: the encoder's default"
     choices:
       - { key: auto, label: Auto }
       - { key: veryslow, label: veryslow }
