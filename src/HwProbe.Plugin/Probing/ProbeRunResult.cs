@@ -12,7 +12,7 @@ public enum ProbeRunResult
     /// <summary>Another probe is already running.</summary>
     AlreadyRunning,
 
-    /// <summary>Refused: a session is transcoding, so the GPU is busy and results would be wrong.</summary>
+    /// <summary>Refused: a session is transcoding, so results would be wrong.</summary>
     ServerBusy,
 
     /// <summary>The probe failed; see <see cref="ProbeStatus.LastError"/>.</summary>
