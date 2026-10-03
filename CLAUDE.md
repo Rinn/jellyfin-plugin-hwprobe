@@ -6,7 +6,7 @@ Operating manual for this repo: what it is, commands, conventions, the traps tha
 
 A device-verified hardware-transcode detector for Jellyfin, shipped as a CLI (`src/HwProbe.Cli`) and a plugin (`src/HwProbe.Plugin`) over a shared engine (`src/HwProbe.Core`, with Jellyfin's own `EncodingHelper` wired in by `src/HwProbe.Jellyfin`). Jellyfin's hardware acceleration dropdown is a fixed list in jellyfin-web, so it offers backends that fail every job; HwProbe runs small real transcodes and reports what works, with a fix for each failure. The page has five tabs: Hardware Probe, Recommended Settings (Apply, history and Revert), Performance Tests and Test Results (transcode speed per backend, driven by `src/HwProbe.Core/Data/catalog.yaml`; "speed" in code, "performance" in user-facing text), and Help (diagnostics zip, cache contents).
 
-Public at https://github.com/Rinn/jellyfin-plugin-hwprobe (`origin`). Latest release v0.12.0.
+Public at https://github.com/Rinn/jellyfin-plugin-hwprobe (`origin`). Latest release v0.12.1.
 
 ## Commands
 
