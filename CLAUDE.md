@@ -4,9 +4,9 @@ Operating manual for this repo: what it is, commands, conventions, the traps tha
 
 ## What this is
 
-A device-verified hardware-transcode detector for Jellyfin, shipped as a CLI (`src/HwProbe.Cli`) and a plugin (`src/HwProbe.Plugin`) over a shared engine (`src/HwProbe.Core`, with Jellyfin's own `EncodingHelper` wired in by `src/HwProbe.Jellyfin`). Jellyfin's hardware acceleration dropdown is a fixed list in jellyfin-web, so it offers backends that fail every job; HwProbe runs small real transcodes and reports what works, with a fix for each failure. The plugin page also applies the advised settings (with history and Revert) and measures transcode speed per backend (the Speed tab, driven by `src/HwProbe.Core/Data/catalog.yaml`).
+A device-verified hardware-transcode detector for Jellyfin, shipped as a CLI (`src/HwProbe.Cli`) and a plugin (`src/HwProbe.Plugin`) over a shared engine (`src/HwProbe.Core`, with Jellyfin's own `EncodingHelper` wired in by `src/HwProbe.Jellyfin`). Jellyfin's hardware acceleration dropdown is a fixed list in jellyfin-web, so it offers backends that fail every job; HwProbe runs small real transcodes and reports what works, with a fix for each failure. The sidebar entry and page are titled **Transcoding Diagnostics** (`Plugin.DisplayName`); everything else keeps the name HwProbe (package name in build.yaml and `Plugin.Name`, assemblies, GUID, page URL key, API routes, data and cache folders, `HWPROBE_*`, the `hwprobe` CLI). The page has five tabs: Hardware Probe, Recommended Settings (Apply, history and Revert), Performance Tests and Test Results (transcode speed per backend, driven by `src/HwProbe.Core/Data/catalog.yaml`; "speed" in code, "performance" in user-facing text), and Help (diagnostics zip, cache contents).
 
-Public at https://github.com/Rinn/jellyfin-plugin-hwprobe (`origin`). Latest release v0.9.0; the speed tier is merged (PR #32) but not released.
+Public at https://github.com/Rinn/jellyfin-plugin-hwprobe (`origin`). Latest release v0.10.2.
 
 ## Commands
 
@@ -75,6 +75,7 @@ Pull files with `gh` and grep locally. WebFetch truncates `EncodingHelper.cs` (8
 5. **Kill the whole process tree on timeout.** A leaked ffmpeg holding a render node makes later, unrelated probes fail.
 6. **The pipeline tier comes from OpenCL/Vulkan/`alphasrc`, not codec support.** A host can pass every codec probe and still be on the slow copy-back path; reporting that is the headline feature.
 7. **Replacing plugin DLLs under the same version and using Jellyfin's in-process restart marks the plugin NotSupported.** Stop and start the server instead, and reset `status` in the plugin's `meta.json` if it already happened.
+8. **Never rename the package** (build.yaml `name`, `Plugin.Name`). Jellyfin removes an updated plugin's old folder by name, not GUID (`PluginManager.DiscoverPlugins`), so after an update both versions load and every `HwProbe/` route returns 500 (AmbiguousMatchException). Reproduced 2026-10-03 updating 0.10.2 to a renamed build.
 
 ## Known limits
 
@@ -82,6 +83,7 @@ Pull files with `gh` and grep locally. WebFetch truncates `EncodingHelper.cs` (8
 - A second i965/AMD GPU (not the configured device) is reported `Untested` by the plugin, since probing it would change the server's environment; the CLI can test it.
 - CUDA is probed at index 0 only; `EncodingHelper` hard-codes device 0.
 - v4l2m2m is confirmed from a recorded Raspberry Pi run (`Using device /dev/videoN`), not yet through Jellyfin.
+- The busy check (`ProbeService.IsTranscoding`) skips direct play and remux, but a transcode that finished ahead of playback still blocks until playback stops: `TranscodeManager.OnFfMpegProcessExited` leaves the session's `TranscodingInfo` set, and Jellyfin has no API to list running jobs by session.
 
 ## To do
 
@@ -90,15 +92,7 @@ Pull files with `gh` and grep locally. WebFetch truncates `EncodingHelper.cs` (8
 
 Queued by the user on 2026-10-03, in no particular order:
 
-- Speed results grid: make it more readable, so results can be compared between backends at a glance.
 - Optional reuse of cached results: when a measurement's settings are exactly the same (keyed by a hash of the settings), load the earlier result instead of measuring again, so repeated runs compare faster.
-- Rename the Probe and Speed tabs to something more descriptive.
-- Rename the plugin to "Transcoding Diagnostics", and generally call the speed feature "performance" in user-facing text.
-- Reorganize the Speed tab; perhaps move the results to a tab of their own.
-- Theme the Probe tab to match the dashboard, as was done for the Speed tab.
-- Move Diagnostics to a page/tab of its own; move the video file cache info there too and list the cache's contents.
-- Check for further transcoding options the Speed page should offer (e.g. trickplay image generation), against Jellyfin's Transcoding and Trickplay pages.
-- Split the recommended settings (the per-backend checklist with Apply/Revert) out of the Probe tab into their own tab; the Probe tab then no longer needs the current-backend card.
-- Tables across the page are hard to read: consider borders or alternating row colours.
+- Check for further transcoding options the Performance Tests tab should offer (e.g. trickplay image generation), against Jellyfin's Transcoding and Trickplay pages.
 - Non-English use: find what breaks when the server or browser isn't in English, and consider translations, ideally reusing jellyfin-web's own strings. Include a non-English server locale: whether ffmpeg's output (stderr, progress, numbers) can be localized and break parsing, and whether .NET culture affects number formatting or parsing.
 - Recommendations from speed results: suggest other transcoding settings (preset, CRF, threads, etc.) that balance quality against performance, based on what was measured.

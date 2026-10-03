@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.HwProbe.Core.Fixtures;
 using Jellyfin.Plugin.HwProbe.Core.Speed;
 using Jellyfin.Plugin.HwProbe.Probing;
 using Jellyfin.Plugin.HwProbe.Settings;
@@ -56,7 +57,7 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     public async Task<ActionResult> RunAsync(CancellationToken cancellationToken) => await service.StartAsync(cancellationToken) switch
     {
         ProbeRunResult.Started => Accepted(),
-        ProbeRunResult.AlreadyRunning => Conflict("A probe or speed run is already running."),
+        ProbeRunResult.AlreadyRunning => Conflict("A probe or performance test is already running."),
         ProbeRunResult.ServerBusy => Conflict("A session is transcoding; probe when the server is idle."),
         var other => Problem($"Unexpected result {other}."),
     };
@@ -73,8 +74,8 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     {
         ProbeRunResult.Started => Accepted(),
         ProbeRunResult.Invalid => BadRequest("Unknown method, test or comparison."),
-        ProbeRunResult.NoReport => Conflict("Run a probe first, so the speed run knows which backends work."),
-        ProbeRunResult.AlreadyRunning => Conflict("A probe or speed run is already running."),
+        ProbeRunResult.NoReport => Conflict("Run a probe first, so the performance test knows which backends work."),
+        ProbeRunResult.AlreadyRunning => Conflict("A probe or performance test is already running."),
         ProbeRunResult.ServerBusy => Conflict("A session is transcoding; measure when the server is idle."),
         var other => Problem($"Unexpected result {other}."),
     };
@@ -84,21 +85,21 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     [HttpPost("Speed/Pause")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public ActionResult PauseSpeed() => service.PauseSpeed(true) ? NoContent() : Conflict("No speed run is running.");
+    public ActionResult PauseSpeed() => service.PauseSpeed(true) ? NoContent() : Conflict("No performance test is running.");
 
     /// <summary>Resumes a paused speed run.</summary>
     /// <returns>204 when resuming; 409 when no speed run is running.</returns>
     [HttpPost("Speed/Resume")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public ActionResult ResumeSpeed() => service.PauseSpeed(false) ? NoContent() : Conflict("No speed run is running.");
+    public ActionResult ResumeSpeed() => service.PauseSpeed(false) ? NoContent() : Conflict("No performance test is running.");
 
     /// <summary>Cancels the running speed run, keeping the measurements already finished.</summary>
     /// <returns>204 when cancelling; 409 when no speed run is running.</returns>
     [HttpPost("Speed/Cancel")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public ActionResult CancelSpeed() => service.CancelSpeed() ? NoContent() : Conflict("No speed run is running.");
+    public ActionResult CancelSpeed() => service.CancelSpeed() ? NoContent() : Conflict("No performance test is running.");
 
     /// <summary>Returns everything the page lists: speed videos, outputs and choices, and the labels for backends and results.</summary>
     /// <returns>The catalog.</returns>
@@ -146,6 +147,12 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     [ProducesResponseType(StatusCodes.Status200OK)]
     public ActionResult<CacheSize> Cache() => service.FixtureCacheSize();
 
+    /// <summary>Lists the cached test clips, samples and downloads.</summary>
+    /// <returns>Each file with what it is.</returns>
+    [HttpGet("Cache/Contents")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<IReadOnlyList<CacheEntry>> CacheContents() => Ok(service.FixtureCacheContents());
+
     /// <summary>Deletes the cached test clips and samples.</summary>
     /// <param name="cancellationToken">Cancels waiting.</param>
     /// <returns>204 when deleted; 409 while a probe or speed run uses them.</returns>
@@ -153,7 +160,7 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult> PurgeCacheAsync(CancellationToken cancellationToken) =>
-        await service.PurgeFixtureCacheAsync(cancellationToken) ? NoContent() : Conflict("A probe or speed run is using the cache.");
+        await service.PurgeFixtureCacheAsync(cancellationToken) ? NoContent() : Conflict("A probe or performance test is using the cache.");
 
     /// <summary>Returns the latest speed report.</summary>
     /// <param name="cancellationToken">Cancels the read.</param>

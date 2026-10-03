@@ -1,21 +1,23 @@
-# HwProbe for Jellyfin
+# Transcoding Diagnostics for Jellyfin
 
-Jellyfin offers every hardware acceleration option on every server, whether or not the GPU supports it. HwProbe runs short test transcodes to show which options work, how to fix the ones that don't, and how fast the working ones are.
+Jellyfin offers every hardware acceleration option on every server, whether or not the GPU supports it. Transcoding Diagnostics runs short test transcodes to show which options work, how to fix the ones that don't, and how fast the working ones are.
 
 ## Install
 
 Requires Jellyfin 12.1 or newer.
 
 1. In **Dashboard > Plugins > Manage Repositories**, add `https://raw.githubusercontent.com/Rinn/jellyfin-plugin-hwprobe/manifest/manifest.json`
-2. Install **HwProbe** from **Plugins > Available** and restart Jellyfin.
+2. Install **HwProbe** from **Plugins > Available** and restart Jellyfin. It appears in the dashboard sidebar as **Transcoding Diagnostics**.
 
 ## Use
 
-Open **HwProbe** in the dashboard sidebar while nothing is playing.
+Open **Transcoding Diagnostics** in the dashboard sidebar while nothing is being transcoded.
 
-- **Probe**: press **Run probe**. Each option on the Transcoding and Trickplay pages shows whether it works; **Apply** changes it and **Revert** undoes the last change.
-- **Speed**: pick what to measure and press **Measure speed**.
-- **Diagnostics** (bottom of the Probe tab): download a zip to attach to a [hardware report](../../issues/new?template=hardware-report.yml). It includes file paths and host names.
+- **Hardware Probe**: press **Run probe** to test each hardware acceleration option.
+- **Recommended Settings**: each option on the Transcoding and Trickplay pages, with whether it works. **Apply** changes it and **Revert** undoes the last change.
+- **Performance Tests**: pick what to measure and press **Measure performance**.
+- **Test Results**: the measurements, as bars, values or a share of the fastest.
+- **Help**: download a zip to attach to a [hardware report](../../issues/new?template=hardware-report.yml) (it includes file paths and host names), and see or delete the cached test clips.
 
 No data leaves the server. Test samples are downloaded only when needed and checked against pinned hashes.
 

@@ -5,6 +5,7 @@ using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Devices;
 using Jellyfin.Plugin.HwProbe.Core.Diagnostics;
 using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
+using Jellyfin.Plugin.HwProbe.Core.Fixtures;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
 using Jellyfin.Plugin.HwProbe.Core.Report;
@@ -403,6 +404,10 @@ public sealed partial class ProbeService : IDisposable
         var files = new DirectoryInfo(directory).EnumerateFiles("*", SearchOption.AllDirectories).ToList();
         return new CacheSize(files.Sum(f => f.Length), files.Count);
     }
+
+    /// <summary>Lists the cached clips, samples and downloads.</summary>
+    /// <returns>The entries; empty when nothing is cached.</returns>
+    public IReadOnlyList<CacheEntry> FixtureCacheContents() => Core.Fixtures.FixtureCacheContents.List(FixturesDirectory);
 
     /// <summary>Deletes the cached clips and samples; the next probe or speed run makes or downloads them again.</summary>
     /// <param name="cancellationToken">Cancels waiting.</param>

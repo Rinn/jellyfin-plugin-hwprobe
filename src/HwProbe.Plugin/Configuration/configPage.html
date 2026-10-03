@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>HwProbe</title>
+    <title>Transcoding Diagnostics</title>
 </head>
 <body>
     <div id="HwProbeConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-button,emby-checkbox,emby-select,emby-input">
@@ -35,17 +35,21 @@
             .hwprobe-menu-item.hwprobe-menu-selected { background-color: rgba(var(--jf-palette-primary-mainChannel, 0 164 220) / var(--jf-palette-action-selectedOpacity, 0.2)); }
             #HwProbeConfigPage .selectContainer select.emby-select option { color: var(--jf-palette-text-primary, #fff); background: var(--jf-palette-background-paper, #202020); }
             #HwProbeConfigPage table { border-collapse: collapse; margin: 0.25em 0 1em; }
-            #HwProbeConfigPage td, #HwProbeConfigPage th { padding: 0.2em 1.5em 0.2em 0; text-align: left; vertical-align: middle; height: 1.8em; }
+            #HwProbeConfigPage td, #HwProbeConfigPage th { padding: 0.35em 1.2em 0.35em 0.4em; text-align: left; vertical-align: middle; height: 1.8em; border-bottom: 1px solid var(--jf-palette-divider, rgba(255, 255, 255, 0.12)); }
             #HwProbeConfigPage th { font-weight: 500; }
+            #HwProbeConfigPage tr:hover > td { background: var(--jf-palette-action-hover, rgba(255, 255, 255, 0.08)); }
+            #HwProbeConfigPage tr:hover > td.hwprobe-best { background: color-mix(in srgb, var(--jf-palette-primary-main, #00a4dc) 30%, transparent); }
             #HwProbeConfigPage .hwprobe-scroll { overflow-x: auto; }
-            #HwProbeConfigPage .hwprobe-matrix td:first-child, #HwProbeConfigPage .hwprobe-list td:nth-child(3) { white-space: nowrap; }
+            #HwProbeConfigPage .hwprobe-matrix td:first-child { white-space: nowrap; }
             #HwProbeConfigPage .hwprobe-backends td:nth-child(2), #HwProbeConfigPage .hwprobe-backends th:nth-child(2) { width: 18em; }
             #HwProbeConfigPage .hwprobe-backends td:nth-child(3), #HwProbeConfigPage .hwprobe-backends th:nth-child(3) { width: 12em; }
-            #HwProbeConfigPage .hwprobe-group td { padding-top: 0.8em; font-weight: 500; }
+            #HwProbeConfigPage .hwprobe-group td { padding-top: 1em; font-weight: 500; }
+            #HwProbeConfigPage tr.hwprobe-group:hover > td { background: none; }
             #HwProbeConfigPage .hwprobe-mark { width: 1.5em; }
             #HwProbeConfigPage .hwprobe-mark .material-icons, #HwProbeConfigPage .hwprobe-card .material-icons { font-size: 1.2em; vertical-align: middle; }
             #HwProbeConfigPage .hwprobe-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
-            #HwProbeConfigPage .hwprobe-tabbar { margin-bottom: 1em; }
+            #HwProbeConfigPage .hwprobe-tabbar { display: flex; overflow-x: auto; white-space: nowrap; margin-bottom: 1em; }
+            #HwProbeConfigPage .hwprobe-tabbar .emby-tab-button { flex: none; }
             #HwProbeConfigPage .hwprobe-card { padding: 0.8em 1em; margin: 0 0 1.5em; }
             #HwProbeConfigPage .hwprobe-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5em 1em; margin: 0.2em 0; }
             #HwProbeConfigPage .hwprobe-row.hwprobe-start { justify-content: flex-start; }
@@ -56,45 +60,50 @@
             #HwProbeConfigPage .hwprobe-change { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em; }
             #HwProbeConfigPage .hwprobe-change-list { margin: 0 0 0.5em 1em; }
             #HwProbeConfigPage .hwprobe-change-list table { margin: 0.2em 0 0; }
-            #HwProbeConfigPage .hwprobe-arrow { display: inline-block; width: 1em; }
-            #HwProbeConfigPage .hwprobe-disclosure { padding: 0; border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+            #HwProbeConfigPage .hwprobe-disclosure { display: inline-flex; align-items: center; gap: 0.3em; padding: 0; border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
             #HwProbeConfigPage .hwprobe-choices { display: flex; flex-wrap: wrap; gap: 0 1.5em; }
             #HwProbeConfigPage .hwprobe-choices .emby-checkbox-label { width: auto; margin-right: 1.5em; }
             #HwProbeConfigPage .hwprobe-fold > summary { display: flex; align-items: center; gap: 0.3em; cursor: pointer; list-style: none; }
             #HwProbeConfigPage .hwprobe-fold > summary::-webkit-details-marker { display: none; }
             #HwProbeConfigPage .hwprobe-fold > summary .sectionTitle { margin-top: 0.5em; margin-bottom: 0.5em; }
             #HwProbeConfigPage .hwprobe-fold[open] > summary .material-icons { transform: rotate(90deg); }
-            #HwProbeConfigPage .hwprobe-setup { width: 100%; }
-            #HwProbeConfigPage .hwprobe-setup th { width: 7em; vertical-align: top; padding-top: 0.6em; }
-            #HwProbeConfigPage .hwprobe-setup .inputContainer { margin: 0; max-width: 28em; }
-            #HwProbeConfigPage .hwprobe-matrix td, #HwProbeConfigPage .hwprobe-matrix th { padding-right: 2em; }
-            #HwProbeConfigPage .hwprobe-matrix .hwprobe-num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-            #HwProbeConfigPage .hwprobe-best { font-weight: bold; }
+            #HwProbeConfigPage .hwprobe-num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+            #HwProbeConfigPage .hwprobe-best { background: color-mix(in srgb, var(--jf-palette-primary-main, #00a4dc) 22%, transparent); }
+            #HwProbeConfigPage .hwprobe-bar { display: inline-block; width: 6em; height: 0.6em; margin-right: 0.5em; border-radius: 2px; background: var(--jf-palette-action-hover, rgba(255, 255, 255, 0.08)); vertical-align: middle; }
+            #HwProbeConfigPage .hwprobe-bar > span { display: block; height: 100%; border-radius: 2px; background: var(--jf-palette-primary-main, #00a4dc); }
             #HwProbeConfigPage .hwprobe-variant td:first-child { padding-left: 1.2em; }
             #HwProbeConfigPage .hwprobe-small { font-size: 0.85em; }
+            #HwProbeConfigPage .hwprobe-file { word-break: break-all; }
             #HwProbeConfigPage .hwprobe-progress { position: relative; width: 16em; }
             #HwProbeConfigPage .hwprobe-inline { margin: 0 0 0 0.5em; padding: 0.2em 0.8em; }
             #HwProbeConfigPage sup { font-size: 0.7em; }
             /* Phones: let columns size to their content and wrap, so nothing runs off the screen. */
             @media (max-width: 40em) {
                 #HwProbeConfigPage td, #HwProbeConfigPage th { padding-right: 0.5em; }
+                #HwProbeConfigPage .hwprobe-bar { width: 3em; }
                 #HwProbeConfigPage .hwprobe-backends td:nth-child(2), #HwProbeConfigPage .hwprobe-backends th:nth-child(2),
                 #HwProbeConfigPage .hwprobe-backends td:nth-child(3), #HwProbeConfigPage .hwprobe-backends th:nth-child(3) { width: auto; }
             }
         </style>
         <div data-role="content">
             <div class="content-primary">
-                <h1>HwProbe</h1>
+                <h1>Transcoding Diagnostics</h1>
                 <div class="emby-tabs-slider hwprobe-tabbar" role="tablist">
-                    <button is="emby-button" type="button" role="tab" id="hwprobeTabProbe" aria-controls="hwprobeProbeTab" aria-selected="true" class="emby-tab-button emby-button emby-tab-button-active"><div class="emby-button-foreground">Probe</div></button>
-                    <button is="emby-button" type="button" role="tab" id="hwprobeTabSpeed" aria-controls="hwprobeSpeedTab" aria-selected="false" class="emby-tab-button emby-button"><div class="emby-button-foreground">Speed</div></button>
+                    <button is="emby-button" type="button" role="tab" id="hwprobeTabProbe" aria-controls="hwprobeProbeTab" aria-selected="true" class="emby-tab-button emby-button emby-tab-button-active"><div class="emby-button-foreground">Hardware Probe</div></button>
+                    <button is="emby-button" type="button" role="tab" id="hwprobeTabSettings" aria-controls="hwprobeSettingsTab" aria-selected="false" class="emby-tab-button emby-button"><div class="emby-button-foreground">Recommended Settings</div></button>
+                    <button is="emby-button" type="button" role="tab" id="hwprobeTabSpeed" aria-controls="hwprobeSpeedTab" aria-selected="false" class="emby-tab-button emby-button"><div class="emby-button-foreground">Performance Tests</div></button>
+                    <button is="emby-button" type="button" role="tab" id="hwprobeTabResults" aria-controls="hwprobeResultsTab" aria-selected="false" class="emby-tab-button emby-button"><div class="emby-button-foreground">Test Results</div></button>
+                    <button is="emby-button" type="button" role="tab" id="hwprobeTabHelp" aria-controls="hwprobeHelpTab" aria-selected="false" class="emby-tab-button emby-button"><div class="emby-button-foreground">Help</div></button>
                 </div>
                 <div id="hwprobeMessage" class="infoBanner" hidden></div>
                 <div id="hwprobeProbeTab" role="tabpanel" aria-labelledby="hwprobeTabProbe">
                     <div id="hwprobeCard" class="paperList hwprobe-card"></div>
                     <div id="hwprobeResults"></div>
                 </div>
+                <div id="hwprobeSettingsTab" role="tabpanel" aria-labelledby="hwprobeTabSettings" hidden></div>
                 <div id="hwprobeSpeedTab" role="tabpanel" aria-labelledby="hwprobeTabSpeed" hidden></div>
+                <div id="hwprobeResultsTab" role="tabpanel" aria-labelledby="hwprobeTabResults" hidden></div>
+                <div id="hwprobeHelpTab" role="tabpanel" aria-labelledby="hwprobeTabHelp" hidden></div>
             </div>
         </div>
         <script type="text/javascript">
@@ -109,28 +118,35 @@
                 // Kept across renders: the status updates while a run polls, without redrawing the page.
                 const statusText = el('span', null, 'secondaryText');
                 const changeText = el('div');
-                const runButton = action('Run probe', () => {
+                let running = false;
+                // Buttons that start work or change settings, which the server refuses while a probe or performance test runs.
+                let idleButtons = [];
+                const runButton = idleAction('Run probe', () => {
                     ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Run') })
                         .then(loadStatus, () => { setMessage('Could not start: a probe is running or a session is transcoding.'); runButton.disabled = false; });
                 }, 'raised button-submit');
-                let running = false;
 
                 // The banner is a themed panel, so it's hidden while empty.
                 function setMessage(text) {
                     messageText.textContent = text || '';
                     messageText.hidden = !text;
                 }
+                const settingsTab = page.querySelector('#hwprobeSettingsTab');
                 const speedTab = page.querySelector('#hwprobeSpeedTab');
-                const tabs = [['#hwprobeTabProbe', '#hwprobeProbeTab'], ['#hwprobeTabSpeed', '#hwprobeSpeedTab']].map(([b, p]) => [page.querySelector(b), page.querySelector(p)]);
+                const resultsTab = page.querySelector('#hwprobeResultsTab');
+                const helpTab = page.querySelector('#hwprobeHelpTab');
+                const tabs = [['#hwprobeTabProbe', '#hwprobeProbeTab'], ['#hwprobeTabSettings', '#hwprobeSettingsTab'], ['#hwprobeTabSpeed', '#hwprobeSpeedTab'], ['#hwprobeTabResults', '#hwprobeResultsTab'], ['#hwprobeTabHelp', '#hwprobeHelpTab']].map(([b, p]) => [page.querySelector(b), page.querySelector(p)]);
+
+                function showTab(button) {
+                    for (const [b, panel] of tabs) {
+                        const on = b === button;
+                        b.classList.toggle('emby-tab-button-active', on);
+                        b.setAttribute('aria-selected', String(on));
+                        panel.hidden = !on;
+                    }
+                }
                 for (const [button] of tabs) {
-                    button.addEventListener('click', () => {
-                        for (const [b, panel] of tabs) {
-                            const on = b === button;
-                            b.classList.toggle('emby-tab-button-active', on);
-                            b.setAttribute('aria-selected', String(on));
-                            panel.hidden = !on;
-                        }
-                    });
+                    button.addEventListener('click', () => showTab(button));
                 }
                 const columns = ['decode', 'encode', 'tonemap', 'deinterlace', 'subtitles'];
                 let pollTimer = null;
@@ -451,7 +467,9 @@
                 }
 
                 function groupRow(table, title) {
-                    row(table, [el('td'), el('td', title)]).className = 'hwprobe-group';
+                    const cell = el('td', title);
+                    cell.colSpan = 10;
+                    row(table, [el('td'), cell]).className = 'hwprobe-group';
                 }
 
                 // A mark with a word for screen readers, since the icon is hidden from them.
@@ -505,6 +523,21 @@
                         onClick();
                     });
                     return button;
+                }
+
+                function idleAction(text, onClick, kind) {
+                    const button = action(text, onClick, kind);
+                    button.disabled = running;
+                    idleButtons.push(button);
+                    return button;
+                }
+
+                function setRunning(on) {
+                    running = on;
+                    idleButtons = idleButtons.filter(b => b.isConnected || b === runButton);
+                    for (const b of idleButtons) {
+                        b.disabled = on;
+                    }
                 }
 
                 // The server's current value for a setting key, or undefined when unknown.
@@ -612,13 +645,12 @@
                     const toggle = el('button', null, 'hwprobe-disclosure');
                     toggle.type = 'button';
                     toggle.setAttribute('aria-controls', 'hwprobeChangeList');
-                    const arrow = el('span', null, 'hwprobe-arrow');
-                    arrow.setAttribute('aria-hidden', 'true');
+                    const arrow = icon('chevron_right');
                     toggle.appendChild(arrow);
                     toggle.appendChild(document.createTextNode('Last change: ' + new Date(last.TimeUtc).toLocaleString()));
                     line.appendChild(toggle);
                     // With every setting changed since, Revert would change nothing; it only clears the entry.
-                    line.appendChild(action(nothing ? 'Dismiss' : 'Revert', () => post('HwProbe/Revert')));
+                    line.appendChild(idleAction(nothing ? 'Dismiss' : 'Revert', () => post('HwProbe/Revert')));
                     changeText.appendChild(line);
 
                     const list = el('div', null, 'hwprobe-change-list');
@@ -645,7 +677,7 @@
 
                     function show() {
                         list.style.display = changeOpen ? '' : 'none';
-                        arrow.textContent = changeOpen ? '▾' : '▸';
+                        arrow.style.transform = changeOpen ? 'rotate(90deg)' : '';
                         toggle.setAttribute('aria-expanded', String(changeOpen));
                     }
                     toggle.addEventListener('click', () => {
@@ -676,7 +708,7 @@
 
                 function restartPrompt() {
                     const pending = el('p', 'Backend changed; Jellyfin needs a restart. ');
-                    const button = action('Restart Jellyfin', restart, 'raised button-delete');
+                    const button = idleAction('Restart Jellyfin', restart, 'raised button-delete');
                     pending.appendChild(button);
                     return pending;
                 }
@@ -691,7 +723,7 @@
                     }
                     const warning = el('div', null, 'infoBanner');
                     warning.appendChild(document.createTextNode('Didn\u2019t work in the last probe; transcodes that use it can fail. '));
-                    warning.appendChild(action('Switch to None', () => post('HwProbe/UseBackend', { Type: 'none', Device: '' })));
+                    warning.appendChild(idleAction('Switch to None', () => post('HwProbe/UseBackend', { Type: 'none', Device: '' })));
                     container.appendChild(warning);
                 }
 
@@ -714,7 +746,7 @@
                     const configured = isConfigured(selected);
                     if (!configured) {
                         title.appendChild(el('span', 'Not the configured backend', 'secondaryText'));
-                        title.appendChild(action('Use this backend', () => post('HwProbe/UseBackend', { Type: selected.type, Device: selected.device })));
+                        title.appendChild(idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: selected.type, Device: selected.device })));
                     }
 
                     const settings = selected.settings || [];
@@ -722,7 +754,7 @@
                     const everything = configured ? settings.filter(differs) : [];
                     const header = el('td');
                     if (everything.length > 1) {
-                        header.appendChild(action('Apply all', () => apply(everything)));
+                        header.appendChild(idleAction('Apply all', () => apply(everything)));
                     }
                     row(table, [el('th'), el('th', 'Option'), el('th', 'Result'), header]);
                     let group = null;
@@ -732,13 +764,13 @@
                             const pending = configured ? settings.filter(x => x.section === group && differs(x)) : [];
                             const cell = el('td');
                             if (pending.length > 1) {
-                                cell.appendChild(action('Apply section', () => apply(pending)));
+                                cell.appendChild(idleAction('Apply section', () => apply(pending)));
                             }
                             row(table, [el('td'), el('td', group), el('td'), cell]).className = 'hwprobe-group';
                         }
                         const cell = el('td');
                         if (configured && differs(a)) {
-                            cell.appendChild(action('Apply', () => apply([a])));
+                            cell.appendChild(idleAction('Apply', () => apply([a])));
                         }
                         row(table, [mark(a.state), a.label, resultCell(a.note, a.fix, 'secondaryText'), cell]);
                     }
@@ -787,10 +819,19 @@
                 }
 
                 // The configured backend, its result, the run state, and anything that needs doing now.
-                function renderCard(viable) {
+                // The Hardware Probe card: run the probe and see its state.
+                function renderCard() {
                     card.replaceChildren();
-                    const type = encoding && encoding.HardwareAccelerationType;
                     const top = el('div', null, 'hwprobe-row');
+                    top.appendChild(statusText);
+                    top.appendChild(runButton);
+                    card.appendChild(top);
+                }
+
+                // What Jellyfin uses now, and whether it works; then a failed backend's way out, a pending restart and the last change.
+                function renderBackendStatus(container, viable) {
+                    const box = el('div', null, 'paperList hwprobe-card');
+                    const type = encoding && encoding.HardwareAccelerationType;
                     const title = el('div');
                     if (!encoding) {
                         title.textContent = 'Hardware acceleration: unknown (Jellyfin\u2019s settings didn\u2019t load)';
@@ -811,32 +852,32 @@
                             title.appendChild(el('span', 'not tested', 'secondaryText'));
                         }
                     }
-                    top.appendChild(title);
-                    runButton.disabled = running;
-                    top.appendChild(runButton);
-                    card.appendChild(top);
-                    const state = el('div', null, 'hwprobe-row');
-                    state.appendChild(statusText);
-                    card.appendChild(state);
+                    box.appendChild(title);
                     if (report) {
-                        renderBrokenBackend(card, viable);
+                        renderBrokenBackend(box, viable);
                     }
                     if (restartRequired) {
-                        card.appendChild(restartPrompt());
+                        box.appendChild(restartPrompt());
                     }
-                    card.appendChild(changeText);
+                    box.appendChild(changeText);
+                    container.appendChild(box);
                 }
 
                 function render() {
                     closeMenu();
-                    results.replaceChildren();
+                    for (const tab of [results, settingsTab, speedTab, resultsTab, helpTab]) {
+                        tab.replaceChildren();
+                    }
                     const viable = report ? report.backends.filter(b => b.verdict === 'Viable').sort(byDropdown) : [];
-                    renderCard(viable);
+                    renderCard();
+                    renderBackendStatus(settingsTab, viable);
                     speedViable = viable;
-                    speedTab.replaceChildren();
+                    renderResultsTab(resultsTab);
+                    renderHelp(helpTab);
                     if (!report) {
                         results.appendChild(el('p', 'No results yet. Run a probe while nothing is being transcoded; the first run takes a few minutes.', 'secondaryText'));
-                        speedTab.appendChild(el('p', 'Run a probe first: speed is measured on the backends it finds working.', 'secondaryText'));
+                        settingsTab.appendChild(el('p', 'Run a probe first: the settings are advised from what it finds.', 'secondaryText'));
+                        speedTab.appendChild(el('p', 'Run a probe first: performance is measured on the backends it finds working.', 'secondaryText'));
                         return;
                     }
 
@@ -850,21 +891,21 @@
                         .sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
                     heading(results, 'Backends');
                     results.appendChild(backendTable(viable.map(b => [b.type, b.device, tiers[b.tier] || 'Works', null, 'works']).concat(unavailable)));
+                    renderNotes();
+                    renderDetails(report);
 
                     if (viable.length) {
                         if (!selected || viable.indexOf(selected) === -1) {
                             selected = viable.find(isConfigured) || viable[0];
                         }
-                        const title = heading(results, 'Settings');
+                        const title = heading(settingsTab, 'Settings');
                         const container = el('div');
-                        results.appendChild(container);
+                        settingsTab.appendChild(container);
                         renderSettings(container, viable, title);
+                    } else {
+                        settingsTab.appendChild(el('p', 'No backend works on this server, so there are no hardware settings to advise.', 'secondaryText'));
                     }
-
-                    renderNotes();
-                    renderDetails(report);
-                    fold(results, 'Diagnostics').appendChild(renderReporting());
-                    renderSpeed(speedTab, viable);
+                    renderSpeedSetup(speedTab, viable);
                 }
 
                 function checkbox(text, checked, onChange) {
@@ -919,14 +960,51 @@
                     const show = () => ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Cache'), dataType: 'json' }).then(c => {
                         line.replaceChildren(document.createTextNode('Cache: ' + sizeText(c.Bytes) + ' in ' + c.Files + ' file' + (c.Files === 1 ? '' : 's') + ' (test clips, samples) '));
                         if (c.Files > 0) {
-                            line.appendChild(action('Delete', () => {
+                            line.appendChild(idleAction('Delete', () => {
                                 ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('HwProbe/Cache') })
-                                    .then(show, () => { setMessage('Could not delete: a probe or speed run is using the cache.'); show(); });
+                                    .then(render, () => { setMessage('Could not delete: a probe or performance test is using the cache.'); show(); });
                             }));
                         }
                     }, () => { line.textContent = ''; });
                     show();
                     return line;
+                }
+
+                function cacheFolderName(folder) {
+                    if (folder === 'samples') {
+                        return 'Film samples, kept across ffmpeg builds';
+                    }
+                    if (folder === 'downloads') {
+                        return 'Downloads';
+                    }
+                    return 'Made by ffmpeg build ' + folder.replace(/^sha256_/, '').slice(0, 8);
+                }
+
+                function renderCacheContents() {
+                    const div = el('div');
+                    ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Cache/Contents'), dataType: 'json' }).then(entries => {
+                        if (!entries.length) {
+                            return;
+                        }
+                        const table = el('table');
+                        row(table, [el('th', 'Contents'), el('th', 'File'), el('th', 'Size', 'hwprobe-num'), el('th', 'Written')]);
+                        let folder = null;
+                        for (const e of entries) {
+                            if (e.Folder !== folder) {
+                                folder = e.Folder;
+                                const name = el('td', cacheFolderName(folder));
+                                name.colSpan = 4;
+                                const tr = el('tr', null, 'hwprobe-group');
+                                tr.appendChild(name);
+                                table.appendChild(tr);
+                            }
+                            row(table, [el('td', e.Description || 'Not used by this version', e.Description ? '' : 'secondaryText'), el('td', e.File, 'secondaryText hwprobe-small hwprobe-file'), el('td', sizeText(e.Bytes), 'hwprobe-num'), el('td', new Date(e.ModifiedUtc).toLocaleDateString(), 'secondaryText hwprobe-num')]);
+                        }
+                        const scroll = el('div', null, 'hwprobe-scroll');
+                        scroll.appendChild(table);
+                        div.appendChild(scroll);
+                    }, () => {});
+                    return div;
                 }
 
                 function allVideos() {
@@ -936,19 +1014,33 @@
                 // The results area stays in place while a run polls, so the setup below isn't redrawn under the cursor.
                 const speedResults = el('div');
 
-                function renderSpeed(container, viable) {
+                function chooseSpeedDefaults() {
                     if (!chosenVideos) {
                         chosenVideos = new Set(speedVideos.filter(v => v.Default).map(v => v.Key));
                         const defaults = speedOutputs.filter(o => o.Default).map(o => o.Key);
                         chosenCodecs = new Set(speedCodecs.filter(c => defaults.some(k => k.startsWith(c.Key + '-'))).map(c => c.Key).concat(defaults.filter(k => speedOutputs.some(o => o.Key === k && o.DecodeOnly))));
                         chosenQualities = new Set(speedQualities.filter(q => defaults.some(k => k.endsWith('-' + q.Key))).map(q => q.Key));
                     }
+                }
 
+                function renderResultsTab(container) {
                     const title = heading(container, 'Results');
+                    const view = themedSelect(title, 'View');
+                    for (const [key, text] of speedViews) {
+                        const option = el('option', text);
+                        option.value = key;
+                        option.selected = key === speedView;
+                        view.appendChild(option);
+                    }
+                    view.addEventListener('change', () => {
+                        speedView = view.value;
+                        localStorage.setItem('hwprobe-speed-view', speedView);
+                        renderSpeedResults();
+                    });
                     if (speedHistory.length) {
                         const runs = themedSelect(title, 'Run');
                         for (const h of speedHistory) {
-                            const option = el('option', new Date(h.GeneratedUtc).toLocaleString() + ' · ' + methodName(h.Method) + ' · ' + h.Tests + ' test' + (h.Tests === 1 ? '' : 's') + (h.Current ? '' : ' (another HwProbe or ffmpeg)'));
+                            const option = el('option', new Date(h.GeneratedUtc).toLocaleString() + ' \u00b7 ' + methodName(h.Method) + ' \u00b7 ' + h.Tests + ' test' + (h.Tests === 1 ? '' : 's') + (h.Current ? '' : ' (another version or ffmpeg)'));
                             option.value = h.Id;
                             option.selected = speedViewing ? h.Id === speedViewing : h === speedHistory[0];
                             runs.appendChild(option);
@@ -963,7 +1055,14 @@
                     }
                     container.appendChild(speedResults);
                     renderSpeedResults();
-                    renderSpeedSetup(fold(container, 'New measurement', !speedReport && !speedLive), viable);
+                }
+
+                function renderHelp(container) {
+                    heading(container, 'Diagnostics');
+                    container.appendChild(renderReporting());
+                    heading(container, 'Cache');
+                    container.appendChild(renderCache());
+                    container.appendChild(renderCacheContents());
                 }
 
                 function renderSpeedResults() {
@@ -994,7 +1093,7 @@
                     if (shown && shown.results.length) {
                         speedResults.appendChild(speedMatrix(shown));
                     } else if (!speedProgress) {
-                        speedResults.appendChild(el('p', 'No speed runs yet.', 'secondaryText'));
+                        speedResults.appendChild(el('p', 'No performance tests yet.', 'secondaryText'));
                     }
                 }
 
@@ -1085,6 +1184,7 @@
                 }
 
                 function renderSpeedSetup(container, viable) {
+                    chooseSpeedDefaults();
                     let button = null;
                     const estimate = el('span', null, 'secondaryText');
                     const update = redraw => {
@@ -1171,10 +1271,13 @@
                     options('Repeats', repeatOptions, speedRepeats, v => { speedRepeats = Number(v); });
                     options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); }, 'A measurement that reaches the limit stops and reports what it measured.');
 
-                    button = action('Measure speed', () => {
+                    button = action('Measure performance', () => {
                         const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, Options: speedSettings, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Backends: [...chosenBackends], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
                         ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed'), data: JSON.stringify(body), contentType: 'application/json' })
-                            .then(loadStatus, response => (response && response.text ? response.text() : Promise.resolve('')).then(text => {
+                            .then(() => {
+                                showTab(tabs[3][0]);
+                                return loadStatus();
+                            }, response => (response && response.text ? response.text() : Promise.resolve('')).then(text => {
                                 setMessage('Could not start: ' + (text.replace(/^"|"$/g, '') || 'a probe is running or a session is transcoding.'));
                                 button.disabled = false;
                             }));
@@ -1184,7 +1287,6 @@
                     go.appendChild(estimate);
                     container.appendChild(go);
                     container.appendChild(el('div', 'For accurate numbers, measure while nothing is playing and the server isn’t busy with other work, such as library scans or backups. Keep laptops plugged in. Results may vary from run to run.', 'fieldDescription'));
-                    container.appendChild(renderCache());
                     update();
                     speedUpdate = update;
                 }
@@ -1194,6 +1296,9 @@
 
                 // Which comparison rows are open, by test, kept across redraws.
                 const speedOpen = new Set();
+
+                const speedViews = [['bars', 'Bars'], ['relative', 'Relative to fastest'], ['values', 'Values']];
+                let speedView = speedViews.some(([k]) => k === localStorage.getItem('hwprobe-speed-view')) ? localStorage.getItem('hwprobe-speed-view') : 'bars';
 
                 // Rows grouped by video, one per output; one column per backend; comparisons fold under their row.
                 function speedMatrix(r) {
@@ -1229,23 +1334,39 @@
                     const counted = r.method !== 'Quick';
                     // Results run in their planned order, so the first pending one is being measured.
                     const current = speedProgress && (speedProgress.Phase === 'Measuring' || speedProgress.Phase === 'Pausing') ? r.results.find(x => x.pending) : null;
-                    const per = counted ? 2 : 1;
-                    // Per backend: concurrent streams kept up with, when counted, and one transcode's speed.
-                    const cellsFor = (x, best, baseline) => {
-                        const bold = x && x === best ? ' hwprobe-best' : '';
-                        const streams = el('td', null, 'hwprobe-num' + bold);
-                        const speedCell = el('td', null, 'hwprobe-num' + bold);
+                    const values = speedView === 'values';
+                    const per = values && counted ? 2 : 1;
+                    // Per backend: concurrent streams kept up with (Values view, when counted), and one transcode's speed as a value, a bar or a share of the row's fastest.
+                    const cellsFor = (x, best, baseline, fastest) => {
+                        const tint = x && x === best && backends.length > 1 ? ' hwprobe-best' : '';
+                        const streams = el('td', null, 'hwprobe-num' + tint);
+                        const speedCell = el('td', null, 'hwprobe-num' + tint);
+                        const cells = per === 2 ? [streams, speedCell] : [speedCell];
                         if (!x) {
-                            return counted ? [streams, speedCell] : [speedCell];
+                            return cells;
                         }
                         if (x.pending) {
                             speedCell.textContent = x === current ? 'Measuring\u2026' : '\u2026';
                             speedCell.classList.add('secondaryText');
-                            return counted ? [streams, speedCell] : [speedCell];
+                            return cells;
                         }
                         const speed = speedOf(x);
-                        streams.textContent = speed ? streamsText(x) : '';
-                        speedCell.textContent = speed ? speed.toFixed(1) + '\u00d7' : '\u2013';
+                        const speedText = speed ? speed.toFixed(1) + '\u00d7' : '\u2013';
+                        if (!speed) {
+                            speedCell.textContent = speedText;
+                        } else if (speedView === 'relative') {
+                            speedCell.textContent = Math.round(speed / fastest * 100) + '%';
+                        } else if (speedView === 'bars') {
+                            const bar = el('span', null, 'hwprobe-bar');
+                            const fill = el('span');
+                            fill.style.width = Math.max(1, Math.round(speed / fastest * 100)) + '%';
+                            bar.appendChild(fill);
+                            speedCell.appendChild(bar);
+                            speedCell.appendChild(document.createTextNode(speedText));
+                        } else {
+                            streams.textContent = streamsText(x);
+                            speedCell.textContent = speedText;
+                        }
                         if (baseline && speed) {
                             speedCell.appendChild(el('span', ' ' + speedChange(x.fps, baseline.fps), 'hwprobe-small secondaryText'));
                         }
@@ -1253,28 +1374,49 @@
                         if (n) {
                             speedCell.appendChild(el('sup', String(n)));
                         }
-                        speedCell.title = (x.fps ? Math.round(x.fps) + ' frames a second' : '') + (x.note ? (x.fps ? '. ' : '') + x.note : '');
-                        return counted ? [streams, speedCell] : [speedCell];
+                        const facts = [];
+                        if (speed && !values) {
+                            facts.push(speedText + ' real time');
+                        }
+                        if (speed && !values && counted) {
+                            facts.push(streamsText(x) + ' concurrent streams');
+                        }
+                        if (x.fps) {
+                            facts.push(Math.round(x.fps) + ' frames a second');
+                        }
+                        if (x.note) {
+                            facts.push(x.note);
+                        }
+                        speedCell.title = facts.join('. ');
+                        return cells;
                     };
+                    // Values ranks by concurrent streams, then speed; the other views show speed alone, so they rank by it.
                     const bestOf = cells => cells.filter(x => x && x.fps).reduce((a, b) => {
                         if (!a) {
                             return b;
                         }
-                        const sa = a.streams === null || a.streams === undefined ? -1 : a.streams;
-                        const sb = b.streams === null || b.streams === undefined ? -1 : b.streams;
-                        return sb > sa || (sb === sa && b.fps > a.fps) ? b : a;
+                        const sa = !values || a.streams === null || a.streams === undefined ? -1 : a.streams;
+                        const sb = !values || b.streams === null || b.streams === undefined ? -1 : b.streams;
+                        return sb > sa || (sb === sa && speedOf(b) > speedOf(a)) ? b : a;
                     }, null);
+                    const fastestOf = cells => Math.max(0, ...cells.filter(x => x && !x.pending).map(speedOf).filter(v => v));
 
                     const table = el('table', null, 'hwprobe-matrix');
-                    const top = el('tr');
-                    top.appendChild(el('th'));
-                    for (const b of backends) {
-                        const th = el('th', columnName(b), 'hwprobe-num');
-                        th.colSpan = per;
-                        top.appendChild(th);
+                    const columns = backends.length * per + 2;
+                    if (per === 2) {
+                        const top = el('tr');
+                        top.appendChild(el('th'));
+                        top.appendChild(el('th'));
+                        for (const b of backends) {
+                            const th = el('th', columnName(b), 'hwprobe-num');
+                            th.colSpan = per;
+                            top.appendChild(th);
+                        }
+                        table.appendChild(top);
+                        row(table, [el('th', 'Output'), el('th', 'Size')].concat(backends.flatMap(() => [el('th', 'Concurrent streams', 'hwprobe-num secondaryText'), el('th', 'Speed', 'hwprobe-num secondaryText')])));
+                    } else {
+                        row(table, [el('th', 'Output'), el('th', 'Size')].concat(backends.map(b => el('th', columnName(b), 'hwprobe-num'))));
                     }
-                    table.appendChild(top);
-                    row(table, [el('th', 'Output')].concat(backends.flatMap(() => (counted ? [el('th', 'Concurrent streams', 'hwprobe-num secondaryText')] : []).concat([el('th', 'Speed (\u00d7 real time)', 'hwprobe-num secondaryText')]))));
                     let video = null;
                     for (const key of [...new Set(r.results.map(x => x.test))]) {
                         const base = backends.map(b => r.results.find(x => x.test === key && !x.variant && keyOf(x) === keyOf(b)));
@@ -1283,7 +1425,7 @@
                         if (first.video && first.video !== video) {
                             video = first.video;
                             const name = el('td');
-                            name.colSpan = backends.length * per + 1;
+                            name.colSpan = columns;
                             name.appendChild(document.createTextNode(first.video + '  '));
                             name.appendChild(el('span', first.input || '', 'secondaryText hwprobe-small'));
                             const tr = el('tr', null, 'hwprobe-group');
@@ -1291,12 +1433,9 @@
                             table.appendChild(tr);
                         }
                         const best = bestOf(base);
-                        const label = el('td', first.output || first.label || key);
+                        const fastest = fastestOf(base);
                         const sized = base.find(x => x && x.outputSize);
-                        if (sized) {
-                            label.appendChild(el('span', '  ' + sized.outputSize, 'secondaryText hwprobe-small'));
-                        }
-                        row(table, [label].concat(base.flatMap(x => cellsFor(x, best, null))));
+                        row(table, [el('td', first.output || first.label || key), el('td', sized ? sized.outputSize : '', 'secondaryText')].concat(base.flatMap(x => cellsFor(x, best, null, fastest))));
 
                         const variants = [...new Set(r.results.filter(x => x.test === key && x.variant).map(x => x.variant))];
                         if (!variants.length) {
@@ -1306,13 +1445,13 @@
                         toggle.type = 'button';
                         const toggleRow = el('tr', null, 'hwprobe-variant');
                         const toggleCell = el('td');
-                        toggleCell.colSpan = backends.length * per + 1;
+                        toggleCell.colSpan = columns;
                         toggleCell.appendChild(toggle);
                         toggleRow.appendChild(toggleCell);
                         table.appendChild(toggleRow);
                         const rows = variants.map(v => {
                             const cells = backends.map(b => r.results.find(x => x.test === key && x.variant === v && keyOf(x) === keyOf(b)));
-                            const tr = row(table, [el('td', v)].concat(cells.flatMap((x, i) => cellsFor(x, null, base[i]))));
+                            const tr = row(table, [el('td', v), el('td')].concat(cells.flatMap((x, i) => cellsFor(x, null, base[i], fastest))));
                             tr.className = 'hwprobe-variant';
                             return tr;
                         });
@@ -1340,12 +1479,16 @@
                     });
                     // Only what this table shows.
                     const legend = [];
-                    if (counted) {
+                    if (values && counted) {
                         legend.push('Concurrent streams: how many keep up when run together; 16+ is the most measured.');
                     }
-                    legend.push('Speed: one transcode on its own; 2\u00d7 is twice as fast as playing. Point at a value for frames a second.');
+                    if (speedView === 'relative') {
+                        legend.push('Speed of one transcode on its own, as a share of the fastest backend for the row. Point at a value for the details.');
+                    } else {
+                        legend.push('Speed: one transcode on its own; 2\u00d7 is twice as fast as playing.' + (speedView === 'bars' ? ' Bars are relative to the fastest backend for the row.' : '') + ' Point at a value for the details.');
+                    }
                     if (backends.length > 1) {
-                        legend.push('Bold is the fastest for the row.');
+                        legend.push('The highlighted cell is the fastest for the row.');
                     }
                     if (r.results.some(x => (speedVideos.find(v => v.Key === x.test.split('|')[0]) || {}).Origin === 'Generated')) {
                         legend.push('Test videos encode faster than real video.');
@@ -1511,11 +1654,10 @@
                     return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Status'), dataType: 'json' }).then(s => {
                         loadedVersion = loadedVersion || s.HwProbeVersion;
                         if (s.HwProbeVersion && s.HwProbeVersion !== loadedVersion) {
-                            setMessage('HwProbe was updated. Reload the page to see the new version. ');
+                            setMessage('Transcoding Diagnostics was updated. Reload the page to see the new version. ');
                             messageText.appendChild(action('Reload', () => location.reload(), 'raised'));
                         }
-                        running = s.State === 'Running';
-                        runButton.disabled = running;
+                        setRunning(s.State === 'Running');
                         if (running) {
                             const text = s.Activity === 'Speed'
                                 ? speedProgressText(s)
@@ -1538,7 +1680,7 @@
                         speedProgress = null;
                         speedLive = null;
                         loaded = true;
-                        const last = s.Activity === 'Speed' ? 'Last speed run' : 'Last probe';
+                        const last = s.Activity === 'Speed' ? 'Last performance test' : 'Last probe';
                         statusText.textContent = s.LastError ? last + ' failed: ' + s.LastError : (s.LastCompletedUtc ? last + ' ' + new Date(s.LastCompletedUtc).toLocaleString() : '');
                         loadReport();
                     });
