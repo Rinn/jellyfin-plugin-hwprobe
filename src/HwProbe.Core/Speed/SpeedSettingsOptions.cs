@@ -15,6 +15,7 @@ public static class SpeedSettingsOptions
         ArgumentNullException.ThrowIfNull(settings);
         var on = value == "true";
         int Number() => int.Parse(value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture);
+        double Real() => double.Parse(value, NumberStyles.Float, CultureInfo.InvariantCulture);
         return key switch
         {
             "QsvLowPowerH264" => settings with { QsvLowPowerH264 = on },
@@ -22,8 +23,18 @@ public static class SpeedSettingsOptions
             "EnhancedNvdec" => settings with { EnhancedNvdec = on },
             "PreferNativeDecoder" => settings with { PreferNativeDecoder = on },
             "VppTonemap" => settings with { VppTonemap = on },
+            "VideoToolboxTonemap" => settings with { VideoToolboxTonemap = on },
+            "Tonemap" => settings with { Tonemap = on },
+            "TonemapAlgorithm" => settings with { TonemapAlgorithm = value },
+            "TonemapMode" => settings with { TonemapMode = value },
+            "TonemapRange" => settings with { TonemapRange = value },
+            "TonemapDesat" => settings with { TonemapDesat = Real() },
+            "TonemapPeak" => settings with { TonemapPeak = Real() },
+            "TonemapParam" => settings with { TonemapParam = Real() },
             "EncodingThreadCount" => settings with { EncodingThreadCount = Number() },
             "AudioVbr" => settings with { AudioVbr = on },
+            "DownmixBoost" => settings with { DownmixBoost = Real() },
+            "DownmixAlgorithm" => settings with { DownmixAlgorithm = value },
             "EncoderPreset" => settings with { EncoderPreset = value == "auto" ? null : value },
             "H265Crf" => settings with { H265Crf = Number() },
             "H264Crf" => settings with { H264Crf = Number() },

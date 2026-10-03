@@ -569,6 +569,15 @@ public sealed partial class ProbeService : IDisposable
         Bwdif = options.DeinterlaceMethod == DeinterlaceMethod.bwdif,
         Tonemap = options.EnableTonemapping,
         EncodingThreadCount = options.EncodingThreadCount,
+        VideoToolboxTonemap = options.EnableVideoToolboxTonemapping,
+        TonemapAlgorithm = options.TonemappingAlgorithm.ToString(),
+        TonemapMode = options.TonemappingMode.ToString(),
+        TonemapRange = options.TonemappingRange.ToString(),
+        TonemapDesat = options.TonemappingDesat,
+        TonemapPeak = options.TonemappingPeak,
+        TonemapParam = options.TonemappingParam,
+        DownmixAlgorithm = options.DownMixStereoAlgorithm.ToString(),
+        DownmixBoost = options.DownMixAudioBoost,
     };
 
     /// <summary>Matches a history ID: the UTC time a run finished.</summary>

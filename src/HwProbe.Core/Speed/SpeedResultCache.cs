@@ -22,7 +22,7 @@ public sealed class SpeedResultCache(string directory)
     /// <param name="device">The device.</param>
     /// <param name="test">The test.</param>
     /// <param name="cell">The generated cell, with the clip paths and settings.</param>
-    /// <param name="speed">The run's method, repeats, time limit and settings.</param>
+    /// <param name="speed">The run's method, repeats and time limit; its settings count only through the cell.</param>
     /// <returns>A file-name-safe hash.</returns>
     public static string Key(string ffmpegPath, string ffmpegVersion, HwType type, string device, SpeedTest test, ProbeCell cell, SpeedOptions speed)
     {
@@ -46,12 +46,45 @@ public sealed class SpeedResultCache(string directory)
             Append("file", string.Create(CultureInfo.InvariantCulture, $"{file.Path}|{info.Length}|{info.LastWriteTimeUtc:O}"));
         }
 
-        Append("cell", JsonSerializer.Serialize(cell, SpeedJsonContext.Default.ProbeCell));
-        Append("settings", JsonSerializer.Serialize(speed.Settings, SpeedJsonContext.Default.SpeedSettings));
+        Append("cell", JsonSerializer.Serialize(Relevant(cell, type), SpeedJsonContext.Default.ProbeCell));
         Append("method", speed.Method.ToString());
         Append("repeats", speed.Repeats.ToString(CultureInfo.InvariantCulture));
         Append("time-limit", speed.TimeLimit?.TotalSeconds.ToString(CultureInfo.InvariantCulture));
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text.ToString())));
+    }
+
+    /// <summary>Returns the cell with the settings this test can't be affected by put back to their defaults, so changing them doesn't miss the cache.</summary>
+    /// <param name="cell">The generated cell.</param>
+    /// <param name="type">The backend.</param>
+    /// <returns>The cell to key on.</returns>
+    /// <remarks>Where each setting takes effect in EncodingHelper (v12.1): CRF in <c>GetVideoQualityParam</c> for libx264 and libx265 only; the enhanced NVDEC and native decoder switches in the cuvid and QSV decoder paths; tone mapping only for HDR sources; downmix only when audio is transcoded.</remarks>
+    public static ProbeCell Relevant(ProbeCell cell, HwType type)
+    {
+        ArgumentNullException.ThrowIfNull(cell);
+        var defaults = new ProbeCell(cell.InputCodec, cell.BitDepth, cell.OutputCodec, cell.HardwareDecode, cell.HardwareEncode);
+        var encodes = cell.VideoBitrate is not null;
+        var software = type == HwType.none || !cell.HardwareEncode;
+        var tonemaps = cell.Tonemap || cell.VppTonemap || cell.VideoToolboxTonemap == true;
+        var audio = cell.Audio && !cell.AudioCopy;
+        return cell with
+        {
+            H264Crf = encodes && software && cell.OutputCodec == "h264" ? cell.H264Crf : defaults.H264Crf,
+            H265Crf = encodes && software && cell.OutputCodec == "hevc" ? cell.H265Crf : defaults.H265Crf,
+            EncoderPreset = encodes ? cell.EncoderPreset : null,
+            EnhancedNvdec = type == HwType.nvenc ? cell.EnhancedNvdec : defaults.EnhancedNvdec,
+            PreferNativeDecoder = type == HwType.qsv ? cell.PreferNativeDecoder : defaults.PreferNativeDecoder,
+            Bwdif = cell.Interlaced && cell.Bwdif,
+            DoubleRate = cell.Interlaced && cell.DoubleRate,
+            TonemapAlgorithm = tonemaps ? cell.TonemapAlgorithm : null,
+            TonemapMode = tonemaps ? cell.TonemapMode : null,
+            TonemapRange = tonemaps ? cell.TonemapRange : null,
+            TonemapDesat = tonemaps ? cell.TonemapDesat : null,
+            TonemapPeak = tonemaps ? cell.TonemapPeak : null,
+            TonemapParam = tonemaps ? cell.TonemapParam : null,
+            AudioVbr = audio && cell.AudioVbr,
+            DownmixAlgorithm = audio ? cell.DownmixAlgorithm : null,
+            DownmixBoost = audio ? cell.DownmixBoost : null,
+        };
     }
 
     /// <summary>Returns a saved measurement, or null when there's none or it can't be read.</summary>

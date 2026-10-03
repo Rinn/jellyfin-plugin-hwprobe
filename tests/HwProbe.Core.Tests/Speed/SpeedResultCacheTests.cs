@@ -12,7 +12,7 @@ public sealed class SpeedResultCacheTests : IDisposable
 {
     private static readonly SpeedTest _test = SpeedCatalog.Find("pattern|h264-8mbps")!;
 
-    private static readonly ProbeCell _cell = new("h264", 8, "h264", HardwareDecode: true, HardwareEncode: true);
+    private static readonly ProbeCell _cell = new("h264", 8, "h264", HardwareDecode: true, HardwareEncode: true) { VideoBitrate = 8_000_000, Audio = true };
 
     private static readonly SpeedOptions _speed = new(SpeedMethod.Quick, ["pattern"], ["h264-8mbps"], new SpeedSettings());
 
@@ -31,6 +31,26 @@ public sealed class SpeedResultCacheTests : IDisposable
         Assert.NotEqual(key, Key(_cell, _speed with { TimeLimit = TimeSpan.FromMinutes(1) }));
         Assert.NotEqual(key, SpeedResultCache.Key("/usr/bin/ffmpeg", "ffmpeg version 7", HwType.vaapi, "/dev/dri/renderD128", _test, _cell, _speed));
         Assert.NotEqual(key, SpeedResultCache.Key("/usr/bin/ffmpeg", "ffmpeg version 8", HwType.videotoolbox, string.Empty, _test, _cell, _speed));
+    }
+
+    /// <summary>Settings the test can't be affected by leave the key alone.</summary>
+    [Fact]
+    public void KeyIgnoresSettingsTheTestCanNotUse()
+    {
+        var key = Key(_cell, _speed);
+
+        // VideoToolbox encodes in hardware, the source isn't HDR or interlaced, and the decoder switches belong to NVENC and QSV.
+        Assert.Equal(key, Key(_cell with { H264Crf = 18, H265Crf = 20 }, _speed));
+        Assert.Equal(key, Key(_cell with { TonemapAlgorithm = "hable", TonemapPeak = 400 }, _speed));
+        Assert.Equal(key, Key(_cell with { Bwdif = true, DoubleRate = true }, _speed));
+        Assert.Equal(key, Key(_cell with { EnhancedNvdec = false, PreferNativeDecoder = false }, _speed));
+        Assert.Equal(Key(_cell with { AudioCopy = true }, _speed), Key(_cell with { AudioCopy = true, DownmixAlgorithm = "Dave750", AudioVbr = true }, _speed));
+
+        Assert.NotEqual(key, Key(_cell with { DownmixAlgorithm = "Dave750" }, _speed));
+        Assert.NotEqual(key, Key(_cell with { Tonemap = true, TonemapAlgorithm = "hable" }, _speed with { }));
+        Assert.NotEqual(
+            SpeedResultCache.Key("/usr/bin/ffmpeg", "ffmpeg version 7", HwType.none, string.Empty, _test, _cell, _speed),
+            SpeedResultCache.Key("/usr/bin/ffmpeg", "ffmpeg version 7", HwType.none, string.Empty, _test, _cell with { H264Crf = 18 }, _speed));
     }
 
     /// <summary>A saved measurement reads back, and pruning drops ones another ffmpeg made.</summary>

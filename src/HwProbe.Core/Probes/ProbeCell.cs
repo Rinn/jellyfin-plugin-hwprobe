@@ -127,4 +127,31 @@ public sealed record ProbeCell(
 
     /// <summary>Gets Jellyfin's "Transcoding thread count"; -1 is its default, automatic.</summary>
     public int EncodingThreadCount { get; init; } = -1;
+
+    /// <summary>Gets whether VideoToolbox tone mapping is on, or null to follow <see cref="Tonemap"/>.</summary>
+    public bool? VideoToolboxTonemap { get; init; }
+
+    /// <summary>Gets the tone mapping algorithm, e.g. <c>bt2390</c>, or null for Jellyfin's default.</summary>
+    public string? TonemapAlgorithm { get; init; }
+
+    /// <summary>Gets the tone mapping mode, e.g. <c>auto</c>, or null for Jellyfin's default.</summary>
+    public string? TonemapMode { get; init; }
+
+    /// <summary>Gets the tone mapping range, e.g. <c>auto</c>, or null for Jellyfin's default.</summary>
+    public string? TonemapRange { get; init; }
+
+    /// <summary>Gets the tone mapping desaturation, or null for Jellyfin's default.</summary>
+    public double? TonemapDesat { get; init; }
+
+    /// <summary>Gets the tone mapping peak, or null for Jellyfin's default.</summary>
+    public double? TonemapPeak { get; init; }
+
+    /// <summary>Gets the tone mapping parameter, or null for Jellyfin's default.</summary>
+    public double? TonemapParam { get; init; }
+
+    /// <summary>Gets the stereo downmix algorithm, e.g. <c>Dave750</c>, or null for Jellyfin's default.</summary>
+    public string? DownmixAlgorithm { get; init; }
+
+    /// <summary>Gets the audio boost when downmixing, or null for Jellyfin's default.</summary>
+    public double? DownmixBoost { get; init; }
 }

@@ -85,6 +85,7 @@ public sealed class ArgumentSource : IArgumentSource
     {
         ArgumentNullException.ThrowIfNull(cell);
 
+        var defaults = new EncodingOptions();
         return new EncodingOptions
         {
             // HwType mirrors HardwareAccelerationType value-for-value.
@@ -100,7 +101,15 @@ public sealed class ArgumentSource : IArgumentSource
             EnableIntelLowPowerH264HwEncoder = cell.LowPower,
             EnableIntelLowPowerHevcHwEncoder = cell.LowPower,
             EnableTonemapping = cell.Tonemap,
-            EnableVideoToolboxTonemapping = cell.Tonemap,
+            EnableVideoToolboxTonemapping = cell.VideoToolboxTonemap ?? cell.Tonemap,
+            TonemappingAlgorithm = cell.TonemapAlgorithm is null ? defaults.TonemappingAlgorithm : Enum.Parse<TonemappingAlgorithm>(cell.TonemapAlgorithm),
+            TonemappingMode = cell.TonemapMode is null ? defaults.TonemappingMode : Enum.Parse<TonemappingMode>(cell.TonemapMode),
+            TonemappingRange = cell.TonemapRange is null ? defaults.TonemappingRange : Enum.Parse<TonemappingRange>(cell.TonemapRange),
+            TonemappingDesat = cell.TonemapDesat ?? defaults.TonemappingDesat,
+            TonemappingPeak = cell.TonemapPeak ?? defaults.TonemappingPeak,
+            TonemappingParam = cell.TonemapParam ?? defaults.TonemappingParam,
+            DownMixStereoAlgorithm = cell.DownmixAlgorithm is null ? defaults.DownMixStereoAlgorithm : Enum.Parse<DownMixStereoAlgorithms>(cell.DownmixAlgorithm),
+            DownMixAudioBoost = cell.DownmixBoost ?? defaults.DownMixAudioBoost,
             EnableVppTonemapping = cell.Tonemap && cell.VppTonemap,
             PreferSystemNativeHwDecoder = cell.PreferNativeDecoder,
             EnableEnhancedNvdecDecoder = cell.EnhancedNvdec,

@@ -1543,9 +1543,11 @@
                         ['enhancedNvdec', onOff(t.enhancedNvdec)],
                         ['preferNativeDecoder', onOff(t.preferNativeDecoder)],
                         ['lowPower', 'H.264 ' + onOff(t.lowPowerH264) + ', HEVC ' + onOff(t.lowPowerHevc)],
-                        ['tonemap', onOff(t.tonemap) + (t.vppTonemap ? ', VPP' : '')],
+                        // Reports from before these settings were recorded have no algorithm or downmix.
+                        ['tonemap', onOff(t.tonemap) + (t.vppTonemap ? ', VPP' : '') + (t.videoToolboxTonemap ? ', VideoToolbox' : '') + (t.tonemapAlgorithm ? ', ' + t.tonemapAlgorithm + ', mode ' + t.tonemapMode + ', range ' + t.tonemapRange + ', desat ' + t.tonemapDesat + ', peak ' + t.tonemapPeak + ', param ' + t.tonemapParam : '')],
                         ['encodingThreadCount', t.encodingThreadCount > 0 ? String(t.encodingThreadCount) : 'Automatic'],
                         ['audioVbr', onOff(t.audioVbr)],
+                        ['downmix', t.downmixAlgorithm ? t.downmixAlgorithm + ', boost ' + t.downmixBoost : 'None'],
                         ['encoderPreset', t.encoderPreset || 'Auto (veryfast)'],
                         ['crf', 'H.265 ' + t.h265Crf + ', H.264 ' + t.h264Crf],
                         ['deinterlace', (t.bwdif ? 'BWDIF' : 'YADIF') + (t.doubleRate ? ', double rate' : '')],

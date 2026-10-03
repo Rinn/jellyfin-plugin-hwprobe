@@ -41,6 +41,17 @@ internal static class SpeedVariants
             EncodingThreadCount = settings.EncodingThreadCount,
             PreferNativeDecoder = settings.PreferNativeDecoder,
             EnhancedNvdec = settings.EnhancedNvdec,
+
+            // EncodingHelper.IsVideoToolboxTonemapAvailable doesn't check EnableTonemapping (v12.1).
+            VideoToolboxTonemap = cell.Tonemap && settings.VideoToolboxTonemap,
+            TonemapAlgorithm = settings.TonemapAlgorithm,
+            TonemapMode = settings.TonemapMode,
+            TonemapRange = settings.TonemapRange,
+            TonemapDesat = settings.TonemapDesat,
+            TonemapPeak = settings.TonemapPeak,
+            TonemapParam = settings.TonemapParam,
+            DownmixAlgorithm = settings.DownmixAlgorithm,
+            DownmixBoost = settings.DownmixBoost,
             LowPower = output switch
             {
                 "h264" => settings.LowPowerH264,
