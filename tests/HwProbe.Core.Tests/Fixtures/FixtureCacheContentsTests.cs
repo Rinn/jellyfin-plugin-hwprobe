@@ -34,6 +34,15 @@ public sealed class FixtureCacheContentsTests : IDisposable
         Assert.Equal("Subtitles, PGS", Assert.Single(entries, e => e.Folder == "downloads").Description);
     }
 
+    /// <summary>Files still being written are labelled as such rather than as unused.</summary>
+    [Fact]
+    public void LabelsFilesBeingWritten()
+    {
+        Write("downloads", "abc.sup.partial", 5);
+
+        Assert.Equal("Being made or downloaded", Assert.Single(FixtureCacheContents.List(_root)).Description);
+    }
+
     /// <inheritdoc/>
     public void Dispose() => Directory.Delete(_root, recursive: true);
 

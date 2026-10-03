@@ -23,7 +23,17 @@ public static class FixtureCacheContents
         List<CacheEntry> entries = [];
         foreach (var folder in new DirectoryInfo(directory).EnumerateDirectories())
         {
-            var files = folder.EnumerateFiles().ToList();
+            // A purge or a new ffmpeg build can remove a folder while it's listed.
+            List<FileInfo> files;
+            try
+            {
+                files = [.. folder.EnumerateFiles()];
+            }
+            catch (Exception e) when (e is DirectoryNotFoundException or UnauthorizedAccessException)
+            {
+                continue;
+            }
+
             var hashes = files.Where(f => f.Name.EndsWith(HashExtension, StringComparison.Ordinal)).ToDictionary(f => f.Name[..^HashExtension.Length], f => f.Length, StringComparer.Ordinal);
             foreach (var file in files)
             {
@@ -37,7 +47,16 @@ public static class FixtureCacheContents
                 var description = folder.Name == "downloads"
                     ? bySha.GetValueOrDefault(Path.GetFileNameWithoutExtension(file.Name))
                     : byName.GetValueOrDefault(file.Name);
-                entries.Add(new CacheEntry(folder.Name, file.Name, file.Length + hashes.GetValueOrDefault(file.Name), file.LastWriteTimeUtc, isHash ? null : description));
+                if (file.Name.Contains(".partial", StringComparison.Ordinal) || file.Name.Contains(".piece.", StringComparison.Ordinal))
+                {
+                    description = "Being made or downloaded";
+                }
+                else if (isHash)
+                {
+                    description = null;
+                }
+
+                entries.Add(new CacheEntry(folder.Name, file.Name, file.Length + hashes.GetValueOrDefault(file.Name), file.LastWriteTimeUtc, description));
             }
         }
 

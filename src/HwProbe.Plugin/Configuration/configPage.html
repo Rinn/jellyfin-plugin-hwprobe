@@ -76,6 +76,9 @@
             #HwProbeConfigPage .hwprobe-file { word-break: break-all; }
             #HwProbeConfigPage .hwprobe-progress { position: relative; width: 16em; }
             #HwProbeConfigPage .hwprobe-inline { margin: 0 0 0 0.5em; padding: 0.2em 0.8em; }
+            /* jellyfin-web's legacy buttons look the same when disabled; this follows the dashboard's MUI buttons. */
+            #HwProbeConfigPage .emby-button:disabled { color: var(--jf-palette-action-disabled, rgba(255, 255, 255, 0.3)); background: var(--jf-palette-action-disabledBackground, rgba(255, 255, 255, 0.12)); cursor: default; }
+            #HwProbeConfigPage .emby-button.button-flat:disabled { background: transparent; }
             #HwProbeConfigPage sup { font-size: 0.7em; }
             /* Phones: let columns size to their content and wrap, so nothing runs off the screen. */
             @media (max-width: 40em) {
@@ -144,6 +147,8 @@
                         b.setAttribute('aria-selected', String(on));
                         panel.hidden = !on;
                     }
+                    // On a phone the tab bar scrolls sideways; keep the chosen tab in sight.
+                    button.scrollIntoView({ block: 'nearest', inline: 'nearest' });
                 }
                 for (const [button] of tabs) {
                     button.addEventListener('click', () => showTab(button));
@@ -528,6 +533,7 @@
                 function idleAction(text, onClick, kind) {
                     const button = action(text, onClick, kind);
                     button.disabled = running;
+                    idleButtons = idleButtons.filter(b => b.isConnected || b === runButton);
                     idleButtons.push(button);
                     return button;
                 }
@@ -954,22 +960,6 @@
                     return (i === 0 ? bytes : bytes.toFixed(bytes < 10 ? 1 : 0)) + ' ' + units[i];
                 }
 
-                // Clips and samples are kept so later runs don't make or download them again.
-                function renderCache() {
-                    const line = el('p', null, 'secondaryText');
-                    const show = () => ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Cache'), dataType: 'json' }).then(c => {
-                        line.replaceChildren(document.createTextNode('Cache: ' + sizeText(c.Bytes) + ' in ' + c.Files + ' file' + (c.Files === 1 ? '' : 's') + ' (test clips, samples) '));
-                        if (c.Files > 0) {
-                            line.appendChild(idleAction('Delete', () => {
-                                ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('HwProbe/Cache') })
-                                    .then(render, () => { setMessage('Could not delete: a probe or performance test is using the cache.'); show(); });
-                            }));
-                        }
-                    }, () => { line.textContent = ''; });
-                    show();
-                    return line;
-                }
-
                 function cacheFolderName(folder) {
                     if (folder === 'samples') {
                         return 'Film samples, kept across ffmpeg builds';
@@ -980,12 +970,20 @@
                     return 'Made by ffmpeg build ' + folder.replace(/^sha256_/, '').slice(0, 8);
                 }
 
-                function renderCacheContents() {
+                // Clips and samples are kept so later runs don't make or download them again.
+                function renderCache() {
                     const div = el('div');
                     ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Cache/Contents'), dataType: 'json' }).then(entries => {
+                        const bytes = entries.reduce((sum, e) => sum + e.Bytes, 0);
+                        const line = el('p', 'Cache: ' + sizeText(bytes) + ' in ' + entries.length + ' file' + (entries.length === 1 ? '' : 's') + ' (test clips, samples) ', 'secondaryText');
+                        div.appendChild(line);
                         if (!entries.length) {
                             return;
                         }
+                        line.appendChild(idleAction('Delete', () => {
+                            ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('HwProbe/Cache') })
+                                .then(render, () => { setMessage('Could not delete: a probe or performance test is using the cache.'); render(); });
+                        }));
                         const table = el('table');
                         row(table, [el('th', 'Contents'), el('th', 'File'), el('th', 'Size', 'hwprobe-num'), el('th', 'Written')]);
                         let folder = null;
@@ -1062,7 +1060,6 @@
                     container.appendChild(renderReporting());
                     heading(container, 'Cache');
                     container.appendChild(renderCache());
-                    container.appendChild(renderCacheContents());
                 }
 
                 function renderSpeedResults() {
@@ -1355,11 +1352,11 @@
                         if (!speed) {
                             speedCell.textContent = speedText;
                         } else if (speedView === 'relative') {
-                            speedCell.textContent = Math.round(speed / fastest * 100) + '%';
+                            speedCell.textContent = Math.round(Math.min(1, speed / fastest) * 100) + '%';
                         } else if (speedView === 'bars') {
                             const bar = el('span', null, 'hwprobe-bar');
                             const fill = el('span');
-                            fill.style.width = Math.max(1, Math.round(speed / fastest * 100)) + '%';
+                            fill.style.width = Math.max(1, Math.round(Math.min(1, speed / fastest) * 100)) + '%';
                             bar.appendChild(fill);
                             speedCell.appendChild(bar);
                             speedCell.appendChild(document.createTextNode(speedText));
@@ -1433,7 +1430,7 @@
                             table.appendChild(tr);
                         }
                         const best = bestOf(base);
-                        const fastest = fastestOf(base);
+                        const fastest = fastestOf(r.results.filter(x => x.test === key));
                         const sized = base.find(x => x && x.outputSize);
                         row(table, [el('td', first.output || first.label || key), el('td', sized ? sized.outputSize : '', 'secondaryText')].concat(base.flatMap(x => cellsFor(x, best, null, fastest))));
 
@@ -1488,7 +1485,7 @@
                         legend.push('Speed: one transcode on its own; 2\u00d7 is twice as fast as playing.' + (speedView === 'bars' ? ' Bars are relative to the fastest backend for the row.' : '') + ' Point at a value for the details.');
                     }
                     if (backends.length > 1) {
-                        legend.push('The highlighted cell is the fastest for the row.');
+                        legend.push(values && counted ? 'The highlighted cell keeps up with the most concurrent streams, then is the fastest, for the row.' : 'The highlighted cell is the fastest for the row.');
                     }
                     if (r.results.some(x => (speedVideos.find(v => v.Key === x.test.split('|')[0]) || {}).Origin === 'Generated')) {
                         legend.push('Test videos encode faster than real video.');
