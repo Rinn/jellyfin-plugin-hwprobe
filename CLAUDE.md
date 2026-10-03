@@ -92,5 +92,6 @@ Pull files with `gh` and grep locally. WebFetch truncates `EncodingHelper.cs` (8
 
 Queued by the user on 2026-10-03, in no particular order:
 
+- **Test suites** (queued 2026-10-03): named sets of performance tests run in sequence to draw suggestions from, e.g. one input at every encoding preset to see which presets cost no speed. Defined in YAML (like catalog.yaml), mostly on real video (film samples or a library file) rather than test videos. Recommend suites to the user before adding them.
 - Trickplay generation as a Performance Tests output (deferred 2026-10-03). `MediaEncoder.ExtractVideoImagesOnIntervalAccelerated` takes its input, filter and encoder from EncodingHelper but assembles the command itself (skip_frame, setpts, qscale per encoder, image2), so it needs either a pinned copy of that assembly or a direct call limited to the configured backend.
 - Non-English use: find what breaks when the server or browser isn't in English, and consider translations, ideally reusing jellyfin-web's own strings. Include a non-English server locale: whether ffmpeg's output (stderr, progress, numbers) can be localized and break parsing, and whether .NET culture affects number formatting or parsing.

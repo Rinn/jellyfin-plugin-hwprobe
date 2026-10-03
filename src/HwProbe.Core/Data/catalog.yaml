@@ -298,7 +298,7 @@ options:
       - { key: NightmodeDialogue, label: NightmodeDialogue }
       - { key: Rfc7845, label: RFC7845 }
       - { key: Ac4, label: AC-4 }
-  # Auto is veryfast for VOD (DynamicHlsController.DefaultVodEncoderPreset, v12.1).
+  # Auto, per encoder (EncodingHelper.GetEncoderParam, v12.1): veryfast for libx264, libx265 and QSV; preset 10 for SVT-AV1; p1 for NVENC; speed for AMF; prio_speed 1 for VideoToolbox; nothing added for VAAPI.
   - key: EncoderPreset
     label: Encoding preset
     server: EncoderPreset

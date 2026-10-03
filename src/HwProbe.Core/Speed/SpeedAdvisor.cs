@@ -195,7 +195,7 @@ public static class SpeedAdvisor
     /// <returns>True when the setting trades speed for quality and the value is the better-quality one.</returns>
     private static bool IsBetterQuality(string key, string value, string other)
     {
-        // Auto is veryfast for VOD (DynamicHlsController.DefaultVodEncoderPreset, v12.1).
+        // Auto is veryfast for libx264 and libx265 (EncodingHelper.GetEncoderParam, v12.1); other encoders map it to their fastest setting, near enough for ordering.
         static string Preset(string v) => v == "auto" ? "veryfast" : v;
         return _quality.TryGetValue(key, out var order)
             && Array.IndexOf(order, Preset(value)) is var mine and >= 0
