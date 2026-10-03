@@ -67,6 +67,7 @@ public sealed partial class ProbeService : IDisposable
         CurrentFfmpeg = () => (mediaEncoder.EncoderPath, mediaEncoder.EncoderVersion);
         MeasureSpeed = (speed, backends, progress, ct) => RunSpeedEngineAsync(arguments, mediaEncoder, paths, baseline, speed, backends, progress, ct);
         ServerSpeedSettings = () => SettingsFrom(config.GetEncodingOptions());
+        ServerBackend = () => BackendFrom(config.GetEncodingOptions());
         FindFile = files.Find;
         FixturesDirectory = ServerEngineOptions(mediaEncoder, paths).FixturesDirectory;
         SpeedResultsDirectory = SpeedEngine.ResultCacheFor(ServerEngineOptions(mediaEncoder, paths)).Directory;
@@ -133,6 +134,9 @@ public sealed partial class ProbeService : IDisposable
 
     /// <summary>Gets the server's encoding settings, as a speed run starts from them.</summary>
     internal Func<SpeedSettings> ServerSpeedSettings { get; init; } = () => new SpeedSettings();
+
+    /// <summary>Gets the server's configured backend and device, for suggestions.</summary>
+    internal Func<(HwType Type, string Device)> ServerBackend { get; init; } = () => (HwType.none, string.Empty);
 
     /// <summary>Gets the ffmpeg path and version the server uses now, or null not to compare them.</summary>
     internal Func<(string Path, Version? Version)>? CurrentFfmpeg { get; init; }
@@ -465,6 +469,32 @@ public sealed partial class ProbeService : IDisposable
         return new CacheSize(files.Sum(f => f.Length), files.Count);
     }
 
+    /// <summary>Draws suggestions from a run and every saved run this version and ffmpeg made.</summary>
+    /// <param name="id">The run shown, as <see cref="SpeedHistoryAsync"/> lists it, or null for the latest.</param>
+    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <returns>The suggestions; empty when there's no such run.</returns>
+    public async Task<IReadOnlyList<SpeedSuggestion>> SpeedSuggestionsAsync(string? id, CancellationToken cancellationToken)
+    {
+        var shownJson = id is null ? await LatestSpeedJsonAsync(cancellationToken) : await SpeedHistoryJsonAsync(id, cancellationToken);
+        if (shownJson is null || SpeedReportStore.Deserialize(shownJson) is not { } shown)
+        {
+            return [];
+        }
+
+        // Runs from another version or ffmpeg aren't compared: their figures differ for reasons no setting explains.
+        List<SpeedReport> runs = [];
+        foreach (var entry in (await SpeedHistoryAsync(cancellationToken)).Where(h => h.Current))
+        {
+            if (await SpeedHistoryJsonAsync(entry.Id, cancellationToken) is { } json && SpeedReportStore.Deserialize(json) is { } run)
+            {
+                runs.Add(run);
+            }
+        }
+
+        var (type, device) = ServerBackend();
+        return SpeedAdvisor.Advise(shown, runs, type, device, ServerSpeedSettings());
+    }
+
     /// <summary>Lists the cached clips, samples and downloads.</summary>
     /// <returns>The entries; empty when nothing is cached.</returns>
     public IReadOnlyList<CacheEntry> FixtureCacheContents() => Core.Fixtures.FixtureCacheContents.List(FixturesDirectory);
@@ -578,6 +608,18 @@ public sealed partial class ProbeService : IDisposable
         TonemapParam = options.TonemappingParam,
         DownmixAlgorithm = options.DownMixStereoAlgorithm.ToString(),
         DownmixBoost = options.DownMixAudioBoost,
+    };
+
+    /// <summary>Reads the configured backend and its device.</summary>
+    /// <param name="options">The server's encoding options.</param>
+    /// <returns>The backend; the device is empty for backends that don't take one.</returns>
+    private static (HwType Type, string Device) BackendFrom(EncodingOptions options) => options.HardwareAccelerationType switch
+    {
+        HardwareAccelerationType.vaapi => (HwType.vaapi, options.VaapiDevice ?? string.Empty),
+        HardwareAccelerationType.qsv => (HwType.qsv, options.QsvDevice ?? string.Empty),
+
+        // HwType mirrors HardwareAccelerationType value-for-value.
+        var other => ((HwType)(int)other, string.Empty),
     };
 
     /// <summary>Matches a history ID: the UTC time a run finished.</summary>

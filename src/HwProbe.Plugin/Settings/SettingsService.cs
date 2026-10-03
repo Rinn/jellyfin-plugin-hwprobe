@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Report;
+using Jellyfin.Plugin.HwProbe.Core.Speed;
 using Jellyfin.Plugin.HwProbe.Probing;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller.Configuration;
@@ -63,6 +64,8 @@ public sealed class SettingsService : IDisposable
             TimeProvider.System,
             logger)
     {
+        ArgumentNullException.ThrowIfNull(probes);
+        Suggestions = probes.SpeedSuggestionsAsync;
     }
 
     /// <summary>Initializes a new instance of the <see cref="SettingsService"/> class with injected behaviour.</summary>
@@ -91,6 +94,9 @@ public sealed class SettingsService : IDisposable
     /// <summary>Gets a value indicating whether HwProbe changed the backend or device since Jellyfin started.</summary>
     /// <remarks>Kept in memory, so restarting Jellyfin clears it.</remarks>
     public bool RestartRequired => _restartRequired;
+
+    /// <summary>Gets what draws the suggestions from performance tests, for a run or the latest.</summary>
+    internal Func<string?, CancellationToken, Task<IReadOnlyList<SpeedSuggestion>>> Suggestions { get; init; } = (_, _) => Task.FromResult<IReadOnlyList<SpeedSuggestion>>([]);
 
     /// <summary>Applies options from the advice for the backend the server is configured to use.</summary>
     /// <param name="changes">The options and values; each must match the latest report's advice.</param>
@@ -127,6 +133,29 @@ public sealed class SettingsService : IDisposable
 
                 var values = changes.Select(c => (c.Setting, EncodingSettings.Format(c.Value))).ToList();
                 return await WriteAsync(options, values, HistoryKind.Apply, user, cancellationToken);
+            },
+            cancellationToken);
+    }
+
+    /// <summary>Applies a setting a performance test suggested.</summary>
+    /// <param name="change">The option and value; it must match a current suggestion.</param>
+    /// <param name="user">The admin making the change.</param>
+    /// <param name="cancellationToken">Cancels the write.</param>
+    /// <returns>The result.</returns>
+    public Task<ApplyResult> ApplyMeasuredAsync(MeasuredChange change, string user, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        return LockedAsync(
+            async () =>
+            {
+                var suggested = (await Suggestions(change.Run, cancellationToken))
+                    .Any(s => s.Kind is SpeedSuggestionKind.FasterSetting or SpeedSuggestionKind.HigherQuality && s.Setting == change.Setting && s.Value == change.Value);
+                if (!suggested || MeasuredSettings.ToSetting(change.Setting, change.Value) is not { } setting)
+                {
+                    return Refuse($"{change.Setting} = {change.Value} isn't suggested by the performance tests.");
+                }
+
+                return await WriteAsync(_read(), [setting], HistoryKind.Apply, user, cancellationToken);
             },
             cancellationToken);
     }
@@ -202,7 +231,7 @@ public sealed class SettingsService : IDisposable
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The entries.</returns>
     public async Task<IReadOnlyList<HistoryEntry>> HistoryAsync(CancellationToken cancellationToken) =>
-        [.. (await ReadHistoryAsync(cancellationToken)).Select(e => e with { Changes = [.. e.Changes.Select(c => c with { Label = c.Label ?? SettingsAdvisor.LabelFor(c.Setting) })] })];
+        [.. (await ReadHistoryAsync(cancellationToken)).Select(e => e with { Changes = [.. e.Changes.Select(c => c with { Label = c.Label ?? SettingsAdvisor.LabelFor(c.Setting) ?? MeasuredSettings.LabelFor(c.Setting) })] })];
 
     /// <inheritdoc/>
     public void Dispose() => _gate.Dispose();
@@ -299,7 +328,7 @@ public sealed class SettingsService : IDisposable
             if (old != value)
             {
                 options.Write(setting, value);
-                changed.Add(new AppliedChange(setting, old, value) { Label = SettingsAdvisor.LabelFor(setting) });
+                changed.Add(new AppliedChange(setting, old, value) { Label = SettingsAdvisor.LabelFor(setting) ?? MeasuredSettings.LabelFor(setting) });
             }
         }
 

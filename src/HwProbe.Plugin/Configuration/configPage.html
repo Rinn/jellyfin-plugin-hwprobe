@@ -1100,6 +1100,64 @@
                     } else if (!speedProgress) {
                         speedResults.appendChild(el('p', 'No performance tests yet.', 'secondaryText'));
                     }
+                    if (shown && !speedProgress) {
+                        speedResults.appendChild(renderSuggestions());
+                    }
+                }
+
+                // A catalog option's value as its field shows it.
+                function optionValueText(key, value) {
+                    const option = runOptions.find(o => o.Key === key);
+                    const choice = option && option.Choices ? option.Choices.find(c => c.Key === value) : null;
+                    return choice ? choice.Label : value === 'true' ? 'On' : value === 'false' ? 'Off' : value;
+                }
+
+                // Settings where a slower value gives a better picture; the advisor marks which way a suggestion goes.
+                const qualitySettings = ['EncoderPreset', 'H264Crf', 'H265Crf'];
+
+                function renderSuggestions() {
+                    const div = el('div');
+                    ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedSuggestions', speedViewing ? { id: speedViewing } : {}), dataType: 'json' }).then(list => {
+                        if (!list.length) {
+                            return;
+                        }
+                        heading(div, 'Suggestions');
+                        const table = el('table');
+                        const configured = encoding && encoding.HardwareAccelerationType;
+                        for (const s of list) {
+                            const text = el('td');
+                            const option = s.Setting ? runOptions.find(o => o.Key === s.Setting) : null;
+                            const label = option ? option.Label : s.Setting;
+                            const percent = s.Gain === null || s.Gain === undefined ? '' : Math.round(Math.abs(s.Gain) * 100) + '%';
+                            let actionButton = null;
+                            if (s.Kind === 'FastestBackend') {
+                                text.textContent = !configured || configured === 'none'
+                                    ? (names[s.Type] || s.Type) + ' works on this server: a hardware backend draws less power than software for the same work.'
+                                    : (names[s.Type] || s.Type) + ' was the fastest hardware backend.';
+                                actionButton = idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: s.Type, Device: s.Device }));
+                            } else if (s.Kind === 'FallsBehind') {
+                                text.textContent = (s.Type === 'none' ? 'Software' : names[s.Type] || s.Type) + ' falls behind real time, so a player would buffer.';
+                            } else if (s.Kind === 'FasterSetting') {
+                                text.textContent = label + ': ' + optionValueText(s.Setting, s.Value) + ' measured ' + percent + ' faster than ' + optionValueText(s.Setting, s.Other) + (qualitySettings.indexOf(s.Setting) !== -1 ? ', at lower quality.' : '.');
+                                actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }));
+                            } else if (s.Kind === 'HigherQuality') {
+                                text.textContent = label + ': ' + optionValueText(s.Setting, s.Value) + ' gives better quality than ' + optionValueText(s.Setting, s.Other) + '; ' + percent + ' slower, still ' + s.Speed.toFixed(1) + '\u00d7 real time.';
+                                actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }));
+                            }
+                            text.appendChild(el('div', s.Outputs.join('; '), 'secondaryText hwprobe-small'));
+                            if (s.TestVideosOnly) {
+                                text.appendChild(el('div', 'Measured on test videos only, which encode faster than real video; measure a film sample or library video to confirm.', 'secondaryText hwprobe-small'));
+                            }
+                            const cell = el('td');
+                            if (actionButton) {
+                                cell.appendChild(actionButton);
+                            }
+                            row(table, [text, cell]);
+                        }
+                        div.appendChild(table);
+                        div.appendChild(el('div', 'Settings are compared between saved runs that differ in that setting alone. Software is never suggested over a working hardware backend.', 'fieldDescription'));
+                    }, () => {});
+                    return div;
                 }
 
                 // Searches movies and episodes through Jellyfin's own Items API; the server describes the chosen file.
