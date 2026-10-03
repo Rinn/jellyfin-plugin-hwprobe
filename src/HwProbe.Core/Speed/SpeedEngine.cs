@@ -172,11 +172,11 @@ public sealed class SpeedEngine : IDisposable
     private static SpeedResult Describe(SpeedTest test, SpeedResult result) =>
         result with { Label = test.Label, Video = test.Name, Output = test.OutputLabel, Input = SpeedTestText.Input(test), FrameRate = test.FrameRate, Credit = test.Credit, LicenseUrl = test.LicenseUrl };
 
-    /// <summary>Returns a short hash of an ffmpeg command line, so runs can tell whether a setting changed it.</summary>
+    /// <summary>Returns the SHA-256 of an ffmpeg command line, so runs can tell whether a setting changed it.</summary>
     /// <param name="command">The command line.</param>
-    /// <returns>16 hex digits.</returns>
+    /// <returns>The hash in lowercase hex.</returns>
     private static string CommandHash(string command) =>
-        Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(command)))[..16];
+        Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(command)));
 
     /// <summary>Describes a clip being made or downloaded.</summary>
     /// <param name="step">The step.</param>
