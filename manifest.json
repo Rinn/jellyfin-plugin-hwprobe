@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.10.0.0",
+        "changelog": "Speed tab: measures transcode speed per working backend and software, for chosen inputs (test videos, film samples or a library file), codecs and player qualities, with Jellyfin's transcoding settings overridable for the run. Pause, cancel, history and a page styled like the dashboard.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.10.0/hwprobe-plugin_0.10.0.0.zip",
+        "checksum": "487822ecd357e4c98a3598ab4723b86e",
+        "timestamp": "2026-10-03T17:40:50Z"
+      },
+      {
         "version": "0.9.0.0",
         "changelog": "Adds a diagnostics zip of the report and every ffmpeg log, downloaded from the plugin page or written by the command line with --diagnostics, to attach to a hardware report issue. Warns when Jellyfin is set to a backend that didn't work, and offers switching to software.",
         "targetAbi": "12.1.0.0",
@@ -132,7 +140,7 @@
       }
     ],
     "name": "HwProbe",
-    "description": "Runs short test transcodes for each hardware acceleration option on the Transcoding and Trickplay pages. Shows which ones work and how to fix the ones that don't. Results can be applied to Jellyfin's settings and reverted, or downloaded as a diagnostics zip to attach to an issue.",
+    "description": "Runs short test transcodes for each hardware acceleration option on the Transcoding and Trickplay pages. Shows which ones work, how to fix the ones that don't, and how many transcodes each runs at once. Results can be applied to Jellyfin's settings and reverted, or downloaded as a diagnostics zip to attach to an issue.",
     "overview": "Tests which hardware transcoding options work on a Jellyfin server",
     "owner": "Rinn",
     "category": "General",
