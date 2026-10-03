@@ -1131,20 +1131,29 @@
                             const label = option ? option.Label : s.Setting;
                             const percent = s.Gain === null || s.Gain === undefined ? '' : Math.round(Math.abs(s.Gain) * 100) + '%';
                             let actionButton = null;
+                            let title = '';
+                            let reason = '';
+                            const backendName = t => t === 'none' ? 'Software' : names[t] || t;
                             if (s.Kind === 'FastestBackend') {
-                                text.textContent = !configured || configured === 'none'
-                                    ? (names[s.Type] || s.Type) + ' works on this server: a hardware backend draws less power than software for the same work.'
-                                    : (names[s.Type] || s.Type) + ' was the fastest hardware backend.';
+                                title = 'Hardware acceleration: ' + backendName(s.Type);
+                                reason = !configured || configured === 'none'
+                                    ? 'Works on this server; a hardware backend draws less power than software for the same work.'
+                                    : 'The fastest hardware backend measured.';
                                 actionButton = idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: s.Type, Device: s.Device }));
                             } else if (s.Kind === 'FallsBehind') {
-                                text.textContent = (s.Type === 'none' ? 'Software' : names[s.Type] || s.Type) + ' falls behind real time, so a player would buffer.';
+                                title = 'Hardware acceleration: ' + backendName(s.Type);
+                                reason = 'Falls behind real time, so a player would buffer.';
                             } else if (s.Kind === 'FasterSetting') {
-                                text.textContent = label + ': ' + optionValueText(s.Setting, s.Value) + ' measured ' + percent + ' faster than ' + optionValueText(s.Setting, s.Other) + (qualitySettings.indexOf(s.Setting) !== -1 ? ', at lower quality.' : '.');
+                                title = label + ': ' + optionValueText(s.Setting, s.Value);
+                                reason = percent + ' faster than ' + optionValueText(s.Setting, s.Other) + (qualitySettings.indexOf(s.Setting) !== -1 ? ', at lower quality.' : '.');
                                 actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }));
                             } else if (s.Kind === 'HigherQuality') {
-                                text.textContent = label + ': ' + optionValueText(s.Setting, s.Value) + ' gives better quality than ' + optionValueText(s.Setting, s.Other) + '; ' + percent + ' slower, still ' + s.Speed.toFixed(1) + '\u00d7 real time.';
+                                title = label + ': ' + optionValueText(s.Setting, s.Value);
+                                reason = 'Better quality than ' + optionValueText(s.Setting, s.Other) + '; ' + percent + ' slower, still ' + s.Speed.toFixed(1) + '\u00d7 real time.';
                                 actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }));
                             }
+                            text.appendChild(el('div', title));
+                            text.appendChild(el('div', reason, 'secondaryText'));
                             text.appendChild(el('div', s.Outputs.join('; '), 'secondaryText hwprobe-small'));
                             if (s.TestVideosOnly) {
                                 text.appendChild(el('div', 'Measured on test videos only, which encode faster than real video; measure a film sample or library video to confirm.', 'secondaryText hwprobe-small'));
