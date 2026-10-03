@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.HwProbe.Core.Speed;
 using Jellyfin.Plugin.HwProbe.Probing;
 using Jellyfin.Plugin.HwProbe.Settings;
 using MediaBrowser.Common.Api;
@@ -55,10 +56,116 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     public async Task<ActionResult> RunAsync(CancellationToken cancellationToken) => await service.StartAsync(cancellationToken) switch
     {
         ProbeRunResult.Started => Accepted(),
-        ProbeRunResult.AlreadyRunning => Conflict("A probe is already running."),
+        ProbeRunResult.AlreadyRunning => Conflict("A probe or speed run is already running."),
         ProbeRunResult.ServerBusy => Conflict("A session is transcoding; probe when the server is idle."),
         var other => Problem($"Unexpected result {other}."),
     };
+
+    /// <summary>Starts measuring the speed of the backends the latest report found working, and software.</summary>
+    /// <param name="request">The method, tests and comparisons.</param>
+    /// <param name="cancellationToken">Cancels the checks.</param>
+    /// <returns>202 when started; 400 for an unknown name; 409 when busy or no probe has run.</returns>
+    [HttpPost("Speed")]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult> StartSpeedAsync([FromBody] SpeedRequest request, CancellationToken cancellationToken) => await service.StartSpeedAsync(request, cancellationToken) switch
+    {
+        ProbeRunResult.Started => Accepted(),
+        ProbeRunResult.Invalid => BadRequest("Unknown method, test or comparison."),
+        ProbeRunResult.NoReport => Conflict("Run a probe first, so the speed run knows which backends work."),
+        ProbeRunResult.AlreadyRunning => Conflict("A probe or speed run is already running."),
+        ProbeRunResult.ServerBusy => Conflict("A session is transcoding; measure when the server is idle."),
+        var other => Problem($"Unexpected result {other}."),
+    };
+
+    /// <summary>Pauses the running speed run when its current measurement finishes.</summary>
+    /// <returns>204 when pausing; 409 when no speed run is running.</returns>
+    [HttpPost("Speed/Pause")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public ActionResult PauseSpeed() => service.PauseSpeed(true) ? NoContent() : Conflict("No speed run is running.");
+
+    /// <summary>Resumes a paused speed run.</summary>
+    /// <returns>204 when resuming; 409 when no speed run is running.</returns>
+    [HttpPost("Speed/Resume")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public ActionResult ResumeSpeed() => service.PauseSpeed(false) ? NoContent() : Conflict("No speed run is running.");
+
+    /// <summary>Cancels the running speed run, keeping the measurements already finished.</summary>
+    /// <returns>204 when cancelling; 409 when no speed run is running.</returns>
+    [HttpPost("Speed/Cancel")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public ActionResult CancelSpeed() => service.CancelSpeed() ? NoContent() : Conflict("No speed run is running.");
+
+    /// <summary>Returns everything the page lists: speed videos, outputs and choices, and the labels for backends and results.</summary>
+    /// <returns>The catalog.</returns>
+    [HttpGet("Catalog")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<CatalogInfo> Catalog() => Ok(CatalogInfo.From(Core.Data.Catalog.Default));
+
+    /// <summary>Describes a library item's file as a speed run video.</summary>
+    /// <param name="itemId">The movie or episode.</param>
+    /// <returns>The video, or 404 when it isn't a local video file.</returns>
+    [HttpGet("SpeedLibraryVideo")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public ActionResult<SpeedVideoInfo> SpeedLibraryVideo([FromQuery] Guid itemId) =>
+        service.FindFile(itemId) is { } file ? Ok(SpeedVideoInfo.From(Core.Speed.SpeedCatalog.LibraryVideo(file))) : NotFound();
+
+    /// <summary>Returns the running speed run's results so far.</summary>
+    /// <returns>The partial speed report, or 404 when none is running.</returns>
+    [HttpGet("SpeedProgress")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public ActionResult SpeedProgress() => service.RunningSpeedJson() is { } json ? Content(json, "application/json") : NotFound();
+
+    /// <summary>Lists the saved speed runs, newest first.</summary>
+    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <returns>The runs.</returns>
+    [HttpGet("SpeedHistory")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<SpeedHistoryEntry>>> SpeedHistoryAsync(CancellationToken cancellationToken) =>
+        Ok(await service.SpeedHistoryAsync(cancellationToken));
+
+    /// <summary>Returns one saved speed run.</summary>
+    /// <param name="id">The run.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The speed report JSON, or 404.</returns>
+    [HttpGet("SpeedHistory/{id}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> SpeedHistoryRunAsync([FromRoute] string id, CancellationToken cancellationToken) =>
+        await service.SpeedHistoryJsonAsync(id, cancellationToken) is { } json ? Content(json, "application/json") : NotFound();
+
+    /// <summary>Returns the size of the cached test clips and samples.</summary>
+    /// <returns>Bytes and files.</returns>
+    [HttpGet("Cache")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<CacheSize> Cache() => service.FixtureCacheSize();
+
+    /// <summary>Deletes the cached test clips and samples.</summary>
+    /// <param name="cancellationToken">Cancels waiting.</param>
+    /// <returns>204 when deleted; 409 while a probe or speed run uses them.</returns>
+    [HttpDelete("Cache")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult> PurgeCacheAsync(CancellationToken cancellationToken) =>
+        await service.PurgeFixtureCacheAsync(cancellationToken) ? NoContent() : Conflict("A probe or speed run is using the cache.");
+
+    /// <summary>Returns the latest speed report.</summary>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The speed report JSON, or 404 when none was measured with this HwProbe and ffmpeg.</returns>
+    [HttpGet("Speed")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> GetSpeedAsync(CancellationToken cancellationToken)
+    {
+        var json = await service.LatestSpeedJsonAsync(cancellationToken);
+        return json is null ? NotFound() : Content(json, "application/json");
+    }
 
     /// <summary>Applies options from the latest report's advice for the configured backend.</summary>
     /// <param name="changes">The options and values.</param>

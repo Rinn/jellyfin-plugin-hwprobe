@@ -61,11 +61,11 @@ trap 'podman rm -f --ignore "$name" "$repo" >/dev/null; podman network rm "$net"
 case "$install" in
     copy)
         mkdir -p "$work/config/plugins/HwProbe_$version"
-        cp "$work"/publish/Jellyfin.Plugin.HwProbe*.dll "$work/config/plugins/HwProbe_$version/"
+        cp "$work"/publish/Jellyfin.Plugin.HwProbe*.dll "$work"/publish/YamlDotNet.dll "$work/config/plugins/HwProbe_$version/"
         ;;
     repository)
         zip="hwprobe-plugin_$version.zip"
-        (cd "$work/publish" && zip -q "$work/repo/$zip" Jellyfin.Plugin.HwProbe*.dll)
+        (cd "$work/publish" && zip -q "$work/repo/$zip" Jellyfin.Plugin.HwProbe*.dll YamlDotNet.dll)
         python3 "$root/scripts/manifest.py" --build-yaml "$root/build.yaml" --zip "$work/repo/$zip" \
             --version "$version" --source-url "http://$repo:8000/$zip" --out "$work/repo/manifest.json"
         podman network create "$net" >/dev/null
@@ -77,7 +77,8 @@ esac
 
 network=""
 [ "$install" = repository ] && network="--network $net"
-podman run -d --name "$name" $network -p 127.0.0.1::8096 \
+# Nothing is downloaded: fixtures that only download (the VC-1 sample) are reported as untested.
+podman run -d --name "$name" $network -p 127.0.0.1::8096 -e HWPROBE_NO_DOWNLOADS=1 \
     -v "$work/config":/config -v "$work/cache":/cache "$image" >/dev/null
 base="http://$(podman port "$name" 8096 | head -1)"
 wait_healthy
@@ -139,6 +140,20 @@ check "ffmpeg source" Server "$(printf "%s" "$report" | json 'j["ffmpeg"]["sourc
 check "backends reported" True "$(printf "%s" "$report" | json 'len(j["backends"]) > 0')"
 curl -sf "$base/HwProbe/Diagnostics" -H "$h" -o "$work/diagnostics.zip"
 check "diagnostics zip" True "$(python3 -c "import sys,zipfile; n=zipfile.ZipFile(sys.argv[1]).namelist(); print('report.json' in n and 'ffmpeg/version.txt' in n and any(x.startswith('stderr/') for x in n))" "$work/diagnostics.zip")"
+check "catalog listed" True "$(curl -sf "$base/HwProbe/Catalog" -H "$h" | json 'any(v["Key"] == "pattern" and v["Default"] for v in j["Videos"]) and any(o["Key"] == "decode" for o in j["Outputs"]) and j["Backends"][0]["Type"] == "amf" and j["Tiers"]["FullOpencl"] != ""')"
+check "speed with an unknown video" 400 "$(code -X POST "$base/HwProbe/Speed" -H "$h" -H 'Content-Type: application/json' -d '{"Method":"Quick","Videos":["nope"],"Outputs":[]}')"
+check "start speed run" 202 "$(code -X POST "$base/HwProbe/Speed" -H "$h" -H 'Content-Type: application/json' -d '{"Method":"Quick","Videos":["pattern"],"Outputs":["decode"]}')"
+state=Running
+for _ in $(seq 1 150); do
+    state="$(curl -sf "$base/HwProbe/Status" -H "$h" | json 'j["State"]')"
+    [ "$state" = Idle ] && break
+    sleep 2
+done
+check "speed run finished" Idle "$state"
+check "speed run error" None "$(curl -sf "$base/HwProbe/Status" -H "$h" | json 'j.get("LastError")')"
+check "speed run in history" True "$(curl -sf "$base/HwProbe/SpeedHistory" -H "$h" | json 'len(j) >= 1')"
+check "cache size" True "$(curl -sf "$base/HwProbe/Cache" -H "$h" | json 'j["Files"] > 0')"
+check "software decode measured" True "$(curl -sf "$base/HwProbe/Speed" -H "$h" | json 'any(r["type"] == "none" and r["test"] == "pattern|decode" and (r["fps"] or 0) > 0 for r in j["results"])')"
 check "every failure has a remedy" True "$(printf "%s" "$report" | json 'all(b["hint"] for b in j["backends"] if b["verdict"] != "Viable")')"
 
 before="$(curl -sf "$base/System/Configuration/encoding" -H "$h")"

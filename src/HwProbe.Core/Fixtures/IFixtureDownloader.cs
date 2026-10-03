@@ -8,4 +8,13 @@ public interface IFixtureDownloader
     /// <param name="cancellationToken">Cancels the download.</param>
     /// <returns>The file's bytes.</returns>
     Task<byte[]> DownloadAsync(Uri url, CancellationToken cancellationToken);
+
+    /// <summary>Downloads part of a file.</summary>
+    /// <param name="url">Where to fetch it from.</param>
+    /// <param name="start">The offset of the first byte.</param>
+    /// <param name="length">How many bytes.</param>
+    /// <param name="progress">Receives the bytes received so far, or null.</param>
+    /// <param name="cancellationToken">Cancels the download.</param>
+    /// <returns>The bytes.</returns>
+    Task<byte[]> DownloadRangeAsync(Uri url, long start, long length, IProgress<long>? progress, CancellationToken cancellationToken);
 }

@@ -60,4 +60,71 @@ public sealed record ProbeCell(
 
     /// <summary>Gets a value indicating whether tone-mapping is enabled.</summary>
     public bool Tonemap { get; init; }
+
+    /// <summary>Gets the source width.</summary>
+    public int SourceWidth { get; init; } = 640;
+
+    /// <summary>Gets the source height.</summary>
+    public int SourceHeight { get; init; } = 360;
+
+    /// <summary>Gets the source frame rate.</summary>
+    public float SourceFrameRate { get; init; } = 25;
+
+    /// <summary>Gets the requested video bitrate in bits per second, as a client asks for it, or null for none.</summary>
+    public int? VideoBitrate { get; init; }
+
+    /// <summary>Gets a value indicating whether the encoder gets upstream's full quality arguments (preset, bitrate, CRF) and the job its audio.</summary>
+    /// <remarks>Probes keep only the low-power flag; speed runs need everything a real transcode passes.</remarks>
+    public bool FullQuality { get; init; }
+
+    /// <summary>Gets Jellyfin's encoder preset name, e.g. <c>veryfast</c>, or null for <c>auto</c>.</summary>
+    public string? EncoderPreset { get; init; }
+
+    /// <summary>Gets Jellyfin's H.264 CRF; upstream's default is 23.</summary>
+    public int H264Crf { get; init; } = 23;
+
+    /// <summary>Gets Jellyfin's HEVC CRF; upstream's default is 28.</summary>
+    public int H265Crf { get; init; } = 28;
+
+    /// <summary>Gets a value indicating whether the source has a 5.1 AAC track, transcoded to stereo AAC.</summary>
+    public bool Audio { get; init; }
+
+    /// <summary>Gets a value indicating whether Jellyfin's "Enable VBR audio encoding" is on.</summary>
+    public bool AudioVbr { get; init; }
+
+    /// <summary>Gets a value indicating whether the audio is copied, as for a client that plays the source's audio, instead of transcoded.</summary>
+    public bool AudioCopy { get; init; }
+
+    /// <summary>Gets a value indicating whether Jellyfin's "Double the frame rate when deinterlacing" is on.</summary>
+    public bool DoubleRate { get; init; }
+
+    /// <summary>Gets the input clip, so upstream can write the whole input argument; null for probes, which add the input themselves.</summary>
+    public string? SourcePath { get; init; }
+
+    /// <summary>Gets an external image (PGS) subtitle file to burn in, or null for none.</summary>
+    public string? GraphicalSubtitlePath { get; init; }
+
+    /// <summary>Gets the video stream's index in the source.</summary>
+    public int VideoIndex { get; init; }
+
+    /// <summary>Gets the audio stream's index in the source.</summary>
+    public int AudioIndex { get; init; } = 1;
+
+    /// <summary>Gets the source audio codec.</summary>
+    public string AudioCodec { get; init; } = "aac";
+
+    /// <summary>Gets the source audio channel count.</summary>
+    public int AudioChannels { get; init; } = 6;
+
+    /// <summary>Gets the index of a subtitle stream inside the source to burn in, or null.</summary>
+    public int? InternalSubtitleIndex { get; init; }
+
+    /// <summary>Gets that subtitle stream's codec as Jellyfin names it, e.g. <c>PGSSUB</c>.</summary>
+    public string? InternalSubtitleCodec { get; init; }
+
+    /// <summary>Gets the media source ID Jellyfin knows the file by, which keys its extracted subtitles; null for a clip.</summary>
+    public string? MediaSourceId { get; init; }
+
+    /// <summary>Gets Jellyfin's "Transcoding thread count"; -1 is its default, automatic.</summary>
+    public int EncodingThreadCount { get; init; } = -1;
 }

@@ -1,0 +1,20 @@
+namespace Jellyfin.Plugin.HwProbe.Core.Data;
+
+/// <summary>Where a downloaded sample comes from and the credit its licence requires.</summary>
+internal sealed class CatalogSample
+{
+    /// <summary>Gets the film's title.</summary>
+    public required string Title { get; init; }
+
+    /// <summary>Gets the credit.</summary>
+    public required string Credit { get; init; }
+
+    /// <summary>Gets the licence's URL.</summary>
+    public required string License { get; init; }
+
+    /// <summary>Gets the page the file comes from, with its credit and licence.</summary>
+    public required string Source { get; init; }
+
+    /// <summary>Gets the Wikipedia article about the film.</summary>
+    public required string Article { get; init; }
+}

@@ -17,6 +17,7 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
         // Runs at server start-up, before any transcode has written to these variables.
         serviceCollection.AddSingleton(new ServerEnvironmentBaseline(EncodingHelperEnvironment.Capture()));
         serviceCollection.AddSingleton<IArgumentSourceFactory, ServerArgumentSourceFactory>();
+        serviceCollection.AddSingleton<LibraryFiles>();
         serviceCollection.AddSingleton<ProbeService>();
         serviceCollection.AddSingleton<SettingsService>();
     }

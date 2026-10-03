@@ -36,6 +36,9 @@ jobs:
       - name: Check formatting
         if: runner.os == 'Linux'
         run: dotnet format --verify-no-changes
+      - name: Check the plugin page script
+        if: runner.os == 'Linux'
+        run: sh scripts/check-page.sh
       - name: Test
         run: dotnet test --no-build
 
@@ -63,6 +66,8 @@ jobs:
     env:
       JELLYFIN_FFMPEG_VERSION: 8.1.3-1
       HWPROBE_HW_TESTS: "1"
+      # Tests never fetch samples; a fixture that only downloads is reported as untested.
+      HWPROBE_NO_DOWNLOADS: "1"
     defaults:
       run:
         shell: bash
@@ -89,13 +94,10 @@ jobs:
       - name: Point the tests at it
         run: |
           dir="$PWD/.ffmpeg"
-          downloads="${{ matrix.fixtures }}"
-          downloads="$HOME${downloads#\~}/downloads"
-          if [ "$RUNNER_OS" = Windows ]; then dir="$(cygpath -w "$dir")"; downloads="$(cygpath -w "$downloads")"; fi
+          if [ "$RUNNER_OS" = Windows ]; then dir="$(cygpath -w "$dir")"; fi
           echo "HWPROBE_TEST_FFMPEG=$dir/${{ matrix.binary }}" >> "$GITHUB_ENV"
-          echo "HWPROBE_TEST_DOWNLOADS=$downloads" >> "$GITHUB_ENV"
       # Keyed on the fixture catalog too: GitHub caches never update under an existing key, so a new or
-      # changed fixture (including downloaded samples) would otherwise be rebuilt or re-downloaded every run.
+      # changed fixture would otherwise be rebuilt every run.
       - uses: actions/cache@v6
         with:
           path: ${{ matrix.fixtures }}

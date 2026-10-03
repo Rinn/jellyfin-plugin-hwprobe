@@ -14,6 +14,15 @@ public sealed record ProbeArguments(
     /// <summary>Gets encoder options placed after <c>-c:v</c>, with a leading space, or empty.</summary>
     public string EncoderArgs { get; init; } = string.Empty;
 
+    /// <summary>Gets the thread count upstream passes as <c>-threads</c> (0 is automatic), or null unless the cell asked for full quality.</summary>
+    public int? Threads { get; init; }
+
+    /// <summary>Gets upstream's audio arguments, with a leading space, or empty when the job has no audio.</summary>
+    public string AudioArgs { get; init; } = string.Empty;
+
+    /// <summary>Gets upstream's whole input argument string, including every <c>-i</c>, or null unless the cell asked for full quality.</summary>
+    public string? InputArgument { get; init; }
+
     /// <summary>Gets a value indicating whether upstream asked the encoder for low-power mode.</summary>
     public bool LowPowerEncoder { get; init; }
 
@@ -40,4 +49,7 @@ public sealed record ProbeArguments(
 
     /// <summary>Gets the hardware filter family that deinterlaces, e.g. <c>vaapi</c>, or null when it's done on the CPU or not at all.</summary>
     public string? HardwareDeinterlacer { get; init; }
+
+    /// <summary>Gets the width Jellyfin limits the output to for its bitrate and codec, or null when it isn't limited.</summary>
+    public int? OutputWidth { get; init; }
 }

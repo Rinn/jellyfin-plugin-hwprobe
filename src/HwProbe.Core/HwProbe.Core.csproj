@@ -11,6 +11,11 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Fixtures/Bundled/*" LogicalName="Fixtures.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Data/catalog.yaml" LogicalName="catalog.yaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="YamlDotNet" />
   </ItemGroup>
 
 </Project>

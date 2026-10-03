@@ -4,6 +4,7 @@ using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
 using Jellyfin.Plugin.HwProbe.Core.Report;
+using Jellyfin.Plugin.HwProbe.Core.Speed;
 using Jellyfin.Plugin.HwProbe.Jellyfin;
 
 namespace Jellyfin.Plugin.HwProbe.Cli;
@@ -102,6 +103,50 @@ internal static class HwProbeApp
             }
 
             await stderr.WriteLineAsync($"hwprobe: wrote {options.DiagnosticsPath}. Attach it to an issue: {DiagnosticsBundle.IssueUrl}".AsMemory(), cancellationToken);
+        }
+
+        if (options.Speed is { } requested)
+        {
+            var speed = requested;
+            if (options.SpeedFilePath is null && speed.Videos.Contains(SpeedCatalog.LibraryKey))
+            {
+                await stderr.WriteLineAsync("hwprobe: the library speed video needs --speed-file.".AsMemory(), cancellationToken);
+                return (int)HwProbeExitCode.UsageError;
+            }
+
+            if (options.SpeedFilePath is { } path)
+            {
+                SpeedFile file;
+                try
+                {
+                    file = await FfprobeFile.ReadAsync(location.Path, path, cancellationToken);
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or IOException or System.ComponentModel.Win32Exception)
+                {
+                    await stderr.WriteLineAsync($"hwprobe: {ex.Message}".AsMemory(), cancellationToken);
+                    return (int)HwProbeExitCode.UsageError;
+                }
+
+                // A given file is measured even when --speed-videos doesn't name it.
+                speed = speed with { Videos = speed.Videos.Contains(SpeedCatalog.LibraryKey) ? speed.Videos : [.. speed.Videos, SpeedCatalog.LibraryKey], File = file };
+            }
+
+            var viable = report.Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device)).ToList();
+            using var engine = new SpeedEngine(new FfmpegRunner(), new ArgumentSourceFactory(), platform, TimeProvider.System, EnvironmentRules.Standalone());
+            var progress = new DirectProgress<SpeedProgress>(p => stderr.Write($"\rhwprobe: speed {p.Done} of {p.Total}"));
+            var measured = await engine.RunAsync(engineOptions, speed, viable, progress, cancellationToken);
+
+            // A cancelled run still returns what it finished, so its output isn't cancelled with it.
+            await stderr.WriteLineAsync(string.Empty.AsMemory(), CancellationToken.None);
+            if (options.Format != OutputFormat.Json)
+            {
+                await stdout.WriteAsync(SpeedRenderer.Render(measured).AsMemory(), CancellationToken.None);
+            }
+
+            if (options.SpeedJsonPath is not null)
+            {
+                await SpeedReportStore.WriteAsync(measured, options.SpeedJsonPath, CancellationToken.None);
+            }
         }
 
         var anyViable = report.Backends.Any(b => b.Verdict == BackendVerdict.Viable);

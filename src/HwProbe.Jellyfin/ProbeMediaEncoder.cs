@@ -1,3 +1,5 @@
+using System.Globalization;
+using Jellyfin.Extensions;
 using MediaBrowser.Controller.MediaEncoding;
 
 namespace Jellyfin.Plugin.HwProbe.Jellyfin;
@@ -28,6 +30,9 @@ public static class ProbeMediaEncoder
                 .Replace(":", "\\:", StringComparison.Ordinal)
                 .Replace("'", @"'\\\''", StringComparison.Ordinal)
                 .Replace("\"", "\\\"", StringComparison.Ordinal),
+
+            // MediaEncoder.GetInputPathArgument through EncodingUtils.GetFileInputArgument (v12.1): a library path is escaped, so its quotes can't end the argument.
+            ["GetInputPathArgument"] = a => InputPath(a.Length == 1 ? ((EncodingJobInfo)a[0]!).MediaPath : (string)a[0]!),
             ["SupportsFilterWithOption"] = a => capabilities.FilterOptions.Contains((FilterOptionType)a[0]!),
             ["get_IsVaapiDeviceInteliHD"] = _ => capabilities.IsVaapiDeviceInteliHD,
             ["get_IsVaapiDeviceInteli965"] = _ => capabilities.IsVaapiDeviceInteli965,
@@ -39,4 +44,12 @@ public static class ProbeMediaEncoder
 
         return RecordingProxy.Create<IMediaEncoder>(recorder, handlers);
     }
+
+    /// <summary>Quotes a source path for ffmpeg as EncodingUtils.GetFileInputArgument does (v12.1).</summary>
+    /// <param name="path">The path or URL.</param>
+    /// <returns>The input argument.</returns>
+    private static string InputPath(string path) =>
+        path.Contains("://", StringComparison.Ordinal)
+            ? string.Format(CultureInfo.InvariantCulture, "\"{0}\"", path)
+            : string.Format(CultureInfo.InvariantCulture, "file:\"{0}\"", path.EscapeProcessArgument());
 }

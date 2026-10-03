@@ -41,4 +41,19 @@ public sealed record FixtureSpec(
 
     /// <summary>Gets arguments to retry with when the first encode fails, or null.</summary>
     public string? FallbackArguments { get; init; }
+
+    /// <summary>Gets a longer time limit for generating this clip, or null for the builder's.</summary>
+    public TimeSpan? GenerateTimeout { get; init; }
+
+    /// <summary>Gets a value indicating whether the clip is kept across ffmpeg builds, for downloads too large to repeat.</summary>
+    public bool KeepAcrossBuilds { get; init; }
+
+    /// <summary>Gets a pinned piece of a large file to download and check first; <see cref="EncodeArguments"/> reads it as <c>{piece}</c>, or the piece is the clip when there are none.</summary>
+    public FixturePiece? Piece { get; init; }
+
+    /// <summary>Gets the audio codec as Jellyfin reports it, or null for 5.1 AAC.</summary>
+    public string? AudioCodec { get; init; }
+
+    /// <summary>Gets the audio channel count, or null for 5.1 AAC's six.</summary>
+    public int? AudioChannels { get; init; }
 }

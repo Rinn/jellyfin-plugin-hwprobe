@@ -101,7 +101,7 @@ def main():
         for output in pool.map(lambda command: run_captured(*command), publishes):
             print(output, end="")
 
-    dlls = [(n, os.path.join(plugin, n)) for n in os.listdir(plugin) if n.startswith("Jellyfin.Plugin.HwProbe") and n.endswith(".dll")]
+    dlls = [(n, os.path.join(plugin, n)) for n in os.listdir(plugin) if (n.startswith("Jellyfin.Plugin.HwProbe") and n.endswith(".dll")) or n == "YamlDotNet.dll"]
     archives = [lambda: write_zip(os.path.join(out, plugin_zip), dlls, epoch)]
     for rid in CLI_RIDS:
         target = os.path.join(work, "cli", rid)

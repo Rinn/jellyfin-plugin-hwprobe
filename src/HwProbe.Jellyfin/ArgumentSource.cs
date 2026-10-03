@@ -4,6 +4,7 @@ using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller.IO;
 using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Model.Configuration;
+using MediaBrowser.Model.Dlna;
 using MediaBrowser.Model.Entities;
 using Microsoft.Extensions.Configuration;
 
@@ -19,6 +20,9 @@ public sealed class ArgumentSource : IArgumentSource
 
     // No font attachments to extract: the burn-in filter then omits fontsdir (EncodingHelper.GetTextSubtitlesFilter).
     private static readonly Dictionary<string, Func<object?[], object?>> _pathHandlers = new() { ["GetAttachmentFolderPath"] = _ => null };
+
+    // Unset, as on a server without them: GetInputArgument reads the analyse duration and probe size (ConfigurationExtensions, v12.1).
+    private static readonly Dictionary<string, Func<object?[], object?>> _configurationHandlers = new() { ["get_Item"] = _ => null };
 
     // Every suffix the filter chains pass to GetHwDeinterlaceFilter (EncodingHelper.cs, v12.1, L4093-5878).
     private static readonly string[] _deinterlaceFamilies = ["vaapi", "qsv", "cuda", "videotoolbox", "opencl"];
@@ -51,7 +55,7 @@ public sealed class ArgumentSource : IArgumentSource
             RecordingProxy.Create<IApplicationPaths>(recorder, _noHandlers),
             _encoder,
             RecordingProxy.Create<ISubtitleEncoder>(recorder, _noHandlers),
-            RecordingProxy.Create<IConfiguration>(recorder, _noHandlers),
+            RecordingProxy.Create<IConfiguration>(recorder, _configurationHandlers),
             RecordingProxy.Create<MediaBrowser.Common.Configuration.IConfigurationManager>(recorder, _noHandlers),
             RecordingProxy.Create<IPathManager>(recorder, _pathHandlers));
     }
@@ -103,6 +107,12 @@ public sealed class ArgumentSource : IArgumentSource
             DeinterlaceMethod = cell.Bwdif ? DeinterlaceMethod.bwdif : DeinterlaceMethod.yadif,
             AllowHevcEncoding = true,
             AllowAv1Encoding = true,
+            EncoderPreset = cell.EncoderPreset is null ? EncoderPreset.auto : Enum.Parse<EncoderPreset>(cell.EncoderPreset),
+            H264Crf = cell.H264Crf,
+            H265Crf = cell.H265Crf,
+            EnableAudioVbr = cell.AudioVbr,
+            DeinterlaceDoubleRate = cell.DoubleRate,
+            EncodingThreadCount = cell.EncodingThreadCount,
         };
     }
 
@@ -110,19 +120,54 @@ public sealed class ArgumentSource : IArgumentSource
     public ProbeArguments Build(HwType type, string? device, ProbeCell cell)
     {
         var options = CreateOptions(type, device, cell);
-        var state = SyntheticJob.Create(cell);
+        var state = SyntheticJob.Create(cell, cell.SourcePath);
         var effects = type == HwType.vaapi
             ? EncodingHelperEnvironment.Predict(type, _encoder.IsVaapiDeviceInteliHD, _encoder.IsVaapiDeviceInteli965, _encoder.IsVaapiDeviceAmd)
             : new Dictionary<string, string>();
         RefuseForeignWrites(type, effects);
 
         var encoder = _helper.GetVideoEncoder(state, options);
+        int? outputWidth = null;
+        if (cell.FullQuality)
+        {
+            // As StreamingHelpers.GetStreamingState sets them for a real request (v12.1).
+            state.OutputVideoBitrate = _helper.GetVideoBitrateParamValue(state.BaseRequest, state.VideoStream, state.OutputVideoCodec);
+            state.OutputAudioBitrate = _helper.GetAudioBitrateParam(null, state.OutputAudioCodec, state.AudioStream, state.OutputAudioChannels);
+
+            // The server picks the size from the bitrate and codec, as StreamingHelpers.GetStreamingState does (v12.1).
+            if (state.OutputVideoBitrate is { } bitrate)
+            {
+                var request = state.BaseRequest;
+                var notRequested = request.Width is null && request.Height is null && request.MaxWidth is null && request.MaxHeight is null;
+                if (notRequested && request.VideoBitRate is { } asked && state.VideoStream?.BitRate is { } source && asked >= source)
+                {
+                    request.MaxWidth = state.VideoStream.Width;
+                    request.MaxHeight = state.VideoStream.Height;
+                }
+                else
+                {
+                    var resolution = ResolutionNormalizer.Normalize(state.VideoStream?.BitRate, bitrate, EncodingHelper.ScaleBitrate(bitrate, state.OutputVideoCodec, "h264"), request.MaxWidth, request.MaxHeight, state.TargetFramerate);
+                    request.MaxWidth = resolution.MaxWidth;
+                    request.MaxHeight = resolution.MaxHeight;
+                }
+
+                outputWidth = request.MaxWidth;
+            }
+        }
+
         var before = Snapshot();
         string inputArgs;
+        string? inputArgument = null;
         Dictionary<string, string?> changed;
         try
         {
             inputArgs = _helper.GetInputVideoHwaccelArgs(state, options);
+
+            // Generates the hwaccel arguments again, so it stays inside the same environment snapshot.
+            if (cell.FullQuality)
+            {
+                inputArgument = _helper.GetInputArgument(state, options, null);
+            }
         }
         finally
         {
@@ -142,7 +187,8 @@ public sealed class ArgumentSource : IArgumentSource
         }
 
         // v4l2m2m has no branch in GetInputVideoHwaccelArgs: always empty, encoder-only upstream.
-        if (string.IsNullOrEmpty(inputArgs) && type != HwType.v4l2m2m)
+        // Software (none) is measured for speed, and has no hardware arguments by design.
+        if (string.IsNullOrEmpty(inputArgs) && type != HwType.v4l2m2m && type != HwType.none)
         {
             throw new ArgumentConstructionException(
                 $"EncodingHelper emits no {type} arguments for {cell.InputCodec} -> {encoder}; the probe would run in software.");
@@ -180,12 +226,17 @@ public sealed class ArgumentSource : IArgumentSource
 
         return new ProbeArguments(inputArgs, filterArgs, encoder, childEnvironment)
         {
-            EncoderArgs = lowPower ? " " + LowPowerArg : string.Empty,
+            EncoderArgs = cell.FullQuality ? " " + _helper.GetVideoQualityParam(state, encoder, options, EncoderPreset.veryfast).Trim()
+                : lowPower ? " " + LowPowerArg : string.Empty,
+            AudioArgs = cell.FullQuality && state.AudioStream is not null ? " " + _helper.GetProgressiveVideoAudioArguments(state, options).Trim() : string.Empty,
+            InputArgument = inputArgument,
+            Threads = cell.FullQuality ? EncodingHelper.GetNumberOfThreads(state, options, encoder) : null,
             LowPowerEncoder = lowPower,
             HardwareDecoder = _helper.HardwareDecoder(state, options),
             HardwareEncoder = !string.Equals(encoder, softwareEncoder, StringComparison.Ordinal),
             HardwareTonemap = !string.Equals(filterArgs, withoutTonemap, StringComparison.Ordinal),
             HardwareDeinterlacer = cell.Interlaced ? HardwareDeinterlacer(state, options, filterArgs) : null,
+            OutputWidth = outputWidth,
         };
     }
 

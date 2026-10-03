@@ -17,4 +17,10 @@ public enum ProbeRunResult
 
     /// <summary>The probe failed; see <see cref="ProbeStatus.LastError"/>.</summary>
     Failed,
+
+    /// <summary>Refused: a speed run needs a probe's report to know which backends work.</summary>
+    NoReport,
+
+    /// <summary>Refused: the request named an unknown method, test or comparison.</summary>
+    Invalid,
 }

@@ -1,6 +1,8 @@
 using System.CommandLine;
+using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
+using Jellyfin.Plugin.HwProbe.Core.Speed;
 
 namespace Jellyfin.Plugin.HwProbe.Cli;
 
@@ -21,6 +23,42 @@ internal sealed class HwProbeCommand
     private readonly Option<OutputFormat> _format = new("--format") { Description = "Stdout format.", DefaultValueFactory = _ => OutputFormat.Table };
     private readonly Option<string?> _json = new("--json") { Description = "Also write the JSON report to this file." };
     private readonly Option<string?> _diagnostics = new("--diagnostics") { Description = "Also write a zip of the report and every ffmpeg log, to attach to an issue. Runs a fresh probe." };
+    private readonly Option<SpeedMethod?> _speed = new("--speed")
+    {
+        Description = "After the probe, measure the speed of each working backend and software: quick (speed only), confirm or full (also concurrent streams, starting from the speed or from one).",
+        Arity = ArgumentArity.ZeroOrOne,
+        CustomParser = r => r.Tokens.Count == 0 ? SpeedMethod.Confirm : Enum.TryParse<SpeedMethod>(r.Tokens[0].Value, ignoreCase: true, out var m) ? m : Error<SpeedMethod?>(r, $"Unknown speed method '{r.Tokens[0].Value}'. Expected: quick, confirm, full."),
+    };
+
+    private readonly Option<IReadOnlyList<string>> _speedVideos = new("--speed-videos")
+    {
+        Description = $"Videos to measure, comma-separated. Default: {string.Join(',', SpeedCatalog.DefaultVideos)}. All: {string.Join(',', SpeedCatalog.Videos.Select(v => v.Key))}, and library with --speed-file.",
+        CustomParser = r => ParseKeys(r, k => SpeedCatalog.FindVideo(k) is not null || k == SpeedCatalog.LibraryKey, "video", SpeedCatalog.Videos.Select(v => v.Key)),
+        DefaultValueFactory = _ => SpeedCatalog.DefaultVideos,
+    };
+
+    private readonly Option<IReadOnlyList<string>> _speedOutputs = new("--speed-outputs")
+    {
+        Description = $"Outputs to make from every video, comma-separated. Default: {string.Join(',', SpeedCatalog.DefaultOutputs)}. All: {string.Join(',', SpeedCatalog.Outputs.Select(o => o.Key))}.",
+        CustomParser = r => ParseKeys(r, k => SpeedCatalog.FindOutput(k) is not null, "output", SpeedCatalog.Outputs.Select(o => o.Key)),
+        DefaultValueFactory = _ => SpeedCatalog.DefaultOutputs,
+    };
+
+    private readonly Option<string[]> _speedBackends = new("--speed-backends")
+    {
+        Description = "Backends to measure, comma-separated, with none for software. Default: every working backend and software.",
+    };
+
+    private readonly Option<string?> _speedFile = new("--speed-file") { Description = "A video file to measure with --speed, as the library video." };
+    private readonly Option<string[]> _speedOption = new("--speed-option")
+    {
+        Description = $"Set a speed run setting, as KEY=VALUE, repeatable; unset ones keep Jellyfin's defaults. Keys: {string.Join(", ", Catalog.Default.Options.Select(o => o.Key))}.",
+        AllowMultipleArgumentsPerToken = false,
+    };
+
+    private readonly Option<int> _speedRepeats = new("--speed-repeats") { Description = "Run each speed measurement 1 to 3 times and report the median.", DefaultValueFactory = _ => 1 };
+    private readonly Option<int?> _speedTimeLimit = new("--speed-time-limit") { Description = "Seconds each speed measurement may take before it reports what it has." };
+    private readonly Option<string?> _speedJson = new("--speed-json") { Description = "Also write the speed report to this file." };
     private readonly Option<int> _timeout = new("--timeout") { Description = "Per-probe hard timeout, seconds.", DefaultValueFactory = _ => 15 };
     private readonly Option<int> _fixtureTimeout = new("--fixture-timeout") { Description = "Fixture generation timeout, seconds.", DefaultValueFactory = _ => 120 };
     private readonly Option<bool> _refresh = new("--refresh") { Description = "Ignore cached results for this fingerprint." };
@@ -38,10 +76,45 @@ internal sealed class HwProbeCommand
     {
         _timeout.Validators.Add(r => RequirePositive(r, "--timeout"));
         _fixtureTimeout.Validators.Add(r => RequirePositive(r, "--fixture-timeout"));
+        _speedRepeats.Validators.Add(r =>
+        {
+            if (r.GetValueOrDefault<int>() is < 1 or > 3)
+            {
+                r.AddError("--speed-repeats must be 1, 2 or 3.");
+            }
+        });
+        _speedBackends.Validators.Add(r =>
+        {
+            foreach (var name in (r.GetValueOrDefault<string[]>() ?? []).SelectMany(n => n.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)))
+            {
+                if (!Enum.TryParse<HwType>(name, out var type) || !Enum.IsDefined(type))
+                {
+                    r.AddError($"--speed-backends: unknown backend '{name}'.");
+                }
+            }
+        });
+        _speedOption.Validators.Add(r =>
+        {
+            foreach (var pair in r.GetValueOrDefault<string[]>() ?? [])
+            {
+                var parts = pair.Split('=', 2);
+                if (parts.Length != 2 || Catalog.Default.Options.FirstOrDefault(o => o.Key == parts[0]) is not { } option || !option.Takes(parts[1]))
+                {
+                    r.AddError($"--speed-option {pair}: expected KEY=VALUE with a key from {string.Join(", ", Catalog.Default.Options.Select(o => o.Key))} and a value it takes.");
+                }
+            }
+        });
+        _speedTimeLimit.Validators.Add(r =>
+        {
+            if (r.GetValueOrDefault<int?>() is <= 0)
+            {
+                r.AddError("--speed-time-limit must be a positive number of seconds.");
+            }
+        });
 
         Root = new RootCommand("Device-verified hardware transcode detection for Jellyfin.")
         {
-            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
+            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _speed, _speedVideos, _speedOutputs, _speedBackends, _speedFile, _speedRepeats, _speedOption, _speedTimeLimit, _speedJson, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
         };
     }
 
@@ -70,6 +143,9 @@ internal sealed class HwProbeCommand
             result.GetValue(_verbose))
         {
             DiagnosticsPath = result.GetValue(_diagnostics),
+            Speed = result.GetValue(_speed) is { } method ? SpeedFrom(result, method) : null,
+            SpeedJsonPath = result.GetValue(_speedJson),
+            SpeedFilePath = result.GetValue(_speedFile) is { } file ? Path.GetFullPath(file) : null,
         };
     }
 
@@ -97,6 +173,34 @@ internal sealed class HwProbeCommand
         return types;
     }
 
+    /// <summary>Parses a comma-separated list of video or output keys.</summary>
+    /// <param name="result">The option's argument result.</param>
+    /// <param name="known">Whether a key exists.</param>
+    /// <param name="kind">What the keys name, for the error.</param>
+    /// <param name="all">Every key, for the error.</param>
+    /// <returns>The keys, after reporting any unknown one.</returns>
+    private static List<string> ParseKeys(System.CommandLine.Parsing.ArgumentResult result, Func<string, bool> known, string kind, IEnumerable<string> all)
+    {
+        var keys = result.Tokens.SelectMany(t => t.Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).ToList();
+        foreach (var unknown in keys.Where(k => !known(k)))
+        {
+            result.AddError($"Unknown speed {kind} '{unknown}'. Expected: {string.Join(", ", all)}.");
+        }
+
+        return keys;
+    }
+
+    /// <summary>Reports a parse error and returns a placeholder value.</summary>
+    /// <typeparam name="T">The option's value type.</typeparam>
+    /// <param name="result">The option's argument result.</param>
+    /// <param name="message">The error.</param>
+    /// <returns>The default value.</returns>
+    private static T Error<T>(System.CommandLine.Parsing.ArgumentResult result, string message)
+    {
+        result.AddError(message);
+        return default!;
+    }
+
     /// <summary>Rejects zero or negative second counts.</summary>
     /// <param name="result">The option result to validate.</param>
     /// <param name="name">Option name for the error message.</param>
@@ -106,5 +210,25 @@ internal sealed class HwProbeCommand
         {
             result.AddError($"{name} must be a positive number of seconds.");
         }
+    }
+
+    /// <summary>Binds the speed options.</summary>
+    /// <param name="result">The parse result.</param>
+    /// <param name="method">The chosen method.</param>
+    /// <returns>The options.</returns>
+    private SpeedOptions SpeedFrom(ParseResult result, SpeedMethod method)
+    {
+        var settings = new SpeedSettings();
+        foreach (var parts in (result.GetValue(_speedOption) ?? []).Select(p => p.Split('=', 2)))
+        {
+            settings = SpeedSettingsOptions.Apply(settings, parts[0], parts[1]) ?? settings;
+        }
+
+        return new(method, result.GetValue(_speedVideos)!, result.GetValue(_speedOutputs)!, settings)
+        {
+            Backends = result.GetValue(_speedBackends) is { Length: > 0 } names ? [.. names.SelectMany(n => n.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).Select(Enum.Parse<HwType>)] : null,
+            Repeats = result.GetValue(_speedRepeats),
+            TimeLimit = result.GetValue(_speedTimeLimit) is { } seconds ? TimeSpan.FromSeconds(seconds) : null,
+        };
     }
 }
