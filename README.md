@@ -26,7 +26,7 @@ Open **HwProbe** in the dashboard sidebar, under Plugins, while nothing is playi
 
 After updating HwProbe or changing ffmpeg, run the probe again; older results are cleared.
 
-The same probe runs from the command line, where Jellyfin runs (inside the container, for Docker). Download `hwprobe` for the server's platform from [Releases](../../releases), unpack it, and on Linux or macOS make it executable (`chmod +x hwprobe`):
+The same probe runs from the command line, where Jellyfin runs (inside the container, for Docker). Download `hwprobe` for the server's platform from [Releases](../../releases) and unpack it:
 
 ```sh
 hwprobe                    # probe every backend

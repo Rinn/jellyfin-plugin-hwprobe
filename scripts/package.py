@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Publishes the plugin and CLI and packs them into release archives, byte-identical across runs.
 
-Archives get sorted entries, fixed permissions and the commit's timestamp (SOURCE_DATE_EPOCH, else the
-HEAD commit time), and gzip stores no file name or time, so the same commit always packs the same bytes.
+Archives get sorted entries, fixed permissions and owners, and the commit's timestamp (SOURCE_DATE_EPOCH, else
+the HEAD commit time), and gzip stores no file name or time, so the same commit always packs the same bytes.
 """
 
 import argparse
@@ -10,6 +10,7 @@ import concurrent.futures
 import gzip
 import os
 import re
+import tarfile
 import subprocess
 import sys
 import time
@@ -54,11 +55,18 @@ def write_zip(path, files, epoch):
                 archive.writestr(info, f.read())
 
 
-def write_gzip(path, source):
-    """Gzips one file with no stored name or time."""
+def write_tar_gz(path, name, source, epoch):
+    """Writes a .tar.gz holding one executable, so it unpacks runnable; gzip alone keeps no permissions."""
+    info = tarfile.TarInfo(name)
+    info.size = os.path.getsize(source)
+    info.mode = 0o755
+    info.mtime = epoch
+    info.uid = info.gid = 0
+    info.uname = info.gname = ""
     with open(source, "rb") as f, open(path, "wb") as raw:
         with gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0, compresslevel=9) as out:
-            out.write(f.read())
+            with tarfile.open(fileobj=out, mode="w", format=tarfile.USTAR_FORMAT) as archive:
+                archive.addfile(info, f)
 
 
 def default_version():
@@ -110,7 +118,7 @@ def main():
             archives.append(lambda rid=rid, exe=exe: write_zip(os.path.join(out, f"hwprobe-{rid}.zip"), exe, epoch))
         else:
             binary = os.path.join(target, "Jellyfin.Plugin.HwProbe.Cli")
-            archives.append(lambda rid=rid, binary=binary: write_gzip(os.path.join(out, f"hwprobe-{rid}.gz"), binary))
+            archives.append(lambda rid=rid, binary=binary: write_tar_gz(os.path.join(out, f"hwprobe-{rid}.tar.gz"), "hwprobe", binary, epoch))
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(archives)) as pool:
         for future in [pool.submit(write) for write in archives]:
             future.result()
