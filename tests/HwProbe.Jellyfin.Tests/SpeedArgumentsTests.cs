@@ -51,6 +51,11 @@ public sealed class SpeedArgumentsTests
         Assert.Equal(width, args.OutputWidth);
     }
 
+    /// <summary>A library path's quotes are escaped as upstream does, so they can't end the argument.</summary>
+    [Fact]
+    public void LibraryPathIsEscaped() =>
+        Assert.Equal(" -i file:\"/m/x\\\" -y \\\"evil.mkv\"", Build(_cell with { SourcePath = "/m/x\" -y \"evil.mkv" }).InputArgument);
+
     /// <summary>Copied audio is passed through, as for a client that plays the source's audio.</summary>
     [Fact]
     public void CopiedAudioIsPassedThrough() =>

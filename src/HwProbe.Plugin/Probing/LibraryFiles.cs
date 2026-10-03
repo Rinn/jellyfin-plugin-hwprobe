@@ -16,7 +16,8 @@ public sealed class LibraryFiles(ILibraryManager library, IMediaSourceManager me
     /// <returns>The file, or null when the item doesn't exist or isn't a local video file.</returns>
     public SpeedFile? Find(Guid itemId)
     {
-        if (library.GetItemById(itemId) is not { } item)
+        // GetStaticMediaSources throws for an item without media sources, such as a series.
+        if (library.GetItemById(itemId) is not { } item || item is not MediaBrowser.Controller.Entities.IHasMediaSources)
         {
             return null;
         }

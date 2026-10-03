@@ -256,9 +256,18 @@
 
                 // A menu like the dashboard's own selects (MUI's Menu), under its field or above when it doesn't fit, within 48px of the window edges.
                 function popMenu(anchor, fill) {
+                    // A second press on the open field closes its menu, as MUI's does; another field's replaces it.
+                    const reopening = openMenu && openMenu.anchor === anchor;
+                    closeMenu();
+                    if (reopening) {
+                        return;
+                    }
                     const menu = el('div', null, 'hwprobe-menu');
                     menu.setAttribute('role', 'listbox');
                     const close = () => {
+                        if (openMenu && openMenu.menu === menu) {
+                            openMenu = null;
+                        }
                         menu.remove();
                         document.removeEventListener('mousedown', outside, true);
                         document.removeEventListener('keydown', escape, true);
@@ -286,6 +295,15 @@
                     document.addEventListener('keydown', escape, true);
                     window.addEventListener('resize', close);
                     window.addEventListener('scroll', onScroll, true);
+                    openMenu = { anchor, menu, close };
+                }
+
+                let openMenu = null;
+
+                function closeMenu() {
+                    if (openMenu) {
+                        openMenu.close();
+                    }
                 }
 
                 // A mouse opens the dashboard-style menu instead of the browser's list; the keyboard keeps the native one.
@@ -810,6 +828,7 @@
                 }
 
                 function render() {
+                    closeMenu();
                     results.replaceChildren();
                     const viable = report ? report.backends.filter(b => b.verdict === 'Viable').sort(byDropdown) : [];
                     renderCard(viable);
@@ -1487,6 +1506,8 @@
                 let loaded = false;
 
                 function loadStatus() {
+                    // One poll at a time: a button's own loadStatus replaces the scheduled one.
+                    clearTimeout(pollTimer);
                     return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Status'), dataType: 'json' }).then(s => {
                         loadedVersion = loadedVersion || s.HwProbeVersion;
                         if (s.HwProbeVersion && s.HwProbeVersion !== loadedVersion) {
@@ -1524,7 +1545,7 @@
                 }
 
                 page.addEventListener('pageshow', loadStatus);
-                page.addEventListener('pagehide', () => clearTimeout(pollTimer));
+                page.addEventListener('pagehide', () => { clearTimeout(pollTimer); closeMenu(); });
             })();
         </script>
     </div>

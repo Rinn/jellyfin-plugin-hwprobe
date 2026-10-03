@@ -126,7 +126,10 @@ public sealed partial class FixtureBuilder
     {
         await using var stream = File.OpenRead(path);
         var hash = await SHA256.HashDataAsync(stream, cancellationToken);
-        var text = $"{spec.RequiredEncoder}\n{spec.EncodeArguments}" + (spec.FallbackArguments is null ? string.Empty : $"\n{spec.FallbackArguments}");
+
+        // A re-pinned piece changes the recipe, so a clip made from the old one is fetched again.
+        var text = $"{spec.RequiredEncoder}\n{spec.EncodeArguments}" + (spec.FallbackArguments is null ? string.Empty : $"\n{spec.FallbackArguments}")
+            + (spec.Piece is { } piece ? $"\n{piece.Url} {piece.HeaderLength} {piece.Start} {piece.Length} {piece.Sha256}" : string.Empty);
         var recipe = SHA256.HashData(Encoding.UTF8.GetBytes(text));
         return string.Create(CultureInfo.InvariantCulture, $"{stream.Length} {Convert.ToHexStringLower(hash)} {Convert.ToHexStringLower(recipe)}");
     }
@@ -260,8 +263,9 @@ public sealed partial class FixtureBuilder
             });
             body = await _downloader.DownloadRangeAsync(piece.Url, piece.Start, piece.Length, bodyProgress, stalled.Token);
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex) when (ex is HttpRequestException or IOException)
         {
+            // A dropped connection mid-body is an IOException (HttpIOException), not an HttpRequestException.
             return new FixtureResult(spec, FixtureStatus.Untested, null, $"could not download {piece.Url}: {ex.Message}");
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
@@ -363,7 +367,7 @@ public sealed partial class FixtureBuilder
             Progress?.Report(new FixtureStep(spec, FixtureAction.Downloading, 0, 0));
             bytes = await _downloader.DownloadAsync(url, timeout.Token);
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex) when (ex is HttpRequestException or IOException)
         {
             return new FixtureResult(spec, FixtureStatus.Untested, null, $"could not download the {spec.Codec} sample from {url}: {ex.Message}");
         }

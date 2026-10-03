@@ -34,6 +34,13 @@ public sealed class SpeedCommandLineTests
             "-hide_banner -v warning -nostats -progress pipe:1 -stream_loop -1 -i file:\"/c/a.mkv\" -t 10 -an -f null -",
             SpeedCommandLine.Build(_args with { InputArgument = " -i file:\"/c/a.mkv\"" }, TimeSpan.FromSeconds(10), decodeOnly: true));
 
+    /// <summary>A path holding <c> -i </c> or an escaped quote is left alone; only real input options loop.</summary>
+    [Fact]
+    public void PathsAreNotTakenForOptions() =>
+        Assert.Equal(
+            "-hide_banner -v warning -nostats -progress pipe:1 -stream_loop -1 -i file:\"/m/Foo -i \\\" Bar.mkv\" -t 10 -an -f null -",
+            SpeedCommandLine.Build(_args with { InputArgument = "-i file:\"/m/Foo -i \\\" Bar.mkv\"" }, TimeSpan.FromSeconds(10), decodeOnly: true));
+
     /// <summary>A start point seeks the first input only.</summary>
     [Fact]
     public void StartSeeksTheVideo() =>

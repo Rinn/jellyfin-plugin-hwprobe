@@ -133,17 +133,19 @@ internal static class HwProbeApp
 
             var viable = report.Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device)).ToList();
             using var engine = new SpeedEngine(new FfmpegRunner(), new ArgumentSourceFactory(), platform, TimeProvider.System, EnvironmentRules.Standalone());
-            var progress = new Progress<SpeedProgress>(p => stderr.Write($"\rhwprobe: speed {p.Done} of {p.Total}"));
+            var progress = new DirectProgress<SpeedProgress>(p => stderr.Write($"\rhwprobe: speed {p.Done} of {p.Total}"));
             var measured = await engine.RunAsync(engineOptions, speed, viable, progress, cancellationToken);
-            await stderr.WriteLineAsync(string.Empty.AsMemory(), cancellationToken);
+
+            // A cancelled run still returns what it finished, so its output isn't cancelled with it.
+            await stderr.WriteLineAsync(string.Empty.AsMemory(), CancellationToken.None);
             if (options.Format != OutputFormat.Json)
             {
-                await stdout.WriteAsync(SpeedRenderer.Render(measured).AsMemory(), cancellationToken);
+                await stdout.WriteAsync(SpeedRenderer.Render(measured).AsMemory(), CancellationToken.None);
             }
 
             if (options.SpeedJsonPath is not null)
             {
-                await SpeedReportStore.WriteAsync(measured, options.SpeedJsonPath, cancellationToken);
+                await SpeedReportStore.WriteAsync(measured, options.SpeedJsonPath, CancellationToken.None);
             }
         }
 

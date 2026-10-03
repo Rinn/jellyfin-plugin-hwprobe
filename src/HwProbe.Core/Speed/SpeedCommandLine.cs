@@ -1,12 +1,11 @@
 using System.Globalization;
-using System.Text.RegularExpressions;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 
 /// <summary>Assembles a speed run's command line around upstream's input, filter, encoder and audio arguments.</summary>
 /// <remarks>The wrapper (looping, duration, progress, null output) is synthesized, as the probe's is; <c>-threads</c> sits before the filters, as in DynamicHlsController's command line (v12.1).</remarks>
-public static partial class SpeedCommandLine
+public static class SpeedCommandLine
 {
     /// <summary>Builds the argument string.</summary>
     /// <param name="args">Arguments generated with <see cref="ProbeCell.FullQuality"/>.</param>
@@ -19,13 +18,13 @@ public static partial class SpeedCommandLine
         ArgumentNullException.ThrowIfNull(args);
         var input = args.InputArgument ?? throw new ArgumentException("The arguments were generated without the input.", nameof(args));
 
-        // Loop every input, so the clip and an external subtitle both run as long as asked.
-        var looped = InputFlag().Replace(input.Trim(), "${space}-stream_loop -1 -i ");
-        if (startAt > TimeSpan.Zero)
+        // Loop every input, so the clip and an external subtitle both run as long as asked; seek the first (the video) only, as an external subtitle costs the same to draw from its start.
+        var looped = input.Trim();
+        var flags = InputFlags(looped);
+        for (var i = flags.Count - 1; i >= 0; i--)
         {
-            // Seeks the first input (the video) only; an external subtitle stays at its start, which costs the same to draw.
-            var at = looped.IndexOf("-stream_loop -1 -i ", StringComparison.Ordinal);
-            looped = looped.Insert(at, string.Create(CultureInfo.InvariantCulture, $"-ss {startAt.TotalSeconds:0.###} "));
+            var seek = i == 0 && startAt > TimeSpan.Zero ? string.Create(CultureInfo.InvariantCulture, $"-ss {startAt.TotalSeconds:0.###} ") : string.Empty;
+            looped = looped.Insert(flags[i], seek + "-stream_loop -1 ");
         }
 
         var seconds = content.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture);
@@ -37,8 +36,30 @@ public static partial class SpeedCommandLine
         return $"-hide_banner -v warning -nostats -progress pipe:1 {looped} -t {seconds}{output} -f null -";
     }
 
-    /// <summary>Matches each <c>-i</c> option.</summary>
-    /// <returns>The pattern.</returns>
-    [GeneratedRegex(@"(?<space>^|\s)-i\s")]
-    private static partial Regex InputFlag();
+    /// <summary>Finds each <c>-i</c> option outside quotes, so a path holding <c> -i </c> isn't taken for one.</summary>
+    /// <param name="arguments">The input arguments, with paths quoted and their quotes escaped as upstream does.</param>
+    /// <returns>Where each option starts.</returns>
+    private static List<int> InputFlags(string arguments)
+    {
+        List<int> found = [];
+        var quoted = false;
+        for (var i = 0; i < arguments.Length; i++)
+        {
+            var c = arguments[i];
+            if (c == '\\' && quoted)
+            {
+                i++;
+            }
+            else if (c == '"')
+            {
+                quoted = !quoted;
+            }
+            else if (!quoted && c == '-' && (i == 0 || char.IsWhiteSpace(arguments[i - 1])) && i + 2 < arguments.Length && arguments[i + 1] == 'i' && char.IsWhiteSpace(arguments[i + 2]))
+            {
+                found.Add(i);
+            }
+        }
+
+        return found;
+    }
 }

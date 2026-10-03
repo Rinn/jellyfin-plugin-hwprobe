@@ -351,7 +351,18 @@ public sealed partial class ProbeService : IDisposable
         List<SpeedHistoryEntry> entries = [];
         foreach (var file in Directory.EnumerateFiles(SpeedHistoryDirectory, "*.json").Order(StringComparer.Ordinal).Reverse())
         {
-            if (SpeedReportStore.Deserialize(await File.ReadAllTextAsync(file, cancellationToken)) is { } report)
+            string json;
+            try
+            {
+                json = await File.ReadAllTextAsync(file, cancellationToken);
+            }
+            catch (FileNotFoundException)
+            {
+                // A run finishing now deletes the oldest file.
+                continue;
+            }
+
+            if (SpeedReportStore.Deserialize(json) is { } report)
             {
                 var current = report.HwProbeVersion == CapabilityReport.CurrentHwProbeVersion && IsCurrentFfmpeg(report.Ffmpeg);
                 entries.Add(new SpeedHistoryEntry(Path.GetFileNameWithoutExtension(file), report.GeneratedUtc, report.Method.ToString(), report.Results.Select(r => r.Test).Distinct(StringComparer.Ordinal).Count(), current));
@@ -420,6 +431,8 @@ public sealed partial class ProbeService : IDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
+        // Stops a running speed run's ffmpeg, which would otherwise outlive the server.
+        _speedCancel?.Cancel();
         _gate.Dispose();
         _speedCancel?.Dispose();
     }
