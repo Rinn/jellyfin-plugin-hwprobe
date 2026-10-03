@@ -23,6 +23,9 @@ public sealed class CatalogSetting
     /// <summary>Gets a line shown under it, or null.</summary>
     public string? Help { get; init; }
 
+    /// <summary>Gets lines shown under it per backend, keyed by backend type with <c>none</c> for software; the page lists the backends that work.</summary>
+    public IReadOnlyDictionary<Model.HwType, string>? BackendNotes { get; init; }
+
     /// <summary>Gets a value indicating whether it's on or off: <c>true</c> or <c>false</c>.</summary>
     public bool Switch { get; init; }
 
