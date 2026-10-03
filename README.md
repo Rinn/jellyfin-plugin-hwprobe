@@ -11,7 +11,7 @@ Requires Jellyfin 12.1 or newer.
 
 ## Use
 
-Open **HwProbe** in the dashboard sidebar while nothing is being transcoded.
+Open **HwProbe** in the dashboard sidebar.
 
 - **Hardware Probe**: press **Run probe** to test each hardware acceleration option.
 - **Recommended Settings**: each option on the Transcoding and Trickplay pages, with whether it works. **Apply** changes it and **Revert** undoes the last change.
