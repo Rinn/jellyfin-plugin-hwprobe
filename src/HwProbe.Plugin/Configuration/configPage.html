@@ -19,12 +19,18 @@
             #HwProbeConfigPage .selectContainer .fieldDescription { margin: 3px 14px 0; padding: 0; }
             #HwProbeConfigPage .selectContainer .selectLabel { position: absolute; left: 12px; top: 7px; margin: 0; font-size: 0.75em; line-height: 1.4375; color: var(--jf-palette-text-secondary, rgba(255, 255, 255, 0.7)); pointer-events: none; z-index: 1; }
             #HwProbeConfigPage .selectContainer::after { content: ''; position: absolute; right: 13px; top: 25px; border: 5px solid transparent; border-bottom: 0; border-top-color: var(--jf-palette-text-primary, #fff); pointer-events: none; }
-            #HwProbeConfigPage .selectContainer select.emby-select, #HwProbeConfigPage .inputContainer input.emby-input { appearance: none; box-sizing: border-box; width: 100%; height: 54px; padding: 25px 32px 8px 12px; font: inherit; font-size: 1em; line-height: 1.4375; color: var(--jf-palette-text-primary, #fff); background: var(--jf-palette-FilledInput-bg, rgba(255, 255, 255, 0.09)); border: 0; border-bottom: 1px solid var(--jf-palette-text-secondary, rgba(255, 255, 255, 0.7)); border-radius: var(--jf-shape-borderRadius, 4px) var(--jf-shape-borderRadius, 4px) 0 0; }
+            #HwProbeConfigPage .hwprobe-multi { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+            #HwProbeConfigPage .hwprobe-library { margin-top: 12px; }
+            #HwProbeConfigPage .selectContainer .hwprobe-multi, #HwProbeConfigPage .selectContainer select.emby-select, #HwProbeConfigPage .inputContainer input.emby-input { appearance: none; box-sizing: border-box; width: 100%; height: 54px; padding: 25px 32px 8px 12px; font: inherit; font-size: 1em; line-height: 1.4375; color: var(--jf-palette-text-primary, #fff); background: var(--jf-palette-FilledInput-bg, rgba(255, 255, 255, 0.09)); border: 0; border-bottom: 1px solid var(--jf-palette-text-secondary, rgba(255, 255, 255, 0.7)); border-radius: var(--jf-shape-borderRadius, 4px) var(--jf-shape-borderRadius, 4px) 0 0; }
             #HwProbeConfigPage .inputContainer input.emby-input { padding: 16px 12px; }
-            #HwProbeConfigPage .selectContainer select.emby-select:hover, #HwProbeConfigPage .inputContainer input.emby-input:hover { background: var(--jf-palette-FilledInput-hoverBg, rgba(255, 255, 255, 0.13)); }
-            #HwProbeConfigPage .selectContainer select.emby-select:focus, #HwProbeConfigPage .inputContainer input.emby-input:focus { outline: none; border-bottom: 2px solid var(--jf-palette-primary-main, #00a4dc); }
+            #HwProbeConfigPage .selectContainer .hwprobe-multi:hover, #HwProbeConfigPage .selectContainer select.emby-select:hover, #HwProbeConfigPage .inputContainer input.emby-input:hover { background: var(--jf-palette-FilledInput-hoverBg, rgba(255, 255, 255, 0.13)); }
+            #HwProbeConfigPage .selectContainer .hwprobe-multi:focus, #HwProbeConfigPage .selectContainer select.emby-select:focus, #HwProbeConfigPage .inputContainer input.emby-input:focus { outline: none; border-bottom: 2px solid var(--jf-palette-primary-main, #00a4dc); }
             .hwprobe-menu { position: fixed; z-index: var(--jf-zIndex-modal, 1300); box-sizing: border-box; overflow-y: auto; padding: 8px 0; border-radius: var(--jf-shape-borderRadius, 4px); color: var(--jf-palette-text-primary, #fff); background-color: var(--jf-palette-background-paper, #202020); background-image: var(--jf-overlays-8, none); box-shadow: var(--jf-shadows-8, 0 5px 5px -3px rgba(0, 0, 0, 0.2)); font-size: 1rem; }
             .hwprobe-menu-item { padding: 6px 16px; line-height: 1.5; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .hwprobe-menu-check { display: flex; align-items: center; gap: 12px; }
+            .hwprobe-menu-check .material-icons { font-size: 1.5em; }
+            .hwprobe-menu-selected .material-icons { color: var(--jf-palette-primary-main, #00a4dc); }
+            .hwprobe-menu-check .secondaryText { margin-left: auto; padding-left: 1em; }
             .hwprobe-menu-item:hover { background-color: var(--jf-palette-action-hover, rgba(255, 255, 255, 0.08)); }
             .hwprobe-menu-item.hwprobe-menu-selected { background-color: rgba(var(--jf-palette-primary-mainChannel, 0 164 220) / var(--jf-palette-action-selectedOpacity, 0.2)); }
             #HwProbeConfigPage .selectContainer select.emby-select option { color: var(--jf-palette-text-primary, #fff); background: var(--jf-palette-background-paper, #202020); }
@@ -54,7 +60,6 @@
             #HwProbeConfigPage .hwprobe-disclosure { padding: 0; border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
             #HwProbeConfigPage .hwprobe-choices { display: flex; flex-wrap: wrap; gap: 0 1.5em; }
             #HwProbeConfigPage .hwprobe-choices .emby-checkbox-label { width: auto; margin-right: 1.5em; }
-            #HwProbeConfigPage .hwprobe-choices.hwprobe-fixed .emby-checkbox-label { width: 7em; margin-right: 0.5em; }
             #HwProbeConfigPage .hwprobe-fold > summary { display: flex; align-items: center; gap: 0.3em; cursor: pointer; list-style: none; }
             #HwProbeConfigPage .hwprobe-fold > summary::-webkit-details-marker { display: none; }
             #HwProbeConfigPage .hwprobe-fold > summary .sectionTitle { margin-top: 0.5em; margin-bottom: 0.5em; }
@@ -249,7 +254,41 @@
                     return box.lastElementChild;
                 }
 
-                // A mouse opens a menu like the dashboard's own selects (MUI's Menu) instead of the browser's list; the keyboard keeps the native one.
+                // A menu like the dashboard's own selects (MUI's Menu), under its field or above when it doesn't fit, within 48px of the window edges.
+                function popMenu(anchor, fill) {
+                    const menu = el('div', null, 'hwprobe-menu');
+                    menu.setAttribute('role', 'listbox');
+                    const close = () => {
+                        menu.remove();
+                        document.removeEventListener('mousedown', outside, true);
+                        document.removeEventListener('keydown', escape, true);
+                        window.removeEventListener('resize', close);
+                        window.removeEventListener('scroll', onScroll, true);
+                    };
+                    const outside = ev => { if (!menu.contains(ev.target) && ev.target !== anchor) { close(); } };
+                    const escape = ev => { if (ev.key === 'Escape') { close(); anchor.focus(); } };
+                    const onScroll = ev => { if (!menu.contains(ev.target)) { close(); } };
+                    fill(menu, close);
+                    const rect = anchor.getBoundingClientRect();
+                    menu.style.left = rect.left + 'px';
+                    menu.style.width = rect.width + 'px';
+                    document.body.appendChild(menu);
+                    const below = window.innerHeight - rect.bottom - 48;
+                    const above = rect.top - 48;
+                    const height = Math.min(menu.scrollHeight, Math.max(below, above));
+                    menu.style.maxHeight = height + 'px';
+                    menu.style.top = (below >= height || below >= above ? rect.bottom : rect.top - height) + 'px';
+                    const chosen = menu.querySelector('.hwprobe-menu-selected');
+                    if (chosen) {
+                        menu.scrollTop = chosen.offsetTop - (height - chosen.offsetHeight) / 2;
+                    }
+                    document.addEventListener('mousedown', outside, true);
+                    document.addEventListener('keydown', escape, true);
+                    window.addEventListener('resize', close);
+                    window.addEventListener('scroll', onScroll, true);
+                }
+
+                // A mouse opens the dashboard-style menu instead of the browser's list; the keyboard keeps the native one.
                 function filledMenu(select) {
                     select.addEventListener('mousedown', e => {
                         if (e.button !== 0 || select.disabled) {
@@ -257,49 +296,84 @@
                         }
                         e.preventDefault();
                         select.focus();
-                        const menu = el('div', null, 'hwprobe-menu');
-                        menu.setAttribute('role', 'listbox');
-                        const close = () => {
-                            menu.remove();
-                            document.removeEventListener('mousedown', outside, true);
-                            document.removeEventListener('keydown', escape, true);
-                            window.removeEventListener('resize', close);
-                            window.removeEventListener('scroll', closeOnScroll, true);
-                        };
-                        const outside = ev => { if (!menu.contains(ev.target)) { close(); } };
-                        const escape = ev => { if (ev.key === 'Escape') { close(); } };
-                        const closeOnScroll = ev => { if (!menu.contains(ev.target)) { close(); } };
-                        for (const option of select.options) {
-                            const item = el('div', option.textContent, 'hwprobe-menu-item' + (option.selected ? ' hwprobe-menu-selected' : ''));
+                        popMenu(select, (menu, close) => {
+                            for (const option of select.options) {
+                                const item = el('div', option.textContent, 'hwprobe-menu-item' + (option.selected ? ' hwprobe-menu-selected' : ''));
+                                item.setAttribute('role', 'option');
+                                item.addEventListener('click', () => {
+                                    close();
+                                    if (select.value !== option.value) {
+                                        select.value = option.value;
+                                        select.dispatchEvent(new Event('change', { bubbles: true }));
+                                    }
+                                });
+                                menu.appendChild(item);
+                            }
+                        });
+                    });
+                }
+
+                // A field choosing several, like the dashboard's multiple selects: it lists the chosen ones, and its menu ticks them and stays open.
+                function multiSelect(container, label, items, chosen, onChange) {
+                    const box = el('div', null, 'selectContainer');
+                    box.appendChild(el('label', label, 'selectLabel'));
+                    const field = el('div', null, 'hwprobe-multi');
+                    field.tabIndex = 0;
+                    field.setAttribute('role', 'combobox');
+                    field.setAttribute('aria-label', label);
+                    box.appendChild(field);
+                    container.appendChild(box);
+                    const show = () => {
+                        const names = items.filter(i => chosen.has(i.key)).map(i => i.text);
+                        field.textContent = names.length ? names.join(', ') : 'None';
+                    };
+                    show();
+                    const open = () => popMenu(field, menu => {
+                        menu.setAttribute('aria-multiselectable', 'true');
+                        for (const i of items) {
+                            const item = el('div', null, 'hwprobe-menu-item hwprobe-menu-check');
                             item.setAttribute('role', 'option');
+                            const mark = icon(chosen.has(i.key) ? 'check_box' : 'check_box_outline_blank');
+                            item.appendChild(mark);
+                            item.appendChild(el('span', i.text));
+                            if (i.secondary) {
+                                item.appendChild(el('span', i.secondary, 'secondaryText'));
+                            }
+                            const paint = () => {
+                                const on = chosen.has(i.key);
+                                // jellyfin-web's icon font draws the glyph its class names.
+                                mark.className = 'material-icons ' + (on ? 'check_box' : 'check_box_outline_blank');
+                                item.classList.toggle('hwprobe-menu-selected', on);
+                                item.setAttribute('aria-selected', String(on));
+                            };
+                            paint();
                             item.addEventListener('click', () => {
-                                close();
-                                if (select.value !== option.value) {
-                                    select.value = option.value;
-                                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                                if (chosen.has(i.key)) {
+                                    chosen.delete(i.key);
+                                } else {
+                                    chosen.add(i.key);
                                 }
+                                paint();
+                                show();
+                                onChange();
                             });
                             menu.appendChild(item);
                         }
-                        const rect = select.getBoundingClientRect();
-                        menu.style.left = rect.left + 'px';
-                        menu.style.width = rect.width + 'px';
-                        document.body.appendChild(menu);
-                        // Below the field when it fits, otherwise above, within 48px of the window edges as MUI keeps it.
-                        const below = window.innerHeight - rect.bottom - 48;
-                        const above = rect.top - 48;
-                        const height = Math.min(menu.scrollHeight, Math.max(below, above));
-                        menu.style.maxHeight = height + 'px';
-                        menu.style.top = (below >= height || below >= above ? rect.bottom : rect.top - height) + 'px';
-                        const chosen = menu.querySelector('.hwprobe-menu-selected');
-                        if (chosen) {
-                            menu.scrollTop = chosen.offsetTop - (height - chosen.offsetHeight) / 2;
-                        }
-                        document.addEventListener('mousedown', outside, true);
-                        document.addEventListener('keydown', escape, true);
-                        window.addEventListener('resize', close);
-                        window.addEventListener('scroll', closeOnScroll, true);
                     });
+                    field.addEventListener('mousedown', e => {
+                        if (e.button === 0) {
+                            e.preventDefault();
+                            field.focus();
+                            open();
+                        }
+                    });
+                    field.addEventListener('keydown', e => {
+                        if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            open();
+                        }
+                    });
+                    return box;
                 }
 
                 // Working and not, in one layout: backend, device, status. Green works, red failed, grey doesn't apply here.
@@ -907,7 +981,7 @@
 
                 // Searches movies and episodes through Jellyfin's own Items API; the server describes the chosen file.
                 function libraryCell(update) {
-                    const td = el('td');
+                    const td = el('div', null, 'hwprobe-library');
                     const box = jf('<div class="inputContainer"><input is="emby-input" type="search"></div>');
                     const search = box.firstElementChild;
                     search.setAttribute('label', 'Library video');
@@ -971,6 +1045,26 @@
                     return td;
                 }
 
+                // Where each chosen input comes from, under the Input field.
+                function sourceLines(target, update) {
+                    target.replaceChildren();
+                    for (const v of allVideos().filter(x => chosenVideos.has(x.Key) && x.Key !== 'library')) {
+                        const line = el('div', null, 'fieldDescription');
+                        line.appendChild(document.createTextNode(v.Name + ': '));
+                        const source = sourceCell(v);
+                        while (source.firstChild) {
+                            line.appendChild(source.firstChild);
+                        }
+                        target.appendChild(line);
+                    }
+                    if (chosenVideos.has('library')) {
+                        target.appendChild(libraryCell(update));
+                        if (libraryVideo) {
+                            target.appendChild(el('div', libraryVideo.Name + ': ' + libraryVideo.Input, 'fieldDescription'));
+                        }
+                    }
+                }
+
                 function renderSpeedSetup(container, viable) {
                     let button = null;
                     const estimate = el('span', null, 'secondaryText');
@@ -994,25 +1088,6 @@
                     };
                     const pick = (set, key) => on => { if (on) { set.add(key); } else { set.delete(key); } update(); };
 
-                    const box = (set, key, enabled) => {
-                        const td = el('td');
-                        const check = checkbox('', set.has(key), pick(set, key));
-                        check.firstElementChild.disabled = !enabled;
-                        td.appendChild(check);
-                        return td;
-                    };
-                    const list = (title, description, headers, rows) => {
-                        container.appendChild(el('h3', title, 'sectionTitle'));
-                        if (description) {
-                            container.appendChild(el('div', description, 'fieldDescription'));
-                        }
-                        const table = el('table', null, 'hwprobe-list');
-                        row(table, [el('th')].concat(headers.map(h => el('th', h))));
-                        rows.forEach(r => row(table, r));
-                        const scroll = el('div', null, 'hwprobe-scroll');
-                        scroll.appendChild(table);
-                        container.appendChild(scroll);
-                    };
 
                     // Help goes under its field, before the gap to the next one, as the dashboard's helper text does.
                     const options = (label, values, current, onChange, help) => {
@@ -1059,16 +1134,16 @@
                     const supported = o => viable.some(b => b.type === o.Backend && (b.settings || []).some(x => x.setting === o.Report && (x.state === 'TurnOn' || x.state === 'Optional')));
                     runOptions.filter(o => o.Backend && supported(o)).forEach(runOption);
 
-                    list('Input', null, ['Input', 'Format', 'Source'],
-                        speedVideos.map(v => [box(chosenVideos, v.Key, true), v.Name, el('td', v.Input, 'secondaryText'), sourceCell(v)])
-                            .concat([[box(chosenVideos, 'library', !!libraryVideo), libraryCell(update), el('td', libraryVideo ? libraryVideo.Input : '', 'secondaryText'), el('td', 'Library', 'secondaryText')]]));
+                    container.appendChild(el('h3', 'Input', 'sectionTitle'));
+                    const sources = el('div', null, 'hwprobe-sources');
+                    multiSelect(container, 'Input', speedVideos.map(v => ({ key: v.Key, text: v.Name, secondary: v.Input })).concat([{ key: 'library', text: 'Library video', secondary: libraryVideo ? libraryVideo.Name : 'A movie or episode' }]), chosenVideos, () => { sourceLines(sources, update); update(); })
+                        .appendChild(sources);
+                    sourceLines(sources, update);
                     container.appendChild(el('h3', 'Output', 'sectionTitle'));
-                    container.appendChild(el('div', 'Every selected codec at every selected quality is made from every selected input, as a player asks for it.', 'fieldDescription'));
-                    container.appendChild(chips(speedCodecs.map(c => checkbox(c.Name, chosenCodecs.has(c.Key), pick(chosenCodecs, c.Key)))
-                        .concat(speedOutputs.filter(o => o.DecodeOnly).map(o => checkbox(o.Label, chosenCodecs.has(o.Key), pick(chosenCodecs, o.Key)))), 'hwprobe-fixed'));
-                    container.appendChild(el('h3', 'Quality', 'sectionTitle'));
-                    container.appendChild(el('div', 'The player\u2019s quality choices. Jellyfin picks the output size from the quality and codec; the results show it.', 'fieldDescription'));
-                    container.appendChild(chips(speedQualities.map(q => checkbox(q.Name, chosenQualities.has(q.Key), pick(chosenQualities, q.Key))), 'hwprobe-fixed'));
+                    multiSelect(container, 'Codec', speedCodecs.map(c => ({ key: c.Key, text: c.Name })).concat(speedOutputs.filter(o => o.DecodeOnly).map(o => ({ key: o.Key, text: o.Label }))), chosenCodecs, () => update())
+                        .appendChild(el('div', 'Every selected codec at every selected quality is made from every selected input, as a player asks for it.', 'fieldDescription'));
+                    multiSelect(container, 'Quality', speedQualities.map(q => ({ key: q.Key, text: q.Name })), chosenQualities, () => update())
+                        .appendChild(el('div', 'The player\u2019s quality choices. Jellyfin picks the output size from the quality and codec; the results show it.', 'fieldDescription'));
 
                     container.appendChild(el('h3', 'Transcoding Settings', 'sectionTitle'));
                     runOptions.filter(o => !o.Backend).forEach(runOption);
