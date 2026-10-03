@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Transcoding Diagnostics</title>
+    <title>HwProbe</title>
 </head>
 <body>
     <div id="HwProbeConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-button,emby-checkbox,emby-select,emby-input">
@@ -97,7 +97,7 @@
         </style>
         <div data-role="content">
             <div class="content-primary">
-                <h1>Transcoding Diagnostics</h1>
+                <h1>HwProbe</h1>
                 <div class="emby-tabs-slider hwprobe-tabbar" role="tablist">
                     <button is="emby-button" type="button" role="tab" id="hwprobeTabProbe" aria-controls="hwprobeProbeTab" aria-selected="true" class="emby-tab-button emby-button emby-tab-button-active"><div class="emby-button-foreground">Hardware Probe</div></button>
                     <button is="emby-button" type="button" role="tab" id="hwprobeTabSettings" aria-controls="hwprobeSettingsTab" aria-selected="false" class="emby-tab-button emby-button"><div class="emby-button-foreground">Recommended Settings</div></button>
@@ -1753,7 +1753,7 @@
                     return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Status'), dataType: 'json' }).then(s => {
                         loadedVersion = loadedVersion || s.HwProbeVersion;
                         if (s.HwProbeVersion && s.HwProbeVersion !== loadedVersion) {
-                            setMessage('Transcoding Diagnostics was updated. Reload the page to see the new version. ');
+                            setMessage('HwProbe was updated. Reload the page to see the new version. ');
                             messageText.appendChild(action('Reload', () => location.reload(), 'raised'));
                         }
                         setRunning(s.State === 'Running');

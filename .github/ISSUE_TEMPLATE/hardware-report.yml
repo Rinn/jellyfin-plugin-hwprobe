@@ -1,5 +1,5 @@
 name: Hardware report
-description: Transcoding Diagnostics results and diagnostics from a server.
+description: HwProbe results and diagnostics from a server.
 body:
   - type: markdown
     attributes:
