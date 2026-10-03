@@ -17,4 +17,7 @@ public enum SpeedPhase
 
     /// <summary>Cancelled; its ffmpeg runs are stopping.</summary>
     Cancelling,
+
+    /// <summary>Waiting while the server transcodes; an interrupted measurement starts again when it ends.</summary>
+    Deferring,
 }

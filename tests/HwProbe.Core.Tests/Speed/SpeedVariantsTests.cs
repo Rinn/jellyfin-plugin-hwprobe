@@ -59,7 +59,7 @@ public sealed class SpeedVariantsTests
         }
 
         Assert.Equal((null, 20, true, "text"), (SpeedSettingsOptions.Apply(new SpeedSettings { EncoderPreset = "fast" }, "EncoderPreset", "auto")!.EncoderPreset, SpeedSettingsOptions.Apply(new SpeedSettings(), "H264Crf", "20")!.H264Crf, SpeedSettingsOptions.Apply(new SpeedSettings(), "DeinterlaceMethod", "bwdif")!.Bwdif, SpeedSettingsOptions.Apply(new SpeedSettings(), "BurnIn", "text")!.BurnIn));
-        Assert.Null(SpeedSettingsOptions.Apply(new SpeedSettings(), "Tonemap", "true"));
+        Assert.Null(SpeedSettingsOptions.Apply(new SpeedSettings(), "Nonsense", "true"));
     }
 
     /// <summary>Video and output keys are unique, the defaults exist, and a test is keyed video|output.</summary>

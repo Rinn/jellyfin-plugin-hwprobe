@@ -85,6 +85,7 @@ public sealed class SpeedMeterTests
         Assert.Equal(130, measured.Fps!.Value, 1);
         Assert.Equal(expected, measured.Streams);
         Assert.StartsWith("Time limit reached", measured.Note, StringComparison.Ordinal);
+        Assert.True(measured.Interrupted);
         Assert.Equal(2 + runsAllowed, host.Copies.Count);
     }
 
@@ -130,7 +131,9 @@ public sealed class SpeedMeterTests
 
         Assert.Equal(2, slow.Fps!.Value, 1);
         Assert.Equal(0, slow.Streams);
+        Assert.True(slow.Interrupted);
         Assert.Null(broken.Fps);
+        Assert.False(broken.Interrupted);
         Assert.Equal("ffmpeg exited with 1: No such filter: 'scale_vt'", broken.Note);
     }
 

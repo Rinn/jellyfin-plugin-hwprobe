@@ -31,6 +31,25 @@ public static class EncodingSettings
         [nameof(EncodingOptions.EnableTonemapping)] = (o => o.EnableTonemapping, (o, v) => o.EnableTonemapping = v),
         [nameof(EncodingOptions.EnableVppTonemapping)] = (o => o.EnableVppTonemapping, (o, v) => o.EnableVppTonemapping = v),
         [nameof(EncodingOptions.EnableVideoToolboxTonemapping)] = (o => o.EnableVideoToolboxTonemapping, (o, v) => o.EnableVideoToolboxTonemapping = v),
+        [nameof(EncodingOptions.EnableAudioVbr)] = (o => o.EnableAudioVbr, (o, v) => o.EnableAudioVbr = v),
+        [nameof(EncodingOptions.DeinterlaceDoubleRate)] = (o => o.DeinterlaceDoubleRate, (o, v) => o.DeinterlaceDoubleRate = v),
+    };
+
+    // Values a performance test can suggest, kept as strings in the forms the enums and invariant numbers print.
+    private static readonly Dictionary<string, (Func<EncodingOptions, string> Get, Action<EncodingOptions, string> Set)> _values = new(StringComparer.Ordinal)
+    {
+        [nameof(EncodingOptions.EncoderPreset)] = (o => o.EncoderPreset.ToString(), (o, v) => o.EncoderPreset = Enum.Parse<EncoderPreset>(v)),
+        [nameof(EncodingOptions.EncodingThreadCount)] = (o => Whole(o.EncodingThreadCount), (o, v) => o.EncodingThreadCount = int.Parse(v, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture)),
+        [nameof(EncodingOptions.H264Crf)] = (o => Whole(o.H264Crf), (o, v) => o.H264Crf = int.Parse(v, NumberStyles.None, CultureInfo.InvariantCulture)),
+        [nameof(EncodingOptions.H265Crf)] = (o => Whole(o.H265Crf), (o, v) => o.H265Crf = int.Parse(v, NumberStyles.None, CultureInfo.InvariantCulture)),
+        [nameof(EncodingOptions.TonemappingAlgorithm)] = (o => o.TonemappingAlgorithm.ToString(), (o, v) => o.TonemappingAlgorithm = Enum.Parse<TonemappingAlgorithm>(v)),
+        [nameof(EncodingOptions.TonemappingMode)] = (o => o.TonemappingMode.ToString(), (o, v) => o.TonemappingMode = Enum.Parse<TonemappingMode>(v)),
+        [nameof(EncodingOptions.TonemappingRange)] = (o => o.TonemappingRange.ToString(), (o, v) => o.TonemappingRange = Enum.Parse<TonemappingRange>(v)),
+        [nameof(EncodingOptions.TonemappingDesat)] = (o => Real(o.TonemappingDesat), (o, v) => o.TonemappingDesat = ParseReal(v)),
+        [nameof(EncodingOptions.TonemappingPeak)] = (o => Real(o.TonemappingPeak), (o, v) => o.TonemappingPeak = ParseReal(v)),
+        [nameof(EncodingOptions.TonemappingParam)] = (o => Real(o.TonemappingParam), (o, v) => o.TonemappingParam = ParseReal(v)),
+        [nameof(EncodingOptions.DownMixStereoAlgorithm)] = (o => o.DownMixStereoAlgorithm.ToString(), (o, v) => o.DownMixStereoAlgorithm = Enum.Parse<DownMixStereoAlgorithms>(v)),
+        [nameof(EncodingOptions.DownMixAudioBoost)] = (o => Real(o.DownMixAudioBoost), (o, v) => o.DownMixAudioBoost = ParseReal(v)),
     };
 
     /// <summary>Reports whether a key names a value HwProbe may change.</summary>
@@ -40,6 +59,7 @@ public static class EncodingSettings
     {
         ArgumentNullException.ThrowIfNull(key);
         return _flags.ContainsKey(key)
+            || _values.ContainsKey(key)
             || (key.StartsWith(CodecPrefix, StringComparison.Ordinal) && key.Length > CodecPrefix.Length)
             || key is nameof(EncodingOptions.HardwareAccelerationType) or nameof(EncodingOptions.VaapiDevice) or nameof(EncodingOptions.QsvDevice);
     }
@@ -55,6 +75,11 @@ public static class EncodingSettings
         if (_flags.TryGetValue(key, out var flag))
         {
             return Format(flag.Get(options));
+        }
+
+        if (_values.TryGetValue(key, out var known))
+        {
+            return known.Get(options);
         }
 
         if (key.StartsWith(CodecPrefix, StringComparison.Ordinal))
@@ -86,6 +111,12 @@ public static class EncodingSettings
             return;
         }
 
+        if (_values.TryGetValue(key, out var known))
+        {
+            known.Set(options, value);
+            return;
+        }
+
         if (key.StartsWith(CodecPrefix, StringComparison.Ordinal))
         {
             var codec = key[CodecPrefix.Length..];
@@ -114,4 +145,19 @@ public static class EncodingSettings
     /// <param name="value">The flag.</param>
     /// <returns><c>true</c> or <c>false</c>.</returns>
     public static string Format(bool value) => value ? "true" : "false";
+
+    /// <summary>Formats a whole number invariantly.</summary>
+    /// <param name="value">The number.</param>
+    /// <returns>The text.</returns>
+    private static string Whole(int value) => value.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Formats a number invariantly.</summary>
+    /// <param name="value">The number.</param>
+    /// <returns>The text.</returns>
+    private static string Real(double value) => value.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Parses an invariant number.</summary>
+    /// <param name="value">The text.</param>
+    /// <returns>The number.</returns>
+    private static double ParseReal(string value) => double.Parse(value, NumberStyles.Float, CultureInfo.InvariantCulture);
 }

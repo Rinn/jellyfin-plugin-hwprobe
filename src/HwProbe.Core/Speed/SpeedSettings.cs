@@ -54,4 +54,31 @@ public sealed record SpeedSettings
 
     /// <summary>Gets a value indicating whether the deinterlacer is BWDIF rather than YADIF.</summary>
     public bool Bwdif { get; init; }
+
+    /// <summary>Gets a value indicating whether VideoToolbox tone mapping is on.</summary>
+    public bool VideoToolboxTonemap { get; init; }
+
+    /// <summary>Gets the tone mapping algorithm, as Jellyfin's <c>TonemappingAlgorithm</c> names it.</summary>
+    public string TonemapAlgorithm { get; init; } = "bt2390";
+
+    /// <summary>Gets the tone mapping mode.</summary>
+    public string TonemapMode { get; init; } = "auto";
+
+    /// <summary>Gets the tone mapping range.</summary>
+    public string TonemapRange { get; init; } = "auto";
+
+    /// <summary>Gets the tone mapping desaturation.</summary>
+    public double TonemapDesat { get; init; }
+
+    /// <summary>Gets the tone mapping peak.</summary>
+    public double TonemapPeak { get; init; } = 100;
+
+    /// <summary>Gets the tone mapping parameter.</summary>
+    public double TonemapParam { get; init; }
+
+    /// <summary>Gets the stereo downmix algorithm, as Jellyfin's <c>DownMixStereoAlgorithms</c> names it.</summary>
+    public string DownmixAlgorithm { get; init; } = "None";
+
+    /// <summary>Gets the audio boost when downmixing.</summary>
+    public double DownmixBoost { get; init; } = 2;
 }

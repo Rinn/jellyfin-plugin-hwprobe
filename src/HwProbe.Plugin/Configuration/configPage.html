@@ -176,6 +176,8 @@
                 let speedProgress = null;
                 let speedMethod = null;
                 let speedRepeats = 1;
+                let speedReuse = false;
+                let speedDefer = true;
                 let speedTimeLimit = null;
                 // Null measures with the server's own thread count.
                 // Run options chosen on the page, by catalog key; one left out keeps the server's setting.
@@ -1099,6 +1101,70 @@
                     } else if (!speedProgress) {
                         speedResults.appendChild(el('p', 'No performance tests yet.', 'secondaryText'));
                     }
+                    if (shown && !speedProgress) {
+                        speedResults.appendChild(renderSuggestions());
+                    }
+                }
+
+                // A catalog option's value as its field shows it.
+                function optionValueText(key, value) {
+                    const option = runOptions.find(o => o.Key === key);
+                    const choice = option && option.Choices ? option.Choices.find(c => c.Key === value) : null;
+                    return choice ? choice.Label : value === 'true' ? 'On' : value === 'false' ? 'Off' : value;
+                }
+
+                function renderSuggestions() {
+                    const div = el('div');
+                    ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedSuggestions', speedViewing ? { id: speedViewing } : {}), dataType: 'json' }).then(list => {
+                        if (!list.length) {
+                            return;
+                        }
+                        heading(div, 'Suggestions');
+                        const table = el('table');
+                        const configured = encoding && encoding.HardwareAccelerationType;
+                        for (const s of list) {
+                            const text = el('td');
+                            const option = s.Setting ? runOptions.find(o => o.Key === s.Setting) : null;
+                            const label = option ? option.Label : s.Setting;
+                            const percent = s.Gain === null || s.Gain === undefined ? '' : Math.round(Math.abs(s.Gain) * 100) + '%';
+                            let actionButton = null;
+                            let title = '';
+                            let reason = '';
+                            const backendName = t => t === 'none' ? 'Software' : names[t] || t;
+                            if (s.Kind === 'FastestBackend') {
+                                title = 'Hardware acceleration: ' + backendName(s.Type);
+                                reason = !configured || configured === 'none'
+                                    ? 'Works on this server; a hardware backend draws less power than software for the same work.'
+                                    : 'The fastest hardware backend measured.';
+                                actionButton = idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: s.Type, Device: s.Device }));
+                            } else if (s.Kind === 'FallsBehind') {
+                                title = 'Hardware acceleration: ' + backendName(s.Type);
+                                reason = 'Falls behind real time, so a player would buffer.';
+                            } else if (s.Kind === 'FasterSetting') {
+                                title = label + ': ' + optionValueText(s.Setting, s.Value);
+                                reason = percent + ' faster than ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + (s.LowerQuality ? ', at lower quality.' : '.');
+                                actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }));
+                            } else if (s.Kind === 'HigherQuality') {
+                                title = label + ': ' + optionValueText(s.Setting, s.Value);
+                                reason = 'Better quality than ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + '; at most ' + percent + ' slower, still ' + s.Speed.toFixed(1) + '\u00d7 real time.';
+                                actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }));
+                            }
+                            text.appendChild(el('div', title));
+                            text.appendChild(el('div', reason, 'secondaryText'));
+                            text.appendChild(el('div', s.Outputs.join('; '), 'secondaryText hwprobe-small'));
+                            if (s.TestVideosOnly) {
+                                text.appendChild(el('div', 'Measured on test videos only, which encode faster than real video; measure a film sample or library video to confirm.', 'secondaryText hwprobe-small'));
+                            }
+                            const cell = el('td');
+                            if (actionButton) {
+                                cell.appendChild(actionButton);
+                            }
+                            row(table, [text, cell]);
+                        }
+                        div.appendChild(table);
+                        div.appendChild(el('div', 'Settings are compared between saved runs that differ in that setting alone. Software is never suggested over a working hardware backend.', 'fieldDescription'));
+                    }, () => {});
+                    return div;
                 }
 
                 // Searches movies and episodes through Jellyfin's own Items API; the server describes the chosen file.
@@ -1272,10 +1338,12 @@
                     container.appendChild(el('h3', 'Accuracy and time', 'sectionTitle'));
                     options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });
                     options('Repeats', repeatOptions, speedRepeats, v => { speedRepeats = Number(v); });
+                    options('Earlier results', [['false', 'Measure everything again'], ['true', 'Reuse when the settings match']], String(speedReuse), v => { speedReuse = v === 'true'; }, 'Reuses a measurement from an earlier run with the same input, output, backend, accuracy, repeats, ffmpeg and plugin version, and the same values for the settings that affect it, so a repeated comparison runs faster.');
+                    options('When the server starts transcoding', [['true', 'Pause, then repeat the interrupted measurement'], ['false', 'Keep measuring']], String(speedDefer), v => { speedDefer = v === 'true'; }, 'Pausing stops the measurement running so the transcode has the hardware to itself, waits until nothing is transcoding, then measures it again. Keeping on measures alongside it, which slows both.');
                     options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); }, 'A measurement that reaches the limit stops and reports what it measured.');
 
                     button = action('Measure performance', () => {
-                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, Options: speedSettings, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Backends: [...chosenBackends], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
+                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, ReuseResults: speedReuse, DeferToTranscodes: speedDefer, Options: speedSettings, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Backends: [...chosenBackends], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
                         ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed'), data: JSON.stringify(body), contentType: 'application/json' })
                             .then(() => {
                                 showTab(tabs[3][0]);
@@ -1377,6 +1445,11 @@
                         if (n) {
                             speedCell.appendChild(el('sup', String(n)));
                         }
+                        // One footnote for every reused cell; each cell's date is in its details.
+                        const reused = x.reusedFromUtc ? footnote('Reused from an earlier run with the same settings; point at the value for when it was measured.') : null;
+                        if (reused) {
+                            speedCell.appendChild(el('sup', String(reused)));
+                        }
                         const facts = [];
                         if (speed && !values) {
                             facts.push(speedText + ' real time');
@@ -1389,6 +1462,9 @@
                         }
                         if (x.note) {
                             facts.push(x.note);
+                        }
+                        if (x.reusedFromUtc) {
+                            facts.push('Measured ' + new Date(x.reusedFromUtc).toLocaleString());
                         }
                         speedCell.title = facts.join('. ');
                         return cells;
@@ -1533,9 +1609,11 @@
                         ['enhancedNvdec', onOff(t.enhancedNvdec)],
                         ['preferNativeDecoder', onOff(t.preferNativeDecoder)],
                         ['lowPower', 'H.264 ' + onOff(t.lowPowerH264) + ', HEVC ' + onOff(t.lowPowerHevc)],
-                        ['tonemap', onOff(t.tonemap) + (t.vppTonemap ? ', VPP' : '')],
+                        // Reports from before these settings were recorded have no algorithm or downmix.
+                        ['tonemap', onOff(t.tonemap) + (t.vppTonemap ? ', VPP' : '') + (t.videoToolboxTonemap ? ', VideoToolbox' : '') + (t.tonemapAlgorithm ? ', ' + t.tonemapAlgorithm + ', mode ' + t.tonemapMode + ', range ' + t.tonemapRange + ', desat ' + t.tonemapDesat + ', peak ' + t.tonemapPeak + ', param ' + t.tonemapParam : '')],
                         ['encodingThreadCount', t.encodingThreadCount > 0 ? String(t.encodingThreadCount) : 'Automatic'],
                         ['audioVbr', onOff(t.audioVbr)],
+                        ['downmix', t.downmixAlgorithm ? t.downmixAlgorithm + ', boost ' + t.downmixBoost : 'None'],
                         ['encoderPreset', t.encoderPreset || 'Auto (veryfast)'],
                         ['crf', 'H.265 ' + t.h265Crf + ', H.264 ' + t.h264Crf],
                         ['deinterlace', (t.bwdif ? 'BWDIF' : 'YADIF') + (t.doubleRate ? ', double rate' : '')],
@@ -1548,6 +1626,9 @@
                 function speedProgressText(s) {
                     if (s.Phase === 'Cancelling') {
                         return 'Cancelling\u2026';
+                    }
+                    if (s.Phase === 'Deferring') {
+                        return 'Waiting: the server is transcoding. Measured ' + (s.Done || 0) + ' of ' + s.Total + '; the interrupted measurement runs again when it ends.';
                     }
                     if (s.Phase === 'Paused') {
                         return 'Paused after ' + (s.Done || 0) + ' of ' + s.Total;

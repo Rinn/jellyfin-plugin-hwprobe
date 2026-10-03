@@ -200,6 +200,60 @@ options:
   - { key: EnhancedNvdec, label: Enable enhanced NVDEC decoder, server: EnableEnhancedNvdecDecoder, switch: true }
   - { key: PreferNativeDecoder, label: Prefer OS native DXVA or VA-API hardware decoders, server: PreferSystemNativeHwDecoder, switch: true }
   - { key: VppTonemap, label: Enable VPP Tone mapping, server: EnableVppTonemapping, switch: true }
+  # Tone mapping only changes HDR inputs; the labels and choices are the Transcoding page's (jellyfin-web transcoding.tsx, en-us.json, v12.1).
+  - { key: VideoToolboxTonemap, label: Enable VideoToolbox Tone mapping, server: EnableVideoToolboxTonemapping, switch: true, help: Only HDR inputs are tone mapped. }
+  - { key: Tonemap, label: Enable Tone mapping, server: EnableTonemapping, switch: true }
+  - key: TonemapAlgorithm
+    label: Tone mapping algorithm
+    server: TonemappingAlgorithm
+    choices:
+      - { key: none, label: None }
+      - { key: clip, label: Clip }
+      - { key: linear, label: Linear }
+      - { key: gamma, label: Gamma }
+      - { key: reinhard, label: Reinhard }
+      - { key: hable, label: Hable }
+      - { key: mobius, label: Mobius }
+      - { key: bt2390, label: BT.2390 }
+  - key: TonemapMode
+    label: Tone mapping mode
+    server: TonemappingMode
+    choices:
+      - { key: auto, label: Auto }
+      - { key: max, label: MAX }
+      - { key: rgb, label: RGB }
+      - { key: lum, label: LUM }
+      - { key: itp, label: ITP }
+  - key: TonemapRange
+    label: Tone mapping range
+    server: TonemappingRange
+    choices:
+      - { key: auto, label: Auto }
+      - { key: tv, label: TV }
+      - { key: pc, label: PC }
+  # The page takes any number for these three; the choices are the default and a few others.
+  - key: TonemapDesat
+    label: Tone mapping desat
+    server: TonemappingDesat
+    choices:
+      - { key: "0", label: "0" }
+      - { key: "0.5", label: "0.5" }
+      - { key: "1", label: "1" }
+      - { key: "2", label: "2" }
+  - key: TonemapPeak
+    label: Tone mapping peak
+    server: TonemappingPeak
+    choices:
+      - { key: "100", label: "100" }
+      - { key: "400", label: "400" }
+      - { key: "1000", label: "1000" }
+  - key: TonemapParam
+    label: Tone mapping param
+    server: TonemappingParam
+    choices:
+      - { key: "0", label: "0" }
+      - { key: "0.5", label: "0.5" }
+      - { key: "1", label: "1" }
   # EncodingHelper.GetNumberOfThreads treats Auto (-1) and Max (0) alike: ffmpeg picks (v12.1).
   - key: EncodingThreadCount
     label: Transcoding thread count
@@ -225,6 +279,25 @@ options:
       - { key: "16", label: "16" }
       - { key: "0", label: Max }
   - { key: AudioVbr, label: Enable VBR audio encoding, server: EnableAudioVbr, switch: true }
+  # Downmixing only changes transcoded 5.1 audio.
+  - key: DownmixBoost
+    label: Audio boost when downmixing
+    server: DownMixAudioBoost
+    choices:
+      - { key: "1", label: "1" }
+      - { key: "1.5", label: "1.5" }
+      - { key: "2", label: "2" }
+      - { key: "3", label: "3" }
+  - key: DownmixAlgorithm
+    label: Stereo Downmix Algorithm
+    server: DownMixStereoAlgorithm
+    help: Only transcoded 5.1 audio is downmixed.
+    choices:
+      - { key: None, label: None }
+      - { key: Dave750, label: Dave750 }
+      - { key: NightmodeDialogue, label: NightmodeDialogue }
+      - { key: Rfc7845, label: RFC7845 }
+      - { key: Ac4, label: AC-4 }
   # Auto is veryfast for VOD (DynamicHlsController.DefaultVodEncoderPreset, v12.1).
   - key: EncoderPreset
     label: Encoding preset
@@ -313,6 +386,7 @@ settings:
   preferNativeDecoder: OS native decoders
   lowPower: Intel low power
   tonemap: Tone mapping
+  downmix: Stereo downmix
   encodingThreadCount: Transcoding threads
   audioVbr: VBR audio
   encoderPreset: Encoding preset

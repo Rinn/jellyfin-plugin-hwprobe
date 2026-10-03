@@ -161,6 +161,26 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     public async Task<ActionResult> DeleteSpeedHistoryAsync(CancellationToken cancellationToken) =>
         Deleted(await service.DeleteSpeedHistoryAsync(null, cancellationToken));
 
+    /// <summary>Returns suggestions drawn from a performance test and the runs saved with this version and ffmpeg.</summary>
+    /// <param name="id">The run shown, or none for the latest.</param>
+    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <returns>The suggestions; empty when there's no such run.</returns>
+    [HttpGet("SpeedSuggestions")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<SpeedSuggestion>>> SpeedSuggestionsAsync([FromQuery] string? id, CancellationToken cancellationToken) =>
+        Ok(await service.SpeedSuggestionsAsync(id, cancellationToken));
+
+    /// <summary>Applies a setting a performance test suggested.</summary>
+    /// <param name="change">The option and value.</param>
+    /// <param name="cancellationToken">Cancels the write.</param>
+    /// <returns>200 with what changed; 400 when it isn't suggested; 409 while a change is running.</returns>
+    [HttpPost("ApplyMeasured")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ApplyResult>> ApplyMeasuredAsync([FromBody] MeasuredChange change, CancellationToken cancellationToken) =>
+        ToResponse(await settings.ApplyMeasuredAsync(change, UserName(), cancellationToken));
+
     /// <summary>Returns the size of the cached test clips and samples.</summary>
     /// <returns>Bytes and files.</returns>
     [HttpGet("Cache")]

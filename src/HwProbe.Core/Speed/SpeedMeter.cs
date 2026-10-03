@@ -41,30 +41,35 @@ public static class SpeedMeter
         ArgumentNullException.ThrowIfNull(launch);
 
         var single = (await launch(1, Content, cancellationToken))[0];
+        var longerCutOff = false;
         var fps = Fps(single);
         if (single.Status == FfmpegRunStatus.Exited && single.ExitCode == 0 && single.Duration < _shortest && single.Duration > TimeSpan.Zero)
         {
             // Enough content to take about as long as the content plays. Start-up, and restarting a short looped
             // clip (slow with NVIDIA's cuvid decoders), only slow a run down, so the faster run is the closer figure.
             var longer = TimeSpan.FromSeconds(Math.Min(Content.TotalSeconds * Content.TotalSeconds / single.Duration.TotalSeconds, _longestContent.TotalSeconds));
-            var longerFps = Fps((await launch(1, longer, cancellationToken))[0]);
+            var longerRun = (await launch(1, longer, cancellationToken))[0];
+            var longerFps = Fps(longerRun);
             fps = fps is { } first && longerFps is { } second ? Math.Max(first, second) : fps ?? longerFps;
+            longerCutOff = longerRun.Status == FfmpegRunStatus.TimedOut;
         }
 
         if (fps is null)
         {
-            return new SpeedMeasurement(null, null, false, Failure(single));
+            return new SpeedMeasurement(null, null, false, Failure(single)) { Interrupted = single.Status == FfmpegRunStatus.TimedOut };
         }
 
+        // A single copy killed by its timeout gives fps from the frames it reached.
+        var cutOff = single.Status == FfmpegRunStatus.TimedOut || longerCutOff;
         if (!countStreams)
         {
-            return new SpeedMeasurement(fps, null, false, null);
+            return new SpeedMeasurement(fps, null, false, null) { Interrupted = cutOff };
         }
 
         // One copy's speed doesn't say how many keep up together: copies share the CPU, and a GPU often runs several sessions faster in total than one.
         if (method == SpeedMethod.Quick)
         {
-            return new SpeedMeasurement(fps, null, false, null);
+            return new SpeedMeasurement(fps, null, false, null) { Interrupted = cutOff };
         }
 
         var start = Math.Clamp((int)Math.Floor(fps.Value / frameRate), 1, MaxStreams);
@@ -98,15 +103,15 @@ public static class SpeedMeter
         catch (TimeoutException)
         {
             return keptUp > 0
-                ? new SpeedMeasurement(fps, keptUp, false, string.Create(CultureInfo.InvariantCulture, $"Time limit reached: at least {keptUp}."))
-                : new SpeedMeasurement(fps, null, false, "Time limit reached before streams were counted.");
+                ? new SpeedMeasurement(fps, keptUp, false, string.Create(CultureInfo.InvariantCulture, $"Time limit reached: at least {keptUp}.")) { Interrupted = true }
+                : new SpeedMeasurement(fps, null, false, "Time limit reached before streams were counted.") { Interrupted = true };
         }
 
         // Copies that fail rather than fall behind usually hit the driver's limit on sessions at once (NVENC has one).
         var note = erroredAt == streams + 1
             ? string.Create(CultureInfo.InvariantCulture, $"{erroredAt} at once failed to start, likely the driver's limit on sessions rather than speed.")
             : null;
-        return new SpeedMeasurement(fps, streams, streams == MaxStreams, note);
+        return new SpeedMeasurement(fps, streams, streams == MaxStreams, note) { Interrupted = cutOff };
     }
 
     /// <summary>Counts the streams that keep up: doubling from a starting count until they fall behind, then narrowing down.</summary>

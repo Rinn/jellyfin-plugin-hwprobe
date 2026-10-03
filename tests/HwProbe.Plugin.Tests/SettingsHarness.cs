@@ -1,5 +1,6 @@
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Report;
+using Jellyfin.Plugin.HwProbe.Core.Speed;
 using Jellyfin.Plugin.HwProbe.Settings;
 using MediaBrowser.Model.Configuration;
 using MediaBrowser.Model.Entities;
@@ -30,8 +31,14 @@ internal sealed class SettingsHarness : IDisposable
             () => EncoderPath,
             HistoryPath,
             TimeProvider.System,
-            NullLogger.Instance);
+            NullLogger.Instance)
+        {
+            Suggestions = (_, _) => Task.FromResult(Suggestions),
+        };
     }
+
+    /// <summary>Gets or sets what the performance tests suggest.</summary>
+    public IReadOnlyList<SpeedSuggestion> Suggestions { get; set; } = [];
 
     /// <summary>Gets where the history is kept.</summary>
     public string HistoryPath => Path.Combine(_directory, "history.json");

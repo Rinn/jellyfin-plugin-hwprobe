@@ -38,6 +38,18 @@ public sealed record SpeedResult(HwType Type, string Device, string Test, string
     /// <summary>Gets the size Jellyfin makes, e.g. <c>720p</c>, or null for a decode test or when not measured.</summary>
     public string? OutputSize { get; init; }
 
+    /// <summary>Gets a hash of the ffmpeg command measured, or null when nothing ran; equal hashes mean a setting didn't change the command.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Command { get; init; }
+
+    /// <summary>Gets a value indicating whether a run was cut off by a timeout or the time limit; such a result isn't saved for reuse.</summary>
+    [JsonIgnore]
+    public bool Interrupted { get; init; }
+
+    /// <summary>Gets when an earlier run measured it, when it was reused rather than measured again, or null.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DateTimeOffset? ReusedFromUtc { get; init; }
+
     /// <summary>Gets a value indicating whether it's planned and not measured yet; only in a running run's results.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool Pending { get; init; }

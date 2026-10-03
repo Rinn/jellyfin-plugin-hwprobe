@@ -45,4 +45,23 @@ public sealed class SpeedPauseTests
         await waiting;
         Assert.False(pause.IsWaiting);
     }
+
+    /// <summary>A run held for a transcode waits until it ends, counts the wait as paused, and doesn't hold without a busy check.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task HoldsWhileBusy()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var checks = 0;
+        var pause = new SpeedPause(TimeProvider.System) { Busy = () => Interlocked.Increment(ref checks) < 4, BusyCheck = TimeSpan.FromMilliseconds(5) };
+
+        var holding = pause.HoldWhileBusyAsync(ct);
+        Assert.True(pause.IsHolding);
+        await holding;
+
+        Assert.False(pause.IsHolding);
+        Assert.True(checks >= 4);
+        Assert.True(pause.Paused > TimeSpan.Zero);
+        await new SpeedPause(TimeProvider.System).HoldWhileBusyAsync(ct);
+    }
 }

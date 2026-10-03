@@ -27,7 +27,9 @@ internal static class SpeedVariants
             VideoBitrate = test.DecodeOnly ? null : test.Bitrate,
             FullQuality = true,
             Tonemap = cell.Tonemap && settings.Tonemap,
-            VppTonemap = cell.Tonemap && settings.Tonemap && settings.VppTonemap,
+
+            // EncodingHelper.IsIntelVppTonemapAvailable and IsVideoToolboxTonemapAvailable don't check EnableTonemapping (v12.1).
+            VppTonemap = test.Tonemap && settings.VppTonemap,
             EncoderPreset = settings.EncoderPreset,
             H264Crf = settings.H264Crf,
             H265Crf = settings.H265Crf,
@@ -41,6 +43,15 @@ internal static class SpeedVariants
             EncodingThreadCount = settings.EncodingThreadCount,
             PreferNativeDecoder = settings.PreferNativeDecoder,
             EnhancedNvdec = settings.EnhancedNvdec,
+            VideoToolboxTonemap = test.Tonemap && settings.VideoToolboxTonemap,
+            TonemapAlgorithm = settings.TonemapAlgorithm,
+            TonemapMode = settings.TonemapMode,
+            TonemapRange = settings.TonemapRange,
+            TonemapDesat = settings.TonemapDesat,
+            TonemapPeak = settings.TonemapPeak,
+            TonemapParam = settings.TonemapParam,
+            DownmixAlgorithm = settings.DownmixAlgorithm,
+            DownmixBoost = settings.DownmixBoost,
             LowPower = output switch
             {
                 "h264" => settings.LowPowerH264,

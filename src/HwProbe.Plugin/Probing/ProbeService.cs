@@ -67,8 +67,10 @@ public sealed partial class ProbeService : IDisposable
         CurrentFfmpeg = () => (mediaEncoder.EncoderPath, mediaEncoder.EncoderVersion);
         MeasureSpeed = (speed, backends, progress, ct) => RunSpeedEngineAsync(arguments, mediaEncoder, paths, baseline, speed, backends, progress, ct);
         ServerSpeedSettings = () => SettingsFrom(config.GetEncodingOptions());
+        ServerBackend = () => BackendFrom(config.GetEncodingOptions());
         FindFile = files.Find;
         FixturesDirectory = ServerEngineOptions(mediaEncoder, paths).FixturesDirectory;
+        SpeedResultsDirectory = SpeedEngine.ResultCacheFor(ServerEngineOptions(mediaEncoder, paths)).Directory;
     }
 
     /// <summary>Initializes a new instance of the <see cref="ProbeService"/> class with injected behaviour.</summary>
@@ -101,6 +103,7 @@ public sealed partial class ProbeService : IDisposable
                 }
 
                 var phase = _speedCancel?.IsCancellationRequested == true ? SpeedPhase.Cancelling
+                    : pause.IsHolding ? SpeedPhase.Deferring
                     : pause.IsPaused ? (pause.IsWaiting ? SpeedPhase.Paused : SpeedPhase.Pausing)
                     : _measuringSince is null ? SpeedPhase.Preparing
                     : SpeedPhase.Measuring;
@@ -124,11 +127,17 @@ public sealed partial class ProbeService : IDisposable
     /// <summary>Gets where probes and speed runs cache their clips, or null when unknown.</summary>
     internal string? FixturesDirectory { get; init; }
 
+    /// <summary>Gets where measurements are saved for reuse, or null when unset.</summary>
+    internal string? SpeedResultsDirectory { get; init; }
+
     /// <summary>Gets the lookup from a library item to its file.</summary>
     internal Func<Guid, SpeedFile?> FindFile { get; init; } = _ => null;
 
     /// <summary>Gets the server's encoding settings, as a speed run starts from them.</summary>
     internal Func<SpeedSettings> ServerSpeedSettings { get; init; } = () => new SpeedSettings();
+
+    /// <summary>Gets the server's configured backend and device, for suggestions.</summary>
+    internal Func<(HwType Type, string Device)> ServerBackend { get; init; } = () => (HwType.none, string.Empty);
 
     /// <summary>Gets the ffmpeg path and version the server uses now, or null not to compare them.</summary>
     internal Func<(string Path, Version? Version)>? CurrentFfmpeg { get; init; }
@@ -193,7 +202,8 @@ public sealed partial class ProbeService : IDisposable
             return ProbeRunResult.NoReport;
         }
 
-        if (await IsBusyAsync(cancellationToken))
+        // A run that defers to transcodes starts anyway and waits for the transcode to end.
+        if (!request.DeferToTranscodes && await IsBusyAsync(cancellationToken))
         {
             return ProbeRunResult.ServerBusy;
         }
@@ -205,7 +215,7 @@ public sealed partial class ProbeService : IDisposable
 
         List<(HwType, string)> backends = [.. report.Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device))];
         _speedCancel = new CancellationTokenSource();
-        _speedPause = new SpeedPause(_time);
+        _speedPause = new SpeedPause(_time) { Busy = request.DeferToTranscodes ? _isTranscoding : null };
         var settings = ServerSpeedSettings();
         foreach (var (key, value) in request.Options ?? new Dictionary<string, string>())
         {
@@ -461,6 +471,32 @@ public sealed partial class ProbeService : IDisposable
         return new CacheSize(files.Sum(f => f.Length), files.Count);
     }
 
+    /// <summary>Draws suggestions from a run and every saved run this version and ffmpeg made.</summary>
+    /// <param name="id">The run shown, as <see cref="SpeedHistoryAsync"/> lists it, or null for the latest.</param>
+    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <returns>The suggestions; empty when there's no such run.</returns>
+    public async Task<IReadOnlyList<SpeedSuggestion>> SpeedSuggestionsAsync(string? id, CancellationToken cancellationToken)
+    {
+        var shownJson = id is null ? await LatestSpeedJsonAsync(cancellationToken) : await SpeedHistoryJsonAsync(id, cancellationToken);
+        if (shownJson is null || SpeedReportStore.Deserialize(shownJson) is not { } shown)
+        {
+            return [];
+        }
+
+        // Runs from another version or ffmpeg aren't compared: their figures differ for reasons no setting explains.
+        List<SpeedReport> runs = [];
+        foreach (var entry in (await SpeedHistoryAsync(cancellationToken)).Where(h => h.Current))
+        {
+            if (await SpeedHistoryJsonAsync(entry.Id, cancellationToken) is { } json && SpeedReportStore.Deserialize(json) is { } run)
+            {
+                runs.Add(run);
+            }
+        }
+
+        var (type, device) = ServerBackend();
+        return SpeedAdvisor.Advise(shown, runs, type, device, ServerSpeedSettings());
+    }
+
     /// <summary>Lists the cached clips, samples and downloads.</summary>
     /// <returns>The entries; empty when nothing is cached.</returns>
     public IReadOnlyList<CacheEntry> FixtureCacheContents() => Core.Fixtures.FixtureCacheContents.List(FixturesDirectory);
@@ -480,6 +516,12 @@ public sealed partial class ProbeService : IDisposable
             if (FixturesDirectory is { } directory && Directory.Exists(directory))
             {
                 Directory.Delete(directory, recursive: true);
+            }
+
+            // Saved measurements go with the clips they were measured on.
+            if (SpeedResultsDirectory is { } results && Directory.Exists(results))
+            {
+                Directory.Delete(results, recursive: true);
             }
 
             return true;
@@ -537,6 +579,7 @@ public sealed partial class ProbeService : IDisposable
             Backends = request.Backends?.Select(Enum.Parse<HwType>).ToList(),
             Repeats = request.Repeats,
             TimeLimit = request.TimeLimitSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null,
+            ReuseResults = request.ReuseResults,
         };
     }
 
@@ -558,6 +601,27 @@ public sealed partial class ProbeService : IDisposable
         Bwdif = options.DeinterlaceMethod == DeinterlaceMethod.bwdif,
         Tonemap = options.EnableTonemapping,
         EncodingThreadCount = options.EncodingThreadCount,
+        VideoToolboxTonemap = options.EnableVideoToolboxTonemapping,
+        TonemapAlgorithm = options.TonemappingAlgorithm.ToString(),
+        TonemapMode = options.TonemappingMode.ToString(),
+        TonemapRange = options.TonemappingRange.ToString(),
+        TonemapDesat = options.TonemappingDesat,
+        TonemapPeak = options.TonemappingPeak,
+        TonemapParam = options.TonemappingParam,
+        DownmixAlgorithm = options.DownMixStereoAlgorithm.ToString(),
+        DownmixBoost = options.DownMixAudioBoost,
+    };
+
+    /// <summary>Reads the configured backend and its device.</summary>
+    /// <param name="options">The server's encoding options.</param>
+    /// <returns>The backend; the device is empty for backends that don't take one.</returns>
+    private static (HwType Type, string Device) BackendFrom(EncodingOptions options) => options.HardwareAccelerationType switch
+    {
+        HardwareAccelerationType.vaapi => (HwType.vaapi, options.VaapiDevice ?? string.Empty),
+        HardwareAccelerationType.qsv => (HwType.qsv, options.QsvDevice ?? string.Empty),
+
+        // HwType mirrors HardwareAccelerationType value-for-value.
+        var other => ((HwType)(int)other, string.Empty),
     };
 
     /// <summary>Matches a history ID: the UTC time a run finished.</summary>

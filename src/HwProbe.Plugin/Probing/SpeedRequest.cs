@@ -20,4 +20,10 @@ public sealed record SpeedRequest(string Method, IReadOnlyList<string> Videos, I
 
     /// <summary>Gets the library item the <c>library</c> video reads, or null.</summary>
     public Guid? ItemId { get; init; }
+
+    /// <summary>Gets a value indicating whether the run waits while the server transcodes, stopping and later repeating a measurement one interrupts, instead of refusing to start or measuring alongside it.</summary>
+    public bool DeferToTranscodes { get; init; }
+
+    /// <summary>Gets a value indicating whether measurements an earlier run saved with exactly the same settings are reused.</summary>
+    public bool ReuseResults { get; init; }
 }
