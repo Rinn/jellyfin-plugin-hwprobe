@@ -23,4 +23,8 @@ No data leaves the server. Test samples are downloaded only when needed and chec
 
 Tested on Intel (QSV, VAAPI), NVIDIA (NVENC) and Apple (VideoToolbox). AMD, Rockchip and V4L2 are untested on real hardware.
 
-AI-generated with Claude Code. [Building from source](DEVELOPMENT.md) · [GPL-3.0](LICENSE)
+## Disclaimer
+
+AI-generated with Claude Code.
+
+[Building from source](DEVELOPMENT.md) · [GPL-3.0](LICENSE)
