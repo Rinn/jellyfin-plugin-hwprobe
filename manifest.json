@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.12.0.0",
+        "changelog": "Performance tests can reuse earlier measurements with the same settings, measure the tone mapping and stereo downmix settings, and pause while the server transcodes for a player, repeating the interrupted measurement. Test Results suggests a faster hardware backend, flags outputs that fall behind real time, and suggests settings worth changing from saved runs, with Apply and Revert.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.12.0/hwprobe-plugin_0.12.0.0.zip",
+        "checksum": "a14076a44900c82f685197d862f6289d",
+        "timestamp": "2026-10-03T22:43:18Z"
+      },
+      {
         "version": "0.11.0.0",
         "changelog": "Shown as Transcoding Diagnostics. The page has five tabs: Hardware Probe, Recommended Settings, Performance Tests, Test Results and Help. Results can be shown as bars, values or a share of the fastest, and saved runs can be deleted. Help lists the cached test clips; clips no longer used are deleted automatically. Banners and buttons match the dashboard.",
         "targetAbi": "12.1.0.0",
