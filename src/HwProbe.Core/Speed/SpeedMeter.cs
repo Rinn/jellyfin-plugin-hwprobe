@@ -41,14 +41,17 @@ public static class SpeedMeter
         ArgumentNullException.ThrowIfNull(launch);
 
         var single = (await launch(1, Content, cancellationToken))[0];
+        var longerCutOff = false;
         var fps = Fps(single);
         if (single.Status == FfmpegRunStatus.Exited && single.ExitCode == 0 && single.Duration < _shortest && single.Duration > TimeSpan.Zero)
         {
             // Enough content to take about as long as the content plays. Start-up, and restarting a short looped
             // clip (slow with NVIDIA's cuvid decoders), only slow a run down, so the faster run is the closer figure.
             var longer = TimeSpan.FromSeconds(Math.Min(Content.TotalSeconds * Content.TotalSeconds / single.Duration.TotalSeconds, _longestContent.TotalSeconds));
-            var longerFps = Fps((await launch(1, longer, cancellationToken))[0]);
+            var longerRun = (await launch(1, longer, cancellationToken))[0];
+            var longerFps = Fps(longerRun);
             fps = fps is { } first && longerFps is { } second ? Math.Max(first, second) : fps ?? longerFps;
+            longerCutOff = longerRun.Status == FfmpegRunStatus.TimedOut;
         }
 
         if (fps is null)
@@ -57,7 +60,7 @@ public static class SpeedMeter
         }
 
         // A single copy killed by its timeout gives fps from the frames it reached.
-        var cutOff = single.Status == FfmpegRunStatus.TimedOut;
+        var cutOff = single.Status == FfmpegRunStatus.TimedOut || longerCutOff;
         if (!countStreams)
         {
             return new SpeedMeasurement(fps, null, false, null) { Interrupted = cutOff };

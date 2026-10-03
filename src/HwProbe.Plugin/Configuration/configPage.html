@@ -1113,9 +1113,6 @@
                     return choice ? choice.Label : value === 'true' ? 'On' : value === 'false' ? 'Off' : value;
                 }
 
-                // Settings where a slower value gives a better picture; the advisor marks which way a suggestion goes.
-                const qualitySettings = ['EncoderPreset', 'H264Crf', 'H265Crf'];
-
                 function renderSuggestions() {
                     const div = el('div');
                     ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedSuggestions', speedViewing ? { id: speedViewing } : {}), dataType: 'json' }).then(list => {
@@ -1145,7 +1142,7 @@
                                 reason = 'Falls behind real time, so a player would buffer.';
                             } else if (s.Kind === 'FasterSetting') {
                                 title = label + ': ' + optionValueText(s.Setting, s.Value);
-                                reason = percent + ' faster than ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + (qualitySettings.indexOf(s.Setting) !== -1 ? ', at lower quality.' : '.');
+                                reason = percent + ' faster than ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + (s.LowerQuality ? ', at lower quality.' : '.');
                                 actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }));
                             } else if (s.Kind === 'HigherQuality') {
                                 title = label + ': ' + optionValueText(s.Setting, s.Value);

@@ -13,9 +13,11 @@ public static class SpeedAdvisor
     /// <summary>A higher-quality value is suggested only when it keeps at least this multiple of real time, leaving room for a second stream or a busy server.</summary>
     public const double Headroom = 1.5;
 
-    /// <summary>Settings where a slower value gives a better picture, with their values from best quality to fastest.</summary>
+    /// <summary>Settings where one value gives a better picture than another, with their values from best quality to fastest.</summary>
     private static readonly Dictionary<string, string[]> _quality = new(StringComparer.Ordinal)
     {
+        ["DeinterlaceMethod"] = ["bwdif", "yadif"],
+        ["DoubleRate"] = ["true", "false"],
         ["EncoderPreset"] = ["veryslow", "slower", "slow", "medium", "fast", "faster", "veryfast", "superfast", "ultrafast"],
         ["H264Crf"] = [.. Enumerable.Range(0, 52).Select(n => n.ToString(CultureInfo.InvariantCulture))],
         ["H265Crf"] = [.. Enumerable.Range(0, 52).Select(n => n.ToString(CultureInfo.InvariantCulture))],
@@ -82,7 +84,8 @@ public static class SpeedAdvisor
             var best = winners.GroupBy(r => (r.Type, r.Device)).OrderByDescending(g => g.Count()).First();
 
             // On software, any working hardware backend is suggested, however it compares: it draws less power for the same work.
-            List<SpeedResult> beaten = type == HwType.none ? [.. best] : [.. best.Where(w => measured.FirstOrDefault(r => r.Test == w.Test && Configured(r)) is not { } mine || Gain(w, mine) > Noise)];
+            // On hardware, only outputs where the configured backend was measured too, and lost by more than noise.
+            List<SpeedResult> beaten = type == HwType.none ? [.. best] : [.. best.Where(w => measured.FirstOrDefault(r => r.Test == w.Test && Configured(r)) is { } mine && Gain(w, mine) > Noise)];
             if ((best.Key.Type != type || (!string.IsNullOrEmpty(device) && best.Key.Device != device)) && beaten.Count > 0)
             {
                 suggestions.Add(new SpeedSuggestion(SpeedSuggestionKind.FastestBackend, [.. beaten.Select(r => Label(r, shown.Settings))]) { Type = best.Key.Type, Device = best.Key.Device, TestVideosOnly = beaten.All(IsGenerated) });
@@ -130,8 +133,9 @@ public static class SpeedAdvisor
                     continue;
                 }
 
+                // Audio and burned-in subtitles describe the client; they must match too, but aren't suggested.
                 var differs = _values.Where(v => v.Value(a.Settings!) != v.Value(b.Settings!)).Select(v => v.Key).ToList();
-                if (differs.Count != 1)
+                if (differs.Count != 1 || a.Settings!.AudioCopy != b.Settings!.AudioCopy || a.Settings.BurnIn != b.Settings.BurnIn)
                 {
                     continue;
                 }
@@ -140,7 +144,8 @@ public static class SpeedAdvisor
                 foreach (var mine in a.Results.Where(r => r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && configured(r)))
                 {
                     // The same command means the setting doesn't reach this output (CRF on a hardware encoder, presets VideoToolbox maps alike).
-                    if (b.Results.FirstOrDefault(r => r.Test == mine.Test && r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && configured(r)) is { } theirs
+                    // A library test keeps the same key whatever file it read, so the input must match as well.
+                    if (b.Results.FirstOrDefault(r => r.Test == mine.Test && r.Input == mine.Input && r.Video == mine.Video && r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && configured(r)) is { } theirs
                         && (mine.Command is null || mine.Command != theirs.Command))
                     {
                         seen.Add((key, _values[key](a.Settings!), _values[key](b.Settings!), mine.Test, Label(mine, a.Settings), Gain(mine, theirs), Speed(mine), IsGenerated(mine)));
@@ -151,8 +156,9 @@ public static class SpeedAdvisor
 
         foreach (var group in seen.GroupBy(s => (s.Key, s.Value, s.Other)))
         {
+            // Only comparisons with the server's current value say what changing it would do.
             var (key, value, other) = group.Key;
-            if (value == _values[key](server))
+            if (value == _values[key](server) || other != _values[key](server))
             {
                 continue;
             }
@@ -163,7 +169,13 @@ public static class SpeedAdvisor
             var generated = group.All(s => s.Generated);
             if (gains.All(g => g > Noise))
             {
-                yield return new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, outputs) { Setting = key, Value = value, Others = [other], Gain = median, Speed = group.Min(s => s.Speed), TestVideosOnly = generated };
+                // Turning tone mapping off sends HDR colours to SDR players unconverted, which no speed is worth.
+                if (key is "Tonemap" or "VppTonemap" or "VideoToolboxTonemap" && value == "false")
+                {
+                    continue;
+                }
+
+                yield return new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, outputs) { Setting = key, Value = value, Others = [other], Gain = median, Speed = group.Min(s => s.Speed), TestVideosOnly = generated, LowerQuality = IsBetterQuality(key, other, value) };
                 continue;
             }
 

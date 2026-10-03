@@ -110,7 +110,7 @@ public sealed class ArgumentSource : IArgumentSource
             TonemappingParam = cell.TonemapParam ?? defaults.TonemappingParam,
             DownMixStereoAlgorithm = cell.DownmixAlgorithm is null ? defaults.DownMixStereoAlgorithm : Enum.Parse<DownMixStereoAlgorithms>(cell.DownmixAlgorithm),
             DownMixAudioBoost = cell.DownmixBoost ?? defaults.DownMixAudioBoost,
-            EnableVppTonemapping = cell.Tonemap && cell.VppTonemap,
+            EnableVppTonemapping = cell.VppTonemap,
             PreferSystemNativeHwDecoder = cell.PreferNativeDecoder,
             EnableEnhancedNvdecDecoder = cell.EnhancedNvdec,
             DeinterlaceMethod = cell.Bwdif ? DeinterlaceMethod.bwdif : DeinterlaceMethod.yadif,

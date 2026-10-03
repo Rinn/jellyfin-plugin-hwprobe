@@ -103,9 +103,12 @@ public sealed class SpeedPause(TimeProvider time)
 
         try
         {
-            while (busy())
+            // Two idle checks in a row: a client that logs in again has a session without the transcode for about a second.
+            var idle = 0;
+            while (idle < 2)
             {
                 await Task.Delay(BusyCheck, time, cancellationToken);
+                idle = busy() ? 0 : idle + 1;
             }
         }
         finally

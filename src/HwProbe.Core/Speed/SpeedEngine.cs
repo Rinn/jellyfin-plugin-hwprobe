@@ -106,10 +106,20 @@ public sealed class SpeedEngine : IDisposable
             var names = tests.Where(t => t.Fixture is not null).GroupBy(t => t.Fixture!.FileName).ToDictionary(g => g.Key, g => g.First().Name ?? g.Key, StringComparer.Ordinal);
             var resultsCache = ResultCacheFor(options);
             resultsCache.Prune(caps.VersionLine);
+            if (speed.Pause is { } waitFirst)
+            {
+                await waitFirst.HoldWhileBusyAsync(cancellationToken);
+            }
+
             var clips = await BuildClipsAsync(options, caps, tests, speed.Settings, progress is null ? null : new StepProgress(step => progress.Report(new SpeedProgress(0, total, null) { Preparing = Preparing(step, names) })), cancellationToken);
             progress?.Report(new SpeedProgress(0, total, null));
             foreach (var (type, device) in measured)
             {
+                if (speed.Pause is { } beforeOpen)
+                {
+                    await beforeOpen.HoldWhileBusyAsync(cancellationToken);
+                }
+
                 var traits = await OpenAsync(options, type, device, host.Os, cancellationToken);
                 var source = traits is null ? null : _arguments.Create(caps, traits);
                 foreach (var test in tests)
@@ -122,7 +132,7 @@ public sealed class SpeedEngine : IDisposable
                     var missing = MissingClip(test, speed.Settings, clips);
                     var result = source is null ? new SpeedResult(type, device, test.Key, string.Empty, null, null, false, "The device didn't open.")
                         : missing is not null ? new SpeedResult(type, device, test.Key, string.Empty, null, null, false, missing)
-                        : await MeasureDeferringAsync(speed.Pause, ct => MeasureOrReuseAsync(options, speed, caps.VersionLine, resultsCache, source, type, device, test, SpeedVariants.ForBackend(type, test, SpeedVariants.Base(test, speed.Settings, Paths(clips)), speed.Settings), ct), cancellationToken);
+                        : await MeasureOrReuseAsync(options, speed, caps.VersionLine, resultsCache, source, type, device, test, SpeedVariants.ForBackend(type, test, SpeedVariants.Base(test, speed.Settings, Paths(clips)), speed.Settings), cancellationToken);
                     var described = Describe(test, result);
                     results.Add(described);
                     progress?.Report(new SpeedProgress(++done, total, described));
@@ -164,6 +174,9 @@ public sealed class SpeedEngine : IDisposable
         while (true)
         {
             await pause.HoldWhileBusyAsync(cancellationToken);
+
+            // A pause asked for while deferring takes effect before measuring again.
+            await pause.WaitAsync(cancellationToken);
             using var interrupt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var watch = Task.Run(
                 async () =>
@@ -337,22 +350,49 @@ public sealed class SpeedEngine : IDisposable
     /// <returns>The result.</returns>
     private async Task<SpeedResult> MeasureOrReuseAsync(EngineOptions options, SpeedOptions speed, string ffmpegVersion, SpeedResultCache cache, IArgumentSource source, HwType type, string device, SpeedTest test, ProbeCell cell, CancellationToken cancellationToken)
     {
-        var key = SpeedResultCache.Key(options.Ffmpeg.Path, ffmpegVersion, type, device, test, cell, speed);
-        if (speed.ReuseResults && await cache.GetAsync(key, cancellationToken) is { } earlier)
+        // Keyed on the command Jellyfin's EncodingHelper generates, so any setting, server or plugin change that alters it misses.
+        var command = await CommandAsync(source, type, device, test, cell, cancellationToken);
+        var key = command is null ? null : SpeedResultCache.Key(options.Ffmpeg.Path, ffmpegVersion, type, device, test, command, speed);
+        if (key is not null && speed.ReuseResults && await cache.GetAsync(key, cancellationToken) is { } earlier)
         {
             return earlier.Result with { ReusedFromUtc = earlier.MeasuredUtc };
         }
 
-        var result = await MeasureRepeatedAsync(options, speed, source, type, device, test, cell, cancellationToken);
+        var result = await MeasureDeferringAsync(speed.Pause, ct => MeasureRepeatedAsync(options, speed, source, type, device, test, cell, ct), cancellationToken);
 
         // Only a full measurement is worth reusing: a failure may be fixed by the next run, and a run cut off by a timeout or the time limit is short of what a full one measures.
-        if (result.Fps is not null && !result.Interrupted)
+        if (key is not null && result.Fps is not null && !result.Interrupted)
         {
             await cache.SaveAsync(key, new SpeedCacheEntry(_time.GetUtcNow(), CapabilityReport.CurrentHwProbeVersion, ffmpegVersion, result), cancellationToken);
         }
 
         return result;
     }
+
+    /// <summary>Generates a test's command and environment, inside the probe lock, for the reuse key.</summary>
+    /// <param name="source">The device's argument source.</param>
+    /// <param name="type">The backend.</param>
+    /// <param name="device">The device.</param>
+    /// <param name="test">The test.</param>
+    /// <param name="cell">The cell to generate.</param>
+    /// <param name="cancellationToken">Cancels waiting for the lock.</param>
+    /// <returns>The command line and environment, or null when no command can be built.</returns>
+    private Task<string?> CommandAsync(IArgumentSource source, HwType type, string device, SpeedTest test, ProbeCell cell, CancellationToken cancellationToken) =>
+        _gate.RunAsync(
+            ct =>
+            {
+                try
+                {
+                    var args = source.Build(type, device.Length == 0 ? null : device, cell);
+                    var environment = string.Join('\n', args.Environment.OrderBy(e => e.Key, StringComparer.Ordinal).Select(e => e.Key + "=" + e.Value));
+                    return Task.FromResult<string?>(SpeedCommandLine.Build(args, SpeedMeter.Content, test.DecodeOnly, test.StartAt) + "\n" + environment);
+                }
+                catch (Exception e) when (e is ArgumentConstructionException or UnsafeProbeException or NotSupportedException)
+                {
+                    return Task.FromResult<string?>(null);
+                }
+            },
+            cancellationToken);
 
     /// <summary>Generates one variant's arguments and measures them, inside the probe lock.</summary>
     /// <param name="options">The ffmpeg.</param>

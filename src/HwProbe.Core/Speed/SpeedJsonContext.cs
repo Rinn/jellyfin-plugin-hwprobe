@@ -7,5 +7,4 @@ namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 [JsonSourceGenerationOptions(JsonSerializerDefaults.Web, UseStringEnumConverter = true, WriteIndented = true)]
 [JsonSerializable(typeof(SpeedReport))]
 [JsonSerializable(typeof(SpeedCacheEntry))]
-[JsonSerializable(typeof(Probes.ProbeCell))]
 internal sealed partial class SpeedJsonContext : JsonSerializerContext;

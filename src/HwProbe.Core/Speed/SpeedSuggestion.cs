@@ -26,6 +26,9 @@ public sealed record SpeedSuggestion(SpeedSuggestionKind Kind, IReadOnlyList<str
     /// <summary>Gets the slowest measured speed with the suggestion, as a multiple of real time.</summary>
     public double? Speed { get; init; }
 
+    /// <summary>Gets a value indicating whether the faster value gives a worse picture, e.g. a faster preset.</summary>
+    public bool LowerQuality { get; init; }
+
     /// <summary>Gets a value indicating whether it rests on generated test videos alone, which encode faster than real video.</summary>
     public bool TestVideosOnly { get; init; }
 }
