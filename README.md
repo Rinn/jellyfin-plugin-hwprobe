@@ -23,4 +23,4 @@ Nothing is sent anywhere. Test samples are downloaded only when needed and check
 
 Tested on Intel (QSV, VAAPI), NVIDIA (NVENC) and Apple (VideoToolbox). AMD, Rockchip and V4L2 are untested on real hardware.
 
-Written with substantial help from Claude (Anthropic) via Claude Code, directed and reviewed by the repository owner. [Building from source](DEVELOPMENT.md) · [GPL-3.0](LICENSE)
+This repository is entirely AI-generated: all code and documentation were written by Claude (Anthropic) via Claude Code, directed and reviewed by the repository owner. [Building from source](DEVELOPMENT.md) · [GPL-3.0](LICENSE)
