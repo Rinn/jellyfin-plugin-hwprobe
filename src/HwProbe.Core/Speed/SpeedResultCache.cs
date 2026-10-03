@@ -22,7 +22,7 @@ public sealed class SpeedResultCache(string directory)
     /// <param name="device">The device.</param>
     /// <param name="test">The test.</param>
     /// <param name="cell">The generated cell, with the clip paths and settings.</param>
-    /// <param name="speed">The run's method, repeats and time limit; its settings count only through the cell.</param>
+    /// <param name="speed">The run's method and repeats; its settings count only through the cell, and the time limit not at all, since a measurement it cut short isn't saved.</param>
     /// <returns>A file-name-safe hash.</returns>
     public static string Key(string ffmpegPath, string ffmpegVersion, HwType type, string device, SpeedTest test, ProbeCell cell, SpeedOptions speed)
     {
@@ -49,7 +49,6 @@ public sealed class SpeedResultCache(string directory)
         Append("cell", JsonSerializer.Serialize(Relevant(cell, type), SpeedJsonContext.Default.ProbeCell));
         Append("method", speed.Method.ToString());
         Append("repeats", speed.Repeats.ToString(CultureInfo.InvariantCulture));
-        Append("time-limit", speed.TimeLimit?.TotalSeconds.ToString(CultureInfo.InvariantCulture));
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text.ToString())));
     }
 

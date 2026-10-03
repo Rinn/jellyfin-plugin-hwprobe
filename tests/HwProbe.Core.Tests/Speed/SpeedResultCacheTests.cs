@@ -18,7 +18,7 @@ public sealed class SpeedResultCacheTests : IDisposable
 
     private readonly string _root = Directory.CreateTempSubdirectory("hwprobe-results-").FullName;
 
-    /// <summary>The same inputs give the same key; any change gives another.</summary>
+    /// <summary>The same inputs give the same key; a change to what's measured gives another, the time limit doesn't.</summary>
     [Fact]
     public void KeyFollowsEveryInput()
     {
@@ -28,7 +28,7 @@ public sealed class SpeedResultCacheTests : IDisposable
         Assert.NotEqual(key, Key(_cell with { EncoderPreset = "slow" }, _speed));
         Assert.NotEqual(key, Key(_cell, _speed with { Repeats = 3 }));
         Assert.NotEqual(key, Key(_cell, _speed with { Method = SpeedMethod.Confirm }));
-        Assert.NotEqual(key, Key(_cell, _speed with { TimeLimit = TimeSpan.FromMinutes(1) }));
+        Assert.Equal(key, Key(_cell, _speed with { TimeLimit = TimeSpan.FromMinutes(1) }));
         Assert.NotEqual(key, SpeedResultCache.Key("/usr/bin/ffmpeg", "ffmpeg version 7", HwType.vaapi, "/dev/dri/renderD128", _test, _cell, _speed));
         Assert.NotEqual(key, SpeedResultCache.Key("/usr/bin/ffmpeg", "ffmpeg version 8", HwType.videotoolbox, string.Empty, _test, _cell, _speed));
     }

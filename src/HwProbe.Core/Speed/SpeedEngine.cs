@@ -265,7 +265,10 @@ public sealed class SpeedEngine : IDisposable
         var sorted = runs.OrderBy(r => r.Fps).ToList();
         var median = sorted[sorted.Count / 2];
         var streams = runs.Select(r => r.Streams ?? 0).Order().ToList()[runs.Count / 2];
-        return median with { Streams = median.Streams is null ? null : streams };
+
+        // Fewer repeats than asked, because the time limit came first, count as cut off too.
+        var interrupted = runs.Count < Math.Max(1, speed.Repeats) || runs.Any(r => r.Interrupted);
+        return median with { Streams = median.Streams is null ? null : streams, Interrupted = interrupted };
     }
 
     /// <summary>Reuses a measurement an earlier run saved with exactly the same inputs when asked, or measures and saves it.</summary>
@@ -290,8 +293,8 @@ public sealed class SpeedEngine : IDisposable
 
         var result = await MeasureRepeatedAsync(options, speed, source, type, device, test, cell, cancellationToken);
 
-        // Only a full measurement is worth reusing; a failure may be fixed by the next run.
-        if (result.Fps is not null)
+        // Only a full measurement is worth reusing: a failure may be fixed by the next run, and a run cut off by a timeout or the time limit is short of what a full one measures.
+        if (result.Fps is not null && !result.Interrupted)
         {
             await cache.SaveAsync(key, new SpeedCacheEntry(_time.GetUtcNow(), CapabilityReport.CurrentHwProbeVersion, ffmpegVersion, result), cancellationToken);
         }
@@ -367,7 +370,7 @@ public sealed class SpeedEngine : IDisposable
                 }
 
                 var measured = await SpeedMeter.MeasureAsync(LaunchAsync, method, test.FrameRate, !test.DecodeOnly, ct, timeUp);
-                return new SpeedResult(type, device, test.Key, string.Empty, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note) { OutputSize = size };
+                return new SpeedResult(type, device, test.Key, string.Empty, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note) { OutputSize = size, Interrupted = measured.Interrupted };
             },
             cancellationToken);
 
