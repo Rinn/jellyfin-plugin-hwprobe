@@ -14,6 +14,12 @@ public sealed class CatalogSetting
     /// <summary>Gets the <c>EncodingOptions</c> property it defaults to, or null when the first choice is the default.</summary>
     public string? Server { get; init; }
 
+    /// <summary>Gets the backend it applies to alone, shown with the backends when that one works, or null for every backend.</summary>
+    public string? Backend { get; init; }
+
+    /// <summary>Gets the report setting that says whether the backend supports it, or null.</summary>
+    public string? Report { get; init; }
+
     /// <summary>Gets a line shown under it, or null.</summary>
     public string? Help { get; init; }
 

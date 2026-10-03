@@ -71,14 +71,14 @@ public sealed class SpeedEngine : IDisposable
         ArgumentNullException.ThrowIfNull(backends);
 
         var tests = speed.Resolve();
-        List<(HwType Type, string Device)> measured = [.. backends.Where(b => b.Type != HwType.none), (HwType.none, string.Empty)];
+        bool Chosen(HwType type) => speed.Backends?.Contains(type) != false;
+        List<(HwType Type, string Device)> measured = [.. backends.Where(b => b.Type != HwType.none && Chosen(b.Type)), .. Chosen(HwType.none) ? [(HwType.none, string.Empty)] : Array.Empty<(HwType, string)>()];
 
-        // Planned before any clip exists, assuming every clip can be made, so the page can show the whole table from the start.
-        var plan = measured.Select(b => (b.Type, b.Device, Tests: tests.Select(t => (Test: t, Labels: Labels(b.Type, t, speed))).ToList())).ToList();
-        var total = plan.Sum(b => b.Tests.Sum(t => t.Labels.Count));
+        // Planned before any clip exists, so the page can show the whole table from the start.
+        var total = measured.Count * tests.Count;
         progress?.Report(new SpeedProgress(0, total, null)
         {
-            Planned = [.. plan.SelectMany(b => b.Tests.SelectMany(t => t.Labels.Select(label => Describe(t.Test, new SpeedResult(b.Type, b.Device, t.Test.Key, label, null, null, false, null) { Pending = true }))))],
+            Planned = [.. measured.SelectMany(b => tests.Select(t => Describe(t, new SpeedResult(b.Type, b.Device, t.Key, string.Empty, null, null, false, null) { Pending = true })))],
         });
 
         var host = new HostInfoReader(_platform).Read();
@@ -97,32 +97,24 @@ public sealed class SpeedEngine : IDisposable
             var names = tests.Where(t => t.Fixture is not null).GroupBy(t => t.Fixture!.FileName).ToDictionary(g => g.Key, g => g.First().Name ?? g.Key, StringComparer.Ordinal);
             var clips = await BuildClipsAsync(options, caps, tests, speed.Settings, progress is null ? null : new StepProgress(step => progress.Report(new SpeedProgress(0, total, null) { Preparing = Preparing(step, names) })), cancellationToken);
             progress?.Report(new SpeedProgress(0, total, null));
-            foreach (var (type, device, planned) in plan)
+            foreach (var (type, device) in measured)
             {
                 var traits = await OpenAsync(options, type, device, host.Os, cancellationToken);
                 var source = traits is null ? null : _arguments.Create(caps, traits);
-                foreach (var (test, labels) in planned)
+                foreach (var test in tests)
                 {
-                    var missing = MissingClip(test, speed.Settings, clips);
-                    var cell = missing is null ? SpeedVariants.Base(test, speed.Settings, Paths(clips)) : null;
-                    var variants = cell is null ? [] : SpeedVariants.For(type, test, cell, speed.Comparisons, Paths(clips)).ToDictionary(v => v.Label, v => v.Cell, StringComparer.Ordinal);
-                    string? baseCommand = null;
-                    foreach (var label in labels)
+                    if (speed.Pause is { } pause)
                     {
-                        if (speed.Pause is { } pause)
-                        {
-                            await pause.WaitAsync(cancellationToken);
-                        }
-
-                        var variant = label.Length == 0 ? cell : variants.GetValueOrDefault(label);
-                        var result = source is null ? new SpeedResult(type, device, test.Key, label, null, null, false, "The device didn't open.")
-                            : cell is null ? new SpeedResult(type, device, test.Key, label, null, null, false, missing)
-                            : variant is null ? new SpeedResult(type, device, test.Key, label, null, null, false, "Doesn't apply with these clips.")
-                            : await MeasureRepeatedAsync(options, speed, source, type, device, test, label, variant, () => baseCommand, c => baseCommand ??= c, cancellationToken);
-                        var described = Describe(test, result);
-                        results.Add(described);
-                        progress?.Report(new SpeedProgress(++done, total, described));
+                        await pause.WaitAsync(cancellationToken);
                     }
+
+                    var missing = MissingClip(test, speed.Settings, clips);
+                    var result = source is null ? new SpeedResult(type, device, test.Key, string.Empty, null, null, false, "The device didn't open.")
+                        : missing is not null ? new SpeedResult(type, device, test.Key, string.Empty, null, null, false, missing)
+                        : await MeasureRepeatedAsync(options, speed, source, type, device, test, SpeedVariants.ForBackend(type, test, SpeedVariants.Base(test, speed.Settings, Paths(clips)), speed.Settings), cancellationToken);
+                    var described = Describe(test, result);
+                    results.Add(described);
+                    progress?.Report(new SpeedProgress(++done, total, described));
                 }
             }
         }
@@ -161,18 +153,6 @@ public sealed class SpeedEngine : IDisposable
     /// <returns>The paths.</returns>
     private static Dictionary<string, string> Paths(Dictionary<string, FixtureResult> clips) =>
         clips.Values.Where(c => c.Path is not null).ToDictionary(c => c.Spec.FileName, c => c.Path!, StringComparer.Ordinal);
-
-    /// <summary>Returns the variants planned for a backend and test, the base first, as if every clip can be made.</summary>
-    /// <param name="type">The backend.</param>
-    /// <param name="test">The test.</param>
-    /// <param name="speed">The settings and comparisons.</param>
-    /// <returns>The variant labels; empty for the base.</returns>
-    private static List<string> Labels(HwType type, SpeedTest test, SpeedOptions speed)
-    {
-        // Each clip's file name stands in for its path.
-        var placeholders = SpeedVariants.Clips([test], speed.Settings).ToDictionary(f => f.FileName, f => f.FileName, StringComparer.Ordinal);
-        return [string.Empty, .. SpeedVariants.For(type, test, SpeedVariants.Base(test, speed.Settings, placeholders), speed.Comparisons, placeholders).Select(v => v.Label)];
-    }
 
     /// <summary>Adds what the page and report show about a test to its result.</summary>
     /// <param name="test">The test.</param>
@@ -245,20 +225,17 @@ public sealed class SpeedEngine : IDisposable
     /// <param name="type">The backend.</param>
     /// <param name="device">The device.</param>
     /// <param name="test">The test.</param>
-    /// <param name="label">The comparison label, or empty for the base.</param>
     /// <param name="cell">The cell to generate.</param>
-    /// <param name="baseCommand">Reads the base variant's command.</param>
-    /// <param name="remember">Records the base variant's command.</param>
     /// <param name="cancellationToken">Cancels the measurement.</param>
     /// <returns>The median result, by fps.</returns>
-    private async Task<SpeedResult> MeasureRepeatedAsync(EngineOptions options, SpeedOptions speed, IArgumentSource source, HwType type, string device, SpeedTest test, string label, ProbeCell cell, Func<string?> baseCommand, Action<string> remember, CancellationToken cancellationToken)
+    private async Task<SpeedResult> MeasureRepeatedAsync(EngineOptions options, SpeedOptions speed, IArgumentSource source, HwType type, string device, SpeedTest test, ProbeCell cell, CancellationToken cancellationToken)
     {
         var clock = System.Diagnostics.Stopwatch.StartNew();
         bool TimeUp() => speed.TimeLimit is { } limit && clock.Elapsed >= limit;
         List<SpeedResult> runs = [];
         for (var i = 0; i < Math.Max(1, speed.Repeats); i++)
         {
-            var run = await MeasureAsync(options, speed.Method, source, type, device, test, label, cell, baseCommand(), remember, TimeUp, cancellationToken);
+            var run = await MeasureAsync(options, speed.Method, source, type, device, test, cell, TimeUp, cancellationToken);
             runs.Add(run);
 
             // Nothing to repeat when it couldn't be measured.
@@ -286,10 +263,7 @@ public sealed class SpeedEngine : IDisposable
     /// <param name="type">The backend.</param>
     /// <param name="device">The device.</param>
     /// <param name="test">The test.</param>
-    /// <param name="label">The comparison label, or empty for the base.</param>
     /// <param name="cell">The cell to generate.</param>
-    /// <param name="baseCommand">The base variant's command, to skip a comparison that changes nothing; null for the base.</param>
-    /// <param name="remember">Records the base variant's command.</param>
     /// <param name="timeUp">Reports when the measurement's time limit has passed.</param>
     /// <param name="cancellationToken">Cancels the measurement.</param>
     /// <returns>The result.</returns>
@@ -300,10 +274,7 @@ public sealed class SpeedEngine : IDisposable
         HwType type,
         string device,
         SpeedTest test,
-        string label,
         ProbeCell cell,
-        string? baseCommand,
-        Action<string> remember,
         Func<bool> timeUp,
         CancellationToken cancellationToken) =>
         _gate.RunAsync(
@@ -317,16 +288,16 @@ public sealed class SpeedEngine : IDisposable
                 catch (ArgumentConstructionException)
                 {
                     // No hardware arguments at all: Jellyfin would do the whole job in software.
-                    return new SpeedResult(type, device, test.Key, label, null, null, false, test.DecodeOnly ? "Not measured: Jellyfin decodes this in software with this backend." : "Not measured: Jellyfin decodes and encodes this in software with this backend.");
+                    return new SpeedResult(type, device, test.Key, string.Empty, null, null, false, test.DecodeOnly ? "Not measured: Jellyfin decodes this in software with this backend." : "Not measured: Jellyfin decodes and encodes this in software with this backend.");
                 }
                 catch (UnsafeProbeException ex)
                 {
-                    return new SpeedResult(type, device, test.Key, label, null, null, false, ex.Message);
+                    return new SpeedResult(type, device, test.Key, string.Empty, null, null, false, ex.Message);
                 }
                 catch (NotSupportedException)
                 {
                     // The command-line tool has no subtitle encoder to extract a file's internal text subtitles with.
-                    return new SpeedResult(type, device, test.Key, label, null, null, false, "Burning in a file's own text subtitles needs Jellyfin; measure it from the plugin.");
+                    return new SpeedResult(type, device, test.Key, string.Empty, null, null, false, "Burning in a file's own text subtitles needs Jellyfin; measure it from the plugin.");
                 }
 
                 // A hardware column needs the step it's about on the GPU: the encode for a transcode, the decode for a decode test. Software has its own column.
@@ -337,7 +308,7 @@ public sealed class SpeedEngine : IDisposable
                     : "encodes";
                 if (softwareStep is not null)
                 {
-                    return new SpeedResult(type, device, test.Key, label, null, null, false, $"Not measured: Jellyfin {softwareStep} this in software with this backend.");
+                    return new SpeedResult(type, device, test.Key, string.Empty, null, null, false, $"Not measured: Jellyfin {softwareStep} this in software with this backend.");
                 }
 
                 var note = softwareDecode ? "Jellyfin decodes this in software with this backend, then encodes on the GPU." : null;
@@ -346,16 +317,6 @@ public sealed class SpeedEngine : IDisposable
 
                 string Command(TimeSpan content) => SpeedCommandLine.Build(args, content, test.DecodeOnly, test.StartAt);
 
-                var command = Command(SpeedMeter.Content);
-                if (label.Length == 0)
-                {
-                    remember(command);
-                }
-                else if (string.Equals(command, baseCommand, StringComparison.Ordinal))
-                {
-                    return new SpeedResult(type, device, test.Key, label, null, null, false, "Jellyfin passes the same arguments with this setting.");
-                }
-
                 async Task<IReadOnlyList<FfmpegRunResult>> LaunchAsync(int copies, TimeSpan content, CancellationToken token)
                 {
                     var invocation = new FfmpegInvocation(options.Ffmpeg.Path, Command(content), args.Environment, copies == 1 ? _singleTimeout : _copiesTimeout);
@@ -363,7 +324,7 @@ public sealed class SpeedEngine : IDisposable
                 }
 
                 var measured = await SpeedMeter.MeasureAsync(LaunchAsync, method, test.FrameRate, !test.DecodeOnly, ct, timeUp);
-                return new SpeedResult(type, device, test.Key, label, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note) { OutputSize = size };
+                return new SpeedResult(type, device, test.Key, string.Empty, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note) { OutputSize = size };
             },
             cancellationToken);
 

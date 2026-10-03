@@ -4,10 +4,12 @@ namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 /// <param name="Method">How streams are counted.</param>
 /// <param name="Videos">Keys from <see cref="SpeedCatalog.Videos"/>, and <see cref="SpeedCatalog.LibraryKey"/> for <see cref="File"/>.</param>
 /// <param name="Outputs">Keys from <see cref="SpeedCatalog.Outputs"/>.</param>
-/// <param name="Comparisons">Optional runs beside each base result.</param>
 /// <param name="Settings">The Jellyfin settings to start from.</param>
-public sealed record SpeedOptions(SpeedMethod Method, IReadOnlyList<string> Videos, IReadOnlyList<string> Outputs, SpeedComparison Comparisons, SpeedSettings Settings)
+public sealed record SpeedOptions(SpeedMethod Method, IReadOnlyList<string> Videos, IReadOnlyList<string> Outputs, SpeedSettings Settings)
 {
+    /// <summary>Gets the backends to measure, with <see cref="Model.HwType.none"/> for software, or null for every working backend and software.</summary>
+    public IReadOnlyList<Model.HwType>? Backends { get; init; }
+
     /// <summary>Gets how many times each measurement runs; more than once reports the median.</summary>
     public int Repeats { get; init; } = 1;
 

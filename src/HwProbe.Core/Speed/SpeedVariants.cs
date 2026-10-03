@@ -5,7 +5,7 @@ using Jellyfin.Plugin.HwProbe.Core.Probes;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 
-/// <summary>Builds the probe cell for a speed test at the base settings, and one per comparison.</summary>
+/// <summary>Builds the probe cell for a speed test at the run's settings.</summary>
 internal static class SpeedVariants
 {
     /// <summary>Returns the cell for a test at the base settings.</summary>
@@ -49,22 +49,24 @@ internal static class SpeedVariants
         };
     }
 
-    /// <summary>Returns the comparison cells that apply to a backend and test.</summary>
+    /// <summary>Returns a test's cell for one backend: QSV takes the run's own low-power choice.</summary>
     /// <param name="type">The backend.</param>
     /// <param name="test">The test.</param>
     /// <param name="cell">The base cell.</param>
-    /// <param name="comparisons">The comparisons asked for.</param>
-    /// <param name="clips">Clip paths by file name, for burned-in subtitles; a missing clip skips its comparison.</param>
-    /// <returns>Each comparison's label and cell.</returns>
-    public static IEnumerable<(string Label, ProbeCell Cell)> For(HwType type, SpeedTest test, ProbeCell cell, SpeedComparison comparisons, IReadOnlyDictionary<string, string> clips)
+    /// <param name="settings">The settings.</param>
+    /// <returns>The cell.</returns>
+    public static ProbeCell ForBackend(HwType type, SpeedTest test, ProbeCell cell, SpeedSettings settings)
     {
-        ArgumentNullException.ThrowIfNull(clips);
-        var transcode = !test.DecodeOnly;
-        var intel = type is HwType.qsv or HwType.vaapi;
-        if (comparisons.HasFlag(SpeedComparison.LowPower) && intel && transcode && test.OutputCodec is "h264" or "hevc")
+        ArgumentNullException.ThrowIfNull(test);
+        ArgumentNullException.ThrowIfNull(cell);
+        ArgumentNullException.ThrowIfNull(settings);
+        var lowPower = test.OutputCodec switch
         {
-            yield return (cell.LowPower ? "Low power off" : "Low power on", cell with { LowPower = !cell.LowPower });
-        }
+            "h264" => settings.QsvLowPowerH264,
+            "hevc" => settings.QsvLowPowerHevc,
+            _ => null,
+        };
+        return type == HwType.qsv && lowPower is { } on ? cell with { LowPower = on } : cell;
     }
 
     /// <summary>Returns every clip a set of tests needs.</summary>

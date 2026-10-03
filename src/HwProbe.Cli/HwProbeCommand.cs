@@ -44,10 +44,9 @@ internal sealed class HwProbeCommand
         DefaultValueFactory = _ => SpeedCatalog.DefaultOutputs,
     };
 
-    private readonly Option<SpeedComparison> _speedCompare = new("--speed-compare")
+    private readonly Option<string[]> _speedBackends = new("--speed-backends")
     {
-        Description = "Also measure with one setting changed: lowpower (Intel low-power encoders).",
-        CustomParser = ParseComparisons,
+        Description = "Backends to measure, comma-separated, with none for software. Default: every working backend and software.",
     };
 
     private readonly Option<string?> _speedFile = new("--speed-file") { Description = "A video file to measure with --speed, as the library video." };
@@ -84,6 +83,16 @@ internal sealed class HwProbeCommand
                 r.AddError("--speed-repeats must be 1, 2 or 3.");
             }
         });
+        _speedBackends.Validators.Add(r =>
+        {
+            foreach (var name in (r.GetValueOrDefault<string[]>() ?? []).SelectMany(n => n.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)))
+            {
+                if (!Enum.TryParse<HwType>(name, out var type) || !Enum.IsDefined(type))
+                {
+                    r.AddError($"--speed-backends: unknown backend '{name}'.");
+                }
+            }
+        });
         _speedOption.Validators.Add(r =>
         {
             foreach (var pair in r.GetValueOrDefault<string[]>() ?? [])
@@ -105,7 +114,7 @@ internal sealed class HwProbeCommand
 
         Root = new RootCommand("Device-verified hardware transcode detection for Jellyfin.")
         {
-            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _speed, _speedVideos, _speedOutputs, _speedCompare, _speedFile, _speedRepeats, _speedOption, _speedTimeLimit, _speedJson, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
+            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _speed, _speedVideos, _speedOutputs, _speedBackends, _speedFile, _speedRepeats, _speedOption, _speedTimeLimit, _speedJson, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
         };
     }
 
@@ -181,24 +190,6 @@ internal sealed class HwProbeCommand
         return keys;
     }
 
-    /// <summary>Parses a comma-separated comparison list.</summary>
-    /// <param name="result">The option's argument result.</param>
-    /// <returns>The comparisons, after reporting any unknown one.</returns>
-    private static SpeedComparison ParseComparisons(System.CommandLine.Parsing.ArgumentResult result)
-    {
-        var comparisons = SpeedComparison.None;
-        foreach (var name in result.Tokens.SelectMany(t => t.Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)))
-        {
-            comparisons |= name.ToUpperInvariant() switch
-            {
-                "LOWPOWER" => SpeedComparison.LowPower,
-                _ => Error<SpeedComparison>(result, $"Unknown comparison '{name}'. Expected: lowpower."),
-            };
-        }
-
-        return comparisons;
-    }
-
     /// <summary>Reports a parse error and returns a placeholder value.</summary>
     /// <typeparam name="T">The option's value type.</typeparam>
     /// <param name="result">The option's argument result.</param>
@@ -233,8 +224,9 @@ internal sealed class HwProbeCommand
             settings = SpeedSettingsOptions.Apply(settings, parts[0], parts[1]) ?? settings;
         }
 
-        return new(method, result.GetValue(_speedVideos)!, result.GetValue(_speedOutputs)!, result.GetValue(_speedCompare), settings)
+        return new(method, result.GetValue(_speedVideos)!, result.GetValue(_speedOutputs)!, settings)
         {
+            Backends = result.GetValue(_speedBackends) is { Length: > 0 } names ? [.. names.SelectMany(n => n.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).Select(Enum.Parse<HwType>)] : null,
             Repeats = result.GetValue(_speedRepeats),
             TimeLimit = result.GetValue(_speedTimeLimit) is { } seconds ? TimeSpan.FromSeconds(seconds) : null,
         };

@@ -443,26 +443,18 @@ public sealed partial class ProbeService : IDisposable
             return null;
         }
 
-        var comparisons = SpeedComparison.None;
-        foreach (var name in request.Comparisons)
-        {
-            if (!Enum.TryParse<SpeedComparison>(name, ignoreCase: true, out var comparison) || comparison == SpeedComparison.None || !Enum.IsDefined(comparison))
-            {
-                return null;
-            }
-
-            comparisons |= comparison;
-        }
-
         if (!Catalog.Default.Repeats.Any(o => o.Value == request.Repeats) || !Catalog.Default.TimeLimits.Any(o => o.Value == request.TimeLimitSeconds)
-            || request.Options?.Any(o => Catalog.Default.Options.FirstOrDefault(c => c.Key == o.Key) is not { } option || !option.Takes(o.Value)) == true)
+            || request.Options?.Any(o => Catalog.Default.Options.FirstOrDefault(c => c.Key == o.Key) is not { } option || !option.Takes(o.Value)) == true
+            || request.Backends?.Any(b => !Enum.TryParse<HwType>(b, out var type) || !Enum.IsDefined(type)) == true
+            || request.Backends is [])
         {
             return null;
         }
 
-        return new SpeedOptions(method, videos, outputs, comparisons, new SpeedSettings())
+        return new SpeedOptions(method, videos, outputs, new SpeedSettings())
         {
             File = file,
+            Backends = request.Backends?.Select(Enum.Parse<HwType>).ToList(),
             Repeats = request.Repeats,
             TimeLimit = request.TimeLimitSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null,
         };

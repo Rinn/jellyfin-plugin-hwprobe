@@ -22,9 +22,6 @@ public sealed partial class Catalog
     /// <summary>Gets the qualities a player offers, highest first.</summary>
     public required IReadOnlyList<CatalogQuality> Qualities { get; init; }
 
-    /// <summary>Gets the speed variations, in the page's order.</summary>
-    public required IReadOnlyList<CatalogVariation> Variations { get; init; }
-
     /// <summary>Gets the speed accuracies, in the page's order.</summary>
     public required IReadOnlyList<CatalogMethod> Methods { get; init; }
 
@@ -187,7 +184,6 @@ public sealed partial class Catalog
     /// <exception cref="InvalidDataException">Something is missing or wrong.</exception>
     private void Check()
     {
-        RequireAll("variations", Variations.Select(v => Enum.TryParse<SpeedComparison>(v.Key, out var key) && Enum.IsDefined(key) ? key : SpeedComparison.None), SpeedComparison.None);
         RequireAll("methods", Methods.Select(m => m.Key));
         RequireAll("backends", Backends.Select(b => b.Type), HwType.none);
         RequireAll("tiers", Tiers.Keys, PipelineTier.Unknown);

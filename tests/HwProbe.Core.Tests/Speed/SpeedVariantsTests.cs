@@ -9,24 +9,22 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Speed;
 [Trait("Category", "Unit")]
 public sealed class SpeedVariantsTests
 {
-    /// <summary>Low power is measured both ways only on Intel backends, for H.264 and HEVC.</summary>
+    /// <summary>The run's low-power choice reaches QSV alone, for H.264 and HEVC; VAAPI keeps the server's.</summary>
     /// <param name="type">The backend.</param>
     /// <param name="test">The test key.</param>
-    /// <param name="expected">The comparison labels, in order.</param>
+    /// <param name="expected">Whether the cell asks for low power.</param>
     [Theory]
-    [InlineData(HwType.none, "pattern|h264-4mbps", "")]
-    [InlineData(HwType.qsv, "pattern-1080i|h264-4mbps", "Low power on")]
-    [InlineData(HwType.vaapi, "pattern-4k-hdr|hevc-8mbps", "Low power on")]
-    [InlineData(HwType.vaapi, "pattern|av1-8mbps", "")]
-    [InlineData(HwType.qsv, "pattern-hevc|decode", "")]
-    public void LowPowerFollowsTheBackend(HwType type, string test, string expected)
+    [InlineData(HwType.qsv, "pattern|h264-4mbps", true)]
+    [InlineData(HwType.qsv, "pattern|hevc-8mbps", false)]
+    [InlineData(HwType.vaapi, "pattern|h264-4mbps", false)]
+    [InlineData(HwType.qsv, "pattern|av1-8mbps", false)]
+    public void LowPowerReachesQsvAlone(HwType type, string test, bool expected)
     {
         var spec = SpeedCatalog.Find(test)!;
-        var settings = new SpeedSettings();
+        var settings = new SpeedSettings { QsvLowPowerH264 = true };
         var clips = SpeedVariants.Clips([spec], settings).ToDictionary(f => f.FileName, f => "/c/" + f.FileName, StringComparer.Ordinal);
-        var cell = SpeedVariants.Base(spec, settings, clips);
 
-        Assert.Equal(expected, string.Join('|', SpeedVariants.For(type, spec, cell, SpeedComparison.LowPower, clips).Select(v => v.Label)));
+        Assert.Equal(expected, SpeedVariants.ForBackend(type, spec, SpeedVariants.Base(spec, settings, clips), settings).LowPower);
     }
 
     /// <summary>The base cell asks upstream for everything a real request carries, with the run's settings.</summary>
@@ -82,7 +80,7 @@ public sealed class SpeedVariantsTests
     public void OptionsPairVideosWithOutputs()
     {
         var file = new SpeedFile("/m/film.mkv", "Film", TimeSpan.FromMinutes(100), new SpeedFileVideo(0, "hevc", 10, 3840, 2160, 23.976f) { ColorTransfer = "smpte2084" });
-        var options = new SpeedOptions(SpeedMethod.Quick, ["pattern", "library", "nope"], ["h264-4mbps", "decode"], SpeedComparison.None, new SpeedSettings());
+        var options = new SpeedOptions(SpeedMethod.Quick, ["pattern", "library", "nope"], ["h264-4mbps", "decode"], new SpeedSettings());
 
         Assert.Equal(["pattern|h264-4mbps", "pattern|decode"], options.Resolve().Select(t => t.Key));
         var withFile = (options with { File = file }).Resolve();

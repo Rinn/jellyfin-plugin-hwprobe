@@ -9,7 +9,6 @@ namespace Jellyfin.Plugin.HwProbe.Api;
 /// <param name="Outputs">The speed outputs: every codec at every quality, and decoding alone.</param>
 /// <param name="Codecs">The video codecs Jellyfin transcodes to.</param>
 /// <param name="Qualities">The qualities a player offers.</param>
-/// <param name="Variations">The speed variations.</param>
 /// <param name="Methods">The speed accuracies.</param>
 /// <param name="DefaultMethod">The accuracy chosen first.</param>
 /// <param name="Repeats">The repeat counts offered.</param>
@@ -25,7 +24,6 @@ public sealed record CatalogInfo(
     IReadOnlyList<SpeedOutputInfo> Outputs,
     IReadOnlyList<CatalogCodec> Codecs,
     IReadOnlyList<CatalogQuality> Qualities,
-    IReadOnlyList<CatalogVariation> Variations,
     IReadOnlyList<CatalogMethod> Methods,
     SpeedMethod DefaultMethod,
     IReadOnlyList<CatalogOption> Repeats,
@@ -48,7 +46,6 @@ public sealed record CatalogInfo(
             [.. SpeedCatalog.Outputs.Select(SpeedOutputInfo.From)],
             catalog.Codecs,
             catalog.Qualities,
-            catalog.Variations,
             catalog.Methods,
             catalog.DefaultMethod,
             catalog.Repeats,

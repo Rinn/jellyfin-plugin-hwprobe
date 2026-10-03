@@ -17,6 +17,8 @@ public static class SpeedSettingsOptions
         int Number() => int.Parse(value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture);
         return key switch
         {
+            "QsvLowPowerH264" => settings with { QsvLowPowerH264 = on },
+            "QsvLowPowerHevc" => settings with { QsvLowPowerHevc = on },
             "EnhancedNvdec" => settings with { EnhancedNvdec = on },
             "PreferNativeDecoder" => settings with { PreferNativeDecoder = on },
             "VppTonemap" => settings with { VppTonemap = on },

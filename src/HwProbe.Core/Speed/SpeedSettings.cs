@@ -28,6 +28,12 @@ public sealed record SpeedSettings
     /// <summary>Gets a value indicating whether Intel low-power HEVC encoding is on.</summary>
     public bool LowPowerHevc { get; init; }
 
+    /// <summary>Gets Intel low-power H.264 encoding for QSV alone, or null for <see cref="LowPowerH264"/>; other backends keep the server's.</summary>
+    public bool? QsvLowPowerH264 { get; init; }
+
+    /// <summary>Gets Intel low-power HEVC encoding for QSV alone, or null for <see cref="LowPowerHevc"/>.</summary>
+    public bool? QsvLowPowerHevc { get; init; }
+
     /// <summary>Gets a value indicating whether tone-mapping is on, for HDR files; HwProbe advises it, so it's on unless the server's is off.</summary>
     public bool Tonemap { get; init; } = true;
 

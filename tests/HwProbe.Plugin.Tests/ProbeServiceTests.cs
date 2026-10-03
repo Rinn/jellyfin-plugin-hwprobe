@@ -111,7 +111,7 @@ public sealed class ProbeServiceTests : IDisposable
             },
             ServerSpeedSettings = () => new SpeedSettings { EncoderPreset = "fast" },
         };
-        var request = new SpeedRequest("full", [], [], ["LowPower"]) { Repeats = 2, TimeLimitSeconds = 60, Options = new Dictionary<string, string> { ["EncodingThreadCount"] = "4", ["H264Crf"] = "20", ["Audio"] = "copy" } };
+        var request = new SpeedRequest("full", [], []) { Backends = ["none"], Repeats = 2, TimeLimitSeconds = 60, Options = new Dictionary<string, string> { ["EncodingThreadCount"] = "4", ["H264Crf"] = "20", ["Audio"] = "copy" } };
 
         Assert.Equal(ProbeRunResult.NoReport, await service.StartSpeedAsync(request, ct));
         await service.RunAsync(ct);
@@ -126,13 +126,15 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Options = new Dictionary<string, string> { ["H265Crf"] = "52" } }, ct));
         Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Options = new Dictionary<string, string> { ["AudioVbr"] = "yes" } }, ct));
         Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Options = new Dictionary<string, string> { ["Tonemap"] = "true" } }, ct));
-        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Comparisons = ["None"] }, ct));
+        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Backends = ["cuda"] }, ct));
+        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Backends = [] }, ct));
 
         Assert.Equal(ProbeRunResult.Started, await service.StartSpeedAsync(request, ct));
         await service.Background;
 
         Assert.Equal(Reports.Sample().Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device)), measured);
-        Assert.Equal((SpeedMethod.Full, SpeedComparison.LowPower, "fast", 4), (asked!.Method, asked.Comparisons, asked.Settings.EncoderPreset, asked.Settings.EncodingThreadCount));
+        Assert.Equal((SpeedMethod.Full, "fast", 4), (asked!.Method, asked.Settings.EncoderPreset, asked.Settings.EncodingThreadCount));
+        Assert.Equal([HwType.none], asked.Backends);
         Assert.Equal((SpeedCatalog.DefaultVideos, SpeedCatalog.DefaultOutputs), (asked.Videos, asked.Outputs));
         Assert.Equal((20, 28, true), (asked.Settings.H264Crf, asked.Settings.H265Crf, asked.Settings.AudioCopy));
         Assert.Equal((2, TimeSpan.FromMinutes(1)), (asked.Repeats, asked.TimeLimit!.Value));
@@ -182,7 +184,7 @@ public sealed class ProbeServiceTests : IDisposable
         };
         await service.RunAsync(ct);
 
-        Assert.Equal(ProbeRunResult.Started, await service.StartSpeedAsync(new SpeedRequest("confirm", [], [], []), ct));
+        Assert.Equal(ProbeRunResult.Started, await service.StartSpeedAsync(new SpeedRequest("confirm", [], []), ct));
         await first.Task;
         var running = SpeedReportStore.Deserialize(service.RunningSpeedJson()!)!;
         Assert.Equal([(false, 12), (true, (int?)null)], running.Results.Select(r => (r.Pending, r.Streams)));
