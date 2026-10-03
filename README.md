@@ -20,13 +20,13 @@ Requires Jellyfin 12.1 or newer.
 
 Open **HwProbe** in the dashboard sidebar, under Plugins, while nothing is playing.
 
-- **Probe**: press **Run probe** to test every backend; the first run takes a few minutes. Each option on the Transcoding and Trickplay pages shows whether it works, with **Apply** to change it and **Revert** to undo.
+- **Probe**: press **Run probe** to test every backend; the first run takes a few minutes. Each option on the Transcoding and Trickplay pages shows whether it works, with **Apply** to change it; **Revert** undoes the last applied change.
 - **Speed**: choose backends, inputs, codecs and qualities, then press **Measure speed** to see how fast each backend transcodes and how many transcodes keep up at once.
 - **Diagnostics**, at the bottom of the Probe tab: download a zip of the results and ffmpeg logs to attach to a [hardware report](../../issues/new?template=hardware-report.yml).
 
 After updating HwProbe or changing ffmpeg, run the probe again; older results are cleared.
 
-The same probe runs from the command line, where Jellyfin runs (inside the container, for Docker):
+The same probe runs from the command line, where Jellyfin runs (inside the container, for Docker). Download `hwprobe` for the server's platform from [Releases](../../releases), unpack it, and on Linux or macOS make it executable (`chmod +x hwprobe`):
 
 ```sh
 hwprobe                    # probe every backend
