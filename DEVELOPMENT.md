@@ -5,7 +5,7 @@
 | Path | Contents |
 |---|---|
 | `src/HwProbe.Core` | Probe engine. No Jellyfin dependency. |
-| `src/HwProbe.Core/Data/catalog.yaml` | What the plugin page lists and what a speed run measures: videos and their clips, outputs, variations, accuracies, repeats, time limits, and the labels for backends, tiers, verdicts and findings. Compiled into Core; `Catalog.Parse` refuses a file that leaves out an enum value or uses an unknown placeholder. The page reads it from `HwProbe/Catalog`. |
+| `src/HwProbe.Core/Data/catalog.yaml` | What the plugin page lists and what a speed run measures: videos and their clips, codecs and qualities, run options in the Transcoding page's order, accuracies, repeats, time limits, and the labels for backends, tiers, verdicts and findings. Compiled into Core; `Catalog.Parse` refuses a file that leaves out an enum value or uses an unknown placeholder. The page reads it from `HwProbe/Catalog`. |
 | `src/HwProbe.Jellyfin` | Builds ffmpeg commands with Jellyfin's own `EncodingHelper`. |
 | `src/HwProbe.Cli` | The `hwprobe` command-line tool. |
 | `src/HwProbe.Plugin` | The Jellyfin plugin. |
