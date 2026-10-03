@@ -186,6 +186,7 @@ public sealed class SpeedEngine : IDisposable
     {
         var clips = SpeedVariants.Clips(tests, settings);
         var key = Fingerprint.Compute(new FingerprintInputs(options.Ffmpeg.Path, caps.VersionLine, null, null, null, null, null, null));
+        FixtureCacheContents.Prune(options.FixturesDirectory, key);
         Dictionary<string, FixtureResult> built = new(StringComparer.Ordinal);
         foreach (var group in clips.GroupBy(c => c.KeepAcrossBuilds))
         {

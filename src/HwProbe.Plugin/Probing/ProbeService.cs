@@ -5,6 +5,7 @@ using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Devices;
 using Jellyfin.Plugin.HwProbe.Core.Diagnostics;
 using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
+using Jellyfin.Plugin.HwProbe.Core.Fixtures;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
 using Jellyfin.Plugin.HwProbe.Core.Report;
@@ -391,6 +392,62 @@ public sealed partial class ProbeService : IDisposable
         return path is null ? null : await File.ReadAllTextAsync(path, cancellationToken);
     }
 
+    /// <summary>Deletes one saved speed run, or every one; the latest run shown goes with the newest.</summary>
+    /// <param name="id">The run, as <see cref="SpeedHistoryAsync"/> lists it, or null for every run.</param>
+    /// <param name="cancellationToken">Cancels waiting.</param>
+    /// <returns>The outcome.</returns>
+    public async Task<DeleteOutcome> DeleteSpeedHistoryAsync(string? id, CancellationToken cancellationToken)
+    {
+        // Only names this service writes, so the ID can't reach outside the folder.
+        if (id is not null && !HistoryId().IsMatch(id))
+        {
+            return DeleteOutcome.NotFound;
+        }
+
+        // A run saves its report when it finishes; deleting meanwhile could leave speed.json pointing at nothing.
+        if (!await _gate.WaitAsync(0, cancellationToken))
+        {
+            return DeleteOutcome.Busy;
+        }
+
+        try
+        {
+            List<string> files = Directory.Exists(SpeedHistoryDirectory)
+                ? [.. Directory.EnumerateFiles(SpeedHistoryDirectory, "*.json").Order(StringComparer.Ordinal)]
+                : [];
+            var doomed = files.Where(f => id is null || Path.GetFileNameWithoutExtension(f) == id).ToHashSet(StringComparer.Ordinal);
+            if (id is not null && doomed.Count == 0)
+            {
+                return DeleteOutcome.NotFound;
+            }
+
+            var newest = files.Count > 0 ? files[^1] : null;
+            foreach (var file in doomed)
+            {
+                File.Delete(file);
+            }
+
+            if (newest is not null && doomed.Contains(newest))
+            {
+                var next = files.LastOrDefault(f => !doomed.Contains(f));
+                if (next is null)
+                {
+                    File.Delete(SpeedPath);
+                }
+                else
+                {
+                    File.Copy(next, SpeedPath, overwrite: true);
+                }
+            }
+
+            return DeleteOutcome.Deleted;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     /// <summary>Returns the size of the test clips and samples cached for probes and speed runs.</summary>
     /// <returns>Bytes and files; zero when nothing is cached.</returns>
     public CacheSize FixtureCacheSize()
@@ -403,6 +460,10 @@ public sealed partial class ProbeService : IDisposable
         var files = new DirectoryInfo(directory).EnumerateFiles("*", SearchOption.AllDirectories).ToList();
         return new CacheSize(files.Sum(f => f.Length), files.Count);
     }
+
+    /// <summary>Lists the cached clips, samples and downloads.</summary>
+    /// <returns>The entries; empty when nothing is cached.</returns>
+    public IReadOnlyList<CacheEntry> FixtureCacheContents() => Core.Fixtures.FixtureCacheContents.List(FixturesDirectory);
 
     /// <summary>Deletes the cached clips and samples; the next probe or speed run makes or downloads them again.</summary>
     /// <param name="cancellationToken">Cancels waiting.</param>

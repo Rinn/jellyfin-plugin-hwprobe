@@ -148,6 +148,13 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal([("19700101T000000Z", "Full", 1, true)], history.Select(h => (h.Id, h.Method, h.Tests, h.Current)));
         Assert.NotNull(await service.SpeedHistoryJsonAsync("19700101T000000Z", ct));
         Assert.Null(await service.SpeedHistoryJsonAsync("../latest", ct));
+
+        Assert.Equal(DeleteOutcome.NotFound, await service.DeleteSpeedHistoryAsync("../latest", ct));
+        Assert.Equal(DeleteOutcome.NotFound, await service.DeleteSpeedHistoryAsync("20000101T000000Z", ct));
+        Assert.Equal(DeleteOutcome.Deleted, await service.DeleteSpeedHistoryAsync("19700101T000000Z", ct));
+        Assert.Empty(await service.SpeedHistoryAsync(ct));
+        Assert.Null(await service.LatestSpeedJsonAsync(ct));
+        Assert.Equal(DeleteOutcome.Deleted, await service.DeleteSpeedHistoryAsync(null, ct));
     }
 
     /// <summary>A running speed run shows its plan as it fills in, pauses after the current measurement, and keeps what's finished when cancelled.</summary>

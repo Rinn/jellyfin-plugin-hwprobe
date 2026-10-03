@@ -93,7 +93,7 @@ public sealed partial class FixtureBuilder
     /// <summary>Replaces characters that are invalid in a directory name, such as the colon in <c>sha256:</c>.</summary>
     /// <param name="cacheKey">The raw key.</param>
     /// <returns>A key safe to use as a directory name on every OS.</returns>
-    private static string SanitizeKey(string cacheKey)
+    internal static string SanitizeKey(string cacheKey)
     {
         var invalid = Path.GetInvalidFileNameChars();
         return string.Concat(cacheKey.Select(c => c == ':' || invalid.Contains(c) ? '_' : c));

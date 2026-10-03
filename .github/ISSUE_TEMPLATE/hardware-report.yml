@@ -1,9 +1,9 @@
 name: Hardware report
-description: HwProbe results and diagnostics from a server.
+description: Transcoding Diagnostics results and diagnostics from a server.
 body:
   - type: markdown
     attributes:
-      value: "Get the diagnostics zip from the plugin page (**Download diagnostics**, after a probe) or the command line (`hwprobe --diagnostics hwprobe-diagnostics.zip`). It isn't anonymised: it holds file paths and the server's user and host names. Check it before attaching it."
+      value: "Get the diagnostics zip from the plugin page (**Help** tab, **Download diagnostics**, after a probe) or the command line (`hwprobe --diagnostics hwprobe-diagnostics.zip`). It isn't anonymised: it holds file paths and the server's user and host names. Check it before attaching it."
   - type: input
     id: gpu
     attributes:

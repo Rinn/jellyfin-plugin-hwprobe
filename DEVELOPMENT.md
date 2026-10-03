@@ -1,10 +1,12 @@
-# Developing HwProbe
+# Developing Transcoding Diagnostics
+
+The plugin's sidebar entry and page are titled Transcoding Diagnostics. Everything else keeps the original name HwProbe: the package name in the plugin repository and the Plugins list (Jellyfin removes an updated plugin's old folder by name, so a renamed package would leave both versions loaded), the assemblies, the plugin GUID, the page's URL key (`configurationpage?name=HwProbe`), the `HwProbe/` API routes, the data and cache folders, the `HWPROBE_*` variables and the `hwprobe` command-line tool. The performance tests are called speed runs in the code.
 
 ## Layout
 
 | Path | Contents |
 |---|---|
-| `src/HwProbe.Core` | Probe and speed engines, report, fixtures. No Jellyfin dependency. |
+| `src/HwProbe.Core` | Probe and speed engines, report, fixtures and the cache listing. No Jellyfin dependency. |
 | `src/HwProbe.Core/Data/catalog.yaml` | Everything the plugin page lists: speed inputs, codecs, qualities, run options and labels. Compiled in and checked by `Catalog.Parse`; served to the page by `HwProbe/Catalog`. |
 | `src/HwProbe.Jellyfin` | Builds ffmpeg commands with Jellyfin's own `EncodingHelper`. |
 | `src/HwProbe.Plugin` | The Jellyfin plugin: service, API and the page (`Configuration/configPage.html`). |
@@ -46,7 +48,7 @@ hwprobe --speed confirm --speed-videos pattern,live-action --speed-outputs h264-
   --speed-backends vaapi,none --speed-option EncoderPreset=fast --speed-json speed.json
 ```
 
-## Speed runs
+## Performance tests (speed runs)
 
 - `SpeedEngine` measures every chosen output (a codec at a player quality, or decode only) from every chosen input on each chosen backend and software, and reports each result as it finishes.
 - Arguments come from `EncodingHelper` with `ProbeCell.FullQuality`, as a real request gets them. The output size goes through Jellyfin's `ResolutionNormalizer`, as `StreamingHelpers` does.
@@ -56,7 +58,7 @@ hwprobe --speed confirm --speed-videos pattern,live-action --speed-outputs h264-
 
 ## Test clips and downloads
 
-Test clips are made with the server's ffmpeg and cached per ffmpeg build. A clip that can't be made comes from a copy bundled in the plugin, or from FFmpeg's FATE sample suite, pinned by SHA-256.
+Test clips are made with the server's ffmpeg and cached per ffmpeg build. A clip that can't be made comes from a copy bundled in the plugin, or from FFmpeg's FATE sample suite, pinned by SHA-256. The cache is under Jellyfin's cache folder in `hwprobe/fixtures`: a folder per ffmpeg build, `samples` (kept across builds) and `downloads` (named by SHA-256). The Help tab lists it through `HwProbe/Cache/Contents` (`FixtureCacheContents`, which names each file from the catalogs). Before each probe or performance test builds clips, `FixtureCacheContents.Prune` deletes other ffmpeg builds' folders, files this version doesn't use, and leftovers of interrupted writes.
 
 - Bundled (no public sample exists): HEVC RExt 4:4:4 10-bit, 4:2:2 12-bit and 4:4:4 12-bit, AV1 10-bit, and H.264 with frequent key frames. `scripts/make-bundled-fixtures.sh` remakes them; put the hashes it prints in `FixtureCatalog`.
 - Always downloaded: `vc1/SA00050.vc1` (no free VC-1 encoder exists).
@@ -69,7 +71,7 @@ Tests never download, and `HWPROBE_NO_DOWNLOADS=1` (set in CI and `container-plu
 
 ## Diagnostics zips
 
-A user's zip (**Download diagnostics** on the page, or `--diagnostics`) is laid out like `tests/Corpus`:
+A user's zip (**Download diagnostics** on the Help tab, or `--diagnostics`) is laid out like `tests/Corpus`:
 
 - `ffmpeg/*.txt`: capability listings. Copy them to `tests/Corpus/ffmpeg/<build>/` for `ScriptedFfmpegRunner.FromCorpus`.
 - `stderr/NNN-<probe>.txt`: every launch in order, with `#` lines for the arguments, environment, outcome and result, then the full stderr. Copy one to `tests/Corpus/stderr/`, replacing the header with an `# Observed:` line naming the host and build.
