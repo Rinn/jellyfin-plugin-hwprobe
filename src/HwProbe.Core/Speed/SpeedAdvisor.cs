@@ -207,8 +207,9 @@ public static class SpeedAdvisor
 
     /// <summary>Returns what the results call an output.</summary>
     /// <param name="r">The result.</param>
-    /// <returns>For example <c>Test video, H.264: H.264, 8 Mbps</c>.</returns>
-    private static string Label(SpeedResult r) => r.Video is not null && r.Output is not null ? r.Video + ": " + r.Output : r.Label ?? r.Test;
+    /// <returns>For example <c>Live-action + CGI (1080p VP9, 24 fps, stereo Opus): H.264, 8 Mbps</c>.</returns>
+    private static string Label(SpeedResult r) =>
+        r.Video is not null && r.Output is not null ? r.Video + (string.IsNullOrEmpty(r.Input) ? string.Empty : " (" + r.Input + ")") + ": " + r.Output : r.Label ?? r.Test;
 
     /// <summary>Formats a switch as the catalog keys it.</summary>
     /// <param name="on">The switch.</param>
