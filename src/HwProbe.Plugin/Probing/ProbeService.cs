@@ -16,6 +16,7 @@ using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Controller.Session;
 using MediaBrowser.Model.Configuration;
 using MediaBrowser.Model.Entities;
+using MediaBrowser.Model.Session;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.HwProbe.Probing;
@@ -437,6 +438,11 @@ public sealed partial class ProbeService : IDisposable
         _speedCancel?.Dispose();
     }
 
+    /// <summary>Reports whether a session's stream re-encodes video or audio.</summary>
+    /// <param name="info">The session's transcoding info, null when it plays directly.</param>
+    /// <returns>False for direct play and a remux (both streams copied); true otherwise.</returns>
+    internal static bool IsTranscoding(TranscodingInfo? info) => info is not null && (!info.IsVideoDirect || !info.IsAudioDirect);
+
     /// <summary>Parses a request from the page.</summary>
     /// <param name="request">The request.</param>
     /// <param name="file">The library item's file, or null.</param>
@@ -501,10 +507,13 @@ public sealed partial class ProbeService : IDisposable
     /// <summary>Returns a check for any session that is transcoding.</summary>
     /// <param name="sessions">The session manager.</param>
     /// <returns>True while any session is transcoding.</returns>
+    /// <remarks>
+    /// <c>TranscodeManager.ReportTranscodingProgress</c> also sets <c>TranscodingInfo</c> for a remux, which copies both streams.
+    /// </remarks>
     private static Func<bool> TranscodingCheck(ISessionManager sessions)
     {
         ArgumentNullException.ThrowIfNull(sessions);
-        return () => sessions.Sessions.Any(s => s.TranscodingInfo is not null);
+        return () => sessions.Sessions.Any(s => IsTranscoding(s.TranscodingInfo));
     }
 
     /// <summary>Returns where the latest report is saved.</summary>
