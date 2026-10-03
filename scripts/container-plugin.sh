@@ -115,7 +115,6 @@ fi
 
 check "plugin status" Active "$(curl -sf "$base/Plugins" -H "$h" | json 'next((p["Status"] for p in j if p["Name"]=="HwProbe"), "missing")')"
 check "plugin version" "$version" "$(curl -sf "$base/Plugins" -H "$h" | json 'next((p["Version"] for p in j if p["Name"]=="HwProbe"), "missing")')"
-check "scheduled task" "Probe hardware transcoding" "$(curl -sf "$base/ScheduledTasks" -H "$h" | json 'next((t["Name"] for t in j if t["Key"]=="HwProbeHardwareProbe"), "missing")')"
 check "config page" 200 "$(code "$base/web/ConfigurationPage?name=HwProbe" -H "$h")"
 check "sidebar entry" "HwProbe developer_board" "$(curl -sf "$base/web/ConfigurationPages?enableInMainMenu=true" -H "$h" | json 'next((p["DisplayName"] + " " + p["MenuIcon"] for p in j if p["Name"]=="HwProbe"), "missing")')"
 check "report without token" 401 "$(code "$base/HwProbe/Report")"
@@ -164,15 +163,7 @@ check "history" "[]" "$(curl -sf "$base/HwProbe/History" -H "$h")"
 check "no restart pending" false "$(curl -sf "$base/HwProbe/RestartRequired" -H "$h")"
 check "refused changes left settings alone" True "$(curl -sf "$base/System/Configuration/encoding" -H "$h" | python3 -c "import json,sys; print(json.load(sys.stdin) == json.loads(sys.argv[1]))" "$before")"
 
-task_id="$(curl -sf "$base/ScheduledTasks" -H "$h" | json 'next(t["Id"] for t in j if t["Key"]=="HwProbeHardwareProbe")')"
-check "run task" 204 "$(code -X POST "$base/ScheduledTasks/Running/$task_id" -H "$h")"
-result=-
-for _ in $(seq 1 300); do
-    result="$(curl -sf "$base/ScheduledTasks/$task_id" -H "$h" | json 'j["State"] + " " + (j.get("LastExecutionResult") or {}).get("Status", "-")')"
-    case "$result" in "Idle Completed" | "Idle Failed") break ;; esac
-    sleep 2
-done
-check "task result" "Idle Completed" "$result"
+check "no scheduled task" missing "$(curl -sf "$base/ScheduledTasks" -H "$h" | json 'next((t["Name"] for t in j if t["Key"]=="HwProbeHardwareProbe"), "missing")')"
 
 echo "$failures failed check(s)"
 [ "$failures" -eq 0 ]
