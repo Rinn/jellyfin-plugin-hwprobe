@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.10.1.0",
+        "changelog": "Removes the hardware probe scheduled task (probing runs from the plugin page). The command-line tool's macOS and Linux builds now unpack as a runnable hwprobe. Simpler README.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.10.1/hwprobe-plugin_0.10.1.0.zip",
+        "checksum": "3f2d14b60ccf6b943b18ea7a9d2a41d6",
+        "timestamp": "2026-10-03T19:25:57Z"
+      },
+      {
         "version": "0.10.0.0",
         "changelog": "Speed tab: measures transcode speed per working backend and software, for chosen inputs (test videos, film samples or a library file), codecs and player qualities, with Jellyfin's transcoding settings overridable for the run. Pause, cancel, history and a page styled like the dashboard.",
         "targetAbi": "12.1.0.0",
