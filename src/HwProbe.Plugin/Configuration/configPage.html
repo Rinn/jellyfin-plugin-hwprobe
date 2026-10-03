@@ -53,6 +53,12 @@
             #HwProbeConfigPage .hwprobe-card { padding: 0.8em 1em; margin: 0 0 1.5em; }
             #HwProbeConfigPage .hwprobe-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5em 1em; margin: 0.2em 0; }
             #HwProbeConfigPage .hwprobe-row.hwprobe-start { justify-content: flex-start; }
+            /* Banners drawn like the dashboard's MUI Alert (standard variant), with its outlined icons. */
+            #HwProbeConfigPage .infoBanner { position: relative; margin: 0.5em 0 1em; padding: 14px 16px 14px 50px; border: none; border-radius: 4px; box-shadow: none; background: var(--jf-palette-Alert-infoStandardBg, rgb(7, 19, 24)); color: var(--jf-palette-Alert-infoColor, rgb(184, 231, 251)); font-size: 0.875rem; line-height: 1.43; letter-spacing: 0.01071em; }
+            #HwProbeConfigPage .infoBanner[hidden] { display: none; }
+            #HwProbeConfigPage .infoBanner::before { content: ''; position: absolute; left: 16px; top: 13px; width: 22px; height: 22px; opacity: 0.9; background: var(--jf-palette-Alert-infoIconColor, #29b6f6); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2m0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2m0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8'/%3E%3C/svg%3E") center / contain no-repeat; }
+            #HwProbeConfigPage .infoBanner.hwprobe-warning { background: var(--jf-palette-Alert-warningStandardBg, rgb(25, 18, 7)); color: var(--jf-palette-Alert-warningColor, rgb(255, 226, 183)); }
+            #HwProbeConfigPage .infoBanner.hwprobe-warning::before { background: var(--jf-palette-Alert-warningIconColor, #ffa726); -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 5.99 19.53 19H4.47zM12 2 1 21h22zm1 14h-2v2h2zm0-6h-2v4h2z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 5.99 19.53 19H4.47zM12 2 1 21h22zm1 14h-2v2h2zm0-6h-2v4h2z'/%3E%3C/svg%3E"); }
             #HwProbeConfigPage .hwprobe-card .infoBanner { margin: 0.5em 0; }
             #HwProbeConfigPage .hwprobe-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em 1em; margin: 1.5em 0 0.3em; }
             #HwProbeConfigPage .hwprobe-heading h2 { margin: 0; }
@@ -727,7 +733,7 @@
                         || report.backends.some(b => b.verdict === 'Untested' && isConfigured(b))) {
                         return;
                     }
-                    const warning = el('div', null, 'infoBanner');
+                    const warning = el('div', null, 'infoBanner hwprobe-warning');
                     warning.appendChild(document.createTextNode('Didn\u2019t work in the last probe; transcodes that use it can fail. '));
                     warning.appendChild(idleAction('Switch to None', () => post('HwProbe/UseBackend', { Type: 'none', Device: '' })));
                     container.appendChild(warning);
@@ -1598,7 +1604,7 @@
                 function renderReporting() {
                     const div = el('div');
                     div.appendChild(el('p', 'The report and every ffmpeg log of the last probe, to attach to a GitHub issue.', 'secondaryText'));
-                    div.appendChild(el('div', 'Not anonymised: holds file paths and this server\u2019s user and host names. Check before sharing.', 'infoBanner'));
+                    div.appendChild(el('div', 'Not anonymised: holds file paths and this server\u2019s user and host names. Check before sharing.', 'infoBanner hwprobe-warning'));
                     const buttons = el('p');
                     const download = action('Download diagnostics', () => {
                         // ApiClient.ajax returns the raw response for a non-JSON request, with the session's token sent.
@@ -1612,10 +1618,10 @@
                                 setTimeout(() => URL.revokeObjectURL(a.href), 60000);
                             }, () => { setMessage('Could not download diagnostics: run a probe first.'); })
                             .then(() => { download.disabled = false; });
-                    });
+                    }, 'raised button-submit');
                     buttons.appendChild(download);
                     buttons.appendChild(document.createTextNode(' '));
-                    const issue = el('a', 'Report on GitHub', 'button-link');
+                    const issue = el('a', 'Report on GitHub', 'emby-button button-flat hwprobe-inline');
                     issue.href = 'https://github.com/Rinn/jellyfin-plugin-hwprobe/issues/new?template=hardware-report.yml';
                     issue.target = '_blank';
                     buttons.appendChild(issue);
