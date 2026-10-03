@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.10.2.0",
+        "changelog": "Probes and performance tests are no longer refused while a client is direct streaming (remux); only re-encoding video or audio blocks them.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.10.2/hwprobe-plugin_0.10.2.0.zip",
+        "checksum": "06a58cc6d130afc2f1be5207f0544b03",
+        "timestamp": "2026-10-03T20:01:56Z"
+      },
+      {
         "version": "0.10.1.0",
         "changelog": "Removes the hardware probe scheduled task (probing runs from the plugin page). The command-line tool's macOS and Linux builds now unpack as a runnable hwprobe. Simpler README.",
         "targetAbi": "12.1.0.0",
