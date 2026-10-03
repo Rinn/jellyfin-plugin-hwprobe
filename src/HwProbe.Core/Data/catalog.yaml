@@ -178,12 +178,9 @@ subtitles:
   # FFmpeg's PGS sample; ffmpeg has no PGS encoder, so it's downloaded.
   image: { file: speed_pgs_sub.sup, codec: PGSSUB, bitDepth: 8, download: "https://fate-suite.ffmpeg.org/sub/pgs_sub.sup", sha256: ce6d8ed89cf557e34b90d49c5ce955731935c485b93892f69ab276cfe0c36c27 }
 
-# Variations, keyed by SpeedComparison: Jellyfin's own setting names, and the values measured beside the server's.
+# Variations, keyed by SpeedComparison: measured again with one Jellyfin setting switched.
 variations:
-  - { key: AudioVbr, name: Enable VBR audio encoding, measured: On and off }
-  - { key: Deinterlace, name: "Double the frame rate when deinterlacing, Deinterlacing method", measured: "On, and BWDIF (interlaced input only)" }
-  - { key: Paths, name: "Intel low-power encoders, VPP tone mapping, QSV and NVIDIA decoders", measured: Each switched (where the backend has it) }
-  - { key: Subtitles, name: Subtitle burn-in, measured: Text (ASS) and image (PGS) subtitles drawn onto the picture }
+  - { key: LowPower, name: "Enable Intel Low-Power H.264 and HEVC hardware encoders", measured: On and off (QSV and VAAPI) }
 
 # Accuracy, keyed by SpeedMethod. Seconds per measurement are from runs on real hosts, for the page's estimate; making or downloading clips adds to the first.
 methods:
@@ -198,47 +195,75 @@ repeats:
   - { value: 2, label: "Measure each twice, report the median" }
   - { value: 3, label: "Measure each three times, report the median" }
 
-# Jellyfin's Encoding preset choices (transcoding.tsx, v12.1); auto is veryfast for VOD (DynamicHlsController.DefaultVodEncoderPreset).
-presets:
-  - { key: auto, label: Auto }
-  - { key: veryslow, label: veryslow }
-  - { key: slower, label: slower }
-  - { key: slow, label: slow }
-  - { key: medium, label: medium }
-  - { key: fast, label: fast }
-  - { key: faster, label: faster }
-  - { key: veryfast, label: veryfast }
-  - { key: superfast, label: superfast }
-  - { key: ultrafast, label: ultrafast }
-
-# Jellyfin's H.264 and H.265 encoding CRF range (transcoding.tsx, v12.1).
-crfRange: [0, 51]
-
-# Audio: transcoded to stereo AAC, as most clients get it, or copied, as for a client that plays the source's audio.
-audio:
-  - { key: transcode, label: Transcode to stereo AAC }
-  - { key: copy, label: Copy (passthrough) }
-
-# Jellyfin's Transcoding thread count choices (jellyfin-web transcoding.tsx, v12.1). EncodingHelper.GetNumberOfThreads treats Auto (-1) and Max (0) alike: ffmpeg picks (v12.1).
-threads:
-  - { value: -1, label: Auto }
-  - { value: 1, label: "1" }
-  - { value: 2, label: "2" }
-  - { value: 3, label: "3" }
-  - { value: 4, label: "4" }
-  - { value: 5, label: "5" }
-  - { value: 6, label: "6" }
-  - { value: 7, label: "7" }
-  - { value: 8, label: "8" }
-  - { value: 9, label: "9" }
-  - { value: 10, label: "10" }
-  - { value: 11, label: "11" }
-  - { value: 12, label: "12" }
-  - { value: 13, label: "13" }
-  - { value: 14, label: "14" }
-  - { value: 15, label: "15" }
-  - { value: 16, label: "16" }
-  - { value: 0, label: Max }
+# The run's settings, in the order of Jellyfin's Transcoding page (transcoding.tsx, v12.1), then the client's choices. Labels are jellyfin-web's (en-us.json).
+# server: the EncodingOptions property a setting defaults to; switch: on or off; range: whole numbers from low to high; choices: keyed values. Keys are applied by SpeedSettingsOptions.
+options:
+  - { key: EnhancedNvdec, label: Enable enhanced NVDEC decoder, server: EnableEnhancedNvdecDecoder, switch: true }
+  - { key: PreferNativeDecoder, label: Prefer OS native DXVA or VA-API hardware decoders, server: PreferSystemNativeHwDecoder, switch: true }
+  - { key: VppTonemap, label: Enable VPP Tone mapping, server: EnableVppTonemapping, switch: true }
+  # EncodingHelper.GetNumberOfThreads treats Auto (-1) and Max (0) alike: ffmpeg picks (v12.1).
+  - key: EncodingThreadCount
+    label: Transcoding thread count
+    server: EncodingThreadCount
+    help: The most CPU threads each transcode uses.
+    choices:
+      - { key: "-1", label: Auto }
+      - { key: "1", label: "1" }
+      - { key: "2", label: "2" }
+      - { key: "3", label: "3" }
+      - { key: "4", label: "4" }
+      - { key: "5", label: "5" }
+      - { key: "6", label: "6" }
+      - { key: "7", label: "7" }
+      - { key: "8", label: "8" }
+      - { key: "9", label: "9" }
+      - { key: "10", label: "10" }
+      - { key: "11", label: "11" }
+      - { key: "12", label: "12" }
+      - { key: "13", label: "13" }
+      - { key: "14", label: "14" }
+      - { key: "15", label: "15" }
+      - { key: "16", label: "16" }
+      - { key: "0", label: Max }
+  - { key: AudioVbr, label: Enable VBR audio encoding, server: EnableAudioVbr, switch: true }
+  # Auto is veryfast for VOD (DynamicHlsController.DefaultVodEncoderPreset, v12.1).
+  - key: EncoderPreset
+    label: Encoding preset
+    server: EncoderPreset
+    choices:
+      - { key: auto, label: Auto }
+      - { key: veryslow, label: veryslow }
+      - { key: slower, label: slower }
+      - { key: slow, label: slow }
+      - { key: medium, label: medium }
+      - { key: fast, label: fast }
+      - { key: faster, label: faster }
+      - { key: veryfast, label: veryfast }
+      - { key: superfast, label: superfast }
+      - { key: ultrafast, label: ultrafast }
+  - { key: H265Crf, label: H.265 encoding CRF, server: H265Crf, range: [0, 51], help: CRF only reaches the software encoders; hardware encoders follow the bitrate. }
+  - { key: H264Crf, label: H.264 encoding CRF, server: H264Crf, range: [0, 51] }
+  - key: DeinterlaceMethod
+    label: Deinterlacing method
+    server: DeinterlaceMethod
+    help: Only interlaced inputs are deinterlaced.
+    choices:
+      - { key: yadif, label: Yet Another DeInterlacing Filter (YADIF) }
+      - { key: bwdif, label: Bob Weaver DeInterlacing Filter (BWDIF) }
+  - { key: DoubleRate, label: Double the frame rate when deinterlacing, server: DeinterlaceDoubleRate, switch: true }
+  - key: Audio
+    label: Audio
+    help: Copying passes the source's audio through, as for a client that plays it, so only the video is transcoded.
+    choices:
+      - { key: transcode, label: Transcode to stereo AAC }
+      - { key: copy, label: Copy (passthrough) }
+  - key: BurnIn
+    label: Burn subtitles
+    help: Subtitles drawn onto the picture, as for a client that can't show them.
+    choices:
+      - { key: none, label: None }
+      - { key: text, label: Text (ASS) }
+      - { key: image, label: Image (PGS) }
 
 # Seconds per measurement; no value for no limit.
 timeLimits:
@@ -283,15 +308,16 @@ findings:
   vulkan-interop-unprobed: Vulkan interop not tested
   unvalidated-backend: Not validated on real hardware
 
-# The settings a speed run started from, as the results list them; keyed by SpeedSettings property.
+# The settings a speed run started from, as the results list them, in the Transcoding page's order; keyed by SpeedSettings property.
 settings:
+  enhancedNvdec: Enhanced NVDEC
+  preferNativeDecoder: OS native decoders
+  lowPower: Intel low power
+  tonemap: Tone mapping
   encodingThreadCount: Transcoding threads
-  audio: Audio
+  audioVbr: VBR audio
   encoderPreset: Encoding preset
   crf: Encoding CRF
-  audioVbr: VBR audio
-  tonemap: Tone mapping
-  lowPower: Intel low power
   deinterlace: Deinterlacing
-  preferNativeDecoder: OS native decoders
-  enhancedNvdec: Enhanced NVDEC
+  audio: Audio
+  burnIn: Burned-in subtitles

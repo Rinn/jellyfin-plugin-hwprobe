@@ -111,7 +111,7 @@ public sealed class ProbeServiceTests : IDisposable
             },
             ServerSpeedSettings = () => new SpeedSettings { EncoderPreset = "fast" },
         };
-        var request = new SpeedRequest("full", [], [], ["Deinterlace", "AudioVbr"]) { Repeats = 2, TimeLimitSeconds = 60, EncodingThreadCount = 4, H264Crf = 20, Audio = "copy" };
+        var request = new SpeedRequest("full", [], [], ["LowPower"]) { Repeats = 2, TimeLimitSeconds = 60, Options = new Dictionary<string, string> { ["EncodingThreadCount"] = "4", ["H264Crf"] = "20", ["Audio"] = "copy" } };
 
         Assert.Equal(ProbeRunResult.NoReport, await service.StartSpeedAsync(request, ct));
         await service.RunAsync(ct);
@@ -121,17 +121,18 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Videos = ["library"] }, ct));
         Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Repeats = 4 }, ct));
         Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { TimeLimitSeconds = 5 }, ct));
-        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { EncodingThreadCount = 99 }, ct));
-        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { EncoderPreset = "placebo" }, ct));
-        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { H265Crf = 52 }, ct));
-        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Audio = "flac" }, ct));
+        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Options = new Dictionary<string, string> { ["EncodingThreadCount"] = "99" } }, ct));
+        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Options = new Dictionary<string, string> { ["EncoderPreset"] = "placebo" } }, ct));
+        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Options = new Dictionary<string, string> { ["H265Crf"] = "52" } }, ct));
+        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Options = new Dictionary<string, string> { ["AudioVbr"] = "yes" } }, ct));
+        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Options = new Dictionary<string, string> { ["Tonemap"] = "true" } }, ct));
         Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Comparisons = ["None"] }, ct));
 
         Assert.Equal(ProbeRunResult.Started, await service.StartSpeedAsync(request, ct));
         await service.Background;
 
         Assert.Equal(Reports.Sample().Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device)), measured);
-        Assert.Equal((SpeedMethod.Full, SpeedComparison.Deinterlace | SpeedComparison.AudioVbr, "fast", 4), (asked!.Method, asked.Comparisons, asked.Settings.EncoderPreset, asked.Settings.EncodingThreadCount));
+        Assert.Equal((SpeedMethod.Full, SpeedComparison.LowPower, "fast", 4), (asked!.Method, asked.Comparisons, asked.Settings.EncoderPreset, asked.Settings.EncodingThreadCount));
         Assert.Equal((SpeedCatalog.DefaultVideos, SpeedCatalog.DefaultOutputs), (asked.Videos, asked.Outputs));
         Assert.Equal((20, 28, true), (asked.Settings.H264Crf, asked.Settings.H265Crf, asked.Settings.AudioCopy));
         Assert.Equal((2, TimeSpan.FromMinutes(1)), (asked.Repeats, asked.TimeLimit!.Value));

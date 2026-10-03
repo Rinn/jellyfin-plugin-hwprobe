@@ -34,10 +34,11 @@ public sealed class CatalogTests
     /// <param name="find">Text in the compiled-in file.</param>
     /// <param name="replace">What to put instead.</param>
     [Theory]
-    [InlineData("  - { key: Subtitles,", "  - { key: Subtitles2,")]
-    [InlineData("  - { key: Subtitles, name: Subtitle burn-in, measured: Text (ASS) and image (PGS) subtitles drawn onto the picture }\n", "")]
+    [InlineData("  - { key: LowPower,", "  - { key: LowPower2,")]
+    [InlineData("  - { key: DoubleRate, label: Double the frame rate when deinterlacing, server: DeinterlaceDoubleRate, switch: true }", "  - { key: DoubleRate2, label: x, switch: true }")]
+    [InlineData("  - { key: H264Crf, label: H.264 encoding CRF, server: H264Crf, range: [0, 51] }", "  - { key: H264Crf, label: x, range: [0, 51], switch: true }")]
     [InlineData("  - { type: amf,", "  - { type: amd,")]
-    [InlineData("  - { key: AudioVbr,", "  - { key: Unknown, name: x, measured: x }\n  - { key: AudioVbr,")]
+    [InlineData("  - { key: LowPower,", "  - { key: Unknown, name: x, measured: x }\n  - { key: LowPower,")]
     [InlineData("  FullCuda: Full GPU pipeline (CUDA)\n", "")]
     [InlineData("defaultVideos: [pattern]", "defaultVideos: [pattern-8k]")]
     [InlineData("{testSource} -c:v libx264", "{testSourc} -c:v libx264")]

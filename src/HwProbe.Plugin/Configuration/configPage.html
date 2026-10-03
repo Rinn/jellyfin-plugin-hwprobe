@@ -125,11 +125,8 @@
                 let speedRepeats = 1;
                 let speedTimeLimit = null;
                 // Null measures with the server's own thread count.
-                let speedThreads = null;
-                let speedPreset = null;
-                let speedH264Crf = null;
-                let speedH265Crf = null;
-                let speedAudio = 'transcode';
+                // Run options chosen on the page, by catalog key; one left out keeps the server's setting.
+                const speedSettings = {};
                 let chosenVideos = null;
                 // Outputs are every chosen codec at every chosen quality; 'decode' is chosen with the codecs.
                 let chosenCodecs = null;
@@ -149,10 +146,7 @@
                 let methodSeconds = {};
                 let comparisons = {};
                 let repeatOptions = [];
-                let threadOptions = [];
-                let presetOptions = [];
-                let crfRange = [0, 51];
-                let audioOptions = [];
+                let runOptions = [];
                 let timeLimitOptions = [];
                 let names = {};
                 let order = [];
@@ -170,10 +164,7 @@
                     methodSeconds = Object.fromEntries(c.Methods.map(m => [m.Key, m.Seconds]));
                     comparisons = Object.fromEntries(c.Variations.map(v => [v.Key, [v.Name, v.Measured]]));
                     repeatOptions = c.Repeats.map(o => [o.Value, o.Label]);
-                    threadOptions = c.Threads.map(o => [o.Value, o.Label]);
-                    presetOptions = c.Presets.map(o => [o.Key, o.Label]);
-                    crfRange = c.CrfRange;
-                    audioOptions = c.Audio.map(o => [o.Key, o.Label]);
+                    runOptions = c.Options;
                     timeLimitOptions = c.TimeLimits.map(o => [o.Value === undefined || o.Value === null ? '' : o.Value, o.Label]);
                     names = Object.fromEntries(c.Backends.map(b => [b.Type, b.Name]));
                     order = c.Backends.map(b => b.Type);
@@ -745,14 +736,7 @@
                         for (const v of videos) {
                             for (const o of outputs) {
                                 runs += 1;
-                                if (o.DecodeOnly) {
-                                    runs += hardware && speedCompared.has('Paths') ? 1 : 0;
-                                    continue;
-                                }
-                                runs += speedAudio !== 'copy' && speedCompared.has('AudioVbr') ? 1 : 0;
-                                runs += v.Interlaced && speedCompared.has('Deinterlace') ? 2 : 0;
-                                runs += hardware && speedCompared.has('Paths') ? 2 : 0;
-                                runs += speedCompared.has('Subtitles') ? 2 : 0;
+                                runs += hardware && !o.DecodeOnly && speedCompared.has('LowPower') ? 1 : 0;
                             }
                         }
                     }
@@ -986,25 +970,28 @@
                         }
                         select.addEventListener('change', () => { onChange(select.value); update(); });
                     };
-                    // The first choice keeps the server's own setting, named with its value.
-                    const server = (choices, value) => {
-                        const found = choices.find(([key]) => key === value);
-                        return [['', 'Server setting' + (found ? ' (' + found[1] + ')' : '')]].concat(choices);
-                    };
-                    const crfs = [];
-                    for (let crf = crfRange[0]; crf <= crfRange[1]; crf++) {
-                        crfs.push([crf, String(crf)]);
+                    // In the Transcoding page's order; the first choice keeps the server's setting, named with its value.
+                    for (const o of runOptions) {
+                        let choices = o.Choices ? o.Choices.map(c => [c.Key, c.Label]) : o.Switch ? [['true', 'On'], ['false', 'Off']] : [];
+                        for (let n = o.Range ? o.Range[0] : 0; o.Range && n <= o.Range[1]; n++) {
+                            choices.push([String(n), String(n)]);
+                        }
+                        if (o.Server) {
+                            const value = encoding ? encoding[o.Server] : null;
+                            const found = choices.find(([key]) => value !== null && value !== undefined && key === String(value));
+                            choices = [['', 'Server setting' + (found ? ' (' + found[1] + ')' : '')]].concat(choices);
+                        }
+                        options(o.Label, choices, o.Key in speedSettings ? speedSettings[o.Key] : choices[0][0], v => {
+                            if (v === '') {
+                                delete speedSettings[o.Key];
+                            } else {
+                                speedSettings[o.Key] = v;
+                            }
+                        });
+                        if (o.Help) {
+                            container.appendChild(el('div', o.Help, 'fieldDescription'));
+                        }
                     }
-                    const orNull = v => v === '' ? null : v;
-                    options('Audio', audioOptions, speedAudio, v => { speedAudio = v; });
-                    container.appendChild(el('div', 'Copying passes the source\u2019s audio through, as for a client that plays it, so only the video is transcoded.', 'fieldDescription'));
-                    options('Encoding preset', server(presetOptions, encoding ? encoding.EncoderPreset : null), speedPreset === null ? '' : speedPreset, v => { speedPreset = orNull(v); });
-                    options('H.264 encoding CRF', server(crfs, encoding ? encoding.H264Crf : null), speedH264Crf === null ? '' : speedH264Crf, v => { speedH264Crf = v === '' ? null : Number(v); });
-                    options('H.265 encoding CRF', server(crfs, encoding ? encoding.H265Crf : null), speedH265Crf === null ? '' : speedH265Crf, v => { speedH265Crf = v === '' ? null : Number(v); });
-                    container.appendChild(el('div', 'CRF only reaches the software encoders; hardware encoders follow the bitrate.', 'fieldDescription'));
-                    const serverThreads = encoding ? threadOptions.find(([value]) => value === encoding.EncodingThreadCount) : null;
-                    options('Transcoding thread count', [['', 'Server setting' + (serverThreads ? ' (' + serverThreads[1] + ')' : '')]].concat(threadOptions), speedThreads === null ? '' : speedThreads, v => { speedThreads = v === '' ? null : Number(v); });
-                    container.appendChild(el('div', 'The most CPU threads each transcode uses, as Jellyfin\u2019s Transcoding thread count setting.', 'fieldDescription'));
                     container.appendChild(el('h3', 'Accuracy and time', 'sectionTitle'));
                     options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });
                     options('Repeats', repeatOptions, speedRepeats, v => { speedRepeats = Number(v); });
@@ -1012,7 +999,7 @@
                     container.appendChild(el('div', 'A measurement that reaches the limit stops and reports what it measured.', 'fieldDescription'));
 
                     button = action('Measure speed', () => {
-                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, EncodingThreadCount: speedThreads, EncoderPreset: speedPreset, H264Crf: speedH264Crf, H265Crf: speedH265Crf, Audio: speedAudio, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Comparisons: [...speedCompared], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
+                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, Options: speedSettings, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Comparisons: [...speedCompared], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
                         ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed'), data: JSON.stringify(body), contentType: 'application/json' })
                             .then(loadStatus, response => (response && response.text ? response.text() : Promise.resolve('')).then(text => {
                                 setMessage('Could not start: ' + (text.replace(/^"|"$/g, '') || 'a probe is running or a session is transcoding.'));
@@ -1224,16 +1211,17 @@
                 function settingsRows(t) {
                     const onOff = on => on ? 'On' : 'Off';
                     return [
-                        ['audio', t.audioCopy ? 'Copied (passthrough)' : 'Transcoded to stereo AAC'],
-                        ['encodingThreadCount', t.encodingThreadCount > 0 ? String(t.encodingThreadCount) : 'Automatic'],
-                        ['encoderPreset', t.encoderPreset || 'Auto (veryfast)'],
-                        ['crf', 'H.264 ' + t.h264Crf + ', HEVC ' + t.h265Crf],
-                        ['audioVbr', onOff(t.audioVbr)],
-                        ['tonemap', onOff(t.tonemap) + (t.vppTonemap ? ', VPP' : '')],
-                        ['lowPower', 'H.264 ' + onOff(t.lowPowerH264) + ', HEVC ' + onOff(t.lowPowerHevc)],
-                        ['deinterlace', (t.bwdif ? 'BWDIF' : 'YADIF') + (t.doubleRate ? ', double rate' : '')],
+                        ['enhancedNvdec', onOff(t.enhancedNvdec)],
                         ['preferNativeDecoder', onOff(t.preferNativeDecoder)],
-                        ['enhancedNvdec', onOff(t.enhancedNvdec)]
+                        ['lowPower', 'H.264 ' + onOff(t.lowPowerH264) + ', HEVC ' + onOff(t.lowPowerHevc)],
+                        ['tonemap', onOff(t.tonemap) + (t.vppTonemap ? ', VPP' : '')],
+                        ['encodingThreadCount', t.encodingThreadCount > 0 ? String(t.encodingThreadCount) : 'Automatic'],
+                        ['audioVbr', onOff(t.audioVbr)],
+                        ['encoderPreset', t.encoderPreset || 'Auto (veryfast)'],
+                        ['crf', 'H.265 ' + t.h265Crf + ', H.264 ' + t.h264Crf],
+                        ['deinterlace', (t.bwdif ? 'BWDIF' : 'YADIF') + (t.doubleRate ? ', double rate' : '')],
+                        ['audio', t.audioCopy ? 'Copied (passthrough)' : 'Transcoded to stereo AAC'],
+                        ['burnIn', { text: 'Text (ASS)', image: 'Image (PGS)' }[t.burnIn] || 'None']
                     ].map(([key, value]) => [settingLabels[key] || key, value]);
                 }
 

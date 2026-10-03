@@ -95,7 +95,7 @@ public sealed class SpeedEngine : IDisposable
         try
         {
             var names = tests.Where(t => t.Fixture is not null).GroupBy(t => t.Fixture!.FileName).ToDictionary(g => g.Key, g => g.First().Name ?? g.Key, StringComparer.Ordinal);
-            var clips = await BuildClipsAsync(options, caps, tests, speed.Comparisons, progress is null ? null : new StepProgress(step => progress.Report(new SpeedProgress(0, total, null) { Preparing = Preparing(step, names) })), cancellationToken);
+            var clips = await BuildClipsAsync(options, caps, tests, speed.Settings, progress is null ? null : new StepProgress(step => progress.Report(new SpeedProgress(0, total, null) { Preparing = Preparing(step, names) })), cancellationToken);
             progress?.Report(new SpeedProgress(0, total, null));
             foreach (var (type, device, planned) in plan)
             {
@@ -103,7 +103,7 @@ public sealed class SpeedEngine : IDisposable
                 var source = traits is null ? null : _arguments.Create(caps, traits);
                 foreach (var (test, labels) in planned)
                 {
-                    var missing = MissingClip(test, clips);
+                    var missing = MissingClip(test, speed.Settings, clips);
                     var cell = missing is null ? SpeedVariants.Base(test, speed.Settings, Paths(clips)) : null;
                     var variants = cell is null ? [] : SpeedVariants.For(type, test, cell, speed.Comparisons, Paths(clips)).ToDictionary(v => v.Label, v => v.Cell, StringComparer.Ordinal);
                     string? baseCommand = null;
@@ -117,7 +117,7 @@ public sealed class SpeedEngine : IDisposable
                         var variant = label.Length == 0 ? cell : variants.GetValueOrDefault(label);
                         var result = source is null ? new SpeedResult(type, device, test.Key, label, null, null, false, "The device didn't open.")
                             : cell is null ? new SpeedResult(type, device, test.Key, label, null, null, false, missing)
-                            : variant is null ? new SpeedResult(type, device, test.Key, label, null, null, false, MissingSubtitles(clips))
+                            : variant is null ? new SpeedResult(type, device, test.Key, label, null, null, false, "Doesn't apply with these clips.")
                             : await MeasureRepeatedAsync(options, speed, source, type, device, test, label, variant, () => baseCommand, c => baseCommand ??= c, cancellationToken);
                         var described = Describe(test, result);
                         results.Add(described);
@@ -148,10 +148,11 @@ public sealed class SpeedEngine : IDisposable
 
     /// <summary>Returns why a test's clips aren't available, or null when they are.</summary>
     /// <param name="test">The test.</param>
+    /// <param name="settings">The settings, for the subtitles burned in.</param>
     /// <param name="clips">Every clip built.</param>
     /// <returns>The reason, or null.</returns>
-    private static string? MissingClip(SpeedTest test, Dictionary<string, FixtureResult> clips) =>
-        SpeedVariants.Clips([test], SpeedComparison.None).Select(f => clips[f.FileName]).FirstOrDefault(c => c.Status != FixtureStatus.Available) is { } missing
+    private static string? MissingClip(SpeedTest test, SpeedSettings settings, Dictionary<string, FixtureResult> clips) =>
+        SpeedVariants.Clips([test], settings).Select(f => clips[f.FileName]).FirstOrDefault(c => c.Status != FixtureStatus.Available) is { } missing
             ? $"No {missing.Spec.FileName} clip: {missing.Reason}"
             : null;
 
@@ -169,7 +170,7 @@ public sealed class SpeedEngine : IDisposable
     private static List<string> Labels(HwType type, SpeedTest test, SpeedOptions speed)
     {
         // Each clip's file name stands in for its path.
-        var placeholders = SpeedVariants.Clips([test], speed.Comparisons).ToDictionary(f => f.FileName, f => f.FileName, StringComparer.Ordinal);
+        var placeholders = SpeedVariants.Clips([test], speed.Settings).ToDictionary(f => f.FileName, f => f.FileName, StringComparer.Ordinal);
         return [string.Empty, .. SpeedVariants.For(type, test, SpeedVariants.Base(test, speed.Settings, placeholders), speed.Comparisons, placeholders).Select(v => v.Label)];
     }
 
@@ -193,25 +194,17 @@ public sealed class SpeedEngine : IDisposable
             : "Downloading " + name;
     }
 
-    /// <summary>Says why a subtitle variation couldn't run.</summary>
-    /// <param name="clips">Every clip built.</param>
-    /// <returns>The reason, from the subtitle clip that failed.</returns>
-    private static string MissingSubtitles(Dictionary<string, FixtureResult> clips) =>
-        clips.Values.FirstOrDefault(c => c.Status != FixtureStatus.Available && (c.Spec == SpeedCatalog.TextSubtitles || c.Spec == SpeedCatalog.ImageSubtitles)) is { } missing
-            ? $"No {missing.Spec.FileName}: {missing.Reason}"
-            : "The subtitle file couldn't be made.";
-
     /// <summary>Makes or downloads the clips the tests need.</summary>
     /// <param name="options">Cache locations and timeouts.</param>
     /// <param name="caps">Build capabilities, for the software encoders.</param>
     /// <param name="tests">The tests.</param>
-    /// <param name="comparisons">The comparisons, for the subtitle clips.</param>
+    /// <param name="settings">The settings, for the subtitles burned in.</param>
     /// <param name="progress">Receives each clip being made or downloaded, or null.</param>
     /// <param name="cancellationToken">Cancels generation.</param>
     /// <returns>Each clip by file name.</returns>
-    private async Task<Dictionary<string, FixtureResult>> BuildClipsAsync(EngineOptions options, FfmpegCapabilities caps, IReadOnlyList<SpeedTest> tests, SpeedComparison comparisons, IProgress<FixtureStep>? progress, CancellationToken cancellationToken)
+    private async Task<Dictionary<string, FixtureResult>> BuildClipsAsync(EngineOptions options, FfmpegCapabilities caps, IReadOnlyList<SpeedTest> tests, SpeedSettings settings, IProgress<FixtureStep>? progress, CancellationToken cancellationToken)
     {
-        var clips = SpeedVariants.Clips(tests, comparisons);
+        var clips = SpeedVariants.Clips(tests, settings);
         var key = Fingerprint.Compute(new FingerprintInputs(options.Ffmpeg.Path, caps.VersionLine, null, null, null, null, null, null));
         Dictionary<string, FixtureResult> built = new(StringComparer.Ordinal);
         foreach (var group in clips.GroupBy(c => c.KeepAcrossBuilds))

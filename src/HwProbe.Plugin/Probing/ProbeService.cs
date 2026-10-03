@@ -205,14 +205,11 @@ public sealed partial class ProbeService : IDisposable
         _speedCancel = new CancellationTokenSource();
         _speedPause = new SpeedPause(_time);
         var settings = ServerSpeedSettings();
-        settings = settings with
+        foreach (var (key, value) in request.Options ?? new Dictionary<string, string>())
         {
-            EncodingThreadCount = request.EncodingThreadCount ?? settings.EncodingThreadCount,
-            EncoderPreset = request.EncoderPreset is { } preset ? (preset == "auto" ? null : preset) : settings.EncoderPreset,
-            H264Crf = request.H264Crf ?? settings.H264Crf,
-            H265Crf = request.H265Crf ?? settings.H265Crf,
-            AudioCopy = request.Audio == "copy",
-        };
+            settings = SpeedSettingsOptions.Apply(settings, key, value) ?? settings;
+        }
+
         _background = Task.Run(() => RunSpeedHeldAsync(measure, speed with { Settings = settings, Pause = _speedPause }, backends, _speedCancel.Token), CancellationToken.None);
         return ProbeRunResult.Started;
     }
@@ -457,10 +454,8 @@ public sealed partial class ProbeService : IDisposable
             comparisons |= comparison;
         }
 
-        if (!Catalog.Default.Repeats.Any(o => o.Value == request.Repeats) || !Catalog.Default.TimeLimits.Any(o => o.Value == request.TimeLimitSeconds) || (request.EncodingThreadCount is { } threads && !Catalog.Default.Threads.Any(o => o.Value == threads))
-            || (request.EncoderPreset is { } preset && !Catalog.Default.Presets.Any(o => o.Key == preset))
-            || (request.Audio is { } audio && !Catalog.Default.Audio.Any(o => o.Key == audio))
-            || new[] { request.H264Crf, request.H265Crf }.Any(c => c < Catalog.Default.CrfRange[0] || c > Catalog.Default.CrfRange[1]))
+        if (!Catalog.Default.Repeats.Any(o => o.Value == request.Repeats) || !Catalog.Default.TimeLimits.Any(o => o.Value == request.TimeLimitSeconds)
+            || request.Options?.Any(o => Catalog.Default.Options.FirstOrDefault(c => c.Key == o.Key) is not { } option || !option.Takes(o.Value)) == true)
         {
             return null;
         }

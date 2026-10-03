@@ -9,35 +9,34 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Speed;
 [Trait("Category", "Unit")]
 public sealed class SpeedVariantsTests
 {
-    private const SpeedComparison All = SpeedComparison.AudioVbr | SpeedComparison.Deinterlace | SpeedComparison.Paths | SpeedComparison.Subtitles;
-
-    /// <summary>Labels per backend and test with every comparison asked for.</summary>
+    /// <summary>Low power is measured both ways only on Intel backends, for H.264 and HEVC.</summary>
     /// <param name="type">The backend.</param>
     /// <param name="test">The test key.</param>
     /// <param name="expected">The comparison labels, in order.</param>
     [Theory]
-    [InlineData(HwType.none, "pattern|h264-4mbps", "Text subtitles burned in|PGS subtitles burned in|VBR audio on")]
-    [InlineData(HwType.none, "pattern|av1-4mbps", "Text subtitles burned in|PGS subtitles burned in|VBR audio on")]
-    [InlineData(HwType.qsv, "pattern-1080i|h264-4mbps", "Text subtitles burned in|PGS subtitles burned in|VBR audio on|Double rate|BWDIF|Low power on|QSV decoders")]
-    [InlineData(HwType.vaapi, "pattern-4k-hdr|h264-8mbps", "Text subtitles burned in|PGS subtitles burned in|VBR audio on|Low power on|VPP tone-mapping on")]
-    [InlineData(HwType.nvenc, "pattern-hevc|decode", "cuvid decoders")]
-    [InlineData(HwType.videotoolbox, "pattern-hevc|decode", "")]
-    public void ComparisonsFollowTheBackend(HwType type, string test, string expected)
+    [InlineData(HwType.none, "pattern|h264-4mbps", "")]
+    [InlineData(HwType.qsv, "pattern-1080i|h264-4mbps", "Low power on")]
+    [InlineData(HwType.vaapi, "pattern-4k-hdr|hevc-8mbps", "Low power on")]
+    [InlineData(HwType.vaapi, "pattern|av1-8mbps", "")]
+    [InlineData(HwType.qsv, "pattern-hevc|decode", "")]
+    public void LowPowerFollowsTheBackend(HwType type, string test, string expected)
     {
         var spec = SpeedCatalog.Find(test)!;
-        var clips = SpeedVariants.Clips([spec], All).ToDictionary(f => f.FileName, f => "/c/" + f.FileName, StringComparer.Ordinal);
-        var cell = SpeedVariants.Base(spec, new SpeedSettings(), clips);
+        var settings = new SpeedSettings();
+        var clips = SpeedVariants.Clips([spec], settings).ToDictionary(f => f.FileName, f => "/c/" + f.FileName, StringComparer.Ordinal);
+        var cell = SpeedVariants.Base(spec, settings, clips);
 
-        Assert.Equal(expected, string.Join('|', SpeedVariants.For(type, spec, cell, All, clips).Select(v => v.Label)));
+        Assert.Equal(expected, string.Join('|', SpeedVariants.For(type, spec, cell, SpeedComparison.LowPower, clips).Select(v => v.Label)));
     }
 
-    /// <summary>The base cell asks upstream for everything a real request carries; the subtitle variation adds a PGS file.</summary>
+    /// <summary>The base cell asks upstream for everything a real request carries, with the run's settings.</summary>
     [Fact]
     public void BaseCellIsARealRequest()
     {
         var spec = SpeedCatalog.Find("pattern|h264-4mbps")!;
-        var clips = SpeedVariants.Clips([spec], SpeedComparison.Subtitles).ToDictionary(f => f.FileName, f => "/c/" + f.FileName, StringComparer.Ordinal);
-        var cell = SpeedVariants.Base(spec, new SpeedSettings { EncoderPreset = "fast", AudioVbr = true }, clips);
+        var settings = new SpeedSettings { EncoderPreset = "fast", AudioVbr = true, BurnIn = "image" };
+        var clips = SpeedVariants.Clips([spec], settings).ToDictionary(f => f.FileName, f => "/c/" + f.FileName, StringComparer.Ordinal);
+        var cell = SpeedVariants.Base(spec, settings, clips);
 
         Assert.True(cell.FullQuality);
         Assert.True(cell.Audio);
@@ -46,12 +45,23 @@ public sealed class SpeedVariantsTests
         Assert.Equal((1920, 1080, 24f, 4_000_000), (cell.SourceWidth, cell.SourceHeight, cell.SourceFrameRate, cell.VideoBitrate!.Value));
         Assert.Equal((null, null), (cell.MaxWidth, cell.MaxHeight));
         Assert.Equal("/c/speed_1080p_h264.mkv", cell.SourcePath);
-        Assert.Null(cell.GraphicalSubtitlePath);
-        Assert.Equal("/c/speed_pgs_sub.sup", SpeedVariants.For(HwType.none, spec, cell, SpeedComparison.Subtitles, clips).Single(v => v.Label == "PGS subtitles burned in").Cell.GraphicalSubtitlePath);
+        Assert.Equal(("/c/speed_pgs_sub.sup", (string?)null), (cell.GraphicalSubtitlePath, cell.SubtitlePath));
+        Assert.DoesNotContain(SpeedCatalog.TextSubtitles, SpeedVariants.Clips([spec], settings));
+        Assert.DoesNotContain(SpeedCatalog.ImageSubtitles, SpeedVariants.Clips([SpeedCatalog.Find("pattern|decode")!], settings));
+    }
 
-        var copied = SpeedVariants.Base(spec, new SpeedSettings { AudioCopy = true }, clips);
-        Assert.True(copied.AudioCopy);
-        Assert.Empty(SpeedVariants.For(HwType.none, spec, copied, SpeedComparison.AudioVbr, clips));
+    /// <summary>Every catalog option, at every value it takes, changes the settings.</summary>
+    [Fact]
+    public void EveryOptionApplies()
+    {
+        foreach (var option in Jellyfin.Plugin.HwProbe.Core.Data.Catalog.Default.Options)
+        {
+            var values = option.Switch ? ["true", "false"] : option.Range is [var low, var high] ? [low.ToString(System.Globalization.CultureInfo.InvariantCulture), high.ToString(System.Globalization.CultureInfo.InvariantCulture)] : option.Choices!.Select(c => c.Key).ToArray();
+            Assert.All(values, v => Assert.NotNull(SpeedSettingsOptions.Apply(new SpeedSettings(), option.Key, v)));
+        }
+
+        Assert.Equal((null, 20, true, "text"), (SpeedSettingsOptions.Apply(new SpeedSettings { EncoderPreset = "fast" }, "EncoderPreset", "auto")!.EncoderPreset, SpeedSettingsOptions.Apply(new SpeedSettings(), "H264Crf", "20")!.H264Crf, SpeedSettingsOptions.Apply(new SpeedSettings(), "DeinterlaceMethod", "bwdif")!.Bwdif, SpeedSettingsOptions.Apply(new SpeedSettings(), "BurnIn", "text")!.BurnIn));
+        Assert.Null(SpeedSettingsOptions.Apply(new SpeedSettings(), "Tonemap", "true"));
     }
 
     /// <summary>Video and output keys are unique, the defaults exist, and a test is keyed video|output.</summary>

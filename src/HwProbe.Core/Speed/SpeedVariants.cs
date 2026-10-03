@@ -33,6 +33,8 @@ internal static class SpeedVariants
             Audio = cell.Audio && !test.DecodeOnly,
             AudioVbr = settings.AudioVbr,
             AudioCopy = settings.AudioCopy,
+            SubtitlePath = !test.DecodeOnly && settings.BurnIn == "text" ? clips.GetValueOrDefault(SpeedCatalog.TextSubtitles.FileName) : null,
+            GraphicalSubtitlePath = !test.DecodeOnly && settings.BurnIn == "image" ? clips.GetValueOrDefault(SpeedCatalog.ImageSubtitles.FileName) : null,
             DoubleRate = settings.DoubleRate,
             Bwdif = settings.Bwdif,
             EncodingThreadCount = settings.EncodingThreadCount,
@@ -58,64 +60,22 @@ internal static class SpeedVariants
     {
         ArgumentNullException.ThrowIfNull(clips);
         var transcode = !test.DecodeOnly;
-        if (transcode && comparisons.HasFlag(SpeedComparison.Subtitles))
-        {
-            if (clips.TryGetValue(SpeedCatalog.TextSubtitles.FileName, out var text))
-            {
-                yield return ("Text subtitles burned in", cell with { SubtitlePath = text });
-            }
-
-            if (clips.TryGetValue(SpeedCatalog.ImageSubtitles.FileName, out var image))
-            {
-                yield return ("PGS subtitles burned in", cell with { GraphicalSubtitlePath = image });
-            }
-        }
-
-        if (transcode && !cell.AudioCopy && comparisons.HasFlag(SpeedComparison.AudioVbr))
-        {
-            yield return (cell.AudioVbr ? "VBR audio off" : "VBR audio on", cell with { AudioVbr = !cell.AudioVbr });
-        }
-
-        if (transcode && test.Interlaced && comparisons.HasFlag(SpeedComparison.Deinterlace))
-        {
-            yield return (cell.DoubleRate ? "Single rate" : "Double rate", cell with { DoubleRate = !cell.DoubleRate });
-            yield return (cell.Bwdif ? "YADIF" : "BWDIF", cell with { Bwdif = !cell.Bwdif });
-        }
-
-        if (!comparisons.HasFlag(SpeedComparison.Paths))
-        {
-            yield break;
-        }
-
         var intel = type is HwType.qsv or HwType.vaapi;
-        if (intel && transcode && test.OutputCodec is "h264" or "hevc")
+        if (comparisons.HasFlag(SpeedComparison.LowPower) && intel && transcode && test.OutputCodec is "h264" or "hevc")
         {
             yield return (cell.LowPower ? "Low power off" : "Low power on", cell with { LowPower = !cell.LowPower });
-        }
-
-        if (intel && test.Tonemap)
-        {
-            yield return (cell.VppTonemap ? "VPP tone-mapping off" : "VPP tone-mapping on", cell with { VppTonemap = !cell.VppTonemap });
-        }
-
-        if (type == HwType.qsv)
-        {
-            yield return (cell.PreferNativeDecoder ? "QSV decoders" : "OS native decoders", cell with { PreferNativeDecoder = !cell.PreferNativeDecoder });
-        }
-
-        if (type == HwType.nvenc)
-        {
-            yield return (cell.EnhancedNvdec ? "cuvid decoders" : "NVDEC decoders", cell with { EnhancedNvdec = !cell.EnhancedNvdec });
         }
     }
 
     /// <summary>Returns every clip a set of tests needs.</summary>
     /// <param name="tests">The tests.</param>
-    /// <param name="comparisons">The comparisons asked for; subtitles need their clips.</param>
+    /// <param name="settings">The settings, for the subtitles burned in.</param>
     /// <returns>The clips, each once.</returns>
-    public static IReadOnlyList<FixtureSpec> Clips(IEnumerable<SpeedTest> tests, SpeedComparison comparisons)
+    public static IReadOnlyList<FixtureSpec> Clips(IEnumerable<SpeedTest> tests, SpeedSettings settings)
     {
-        var all = tests.Select(t => t.Fixture).ToList();
+        ArgumentNullException.ThrowIfNull(settings);
+        var list = tests.ToList();
+        var all = list.Select(t => t.Fixture).ToList();
 
         // Clips that copy another are made after it.
         if (all.Any(f => f?.EncodeArguments.Contains("{clip:", StringComparison.Ordinal) == true))
@@ -123,14 +83,23 @@ internal static class SpeedVariants
             all.Insert(0, SpeedCatalog.TestAudio);
         }
 
-        if (comparisons.HasFlag(SpeedComparison.Subtitles))
+        if (list.Any(t => !t.DecodeOnly) && SubtitleClip(settings) is { } subtitles)
         {
-            all.Add(SpeedCatalog.TextSubtitles);
-            all.Add(SpeedCatalog.ImageSubtitles);
+            all.Add(subtitles);
         }
 
         return [.. all.OfType<FixtureSpec>().DistinctBy(f => f.FileName, StringComparer.Ordinal)];
     }
+
+    /// <summary>Returns the subtitle file a run burns in.</summary>
+    /// <param name="settings">The settings.</param>
+    /// <returns>The clip, or null when none is burned in.</returns>
+    public static FixtureSpec? SubtitleClip(SpeedSettings settings) => settings?.BurnIn switch
+    {
+        "text" => SpeedCatalog.TextSubtitles,
+        "image" => SpeedCatalog.ImageSubtitles,
+        _ => null,
+    };
 
     /// <summary>Describes a generated clip.</summary>
     /// <param name="test">The test.</param>

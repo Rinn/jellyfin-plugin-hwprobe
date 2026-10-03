@@ -46,20 +46,16 @@ internal sealed class HwProbeCommand
 
     private readonly Option<SpeedComparison> _speedCompare = new("--speed-compare")
     {
-        Description = "Also measure with one setting changed: vbr, deinterlace, paths, subtitles; comma-separated.",
+        Description = "Also measure with one setting changed: lowpower (Intel low-power encoders).",
         CustomParser = ParseComparisons,
     };
 
     private readonly Option<string?> _speedFile = new("--speed-file") { Description = "A video file to measure with --speed, as the library video." };
-    private readonly Option<int?> _speedThreads = new("--speed-threads") { Description = "Transcoding thread count for speed runs, as Jellyfin's setting: -1 or 0 lets ffmpeg choose (the default), or 1 to 16." };
-
-    private readonly Option<string?> _speedPreset = new("--speed-preset") { Description = "Encoding preset for speed runs, as Jellyfin's setting: auto (the default) or veryslow to ultrafast." };
-
-    private readonly Option<int?> _speedH264Crf = new("--speed-h264-crf") { Description = "H.264 encoding CRF for speed runs, 0 to 51. Default: 23, as Jellyfin's." };
-
-    private readonly Option<int?> _speedH265Crf = new("--speed-h265-crf") { Description = "H.265 encoding CRF for speed runs, 0 to 51. Default: 28, as Jellyfin's." };
-
-    private readonly Option<bool> _speedAudioCopy = new("--speed-audio-copy") { Description = "Copy the audio in speed runs, as for a client that plays the source's audio, instead of transcoding it to stereo AAC." };
+    private readonly Option<string[]> _speedOption = new("--speed-option")
+    {
+        Description = $"Set a speed run setting, as KEY=VALUE, repeatable; unset ones keep Jellyfin's defaults. Keys: {string.Join(", ", Catalog.Default.Options.Select(o => o.Key))}.",
+        AllowMultipleArgumentsPerToken = false,
+    };
 
     private readonly Option<int> _speedRepeats = new("--speed-repeats") { Description = "Run each speed measurement 1 to 3 times and report the median.", DefaultValueFactory = _ => 1 };
     private readonly Option<int?> _speedTimeLimit = new("--speed-time-limit") { Description = "Seconds each speed measurement may take before it reports what it has." };
@@ -88,31 +84,17 @@ internal sealed class HwProbeCommand
                 r.AddError("--speed-repeats must be 1, 2 or 3.");
             }
         });
-        _speedThreads.Validators.Add(r =>
+        _speedOption.Validators.Add(r =>
         {
-            if (r.GetValueOrDefault<int?>() is { } threads && !Catalog.Default.Threads.Any(o => o.Value == threads))
+            foreach (var pair in r.GetValueOrDefault<string[]>() ?? [])
             {
-                r.AddError("--speed-threads must be -1, 0 or 1 to 16.");
-            }
-        });
-        _speedPreset.Validators.Add(r =>
-        {
-            if (r.GetValueOrDefault<string?>() is { } preset && !Catalog.Default.Presets.Any(o => o.Key == preset))
-            {
-                r.AddError($"--speed-preset must be one of {string.Join(", ", Catalog.Default.Presets.Select(o => o.Key))}.");
-            }
-        });
-        foreach (var (option, name) in new[] { (_speedH264Crf, "--speed-h264-crf"), (_speedH265Crf, "--speed-h265-crf") })
-        {
-            option.Validators.Add(r =>
-            {
-                if (r.GetValueOrDefault<int?>() is { } crf && (crf < Catalog.Default.CrfRange[0] || crf > Catalog.Default.CrfRange[1]))
+                var parts = pair.Split('=', 2);
+                if (parts.Length != 2 || Catalog.Default.Options.FirstOrDefault(o => o.Key == parts[0]) is not { } option || !option.Takes(parts[1]))
                 {
-                    r.AddError($"{name} must be {Catalog.Default.CrfRange[0]} to {Catalog.Default.CrfRange[1]}.");
+                    r.AddError($"--speed-option {pair}: expected KEY=VALUE with a key from {string.Join(", ", Catalog.Default.Options.Select(o => o.Key))} and a value it takes.");
                 }
-            });
-        }
-
+            }
+        });
         _speedTimeLimit.Validators.Add(r =>
         {
             if (r.GetValueOrDefault<int?>() is <= 0)
@@ -123,7 +105,7 @@ internal sealed class HwProbeCommand
 
         Root = new RootCommand("Device-verified hardware transcode detection for Jellyfin.")
         {
-            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _speed, _speedVideos, _speedOutputs, _speedCompare, _speedFile, _speedRepeats, _speedThreads, _speedPreset, _speedH264Crf, _speedH265Crf, _speedAudioCopy, _speedTimeLimit, _speedJson, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
+            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _speed, _speedVideos, _speedOutputs, _speedCompare, _speedFile, _speedRepeats, _speedOption, _speedTimeLimit, _speedJson, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
         };
     }
 
@@ -209,11 +191,8 @@ internal sealed class HwProbeCommand
         {
             comparisons |= name.ToUpperInvariant() switch
             {
-                "VBR" => SpeedComparison.AudioVbr,
-                "DEINTERLACE" => SpeedComparison.Deinterlace,
-                "PATHS" => SpeedComparison.Paths,
-                "SUBTITLES" => SpeedComparison.Subtitles,
-                _ => Error<SpeedComparison>(result, $"Unknown comparison '{name}'. Expected: vbr, deinterlace, paths, subtitles."),
+                "LOWPOWER" => SpeedComparison.LowPower,
+                _ => Error<SpeedComparison>(result, $"Unknown comparison '{name}'. Expected: lowpower."),
             };
         }
 
@@ -246,17 +225,18 @@ internal sealed class HwProbeCommand
     /// <param name="result">The parse result.</param>
     /// <param name="method">The chosen method.</param>
     /// <returns>The options.</returns>
-    private SpeedOptions SpeedFrom(ParseResult result, SpeedMethod method) =>
-        new(method, result.GetValue(_speedVideos)!, result.GetValue(_speedOutputs)!, result.GetValue(_speedCompare), new SpeedSettings
+    private SpeedOptions SpeedFrom(ParseResult result, SpeedMethod method)
+    {
+        var settings = new SpeedSettings();
+        foreach (var parts in (result.GetValue(_speedOption) ?? []).Select(p => p.Split('=', 2)))
         {
-            EncodingThreadCount = result.GetValue(_speedThreads) ?? -1,
-            EncoderPreset = result.GetValue(_speedPreset) is { } preset && preset != "auto" ? preset : null,
-            H264Crf = result.GetValue(_speedH264Crf) ?? 23,
-            H265Crf = result.GetValue(_speedH265Crf) ?? 28,
-            AudioCopy = result.GetValue(_speedAudioCopy),
-        })
+            settings = SpeedSettingsOptions.Apply(settings, parts[0], parts[1]) ?? settings;
+        }
+
+        return new(method, result.GetValue(_speedVideos)!, result.GetValue(_speedOutputs)!, result.GetValue(_speedCompare), settings)
         {
             Repeats = result.GetValue(_speedRepeats),
             TimeLimit = result.GetValue(_speedTimeLimit) is { } seconds ? TimeSpan.FromSeconds(seconds) : null,
         };
+    }
 }

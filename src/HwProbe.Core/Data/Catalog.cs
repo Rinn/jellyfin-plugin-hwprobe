@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Speed;
@@ -33,17 +34,8 @@ public sealed partial class Catalog
     /// <summary>Gets the repeat counts offered.</summary>
     public required IReadOnlyList<CatalogOption> Repeats { get; init; }
 
-    /// <summary>Gets Jellyfin's encoding presets, <c>auto</c> first.</summary>
-    public required IReadOnlyList<CatalogLabel> Presets { get; init; }
-
-    /// <summary>Gets the lowest and highest encoding CRF Jellyfin accepts.</summary>
-    public required IReadOnlyList<int> CrfRange { get; init; }
-
-    /// <summary>Gets the audio choices: <c>transcode</c> and <c>copy</c>.</summary>
-    public required IReadOnlyList<CatalogLabel> Audio { get; init; }
-
-    /// <summary>Gets Jellyfin's transcoding thread counts.</summary>
-    public required IReadOnlyList<CatalogOption> Threads { get; init; }
+    /// <summary>Gets the settings a run can be given, in the order of Jellyfin's Transcoding page.</summary>
+    public required IReadOnlyList<CatalogSetting> Options { get; init; }
 
     /// <summary>Gets the time limits per measurement offered, in seconds.</summary>
     public required IReadOnlyList<CatalogOption> TimeLimits { get; init; }
@@ -207,14 +199,19 @@ public sealed partial class Catalog
         }
 
         RequireKeys("outputs", [.. Codecs.SelectMany(c => Qualities.Select(q => OutputKey(c, q))), Decode.Key], DefaultOutputs);
-        if (Methods.Any(m => m.Seconds.Count != 2) || CrfRange.Count != 2)
+        if (Methods.Any(m => m.Seconds.Count != 2))
         {
-            throw new InvalidDataException("catalog.yaml: method seconds and the CRF range are [low, high].");
+            throw new InvalidDataException("catalog.yaml: method seconds are [low, high].");
         }
 
-        if (Presets.Count == 0 || Presets[0].Key != "auto" || !Audio.Select(a => a.Key).Order(StringComparer.Ordinal).SequenceEqual(["copy", "transcode"]))
+        foreach (var option in Options)
         {
-            throw new InvalidDataException("catalog.yaml: presets start with auto, and audio is transcode and copy.");
+            var kinds = (option.Switch ? 1 : 0) + (option.Range is [_, _] ? 1 : 0) + (option.Choices is { Count: > 0 } ? 1 : 0);
+            var sample = option.Switch ? "true" : option.Range is [var low, _] ? low.ToString(CultureInfo.InvariantCulture) : option.Choices is [var first, ..] ? first.Key : string.Empty;
+            if (kinds != 1 || SpeedSettingsOptions.Apply(new SpeedSettings(), option.Key, sample) is null)
+            {
+                throw new InvalidDataException($"catalog.yaml: option {option.Key} needs one of switch, range or choices, and a key SpeedSettingsOptions applies.");
+            }
         }
 
         if (Subtitles is null || TestAudio is null)
