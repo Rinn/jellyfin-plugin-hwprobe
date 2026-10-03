@@ -1,6 +1,6 @@
 namespace Jellyfin.Plugin.HwProbe.Core.Fixtures;
 
-/// <summary>The fixture clips from PLAN.md: 640x360, 25 frames of testsrc2.</summary>
+/// <summary>The probe's fixture clips: 640x360, 25 frames of testsrc2.</summary>
 public static class FixtureCatalog
 {
     // SVT-AV1's optimised code segfaults on some CPUs: every asm level up to sse4_1 crashed on a Celeron
