@@ -13,8 +13,8 @@ public static class SpeedCatalog
     /// <summary>Gets every output, in the order the page lists them.</summary>
     public static IReadOnlyList<SpeedOutput> Outputs { get; } =
     [
-        .. Catalog.Default.Codecs.SelectMany(c => Catalog.Default.Qualities.Select(q => new SpeedOutput(Catalog.OutputKey(c, q), c.Name + ", " + q.Name, c.Key, q.Bitrate) { Detail = c.Detail })),
-        new SpeedOutput(Catalog.Default.Decode!.Key, Catalog.Default.Decode.Label, null, 0) { Detail = Catalog.Default.Decode.Detail },
+        .. Catalog.Default.Codecs.SelectMany(c => Catalog.Default.Qualities.Select(q => new SpeedOutput(Catalog.OutputKey(c, q), c.Name + ", " + q.Name, c.Key, q.Bitrate))),
+        new SpeedOutput(Catalog.Default.Decode!.Key, Catalog.Default.Decode.Label, null, 0),
     ];
 
     /// <summary>Gets the videos chosen when none are asked for.</summary>

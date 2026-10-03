@@ -23,6 +23,10 @@
             #HwProbeConfigPage .inputContainer input.emby-input { padding: 16px 12px; }
             #HwProbeConfigPage .selectContainer select.emby-select:hover, #HwProbeConfigPage .inputContainer input.emby-input:hover { background: var(--jf-palette-FilledInput-hoverBg, rgba(255, 255, 255, 0.13)); }
             #HwProbeConfigPage .selectContainer select.emby-select:focus, #HwProbeConfigPage .inputContainer input.emby-input:focus { outline: none; border-bottom: 2px solid var(--jf-palette-primary-main, #00a4dc); }
+            .hwprobe-menu { position: fixed; z-index: var(--jf-zIndex-modal, 1300); box-sizing: border-box; overflow-y: auto; padding: 8px 0; border-radius: var(--jf-shape-borderRadius, 4px); color: var(--jf-palette-text-primary, #fff); background-color: var(--jf-palette-background-paper, #202020); background-image: var(--jf-overlays-8, none); box-shadow: var(--jf-shadows-8, 0 5px 5px -3px rgba(0, 0, 0, 0.2)); font-size: 1rem; }
+            .hwprobe-menu-item { padding: 6px 16px; line-height: 1.5; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .hwprobe-menu-item:hover { background-color: var(--jf-palette-action-hover, rgba(255, 255, 255, 0.08)); }
+            .hwprobe-menu-item.hwprobe-menu-selected { background-color: rgba(var(--jf-palette-primary-mainChannel, 0 164 220) / var(--jf-palette-action-selectedOpacity, 0.2)); }
             #HwProbeConfigPage .selectContainer select.emby-select option { color: var(--jf-palette-text-primary, #fff); background: var(--jf-palette-background-paper, #202020); }
             #HwProbeConfigPage table { border-collapse: collapse; margin: 0.25em 0 1em; }
             #HwProbeConfigPage td, #HwProbeConfigPage th { padding: 0.2em 1.5em 0.2em 0; text-align: left; vertical-align: middle; height: 1.8em; }
@@ -241,7 +245,61 @@
                     const box = jf('<div class="selectContainer"><label class="selectLabel"></label><select is="emby-select" class="emby-select-withcolor emby-select"></select></div>');
                     box.firstElementChild.textContent = label;
                     container.appendChild(box);
+                    filledMenu(box.lastElementChild);
                     return box.lastElementChild;
+                }
+
+                // A mouse opens a menu like the dashboard's own selects (MUI's Menu) instead of the browser's list; the keyboard keeps the native one.
+                function filledMenu(select) {
+                    select.addEventListener('mousedown', e => {
+                        if (e.button !== 0 || select.disabled) {
+                            return;
+                        }
+                        e.preventDefault();
+                        select.focus();
+                        const menu = el('div', null, 'hwprobe-menu');
+                        menu.setAttribute('role', 'listbox');
+                        const close = () => {
+                            menu.remove();
+                            document.removeEventListener('mousedown', outside, true);
+                            document.removeEventListener('keydown', escape, true);
+                            window.removeEventListener('resize', close);
+                            window.removeEventListener('scroll', closeOnScroll, true);
+                        };
+                        const outside = ev => { if (!menu.contains(ev.target)) { close(); } };
+                        const escape = ev => { if (ev.key === 'Escape') { close(); } };
+                        const closeOnScroll = ev => { if (!menu.contains(ev.target)) { close(); } };
+                        for (const option of select.options) {
+                            const item = el('div', option.textContent, 'hwprobe-menu-item' + (option.selected ? ' hwprobe-menu-selected' : ''));
+                            item.setAttribute('role', 'option');
+                            item.addEventListener('click', () => {
+                                close();
+                                if (select.value !== option.value) {
+                                    select.value = option.value;
+                                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                                }
+                            });
+                            menu.appendChild(item);
+                        }
+                        const rect = select.getBoundingClientRect();
+                        menu.style.left = rect.left + 'px';
+                        menu.style.width = rect.width + 'px';
+                        document.body.appendChild(menu);
+                        // Below the field when it fits, otherwise above, within 48px of the window edges as MUI keeps it.
+                        const below = window.innerHeight - rect.bottom - 48;
+                        const above = rect.top - 48;
+                        const height = Math.min(menu.scrollHeight, Math.max(below, above));
+                        menu.style.maxHeight = height + 'px';
+                        menu.style.top = (below >= height || below >= above ? rect.bottom : rect.top - height) + 'px';
+                        const chosen = menu.querySelector('.hwprobe-menu-selected');
+                        if (chosen) {
+                            menu.scrollTop = chosen.offsetTop - (height - chosen.offsetHeight) / 2;
+                        }
+                        document.addEventListener('mousedown', outside, true);
+                        document.addEventListener('keydown', escape, true);
+                        window.addEventListener('resize', close);
+                        window.addEventListener('scroll', closeOnScroll, true);
+                    });
                 }
 
                 // Working and not, in one layout: backend, device, status. Green works, red failed, grey doesn't apply here.
@@ -1004,14 +1062,15 @@
                     list('Input', null, ['Input', 'Format', 'Source'],
                         speedVideos.map(v => [box(chosenVideos, v.Key, true), v.Name, el('td', v.Input, 'secondaryText'), sourceCell(v)])
                             .concat([[box(chosenVideos, 'library', !!libraryVideo), libraryCell(update), el('td', libraryVideo ? libraryVideo.Input : '', 'secondaryText'), el('td', 'Library', 'secondaryText')]]));
-                    list('Output', 'Every selected codec at every selected quality is made from every selected input, as a player asks for it.', ['Codec', 'Details'],
-                        speedCodecs.map(c => [box(chosenCodecs, c.Key, true), c.Name, el('td', c.Detail, 'secondaryText')])
-                            .concat(speedOutputs.filter(o => o.DecodeOnly).map(o => [box(chosenCodecs, o.Key, true), o.Label, el('td', o.Detail, 'secondaryText')])));
+                    container.appendChild(el('h3', 'Output', 'sectionTitle'));
+                    container.appendChild(el('div', 'Every selected codec at every selected quality is made from every selected input, as a player asks for it.', 'fieldDescription'));
+                    container.appendChild(chips(speedCodecs.map(c => checkbox(c.Name, chosenCodecs.has(c.Key), pick(chosenCodecs, c.Key)))
+                        .concat(speedOutputs.filter(o => o.DecodeOnly).map(o => checkbox(o.Label, chosenCodecs.has(o.Key), pick(chosenCodecs, o.Key)))), 'hwprobe-fixed'));
                     container.appendChild(el('h3', 'Quality', 'sectionTitle'));
                     container.appendChild(el('div', 'The player\u2019s quality choices. Jellyfin picks the output size from the quality and codec; the results show it.', 'fieldDescription'));
                     container.appendChild(chips(speedQualities.map(q => checkbox(q.Name, chosenQualities.has(q.Key), pick(chosenQualities, q.Key))), 'hwprobe-fixed'));
 
-                    container.appendChild(el('h3', 'Settings', 'sectionTitle'));
+                    container.appendChild(el('h3', 'Transcoding Settings', 'sectionTitle'));
                     runOptions.filter(o => !o.Backend).forEach(runOption);
                     container.appendChild(el('h3', 'Accuracy and time', 'sectionTitle'));
                     options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });

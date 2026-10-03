@@ -147,9 +147,9 @@ defaultVideos: [pattern]
 # Outputs are every codec at every quality, as a player asks for them, plus decoding alone; keys are codec-quality, e.g. hevc-8mbps.
 # Every video codec Jellyfin transcodes to (EncodingHelper.GetVideoEncoder, v12.1).
 codecs:
-  - { key: h264, name: H.264, detail: "Video encoded to H.264, audio to stereo AAC; HDR is tone-mapped" }
-  - { key: hevc, name: HEVC, detail: "Video encoded to HEVC, audio to stereo AAC; HDR is tone-mapped" }
-  - { key: av1, name: AV1, detail: "Video encoded to AV1, audio to stereo AAC; HDR is tone-mapped" }
+  - { key: h264, name: H.264 }
+  - { key: hevc, name: HEVC }
+  - { key: av1, name: AV1 }
 
 # jellyfin-web's player quality choices (qualityOptions.js getVideoQualityOptions, v12.1). The server picks the output size from the bitrate and codec (StreamingHelpers.GetStreamingState, ResolutionNormalizer).
 qualities:
@@ -168,7 +168,7 @@ qualities:
   - { key: 720kbps, name: 720 kbps, bitrate: 720000 }
   - { key: 420kbps, name: 420 kbps, bitrate: 420000 }
 
-decode: { key: decode, label: Decode only, detail: "Video decoded, nothing encoded" }
+decode: { key: decode, label: Decode only }
 
 defaultOutputs: [h264-8mbps]
 

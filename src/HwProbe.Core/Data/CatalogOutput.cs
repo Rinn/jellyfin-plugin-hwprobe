@@ -8,7 +8,4 @@ internal sealed class CatalogOutput
 
     /// <summary>Gets what the page calls it.</summary>
     public required string Label { get; init; }
-
-    /// <summary>Gets what's made.</summary>
-    public required string Detail { get; init; }
 }

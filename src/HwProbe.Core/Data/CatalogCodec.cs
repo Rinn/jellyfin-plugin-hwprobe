@@ -8,7 +8,4 @@ public sealed class CatalogCodec
 
     /// <summary>Gets what the page calls it, e.g. <c>HEVC</c>.</summary>
     public required string Name { get; init; }
-
-    /// <summary>Gets what's made.</summary>
-    public required string Detail { get; init; }
 }
