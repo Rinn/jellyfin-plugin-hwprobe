@@ -4,62 +4,78 @@
 
 | Path | Contents |
 |---|---|
-| `src/HwProbe.Core` | Probe engine. No Jellyfin dependency. |
-| `src/HwProbe.Core/Data/catalog.yaml` | What the plugin page lists and what a speed run measures: videos and their clips, codecs and qualities, run options in the Transcoding page's order, accuracies, repeats, time limits, and the labels for backends, tiers, verdicts and findings. Compiled into Core; `Catalog.Parse` refuses a file that leaves out an enum value or uses an unknown placeholder. The page reads it from `HwProbe/Catalog`. |
+| `src/HwProbe.Core` | Probe and speed engines, report, fixtures. No Jellyfin dependency. |
+| `src/HwProbe.Core/Data/catalog.yaml` | Everything the plugin page lists: speed inputs, codecs, qualities, run options and labels. Compiled in and checked by `Catalog.Parse`; served to the page by `HwProbe/Catalog`. |
 | `src/HwProbe.Jellyfin` | Builds ffmpeg commands with Jellyfin's own `EncodingHelper`. |
+| `src/HwProbe.Plugin` | The Jellyfin plugin: service, API and the page (`Configuration/configPage.html`). |
 | `src/HwProbe.Cli` | The `hwprobe` command-line tool. |
-| `src/HwProbe.Plugin` | The Jellyfin plugin. |
-| `tests/` | Tests, and recorded ffmpeg output in `tests/Corpus`. |
-| `build.yaml` | Plugin metadata for the repository manifest. |
-| `assets/` | Sidebar icon source and the catalog image. `assets/make-plugin-image.sh` rebuilds `plugin.png` with headless Chrome. Licences are in `assets/NOTICE.md`. |
+| `tests/` | Tests, with recorded ffmpeg output in `tests/Corpus`. |
+| `scripts/` | Pre-commit hook, container tests, packaging. |
+| `assets/` | Plugin image and icon; `make-plugin-image.sh` rebuilds `plugin.png`. Licences in `assets/NOTICE.md`. |
 
-## Building
+## Build and test
 
 ```sh
 dotnet build -warnaserror
 dotnet format --verify-no-changes
-dotnet test                        # Unit + FakeFfmpeg tests
-HWPROBE_HW_TESTS=1 dotnet test     # also RealFfmpeg + Hardware tests
+dotnet test                        # unit and FakeFfmpeg tests
+sh scripts/check-page.sh           # syntax-checks the plugin page's script
+HWPROBE_HW_TESTS=1 dotnet test     # also real-ffmpeg and hardware tests
 ```
 
-- All three checks must pass before every commit. Install the hook once per clone: `git config core.hooksPath scripts/`
-- After changing a package version, run `dotnet restore --force-evaluate` and commit the lock files.
+The first four run before every commit through the hook; install it once per clone with `git config core.hooksPath scripts/`. After changing a package version, run `dotnet restore --force-evaluate` and commit the lock files.
 
-## Testing with containers
-
-With podman installed:
+With podman:
 
 ```sh
+scripts/container-plugin.sh    # installs the plugin into Jellyfin 12.1 and checks it through the API
 scripts/container-linux.sh     # test suite on Linux, then hwprobe against jellyfin-ffmpeg (no GPU)
 scripts/container-windows.sh   # win-x64 build under Wine (no GPU)
-scripts/container-plugin.sh    # installs the plugin into Jellyfin 12.1 and probes through its API
-HWPROBE_INSTALL=repository scripts/container-plugin.sh   # same, installing from a plugin repository
-HWPROBE_INSTALL=existing HWPROBE_BASE=http://host:18096 scripts/container-plugin.sh   # an existing server
 ```
+
+`container-plugin.sh` also takes `HWPROBE_INSTALL=repository` (install through a plugin repository, as users do) or `HWPROBE_INSTALL=existing HWPROBE_BASE=http://host:port` (check a running server).
 
 ## Command-line tool
 
-`src/HwProbe.Cli` runs the same probe without the plugin. Each release has a build per platform (`hwprobe-<rid>.zip` for Windows, `.tar.gz` for macOS and Linux, unpacking to a runnable `hwprobe`). Run it where Jellyfin runs (inside the container, for Docker): `hwprobe` probes every backend, `hwprobe --speed confirm` also measures speed, and `--help` lists the options.
+Each release has a build per platform: `hwprobe-<rid>.zip` for Windows, `hwprobe-<rid>.tar.gz` for macOS and Linux. Run it where Jellyfin runs (inside the container, for Docker); `--help` lists the options.
+
+```sh
+hwprobe                    # probe every backend
+hwprobe --speed confirm    # and measure speed
+hwprobe --speed confirm --speed-videos pattern,live-action --speed-outputs h264-8mbps,decode \
+  --speed-backends vaapi,none --speed-option EncoderPreset=fast --speed-json speed.json
+```
 
 ## Speed runs
 
-The Speed tab chooses backends (working ones and software, with Intel's low-power encoders as a QSV setting when its probe found them), inputs (generated 10 s test videos, 5 to 13 s pieces of freely licensed films from Wikimedia Commons, or a library movie or episode), codecs (H.264, HEVC, AV1 or decode only) and the player's qualities (420 kbps to 120 Mbps). Every chosen output is made from every chosen input. Jellyfin's transcoding settings can be set for the run in the Transcoding page's order, defaulting to the server's, and audio can be copied or subtitles burned in. A hardware backend's column only measures what it encodes (or, for decode tests, decodes) on the GPU. Accuracy, repeats (median of up to three) and a time limit per measurement are chosen last. Runs fill in as they go, can be paused, resumed or cancelled, and are kept in a history. The CLI has `--speed`, `--speed-videos`, `--speed-outputs`, `--speed-backends`, `--speed-option KEY=VALUE`, `--speed-repeats`, `--speed-time-limit`, `--speed-file` and `--speed-json`.
+- `SpeedEngine` measures every chosen output (a codec at a player quality, or decode only) from every chosen input on each chosen backend and software, and reports each result as it finishes.
+- Arguments come from `EncodingHelper` with `ProbeCell.FullQuality`, as a real request gets them. The output size goes through Jellyfin's `ResolutionNormalizer`, as `StreamingHelpers` does.
+- `SpeedCommandLine` loops the inputs and bounds each run with `-t`. `SpeedMeter` counts speed and concurrent streams, and is tested without ffmpeg.
+- A hardware backend only measures what it encodes (or, for decode tests, decodes) on the GPU.
+- A library file comes from the item's media source in the plugin, or from ffprobe with `--speed-file` in the CLI, and is read from a tenth of the way in.
 
-`SpeedEngine` measures every chosen output from every chosen video in `SpeedCatalog` (read from `catalog.yaml`; a test is a video|output pair) on each viable backend and software, reporting each result as it finishes. Arguments come from `EncodingHelper` with `ProbeCell.FullQuality` (quality, audio and input arguments, as a real request gets them); the output size then goes through Jellyfin's `ResolutionNormalizer`, as `StreamingHelpers` does, so a bitrate too low for the size is measured at the size Jellyfin would pick, with a note; `SpeedCommandLine` loops the inputs and bounds the run with `-t`. `SpeedMeter` does the counting and is tested without ffmpeg. A library file (`SpeedFile`) comes from the item's media source in the plugin and from ffprobe (`FfprobeFile`) in the CLI, as the `library` video, read from a tenth of the way in. Clips are generated with the server's ffmpeg and cached with the other fixtures; the PGS sample is downloaded from FFmpeg's FATE suite.
+## Test clips and downloads
 
-```sh
-hwprobe --speed confirm --speed-videos pattern,live-action --speed-outputs h264-8mbps,hevc-4mbps,decode --speed-backends vaapi,none --speed-option EncoderPreset=fast --speed-option Audio=copy --speed-repeats 2 --speed-time-limit 120 --speed-json speed.json
-```
+Test clips are made with the server's ffmpeg and cached per ffmpeg build. A clip that can't be made comes from a copy bundled in the plugin, or from FFmpeg's FATE sample suite, pinned by SHA-256.
+
+- Bundled (no public sample exists): HEVC RExt 4:4:4 10-bit, 4:2:2 12-bit and 4:4:4 12-bit, AV1 10-bit, and H.264 with frequent key frames. `scripts/make-bundled-fixtures.sh` remakes them; put the hashes it prints in `FixtureCatalog`.
+- Always downloaded: `vc1/SA00050.vc1` (no free VC-1 encoder exists).
+- Downloaded only when generation fails: `h264-conformance/BA1_Sony_D.jsv`, `h264-conformance/CVFI1_Sony_D.jsv`, `hevc-conformance/WP_A_Toshiba_3.bit`, `hevc-conformance/WP_A_MAIN10_Toshiba_3.bit`, `hevc-conformance/Main_422_10_A_RExt_Sony_1.bin`, `vp9-test-vectors/vp90-2-09-lf_deltas.webm`, `vp9-test-vectors/vp92-2-20-10bit-yuv420.webm`, `vp8-test-vectors-r1/vp80-00-comprehensive-001.ivf`, `av1-test-vectors/av1-1-b8-02-allintra.ivf`.
+- For PGS subtitle burn-in: `sub/pgs_sub.sup` (ffmpeg has no PGS encoder).
+
+Film samples for speed runs are downloaded only when chosen: a pinned piece of each Wikimedia Commons file (its WebM header plus whole clusters, two range requests), checked by SHA-256, used as downloaded and cached apart from the ffmpeg build. The 1080p ones are VP9 with Opus audio: Tears of Steel and Sintel (CC BY 3.0), Sol Levante (CC BY 4.0). The 4K one is Sol Levante's HDR10 AV1 copy (Professional profile, 4:4:4 12-bit, which GPUs don't decode). Requests carry a descriptive User-Agent, as Wikimedia asks. To re-pin after Wikimedia re-encodes a file, find the cluster offsets around the wanted time and hash the header plus those bytes.
+
+Tests never download, and `HWPROBE_NO_DOWNLOADS=1` (set in CI and `container-plugin.sh`) turns off every download, so a download-only clip like the VC-1 sample is reported as untested.
 
 ## Diagnostics zips
 
-A user's zip (plugin **Download diagnostics**, or `--diagnostics`) is laid out like `tests/Corpus`:
+A user's zip (**Download diagnostics** on the page, or `--diagnostics`) is laid out like `tests/Corpus`:
 
-- `ffmpeg/*.txt`: the capability listings. Copy them to `tests/Corpus/ffmpeg/<build>/` for `ScriptedFfmpegRunner.FromCorpus`.
-- `stderr/NNN-<probe>.txt`: every launch in order (`NNN-launch.txt` for launches that aren't probes, such as making test clips), with `#` lines for the arguments, environment, probe outcome and result, then the complete stderr. Copy one to `tests/Corpus/stderr/`, replacing the header with an `# Observed:` line naming the host and build.
+- `ffmpeg/*.txt`: capability listings. Copy them to `tests/Corpus/ffmpeg/<build>/` for `ScriptedFfmpegRunner.FromCorpus`.
+- `stderr/NNN-<probe>.txt`: every launch in order, with `#` lines for the arguments, environment, outcome and result, then the full stderr. Copy one to `tests/Corpus/stderr/`, replacing the header with an `# Observed:` line naming the host and build.
 - `report.json`: the report.
 
-Nothing is removed from a zip. Take out user names, host names and home paths before committing anything from one.
+Zips aren't anonymised. Remove user names, host names and home paths before committing anything from one.
 
 ## Releasing
 
@@ -67,43 +83,11 @@ Nothing is removed from a zip. Take out user names, host names and home paths be
 gh workflow run release.yml --ref main -f version=1.2.3 -f notes="What changed"
 ```
 
-- `release.yml` builds the plugin zip and CLI builds, publishes them as release `v1.2.3`, and adds the version to `manifest.json` on the `manifest` branch.
-- The version comes only from this input. The notes become the plugin's changelog.
-- Add `-f prerelease=true` for a prerelease, which isn't added to the plugin repository.
-- Releases are immutable, so a version can't be reused once published.
+The workflow builds the plugin zip and CLI builds, publishes release `v1.2.3`, and adds it to `manifest.json` on the `manifest` branch. The notes become the plugin's changelog. `-f prerelease=true` publishes without adding it to the plugin repository. Releases are immutable, so a version can't be reused.
 
-Builds are reproducible. To check a release, build its tag from a clone of the GitHub URL and compare hashes:
+Builds are reproducible. To check a release, build its tag from a fresh clone and compare hashes:
 
 ```sh
 GITHUB_ACTIONS=true python3 scripts/package.py --version 1.2.3 --out dist
 shasum -a 256 dist/*
 ```
-
-## Test clips
-
-HwProbe makes its test clips with the server's ffmpeg. When a clip can't be made, it uses a copy bundled in the plugin, or downloads a sample.
-
-- Bundled, for clips with no public sample: HEVC RExt 4:4:4 10-bit, 4:2:2 12-bit and 4:4:4 12-bit, AV1 10-bit, and H.264 with frequent key frames. `scripts/make-bundled-fixtures.sh` remakes them; put the hashes it prints in `FixtureCatalog`.
-
-## Network access
-
-HwProbe only downloads test clips from FFmpeg's FATE sample suite, each pinned by SHA-256 and cached.
-
-- Always: `vc1/SA00050.vc1`. No free VC-1 encoder exists.
-- Only when a clip can't be generated:
-  - `h264-conformance/BA1_Sony_D.jsv`
-  - `h264-conformance/CVFI1_Sony_D.jsv`
-  - `hevc-conformance/WP_A_Toshiba_3.bit`
-  - `hevc-conformance/WP_A_MAIN10_Toshiba_3.bit`
-  - `hevc-conformance/Main_422_10_A_RExt_Sony_1.bin`
-  - `vp9-test-vectors/vp90-2-09-lf_deltas.webm`
-  - `vp9-test-vectors/vp92-2-20-10bit-yuv420.webm`
-  - `vp8-test-vectors-r1/vp80-00-comprehensive-001.ivf`
-  - `av1-test-vectors/av1-1-b8-02-allintra.ivf`
-- Only for the PGS subtitle speed test: `sub/pgs_sub.sup`. ffmpeg has no PGS encoder.
-
-Speed samples, only when chosen: a pinned piece of each file (its WebM header and 10 to 12 seconds of whole clusters, 5 for the 4K one, two range requests), checked by SHA-256 and measured as downloaded (`FixturePiece`), then cached. Tests never download them, and `HWPROBE_NO_DOWNLOADS=1` (set in CI and `scripts/container-plugin.sh`) turns off every download, so a fixture that only downloads, like the VC-1 sample, is reported as untested. To re-pin after Wikimedia re-encodes a file, find the cluster offsets around the wanted time and hash the header plus those bytes.
-
-- Wikimedia Commons 1080p VP9 transcodes with Opus audio: Tears of Steel (CC BY 3.0), Sintel (CC BY 3.0), Sol Levante (CC BY 4.0).
-- Wikimedia Commons' 4K HDR10 AV1 copy of Sol Levante (Professional profile, 4:4:4 12-bit, which GPUs don't decode; 5 s, about 21 MB).
-- Requests carry a descriptive User-Agent, as Wikimedia asks. Samples are cached apart from the ffmpeg build, so an ffmpeg update doesn't fetch them again.
