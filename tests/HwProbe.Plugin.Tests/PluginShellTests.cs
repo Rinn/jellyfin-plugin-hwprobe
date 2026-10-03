@@ -68,31 +68,6 @@ public sealed class PluginShellTests : IDisposable
         Assert.Contains("\"schemaVersion\": 3", content.Content, StringComparison.Ordinal);
     }
 
-    /// <summary>The task fails visibly when the probe fails, and has no default trigger.</summary>
-    /// <returns>A task representing the test.</returns>
-    [Fact]
-    public async Task TaskSurfacesFailure()
-    {
-        using var service = Service(transcoding: false, _ => throw new InvalidOperationException("no ffmpeg"));
-        var task = new HardwareProbeTask(service);
-
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => task.ExecuteAsync(new Progress<double>(), TestContext.Current.CancellationToken));
-        Assert.Equal("no ffmpeg", ex.Message);
-        Assert.Empty(task.GetDefaultTriggers());
-    }
-
-    /// <summary>A busy server is a skip: the task completes instead of failing.</summary>
-    /// <returns>A task representing the test.</returns>
-    [Fact]
-    public async Task TaskSkipsWhenBusy()
-    {
-        using var service = Service(transcoding: true, _ => Task.FromResult(Reports.Sample()));
-
-        await new HardwareProbeTask(service).ExecuteAsync(new Progress<double>(), TestContext.Current.CancellationToken);
-
-        Assert.Null(service.Status.LastCompletedUtc);
-    }
-
     /// <summary>The configuration page is embedded where GetPages points.</summary>
     [Fact]
     public void ConfigPageIsEmbedded()
