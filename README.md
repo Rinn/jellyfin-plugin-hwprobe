@@ -17,7 +17,7 @@ Open **HwProbe** in the dashboard sidebar while nothing is playing.
 - **Speed**: pick what to measure and press **Measure speed**.
 - **Diagnostics** (bottom of the Probe tab): download a zip to attach to a [hardware report](../../issues/new?template=hardware-report.yml). It includes file paths and host names.
 
-Nothing is sent anywhere. Test samples are downloaded only when needed and checked against pinned hashes.
+No data leaves the server. Test samples are downloaded only when needed and checked against pinned hashes.
 
 ## Status
 
