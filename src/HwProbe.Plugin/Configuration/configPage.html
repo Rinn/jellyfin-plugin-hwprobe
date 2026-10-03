@@ -8,10 +8,27 @@
     <div id="HwProbeConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-button,emby-checkbox,emby-select,emby-input">
         <style>
             /* Layout only: colours, buttons, inputs and panels come from jellyfin-web's theme classes. */
+            /* Headings, width and help text as the dashboard's own pages have them (jellyfin-web src/themes/_base/theme.ts and MUI's defaults, v12.1). */
+            #HwProbeConfigPage .content-primary > * { max-width: 54em; }
+            #HwProbeConfigPage h1 { font-size: 1.8rem; font-weight: 300; line-height: 1.167; margin: 0 0 0.5em; }
+            #HwProbeConfigPage h2.sectionTitle { font-size: 1.5rem; font-weight: 300; line-height: 1.2; margin: 24px 0 8px; }
+            #HwProbeConfigPage h3.sectionTitle { font-size: 1.17rem; font-weight: 400; line-height: 1.167; margin: 20px 0 8px; }
+            #HwProbeConfigPage .fieldDescription { line-height: 1.66; margin-top: 3px; }
+            /* Selects and inputs as the dashboard's filled fields: label inside, underline, from jellyfin-web's --jf-palette variables. */
+            #HwProbeConfigPage .selectContainer { position: relative; margin: 0 0 24px; }
+            #HwProbeConfigPage .selectContainer .fieldDescription { margin: 3px 14px 0; padding: 0; }
+            #HwProbeConfigPage .selectContainer .selectLabel { position: absolute; left: 12px; top: 7px; margin: 0; font-size: 0.75em; line-height: 1.4375; color: var(--jf-palette-text-secondary, rgba(255, 255, 255, 0.7)); pointer-events: none; z-index: 1; }
+            #HwProbeConfigPage .selectContainer::after { content: ''; position: absolute; right: 13px; top: 25px; border: 5px solid transparent; border-bottom: 0; border-top-color: var(--jf-palette-text-primary, #fff); pointer-events: none; }
+            #HwProbeConfigPage .selectContainer select.emby-select, #HwProbeConfigPage .inputContainer input.emby-input { appearance: none; box-sizing: border-box; width: 100%; height: 54px; padding: 25px 32px 8px 12px; font: inherit; font-size: 1em; line-height: 1.4375; color: var(--jf-palette-text-primary, #fff); background: var(--jf-palette-FilledInput-bg, rgba(255, 255, 255, 0.09)); border: 0; border-bottom: 1px solid var(--jf-palette-text-secondary, rgba(255, 255, 255, 0.7)); border-radius: var(--jf-shape-borderRadius, 4px) var(--jf-shape-borderRadius, 4px) 0 0; }
+            #HwProbeConfigPage .inputContainer input.emby-input { padding: 16px 12px; }
+            #HwProbeConfigPage .selectContainer select.emby-select:hover, #HwProbeConfigPage .inputContainer input.emby-input:hover { background: var(--jf-palette-FilledInput-hoverBg, rgba(255, 255, 255, 0.13)); }
+            #HwProbeConfigPage .selectContainer select.emby-select:focus, #HwProbeConfigPage .inputContainer input.emby-input:focus { outline: none; border-bottom: 2px solid var(--jf-palette-primary-main, #00a4dc); }
+            #HwProbeConfigPage .selectContainer select.emby-select option { color: var(--jf-palette-text-primary, #fff); background: var(--jf-palette-background-paper, #202020); }
             #HwProbeConfigPage table { border-collapse: collapse; margin: 0.25em 0 1em; }
             #HwProbeConfigPage td, #HwProbeConfigPage th { padding: 0.2em 1.5em 0.2em 0; text-align: left; vertical-align: middle; height: 1.8em; }
             #HwProbeConfigPage th { font-weight: 500; }
             #HwProbeConfigPage .hwprobe-scroll { overflow-x: auto; }
+            #HwProbeConfigPage .hwprobe-matrix td:first-child, #HwProbeConfigPage .hwprobe-list td:nth-child(3) { white-space: nowrap; }
             #HwProbeConfigPage .hwprobe-backends td:nth-child(2), #HwProbeConfigPage .hwprobe-backends th:nth-child(2) { width: 18em; }
             #HwProbeConfigPage .hwprobe-backends td:nth-child(3), #HwProbeConfigPage .hwprobe-backends th:nth-child(3) { width: 12em; }
             #HwProbeConfigPage .hwprobe-group td { padding-top: 0.8em; font-weight: 500; }
@@ -36,11 +53,11 @@
             #HwProbeConfigPage .hwprobe-choices.hwprobe-fixed .emby-checkbox-label { width: 7em; margin-right: 0.5em; }
             #HwProbeConfigPage .hwprobe-fold > summary { display: flex; align-items: center; gap: 0.3em; cursor: pointer; list-style: none; }
             #HwProbeConfigPage .hwprobe-fold > summary::-webkit-details-marker { display: none; }
-            #HwProbeConfigPage .hwprobe-fold > summary .sectionTitle { margin: 0.5em 0; }
+            #HwProbeConfigPage .hwprobe-fold > summary .sectionTitle { margin-top: 0.5em; margin-bottom: 0.5em; }
             #HwProbeConfigPage .hwprobe-fold[open] > summary .material-icons { transform: rotate(90deg); }
             #HwProbeConfigPage .hwprobe-setup { width: 100%; }
             #HwProbeConfigPage .hwprobe-setup th { width: 7em; vertical-align: top; padding-top: 0.6em; }
-            #HwProbeConfigPage .hwprobe-setup .inputContainer, #HwProbeConfigPage .hwprobe-setup .selectContainer { margin: 0; max-width: 28em; }
+            #HwProbeConfigPage .hwprobe-setup .inputContainer { margin: 0; max-width: 28em; }
             #HwProbeConfigPage .hwprobe-matrix td, #HwProbeConfigPage .hwprobe-matrix th { padding-right: 2em; }
             #HwProbeConfigPage .hwprobe-matrix .hwprobe-num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
             #HwProbeConfigPage .hwprobe-best { font-weight: bold; }
@@ -58,7 +75,7 @@
         </style>
         <div data-role="content">
             <div class="content-primary">
-                <h2>HwProbe</h2>
+                <h1>HwProbe</h1>
                 <div class="emby-tabs-slider hwprobe-tabbar" role="tablist">
                     <button is="emby-button" type="button" role="tab" id="hwprobeTabProbe" aria-controls="hwprobeProbeTab" aria-selected="true" class="emby-tab-button emby-button emby-tab-button-active"><div class="emby-button-foreground">Probe</div></button>
                     <button is="emby-button" type="button" role="tab" id="hwprobeTabSpeed" aria-controls="hwprobeSpeedTab" aria-selected="false" class="emby-tab-button emby-button"><div class="emby-button-foreground">Speed</div></button>
@@ -209,12 +226,12 @@
                 }
 
                 // A collapsible section with Jellyfin's heading style; emby-collapse isn't loaded on plugin pages.
-                function fold(container, title, open) {
+                function fold(container, title, open, level) {
                     const details = el('details', null, 'hwprobe-fold');
                     details.open = !!open;
                     const summary = el('summary');
                     summary.appendChild(icon('chevron_right'));
-                    summary.appendChild(el('h3', title, 'sectionTitle'));
+                    summary.appendChild(el(level || 'h2', title, 'sectionTitle'));
                     details.appendChild(summary);
                     container.appendChild(details);
                     return details;
@@ -939,7 +956,7 @@
                         if (description) {
                             container.appendChild(el('div', description, 'fieldDescription'));
                         }
-                        const table = el('table');
+                        const table = el('table', null, 'hwprobe-list');
                         row(table, [el('th')].concat(headers.map(h => el('th', h))));
                         rows.forEach(r => row(table, r));
                         const scroll = el('div', null, 'hwprobe-scroll');
@@ -960,8 +977,12 @@
                         Object.entries(comparisons).map(([key, [name, values]]) => [box(speedCompared, key, true), name, el('td', values, 'secondaryText')]));
 
                     container.appendChild(el('h3', 'Settings', 'sectionTitle'));
-                    const options = (label, values, current, onChange) => {
+                    // Help goes under its field, before the gap to the next one, as the dashboard's helper text does.
+                    const options = (label, values, current, onChange, help) => {
                         const select = themedSelect(container, label);
+                        if (help) {
+                            select.parentNode.appendChild(el('div', help, 'fieldDescription'));
+                        }
                         for (const [value, text] of values) {
                             const option = el('option', text);
                             option.value = String(value);
@@ -987,16 +1008,12 @@
                             } else {
                                 speedSettings[o.Key] = v;
                             }
-                        });
-                        if (o.Help) {
-                            container.appendChild(el('div', o.Help, 'fieldDescription'));
-                        }
+                        }, o.Help);
                     }
                     container.appendChild(el('h3', 'Accuracy and time', 'sectionTitle'));
                     options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });
                     options('Repeats', repeatOptions, speedRepeats, v => { speedRepeats = Number(v); });
-                    options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); });
-                    container.appendChild(el('div', 'A measurement that reaches the limit stops and reports what it measured.', 'fieldDescription'));
+                    options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); }, 'A measurement that reaches the limit stops and reports what it measured.');
 
                     button = action('Measure speed', () => {
                         const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, Options: speedSettings, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Comparisons: [...speedCompared], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
@@ -1198,7 +1215,7 @@
                         div.appendChild(line);
                     }
                     if (r.settings) {
-                        const used = fold(div, 'Settings used');
+                        const used = fold(div, 'Settings used', false, 'h3');
                         const table = el('table');
                         for (const [label, value] of settingsRows(r.settings)) {
                             row(table, [label, el('td', value, 'secondaryText')]);
