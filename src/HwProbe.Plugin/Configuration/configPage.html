@@ -44,7 +44,7 @@
             #HwProbeConfigPage .hwprobe-backends td:nth-child(2), #HwProbeConfigPage .hwprobe-backends th:nth-child(2) { width: 18em; }
             #HwProbeConfigPage .hwprobe-backends td:nth-child(3), #HwProbeConfigPage .hwprobe-backends th:nth-child(3) { width: 12em; }
             #HwProbeConfigPage .hwprobe-group td { padding-top: 1em; font-weight: 500; }
-            #HwProbeConfigPage tr.hwprobe-group:hover > td { background: none; }
+            #HwProbeConfigPage tr.hwprobe-group:hover > td, #HwProbeConfigPage tr:has(> th):hover > td { background: none; }
             #HwProbeConfigPage .hwprobe-mark { width: 1.5em; }
             #HwProbeConfigPage .hwprobe-mark .material-icons, #HwProbeConfigPage .hwprobe-card .material-icons { font-size: 1.2em; vertical-align: middle; }
             #HwProbeConfigPage .hwprobe-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
@@ -758,7 +758,7 @@
                     const settings = selected.settings || [];
                     const table = el('table');
                     const everything = configured ? settings.filter(differs) : [];
-                    const header = el('td');
+                    const header = el('th');
                     if (everything.length > 1) {
                         header.appendChild(idleAction('Apply all', () => apply(everything)));
                     }
