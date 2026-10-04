@@ -199,6 +199,21 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.True(_harness.Service.RestartRequired);
     }
 
+    /// <summary>Clearing the history leaves nothing to list or revert, and keeps the settings as they are.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task ClearedHistoryHasNothingToRevert()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await ApplyAsync(("AllowAv1Encoding", false));
+
+        Assert.True(await _harness.Service.ClearHistoryAsync(ct));
+
+        Assert.Empty(await _harness.Service.HistoryAsync(ct));
+        Assert.Equal(ApplyOutcome.NothingToRevert, (await _harness.Service.RevertAsync("admin", ct)).Outcome);
+        Assert.False(_harness.Saved.AllowAv1Encoding);
+    }
+
     /// <summary>A trickplay option is saved to the trickplay settings only, and reverts like any other.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

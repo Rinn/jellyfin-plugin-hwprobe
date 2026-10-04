@@ -12,4 +12,7 @@ public sealed record SuiteRequest(string Key)
 
     /// <summary>Gets what the suite does when the server transcodes.</summary>
     public TranscodeAction WhenTranscoding { get; init; } = Catalog.Default.DefaultWhenTranscoding;
+
+    /// <summary>Gets a value indicating whether measurements an earlier run saved with exactly the same settings are reused, as a repeated suite's steps often are.</summary>
+    public bool ReuseResults { get; init; } = true;
 }

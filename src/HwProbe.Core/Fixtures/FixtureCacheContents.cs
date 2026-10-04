@@ -72,6 +72,25 @@ public static class FixtureCacheContents
         return [.. entries.OrderBy(e => e.Folder, StringComparer.Ordinal).ThenBy(e => e.File, StringComparer.Ordinal)];
     }
 
+    /// <summary>Deletes one listed file and its hash file.</summary>
+    /// <param name="directory">The fixture cache directory.</param>
+    /// <param name="folder">The entry's folder, as <see cref="List"/> gives it.</param>
+    /// <param name="file">The entry's file name, as <see cref="List"/> gives it.</param>
+    /// <returns>False when no such entry is listed, so a name can't reach outside the cache.</returns>
+    /// <remarks>Call only while nothing else builds clips.</remarks>
+    public static bool Delete(string? directory, string folder, string file)
+    {
+        if (directory is null || !List(directory).Any(e => e.Folder == folder && e.File == file))
+        {
+            return false;
+        }
+
+        var path = Path.Combine(directory, folder, file);
+        File.Delete(path);
+        File.Delete(path + HashExtension);
+        return true;
+    }
+
     /// <summary>Deletes what this version no longer uses: other ffmpeg builds' clips, unknown files and leftovers of interrupted writes.</summary>
     /// <param name="directory">The fixture cache directory.</param>
     /// <param name="cacheKey">The current ffmpeg build's key, as <see cref="FixtureBuilder.BuildAsync"/> takes it.</param>

@@ -251,6 +251,29 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     public async Task<ActionResult> PurgeCacheAsync(CancellationToken cancellationToken) =>
         await service.PurgeFixtureCacheAsync(cancellationToken) ? NoContent() : Conflict("A probe or performance test is using the cache.");
 
+    /// <summary>Deletes one cached clip, sample or download.</summary>
+    /// <param name="folder">The entry's folder, as <c>Cache/Contents</c> lists it.</param>
+    /// <param name="file">The entry's file name.</param>
+    /// <param name="cancellationToken">Cancels waiting.</param>
+    /// <returns>204 when deleted; 404 for a file the cache doesn't list; 409 while a probe or speed run is running.</returns>
+    [HttpDelete("Cache/File")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult> DeleteCacheFileAsync([FromQuery] string folder, [FromQuery] string file, CancellationToken cancellationToken) =>
+        Deleted(await service.DeleteCacheFileAsync(folder, file, cancellationToken));
+
+    /// <summary>Deletes everything HwProbe saved: reports, diagnostics, performance test runs and measurements, the settings change history, and the cache.</summary>
+    /// <param name="cancellationToken">Cancels waiting.</param>
+    /// <returns>204 when deleted; 409, with nothing deleted, while a probe, speed run or settings change is running, or when a file in use was left.</returns>
+    [HttpDelete("Data")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult> PurgeAllAsync(CancellationToken cancellationToken) =>
+        await service.PurgeAllAsync(settings.ClearHistoryAsync, cancellationToken)
+            ? NoContent()
+            : Conflict("A probe, performance test, or settings change is running, or a file was in use.");
+
     /// <summary>Returns the latest speed report.</summary>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The speed report JSON, or 404 when none was measured with this HwProbe and ffmpeg.</returns>

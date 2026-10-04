@@ -112,15 +112,15 @@ public sealed class SpeedEngine : IDisposable
                 await waitFirst.HoldWhileBusyAsync(cancellationToken);
             }
 
-            // Each new clip's first step means the one before it is done; cached clips report nothing and count once all are ready.
-            var clipsTotal = SpeedVariants.Clips(tests, speed.Settings).Count;
+            // Only clips that aren't cached count. Each new clip's first step means the one before it is done.
+            var clipsTotal = 0;
             HashSet<string> begun = new(StringComparer.Ordinal);
             var clipSteps = progress is null ? null : new FixtureStepProgress(step =>
             {
                 begun.Add(step.Spec.FileName);
-                progress.Report(new SpeedProgress(0, total, null) { Preparing = Preparing(step, names), ClipsDone = begun.Count - 1, ClipsTotal = clipsTotal });
+                progress.Report(new SpeedProgress(0, total, null) { Preparing = Preparing(step, names), ClipsDone = Math.Min(begun.Count - 1, clipsTotal), ClipsTotal = clipsTotal });
             });
-            var clips = await BuildClipsAsync(options, caps, tests, speed.Settings, clipSteps, cancellationToken);
+            var clips = await BuildClipsAsync(options, caps, tests, speed.Settings, clipSteps, pending => clipsTotal = pending, cancellationToken);
             progress?.Report(new SpeedProgress(0, total, null) { ClipsDone = clipsTotal, ClipsTotal = clipsTotal });
             foreach (var (type, device) in measured)
             {
@@ -279,18 +279,28 @@ public sealed class SpeedEngine : IDisposable
     /// <param name="tests">The tests.</param>
     /// <param name="settings">The settings, for the subtitles burned in.</param>
     /// <param name="progress">Receives each clip being made or downloaded, or null.</param>
+    /// <param name="planned">Receives how many clips aren't cached, before any is made.</param>
     /// <param name="cancellationToken">Cancels generation.</param>
     /// <returns>Each clip by file name.</returns>
-    private async Task<Dictionary<string, FixtureResult>> BuildClipsAsync(EngineOptions options, FfmpegCapabilities caps, IReadOnlyList<SpeedTest> tests, SpeedSettings settings, IProgress<FixtureStep>? progress, CancellationToken cancellationToken)
+    private async Task<Dictionary<string, FixtureResult>> BuildClipsAsync(EngineOptions options, FfmpegCapabilities caps, IReadOnlyList<SpeedTest> tests, SpeedSettings settings, IProgress<FixtureStep>? progress, Action<int> planned, CancellationToken cancellationToken)
     {
         var clips = SpeedVariants.Clips(tests, settings);
         var key = Fingerprint.Compute(new FingerprintInputs(options.Ffmpeg.Path, caps.VersionLine, null, null, null, null, null, null));
         FixtureCacheContents.Prune(options.FixturesDirectory, key);
-        Dictionary<string, FixtureResult> built = new(StringComparer.Ordinal);
-        foreach (var group in clips.GroupBy(c => c.KeepAcrossBuilds))
+        var builders = clips.GroupBy(c => c.KeepAcrossBuilds)
+            .Select(g => (Key: g.Key ? SamplesCacheKey : key, Builder: new FixtureBuilder(_runner, options.Ffmpeg.Path, options.FixturesDirectory, options.FixtureTimeout, FixtureDownloader, [.. g], null) { Progress = progress }))
+            .ToList();
+        var pending = 0;
+        foreach (var (cacheKey, builder) in builders)
         {
-            var builder = new FixtureBuilder(_runner, options.Ffmpeg.Path, options.FixturesDirectory, options.FixtureTimeout, FixtureDownloader, [.. group], null) { Progress = progress };
-            foreach (var clip in await builder.BuildAsync(group.Key ? SamplesCacheKey : key, caps.Encoders, cancellationToken))
+            pending += await builder.PendingAsync(cacheKey, caps.Encoders, cancellationToken);
+        }
+
+        planned(pending);
+        Dictionary<string, FixtureResult> built = new(StringComparer.Ordinal);
+        foreach (var (cacheKey, builder) in builders)
+        {
+            foreach (var clip in await builder.BuildAsync(cacheKey, caps.Encoders, cancellationToken))
             {
                 built[clip.Spec.FileName] = clip;
             }

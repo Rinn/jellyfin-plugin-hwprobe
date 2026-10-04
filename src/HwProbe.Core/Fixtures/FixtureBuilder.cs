@@ -99,6 +99,25 @@ public sealed partial class FixtureBuilder
         return string.Concat(cacheKey.Select(c => c == ':' || invalid.Contains(c) ? '_' : c));
     }
 
+    /// <summary>Counts the fixtures <see cref="BuildAsync"/> would make or download, leaving out those already cached.</summary>
+    /// <param name="cacheKey">Cache partition, as <see cref="BuildAsync"/> takes it.</param>
+    /// <param name="availableEncoders">Encoder names in this ffmpeg build.</param>
+    /// <param name="cancellationToken">Cancels the checks.</param>
+    /// <returns>How many fixtures require work, so progress counts only those.</returns>
+    internal async Task<int> PendingAsync(string cacheKey, IReadOnlySet<string> availableEncoders, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(cacheKey);
+        ArgumentNullException.ThrowIfNull(availableEncoders);
+        var directory = Path.Combine(_cacheRoot, SanitizeKey(cacheKey));
+        var pending = 0;
+        foreach (var spec in _catalog)
+        {
+            pending += await IsPendingAsync(spec, directory, availableEncoders, cancellationToken) ? 1 : 0;
+        }
+
+        return pending;
+    }
+
     /// <summary>Reports whether a cached fixture matches its manifest and was made from this spec.</summary>
     /// <param name="path">The fixture path.</param>
     /// <param name="spec">The fixture spec it must have been encoded from.</param>
@@ -165,6 +184,49 @@ public sealed partial class FixtureBuilder
     /// <returns>The pattern.</returns>
     [GeneratedRegex(@"\{clip:([^}]+)\}")]
     private static partial Regex ClipPlaceholder();
+
+    /// <summary>Reports whether resolving a fixture would make or download it, following <see cref="ResolveAsync"/>'s order.</summary>
+    /// <param name="spec">The fixture.</param>
+    /// <param name="directory">The cache partition.</param>
+    /// <param name="availableEncoders">Encoder names in this ffmpeg build.</param>
+    /// <param name="cancellationToken">Cancels the check.</param>
+    /// <returns>False for a cached fixture, one that can't be tested, and a bundled copy, which is written without a step.</returns>
+    private async Task<bool> IsPendingAsync(FixtureSpec spec, string directory, IReadOnlySet<string> availableEncoders, CancellationToken cancellationToken)
+    {
+        if (spec.UntestedReason is not null)
+        {
+            return false;
+        }
+
+        if (spec.RequiredEncoder is null && spec.DownloadUrl is { } url)
+        {
+            return !await IsDownloadedAsync(spec, url, cancellationToken);
+        }
+
+        if (spec.RequiredEncoder is { } encoder && !availableEncoders.Contains(encoder))
+        {
+            return !spec.Bundled && spec.DownloadUrl is { } fallback && !await IsDownloadedAsync(spec, fallback, cancellationToken);
+        }
+
+        return !await IsValidAsync(Path.Combine(directory, spec.FileName), spec, cancellationToken);
+    }
+
+    /// <summary>Returns where a download is cached.</summary>
+    /// <param name="spec">The fixture.</param>
+    /// <param name="url">Where it's downloaded from.</param>
+    /// <returns>The path, named by the pinned SHA-256.</returns>
+    private string DownloadPath(FixtureSpec spec, Uri url) => Path.Combine(_downloadDirectory, spec.Sha256 + Path.GetExtension(url.AbsolutePath));
+
+    /// <summary>Reports whether a download is cached with its pinned hash.</summary>
+    /// <param name="spec">The fixture.</param>
+    /// <param name="url">Where it's downloaded from.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>True when the cached file matches.</returns>
+    private async Task<bool> IsDownloadedAsync(FixtureSpec spec, Uri url, CancellationToken cancellationToken)
+    {
+        var path = DownloadPath(spec, url);
+        return File.Exists(path) && Convert.ToHexStringLower(SHA256.HashData(await File.ReadAllBytesAsync(path, cancellationToken))) == spec.Sha256;
+    }
 
     /// <summary>Returns a cached fixture, or generates it.</summary>
     /// <param name="spec">The fixture.</param>
@@ -353,8 +415,8 @@ public sealed partial class FixtureBuilder
     /// <remarks>Cached by hash with the URL's extension, since a sample's format can differ from the generated clip's.</remarks>
     private async Task<FixtureResult> DownloadAsync(FixtureSpec spec, Uri url, CancellationToken cancellationToken)
     {
-        var path = Path.Combine(_downloadDirectory, spec.Sha256 + Path.GetExtension(url.AbsolutePath));
-        if (File.Exists(path) && Convert.ToHexStringLower(SHA256.HashData(await File.ReadAllBytesAsync(path, cancellationToken))) == spec.Sha256)
+        var path = DownloadPath(spec, url);
+        if (await IsDownloadedAsync(spec, url, cancellationToken))
         {
             return new FixtureResult(spec, FixtureStatus.Available, path, null);
         }

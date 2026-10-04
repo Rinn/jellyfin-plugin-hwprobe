@@ -43,6 +43,25 @@ public sealed class FixtureCacheContentsTests : IDisposable
         Assert.Equal("Being made or downloaded", Assert.Single(FixtureCacheContents.List(_root)).Description);
     }
 
+    /// <summary>Deleting a listed file takes its hash file too; a name the cache doesn't list, such as one outside it, is refused.</summary>
+    [Fact]
+    public void DeletesOnlyListedFiles()
+    {
+        Write("sha256_abc", FixtureCatalog.Hevc10.FileName, 100);
+        Write("sha256_abc", FixtureCatalog.Hevc10.FileName + ".sha256", 64);
+        Write("sha256_abc", "other.mp4", 10);
+        var outside = Path.Combine(Path.GetDirectoryName(_root)!, Path.GetFileName(_root) + "-outside.txt");
+        File.WriteAllText(outside, "keep");
+
+        Assert.False(FixtureCacheContents.Delete(_root, "..", Path.GetFileName(outside)));
+        Assert.False(FixtureCacheContents.Delete(_root, "sha256_abc", FixtureCatalog.Hevc10.FileName + ".sha256"));
+        Assert.True(FixtureCacheContents.Delete(_root, "sha256_abc", FixtureCatalog.Hevc10.FileName));
+
+        Assert.Equal(["other.mp4"], FixtureCacheContents.List(_root).Select(e => e.File));
+        Assert.True(File.Exists(outside));
+        File.Delete(outside);
+    }
+
     /// <summary>Pruning keeps the current build's known clips, samples and known downloads, and deletes the rest.</summary>
     [Fact]
     public void PruneDeletesWhatThisVersionDoesNotUse()
