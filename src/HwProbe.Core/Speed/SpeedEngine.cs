@@ -112,8 +112,16 @@ public sealed class SpeedEngine : IDisposable
                 await waitFirst.HoldWhileBusyAsync(cancellationToken);
             }
 
-            var clips = await BuildClipsAsync(options, caps, tests, speed.Settings, progress is null ? null : new FixtureStepProgress(step => progress.Report(new SpeedProgress(0, total, null) { Preparing = Preparing(step, names) })), cancellationToken);
-            progress?.Report(new SpeedProgress(0, total, null));
+            // Each new clip's first step means the one before it is done; cached clips report nothing and count once all are ready.
+            var clipsTotal = SpeedVariants.Clips(tests, speed.Settings).Count;
+            HashSet<string> begun = new(StringComparer.Ordinal);
+            var clipSteps = progress is null ? null : new FixtureStepProgress(step =>
+            {
+                begun.Add(step.Spec.FileName);
+                progress.Report(new SpeedProgress(0, total, null) { Preparing = Preparing(step, names), ClipsDone = begun.Count - 1, ClipsTotal = clipsTotal });
+            });
+            var clips = await BuildClipsAsync(options, caps, tests, speed.Settings, clipSteps, cancellationToken);
+            progress?.Report(new SpeedProgress(0, total, null) { ClipsDone = clipsTotal, ClipsTotal = clipsTotal });
             foreach (var (type, device) in measured)
             {
                 if (speed.Pause is { } beforeOpen)
@@ -152,7 +160,7 @@ public sealed class SpeedEngine : IDisposable
                         : await MeasureOrReuseAsync(options, speed, caps.VersionLine, resultsCache, source, type, device, test, cell, cancellationToken);
                     var described = Describe(test, result);
                     results.Add(described);
-                    progress?.Report(new SpeedProgress(++done, total, described));
+                    progress?.Report(new SpeedProgress(++done, total, described) { ClipsDone = clipsTotal, ClipsTotal = clipsTotal });
                 }
             }
         }

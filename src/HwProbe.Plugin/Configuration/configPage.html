@@ -2260,9 +2260,10 @@
                     return [s.Suite, what].filter(t => t).join(' \u00b7 ');
                 }
 
-                // Measurements done and planned: across the whole suite in a suite, else the run's.
+                // Test videos made and measurements done, of those planned: across the whole suite in a suite. The current step's test videos count first, as making them can take longer than measuring.
                 function speedCounts(s) {
-                    return s.SuiteTotal ? { done: (s.SuiteDone || 0) + (s.Done || 0), total: s.SuiteTotal } : { done: s.Done || 0, total: s.Total || 0 };
+                    const clips = { done: s.ClipsDone || 0, total: s.ClipsTotal || 0 };
+                    return s.SuiteTotal ? { done: clips.done + (s.SuiteDone || 0) + (s.Done || 0), total: clips.total + s.SuiteTotal } : { done: clips.done + (s.Done || 0), total: clips.total + (s.Total || 0) };
                 }
 
                 // Measurements done and planned, e.g. "2 / 20", for one line of text.
