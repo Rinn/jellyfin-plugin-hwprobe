@@ -1898,7 +1898,6 @@
                                 renderCard();
                             }
                             speedUpdate();
-                            pollTimer = setTimeout(loadStatus, 1000);
                             // A page opened mid-run still needs its first render.
                             if (!loaded) {
                                 loaded = true;
@@ -1907,7 +1906,9 @@
                             if (s.Activity === 'Speed') {
                                 speedProgress = s;
                                 ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedProgress'), dataType: 'json' })
-                                    .then(r => { speedLive = r; }, () => {}).then(renderSpeedResults);
+                                    .then(r => { speedLive = r; }, () => {}).then(renderSpeedResults).then(() => { pollTimer = setTimeout(loadStatus, 250); });
+                            } else {
+                                pollTimer = setTimeout(loadStatus, 250);
                             }
                             return;
                         }
