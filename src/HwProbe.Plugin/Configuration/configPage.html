@@ -1426,28 +1426,32 @@
                 // Where each chosen input comes from, under the Input field.
                 function sourceLines(target, update) {
                     target.replaceChildren();
-                    const chosen = allVideos().filter(x => chosenVideos.has(x.Key) && x.Key !== 'library');
-                    if (chosen.length) {
-                        const list = el('ul', null, 'fieldDescription hwprobe-notes');
-                        for (const v of chosen) {
-                            const line = el('li');
-                            line.appendChild(document.createTextNode(v.Name + ': '));
-                            const source = sourceCell(v);
-                            while (source.firstChild) {
-                                line.appendChild(source.firstChild);
-                            }
-                            list.appendChild(line);
+                    if (chosenVideos.has('library')) {
+                        target.appendChild(libraryCell(update));
+                    }
+                    const list = el('ul', null, 'fieldDescription hwprobe-notes');
+                    for (const v of allVideos().filter(x => chosenVideos.has(x.Key) && x.Key !== 'library')) {
+                        const line = el('li');
+                        line.appendChild(document.createTextNode(v.Name + ': '));
+                        const source = sourceCell(v);
+                        while (source.firstChild) {
+                            line.appendChild(source.firstChild);
                         }
+                        list.appendChild(line);
+                    }
+                    if (chosenVideos.has('library') && libraryVideo) {
+                        const line = el('li', 'Library video: ');
+                        const link = el('a', speedItem.Name, 'button-link');
+                        link.href = '#/details?id=' + speedItem.Id + '&serverId=' + ApiClient.serverId();
+                        line.appendChild(link);
+                        line.appendChild(el('div', libraryVideo.Input, 'hwprobe-small'));
+                        list.appendChild(line);
+                    }
+                    if (list.childElementCount) {
                         target.appendChild(list);
                     }
                     if (speedVideos.some(v => chosenVideos.has(v.Key) && !v.SourceUrl)) {
                         target.appendChild(el('div', 'Test video results may not be representative compared to actual videos.', 'infoBanner'));
-                    }
-                    if (chosenVideos.has('library')) {
-                        target.appendChild(libraryCell(update));
-                        if (libraryVideo) {
-                            target.appendChild(el('div', libraryVideo.Name + ': ' + libraryVideo.Input, 'fieldDescription'));
-                        }
                     }
                 }
 
