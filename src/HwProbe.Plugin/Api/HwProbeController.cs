@@ -107,6 +107,17 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     [ProducesResponseType(StatusCodes.Status200OK)]
     public ActionResult<CatalogInfo> Catalog() => Ok(CatalogInfo.From(Core.Data.Catalog.Default));
 
+    /// <summary>Returns the third-party libraries the plugin ships, with their licences, as <c>scripts/notices.py</c> lists them.</summary>
+    /// <returns>The list, as JSON.</returns>
+    [HttpGet("Libraries")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ContentResult Libraries()
+    {
+        using var stream = typeof(HwProbeController).Assembly.GetManifestResourceStream("libraries.json")!;
+        using var reader = new StreamReader(stream);
+        return Content(reader.ReadToEnd(), "application/json");
+    }
+
     /// <summary>Describes a library item's file as a speed run video.</summary>
     /// <param name="itemId">The movie or episode.</param>
     /// <returns>The video, or 404 when it isn't a local video file.</returns>

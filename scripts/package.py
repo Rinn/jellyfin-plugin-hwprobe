@@ -16,6 +16,8 @@ import sys
 import time
 import zipfile
 
+# Third-party assemblies the plugin zip carries; Jellyfin provides the rest. scripts/notices.py lists their licences.
+PLUGIN_LIBRARIES = ["YamlDotNet.dll"]
 CLI_RIDS = ["linux-x64", "linux-arm64", "osx-arm64", "win-x64", "win-arm64"]
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -55,18 +57,20 @@ def write_zip(path, files, epoch):
                 archive.writestr(info, f.read())
 
 
-def write_tar_gz(path, name, source, epoch):
-    """Writes a .tar.gz holding one executable, so it unpacks runnable; gzip alone keeps no permissions."""
-    info = tarfile.TarInfo(name)
-    info.size = os.path.getsize(source)
-    info.mode = 0o755
-    info.mtime = epoch
-    info.uid = info.gid = 0
-    info.uname = info.gname = ""
-    with open(source, "rb") as f, open(path, "wb") as raw:
+def write_tar_gz(path, files, epoch):
+    """Writes a .tar.gz of (archive name, source path, mode) triples, so the executable unpacks runnable; gzip alone keeps no permissions."""
+    with open(path, "wb") as raw:
         with gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0, compresslevel=9) as out:
             with tarfile.open(fileobj=out, mode="w", format=tarfile.USTAR_FORMAT) as archive:
-                archive.addfile(info, f)
+                for name, source, mode in sorted(files):
+                    info = tarfile.TarInfo(name)
+                    info.size = os.path.getsize(source)
+                    info.mode = mode
+                    info.mtime = epoch
+                    info.uid = info.gid = 0
+                    info.uname = info.gname = ""
+                    with open(source, "rb") as f:
+                        archive.addfile(info, f)
 
 
 def default_version():
@@ -109,16 +113,18 @@ def main():
         for output in pool.map(lambda command: run_captured(*command), publishes):
             print(output, end="")
 
-    dlls = [(n, os.path.join(plugin, n)) for n in os.listdir(plugin) if (n.startswith("Jellyfin.Plugin.HwProbe") and n.endswith(".dll")) or n == "YamlDotNet.dll"]
-    archives = [lambda: write_zip(os.path.join(out, plugin_zip), dlls, epoch)]
+    dlls = [(n, os.path.join(plugin, n)) for n in os.listdir(plugin) if (n.startswith("Jellyfin.Plugin.HwProbe") and n.endswith(".dll")) or n in PLUGIN_LIBRARIES]
+    notices = [(n, os.path.join(ROOT, n)) for n in ("LICENSE", "THIRD-PARTY-NOTICES.md")]
+    archives = [lambda: write_zip(os.path.join(out, plugin_zip), dlls + notices, epoch)]
     for rid in CLI_RIDS:
         target = os.path.join(work, "cli", rid)
         if rid.startswith("win"):
             exe = [("hwprobe.exe", os.path.join(target, "Jellyfin.Plugin.HwProbe.Cli.exe"))]
-            archives.append(lambda rid=rid, exe=exe: write_zip(os.path.join(out, f"hwprobe-{rid}.zip"), exe, epoch))
+            archives.append(lambda rid=rid, exe=exe: write_zip(os.path.join(out, f"hwprobe-{rid}.zip"), exe + notices, epoch))
         else:
             binary = os.path.join(target, "Jellyfin.Plugin.HwProbe.Cli")
-            archives.append(lambda rid=rid, binary=binary: write_tar_gz(os.path.join(out, f"hwprobe-{rid}.tar.gz"), "hwprobe", binary, epoch))
+            files = [("hwprobe", binary, 0o755)] + [(name, source, 0o644) for name, source in notices]
+            archives.append(lambda rid=rid, files=files: write_tar_gz(os.path.join(out, f"hwprobe-{rid}.tar.gz"), files, epoch))
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(archives)) as pool:
         for future in [pool.submit(write) for write in archives]:
             future.result()
