@@ -1742,8 +1742,8 @@
                         options('When the server starts transcoding', whenTranscodingOptions, whenTranscoding, setWhenTranscoding, null, target);
                     };
                     suites.appendChild(el('div', idle, 'infoBanner'));
-                    shared(suites, suiteResources, v => { suiteResources = v; }, suiteWhenTranscoding, v => { suiteWhenTranscoding = v; });
                     renderSuites(suites);
+                    shared(suites, suiteResources, v => { suiteResources = v; }, suiteWhenTranscoding, v => { suiteWhenTranscoding = v; });
                     shared(form, speedResources, v => { speedResources = v; }, speedWhenTranscoding, v => { speedWhenTranscoding = v; });
                     options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); }, 'A measurement that reaches the limit stops and reports what it measured.');
 

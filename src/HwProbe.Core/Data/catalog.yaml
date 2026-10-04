@@ -475,7 +475,7 @@ suites:
     videos: [drama]
     outputs: [h264-40mbps, h264-20mbps, h264-8mbps, h264-4mbps, h264-1.5mbps, hevc-40mbps, hevc-20mbps, hevc-8mbps, hevc-4mbps, hevc-1.5mbps]
     steps:
-      - { label: Every quality }
+      - { label: "40, 20, 8, 4, and 1.5 Mbps" }
   - key: tonemap
     name: Tone mapping
     description: HDR video to SDR with tone mapping on and off, to show what HDR costs.
