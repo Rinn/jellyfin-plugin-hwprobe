@@ -503,11 +503,11 @@ public sealed class ProbeEngine : IDisposable
             };
             var remedy = missing is null
                 ? Hints.LegacyCopyBack
-                : $"Filters run in software (copy-back). This ffmpeg lacks {string.Join(", ", missing)}; use jellyfin-ffmpeg for the {(candidate.Type == HwType.nvenc ? "CUDA" : "Metal")} pipeline.";
+                : Data.Catalog.Text("legacyCopyBackFfmpeg", ("filters", string.Join(", ", missing)), ("pipeline", candidate.Type == HwType.nvenc ? "CUDA" : "Metal"));
             run.Findings.Add(new Finding(FindingSeverity.Warn, "legacy-copyback", $"{candidate.Type}{DevicePrefix(candidate.Device)}{remedy}")
             {
                 Backend = candidate.Type,
-                Fix = missing is null ? Hints.OpenclFix(inContainer) : new Fix("Use jellyfin-ffmpeg", null),
+                Fix = missing is null ? Hints.OpenclFix(inContainer) : new Fix(Data.Catalog.Text("fixJellyfinFfmpeg"), null),
             });
         }
 
@@ -518,12 +518,12 @@ public sealed class ProbeEngine : IDisposable
 
         if (open.Driver == VaapiDriver.Amd)
         {
-            run.Findings.Add(new Finding(FindingSeverity.Info, "vulkan-interop-unprobed", $"{candidate.Type}{DevicePrefix(candidate.Device)}Vulkan DRM interop is not probed, so FullVulkan is never reported.") { Backend = candidate.Type });
+            run.Findings.Add(new Finding(FindingSeverity.Info, "vulkan-interop-unprobed", $"{candidate.Type}{DevicePrefix(candidate.Device)}{Data.Catalog.Text("findingVulkanUnprobed")}") { Backend = candidate.Type });
         }
 
         if (_unvalidated.Contains(candidate.Type))
         {
-            run.Findings.Add(new Finding(FindingSeverity.Info, "unvalidated-backend", $"{candidate.Type}: hwprobe's {candidate.Type} checks have not been validated on real hardware.") { Backend = candidate.Type });
+            run.Findings.Add(new Finding(FindingSeverity.Info, "unvalidated-backend", $"{candidate.Type}: {Data.Catalog.Text("findingUnvalidated", ("backend", candidate.Type.ToString()))}") { Backend = candidate.Type });
         }
 
         Dictionary<string, ProbeOutcome> decode = [];
@@ -533,6 +533,7 @@ public sealed class ProbeEngine : IDisposable
         Dictionary<string, ProbeOutcome> subtitles = [];
         Dictionary<string, double> seconds = [];
         var decodedTenBit = false;
+        HashSet<string> droppedLowPower = new(StringComparer.Ordinal);
         if (run.Options.StopAfter == StopStage.Matrix)
         {
             foreach (var cell in MatrixCatalog.For(candidate.Type))
@@ -561,6 +562,11 @@ public sealed class ProbeEngine : IDisposable
                 }
 
                 column[key] = result.Outcome;
+                if (cell.Cell.LowPower && result.Hint == LowPowerAdvice.Dropped)
+                {
+                    droppedLowPower.Add(cell.Cell.OutputCodec);
+                }
+
                 if (result.CommandLine is not null)
                 {
                     seconds[ColumnName(cell.Group) + ":" + key] = result.Duration.TotalSeconds;
@@ -572,7 +578,7 @@ public sealed class ProbeEngine : IDisposable
 
         if (candidate.Type is HwType.qsv or HwType.vaapi)
         {
-            run.Findings.AddRange(LowPowerAdvice.Findings(candidate.Type, candidate.Device, encode, run.Host.Os, inContainer, EnableGuc(), IntelLowPower(run, candidate)));
+            run.Findings.AddRange(LowPowerAdvice.Findings(candidate.Type, candidate.Device, encode, run.Host.Os, inContainer, EnableGuc(), IntelLowPower(run, candidate), droppedLowPower));
         }
 
         var row = new BackendReport(candidate.Type, candidate.Device, BackendVerdict.Viable, tier, decode, encode, tonemap, deinterlace, subtitles, string.Empty);
@@ -599,7 +605,7 @@ public sealed class ProbeEngine : IDisposable
             run.Findings.Add(new Finding(
                 FindingSeverity.Warn,
                 "opencl-unavailable",
-                $"{candidate.Type}{DevicePrefix(candidate.Device)}OpenCL doesn't start, but Jellyfin still picks its OpenCL pipeline because this ffmpeg was built with OpenCL, so OpenCL tone-mapping fails. {remedy}")
+                $"{candidate.Type}{DevicePrefix(candidate.Device)}{Data.Catalog.Text("findingOpenclUnavailable", ("remedy", remedy))}")
             {
                 Backend = candidate.Type,
                 Fix = Hints.OpenclFix(run.Host.Container is not null),
@@ -726,12 +732,14 @@ public sealed class ProbeEngine : IDisposable
                 var commandLine = ProbeCommandLine.Build(args, fixture.Path!, MatrixCatalog.Frames);
                 var invocation = new FfmpegInvocation(run.Options.Ffmpeg.Path, commandLine, args.Environment, run.Options.ProbeTimeout);
                 var ran = await _runner.RunAsync(invocation, ct);
+                var lowPowerDropped = cell.Cell.LowPower && StderrMarkers.LowPowerDisabled.Any(m => ran.Stderr.Contains(m, StringComparison.Ordinal));
                 var outcome = ran.Status == FfmpegRunStatus.LaunchFailed
                     ? ProbeOutcome.DeviceUnavailable
-                    : cell.Cell.LowPower && StderrMarkers.LowPowerDisabled.Any(m => ran.Stderr.Contains(m, StringComparison.Ordinal))
+                    : lowPowerDropped
                     ? ProbeOutcome.CodecUnsupported
                     : VerdictEvaluator.Evaluate(ran, new ProbeExpectation(MatrixCatalog.Frames, StderrMarkers.HardwareFrames(candidate.Type, args.Hwaccel)));
                 var hint = outcome == ProbeOutcome.Pass ? string.Empty
+                    : lowPowerDropped && IntelLowPower(run, candidate) is var gen && gen != LowPowerSupport.None && !(cell.Cell.OutputCodec == "hevc" && gen == LowPowerSupport.H264Only) ? LowPowerAdvice.Dropped
                     : cell.Cell.LowPower ? LowPowerAdvice.Remedy(cell.Cell.OutputCodec, run.Host.Os, inContainer, EnableGuc(), IntelLowPower(run, candidate))
                     : cell.Group == MatrixGroup.Tonemap && !cell.Cell.VppTonemap && run.NoOpencl.Contains(candidate) ? Hints.OpenclUnavailable(inContainer)
                     : Hints.For(outcome, candidate.Type, run.Host.Os, inContainer);

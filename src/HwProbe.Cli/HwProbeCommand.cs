@@ -66,7 +66,7 @@ internal sealed class HwProbeCommand
     private readonly Option<int> _speedRepeats = new("--speed-repeats") { Description = "Run each speed measurement 1 to 3 times and report the median.", DefaultValueFactory = _ => 1, CustomParser = Whole };
     private readonly Option<bool> _speedResources = new("--speed-resources")
     {
-        Description = $"Also measure each speed measurement's CPU, memory, and GPU usage: true or false. Default: {(Catalog.Default.DefaultMeasureResources ? "true" : "false")}.",
+        Description = $"Also measure each speed measurement's CPU, memory, GPU, and power usage: true or false. Default: {(Catalog.Default.DefaultMeasureResources ? "true" : "false")}.",
         DefaultValueFactory = _ => Catalog.Default.DefaultMeasureResources,
     };
 

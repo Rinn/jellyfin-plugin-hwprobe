@@ -14,4 +14,17 @@ public sealed record ResourceUsage(double Seconds, double? CpuSeconds, long? Pea
 
     /// <summary>Gets the most GPU memory held at once (dedicated memory on Windows, resident GPU buffers on Linux), or null when unavailable.</summary>
     public long? PeakGpuMemoryBytes { get; init; }
+
+    /// <summary>Gets the energy each whole device used over the run, in joules, by domain (<c>Cpu</c> for the CPU package, <c>Gpu</c>); null when no meter is readable.</summary>
+    /// <remarks>Whole-device figures: other work on the host counts too, so <see cref="IdleWatts"/> is read just before the run.</remarks>
+    public IReadOnlyDictionary<string, double>? Joules { get; init; }
+
+    /// <summary>Gets each domain's power just before the run, in watts, to subtract from <see cref="Joules"/>.</summary>
+    public IReadOnlyDictionary<string, double>? IdleWatts { get; init; }
+
+    /// <summary>Returns each domain's average power over the run above its idle reading, in watts.</summary>
+    /// <returns>Watts by domain that has both readings, or empty without them.</returns>
+    public IReadOnlyDictionary<string, double> WattsAboveIdle() =>
+        Joules is null || IdleWatts is null || Seconds <= 0 ? new Dictionary<string, double>(StringComparer.Ordinal)
+        : Joules.Where(j => IdleWatts.ContainsKey(j.Key)).ToDictionary(j => j.Key, j => Math.Max(0, (j.Value / Seconds) - IdleWatts[j.Key]), StringComparer.Ordinal);
 }

@@ -133,6 +133,15 @@ public sealed class SpeedEngine : IDisposable
                     var missing = MissingClip(test, speed.Settings, clips);
                     var cell = SpeedVariants.ForBackend(type, test, SpeedVariants.Base(test, speed.Settings, Paths(clips)), speed.Settings);
 
+                    // A codec the probe found this GPU can't decode is left unticked, as the probe advises, so Jellyfin decodes it in software.
+                    // The probe's key names the codec, depth, and profile, and the decoder the settings pick (QSV's own or the native one, CUVID or NVDEC).
+                    var decoder = type == HwType.qsv && !speed.Settings.PreferNativeDecoder ? "_qsvdecoder" : type == HwType.nvenc && !speed.Settings.EnhancedNvdec ? "_cuvid" : string.Empty;
+                    var probeSoftware = speed.DecodeUnsupported.Contains((type, device, Probes.MatrixCatalog.Key(cell.InputCodec, cell.BitDepth, cell.Profile) + decoder));
+                    if (probeSoftware)
+                    {
+                        cell = cell with { HardwareDecode = false };
+                    }
+
                     // Jellyfin would ask for low power anyway and ffmpeg would drop it, so the run would only repeat normal mode.
                     var noLowPower = cell.LowPower && test.OutputCodec is { } codec && speed.LowPowerUnsupported.Contains((type, device, codec))
                         ? $"Not measured: this GPU has no low-power {SpeedTestText.CodecName(codec)} encoder, so ffmpeg would encode in normal mode."
@@ -452,12 +461,14 @@ public sealed class SpeedEngine : IDisposable
                     : test.DecodeOnly ? (softwareDecode ? "decoded" : null)
                     : args.HardwareEncoder ? null
                     : "encoded";
+
+                // Decoding the probe found failing is named as the reason, as the advice to untick that codec is.
                 if (softwareStep is not null)
                 {
-                    return new SpeedResult(type, device, test.Key, string.Empty, null, null, false, $"Not measured: {softwareStep} in software with this backend.");
+                    return new SpeedResult(type, device, test.Key, string.Empty, null, null, false, softwareStep == "decoded" && !cell.HardwareDecode ? Data.Catalog.Text("noteDecodeFailed") : $"Not measured: {softwareStep} in software with this backend.");
                 }
 
-                var note = softwareDecode ? "Decoded in software with this backend, then encoded on the GPU." : null;
+                var note = !softwareDecode ? null : Data.Catalog.Text(cell.HardwareDecode ? "noteSoftwareDecode" : "noteSoftwareDecodeFailed");
                 var width = Math.Min(args.OutputWidth ?? test.Width, test.Width);
                 var size = test.DecodeOnly ? null : SpeedTestText.Resolution(width, test.Height * width / test.Width, false);
 

@@ -32,7 +32,7 @@ public static class SpeedSuites
         }
 
         var label = option.Choices?.FirstOrDefault(c => c.Key == value)?.Label ?? value;
-        return [.. steps, new SuiteStep($"{label} (server setting)", new Dictionary<string, string>(StringComparer.Ordinal) { [key] = value }, suite.Videos, suite.Outputs)];
+        return [.. steps, new SuiteStep($"{label} ({Catalog.Default.Labels["ServerSettingAfter"]})", new Dictionary<string, string>(StringComparer.Ordinal) { [key] = value }, suite.Videos, suite.Outputs)];
     }
 
     /// <summary>Returns the backends a suite runs on.</summary>

@@ -10,6 +10,7 @@ public static class ResourceComparison
     private const double MinCores = 0.05;
     private const double MinGpuShare = 0.02;
     private const long MinBytes = 16L * 1024 * 1024;
+    private const double MinJoulesPerFrame = 0.001;
 
     /// <summary>Returns the resources one result used notably less of than another, when it used notably more of none.</summary>
     /// <param name="a">The result that may be more efficient.</param>
@@ -31,6 +32,14 @@ public static class ResourceComparison
             ("Cpu", ra.CpuSeconds / ra.Seconds, rb.CpuSeconds / rb.Seconds, MinCores),
             ("Memory", ra.PeakMemoryBytes, rb.PeakMemoryBytes, MinBytes),
         ];
+
+        // Energy per frame above idle, over the domains both measured: whole-device meters, so the same on any backend of this host.
+        List<string> domains = ra.Joules is { } aj && rb.Joules is { } bj ? [.. aj.Keys.Intersect(bj.Keys, StringComparer.Ordinal)] : [];
+        if (domains.Count > 0 && a.Fps is > 0 && b.Fps is > 0)
+        {
+            figures.Add(("Power", domains.Sum(d => ra.WattsAboveIdle()[d]) / a.Fps.Value, domains.Sum(d => rb.WattsAboveIdle()[d]) / b.Fps.Value, MinJoulesPerFrame));
+        }
+
         if (sameGpu)
         {
             figures.Add(("Gpu", Busiest(ra), Busiest(rb), MinGpuShare));
@@ -45,7 +54,8 @@ public static class ResourceComparison
                 continue;
             }
 
-            if (mine > theirs * (1 + Catalog.Default.Advice.ResourceMargin) && mine - theirs > floor)
+            // Power is whole-device and its idle reading can run high after a busy run, so it only ever counts as a saving.
+            if (resource != "Power" && mine > theirs * (1 + Catalog.Default.Advice.ResourceMargin) && mine - theirs > floor)
             {
                 return [];
             }

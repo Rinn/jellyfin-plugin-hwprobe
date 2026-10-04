@@ -731,12 +731,83 @@ suiteMethod: Confirm
 softwareName: Software
 
 # Measured resources, as suggestions name them.
-resourceNames: { Cpu: CPU, Memory: memory, Gpu: GPU, GpuMemory: GPU memory }
+resourceNames: { Cpu: CPU, Memory: memory, Gpu: GPU, GpuMemory: GPU memory, Power: power }
+
+# The same, as the Resource Usage view's column headers, kept short since each backend has one of each.
+resourceHeaders: { Cpu: CPU, Memory: Mem, Gpu: GPU, GpuMemory: GPU mem, Power: Power }
+
+# Energy meters' domains, as the Resource Usage view names them.
+powerDomains: { Cpu: CPU package, Gpu: GPU }
 
 # Server settings suggestions change that aren't run options; labels and caveats are jellyfin-web's (en-us.json).
 labels:
+  # The server's own value: as a run option's first choice, and after a suite step or suggestion's value.
+  ServerSetting: Server setting
+  ServerSettingAfter: server setting
   RemoteClientBitrateLimit: Internet streaming bitrate limit
   RemoteClientBitrateLimitCaveat: Applies to devices outside the network only, lowering their picture quality; Jellyfin notes it can raise the server's load by transcoding streams that could otherwise play directly.
+
+# The report's remedies, fix links, and findings, by key; {name} is filled in by the code that picks the text.
+texts:
+  # Remedies, shown next to a failed probe.
+  codecUnsupported: This GPU or driver does not support this codec. Leave it unticked in Jellyfin's hardware decoding list.
+  filterUnsupported: A filter in the pipeline failed. The driver may lack a feature; see the stderr tail.
+  timeout: ffmpeg hung and was killed, which usually means a wedged driver. Retry with no transcodes running.
+  softwareFallback: ffmpeg finished but decoded in software. Jellyfin would silently use the CPU here.
+  skipped: "Not run: a prerequisite is missing (a software encoder for the fixture, or the build lacks it)."
+  untested: "Not verified: no hardware or sample was available to test this."
+  notUsed: Software only with this ffmpeg build, so the setting has no effect.
+  permissionDeniedContainer: The render node is not accessible. Add the host's render group to the container (--group-add).
+  permissionDeniedHost: Add the jellyfin user to the render group (usermod -aG render jellyfin), then restart Jellyfin.
+  permissionDenied: The device exists but this user cannot open it.
+  deviceUnavailableQsvWindows: No Direct3D 11 adapter opened. Check the Intel graphics driver is installed.
+  deviceUnavailableAmf: No Direct3D 11 adapter opened. Check the AMD graphics driver is installed.
+  deviceUnavailableNvencContainer: ffmpeg has CUDA but no NVIDIA device opened. Run the container with the NVIDIA runtime (--gpus all).
+  deviceUnavailableNvenc: ffmpeg has CUDA but no NVIDIA device opened. Check the NVIDIA driver is installed (nvidia-smi).
+  deviceUnavailableNodeContainer: No render node opened. Pass it into the container (--device /dev/dri/renderD128).
+  deviceUnavailableNode: No render node opened. Check the GPU driver is loaded (ls /dev/dri).
+  deviceUnavailable: The device could not be opened. Check the GPU driver is installed.
+  noVendorAdapter: No {maker} adapter found. Check the {maker} graphics driver is installed.
+  noVendorAdapterDevice: Adapter {device} isn't an {maker} adapter.
+  # The official image installs intel-opencl-icd, and intel-opencl-icd-legacy1 for Gen 11 and older (jellyfin-packaging, docker/Dockerfile); the linuxserver mod installs both at start (docker-mods, jellyfin-opencl-intel).
+  openclUnavailableContainer: Install Intel's OpenCL runtime in the container. The official jellyfin/jellyfin image includes it (intel-opencl-icd, and intel-opencl-icd-legacy1 for Gen 11 and older GPUs). On linuxserver/jellyfin, set DOCKER_MODS=linuxserver/mods:jellyfin-opencl-intel and check the container's start-up log shows the packages installing.
+  openclUnavailableHost: "Install Intel's OpenCL runtime: intel-opencl-icd, or intel-opencl-icd-legacy1 for Gen 11 and older GPUs."
+  legacyCopyBack: Filters run in software (copy-back). Install the OpenCL runtime (intel-opencl-icd on Intel) to reach the full hardware pipeline.
+  legacyCopyBackFfmpeg: Filters run in software (copy-back). This ffmpeg lacks {filters}; use jellyfin-ffmpeg for the {pipeline} pipeline.
+  # Low power, from Jellyfin's Intel guide ("Low-Power Encoding"): Gen 9.x has low-power H.264 only, and older i915 GPUs need HuC firmware with enable_guc=2.
+  lowPowerNone: This GPU is Gen 8 Intel graphics or older, which has no low-power encoders, so this is expected and no firmware change helps.
+  lowPowerHevcGen9: This GPU is Gen 9 Intel graphics, which has low-power H.264 only, so this is expected and no firmware change helps.
+  lowPowerHevcMaybeGen9: "Gen 9 Intel graphics (Skylake to Comet Lake, Apollo Lake, Gemini Lake) have low-power H.264 only, so there this is expected and no firmware change helps. On newer GPUs: {remedy}"
+  lowPowerNotLinux: This GPU's driver doesn't support low-power encoding here. Leave the Intel Low-Power encoder option off.
+  lowPowerNoI915: "Low-power encoding failed, and the i915 driver isn't loaded (the xe driver requires no firmware option). Check the Intel firmware package is installed. Guide: {guide}"
+  lowPowerFirmware: "Low-power encoding on Linux requires Intel's HuC firmware. {where} the firmware package (firmware-intel-graphics on Debian, linux-firmware on Ubuntu and Arch). Except on DG1, 12th-gen and newer, or Arc A-series GPUs, which already default to enable_guc=3, add 'options i915 enable_guc=2' to /etc/modprobe.d/i915.conf, update the initramfs, and reboot. enable_guc is currently {enableGuc}. Guide: {guide}"
+  lowPowerFirmwareContainer: On the host (not in the container), install
+  lowPowerFirmwareHost: Install
+  # jellyfin-ffmpeg's qsvenc turns low power off when its parameters aren't supported (debian/patches/0071); on a Gen 9 NAS it was the bitrate target.
+  lowPowerDropped: Low power doesn't work with the bitrate Jellyfin sets, so ffmpeg uses normal mode.
+  # Fix links: a short action, with the flag or package in brackets.
+  fixRenderGroupContainer: Add render group (--group-add render)
+  fixRenderGroupHost: Add jellyfin to render group (usermod)
+  fixGpusAll: Pass GPU to container (--gpus all)
+  fixDeviceDri: Pass GPU to container (--device /dev/dri)
+  fixLoadDriver: Load GPU driver
+  fixOpenclContainer: Install Intel OpenCL runtime
+  fixOpenclHost: Install Intel OpenCL runtime (intel-opencl-icd)
+  fixJellyfinFfmpeg: Use jellyfin-ffmpeg
+  # Findings; each starts with the backend and device.
+  findingEnableLowPower: "normal {codec} encoding fails but low-power works; this GPU only has low-power encoders. Turn on '{option}'."
+  findingLowPowerAvailable: "low-power {codec} encoding works. Turning on '{option}' frees the GPU, which speeds up OpenCL tone-mapping."
+  findingLowPowerDropped: "'{option}' has no effect: {reason}"
+  findingLowPowerUnavailable: "leave '{option}' off. {reason}"
+  findingVulkanUnprobed: Vulkan DRM interop is not probed, so FullVulkan is never reported.
+  findingUnvalidated: "hwprobe's {backend} checks have not been validated on real hardware."
+  findingOpenclUnavailable: "OpenCL doesn't start, but Jellyfin still picks its OpenCL pipeline because this ffmpeg was built with OpenCL, so OpenCL tone-mapping fails. {remedy}"
+  # Performance test notes.
+  noteSoftwareDecode: Decoded in software with this backend, then encoded on the GPU.
+  noteSoftwareDecodeFailed: Decoded in software, as the probe found this GPU can't decode it, then encoded on the GPU.
+  noteDecodeFailed: "Not measured: the probe found this GPU can't decode it."
+  lowPowerOptionH264: Intel Low-Power H.264 hardware encoder
+  lowPowerOptionHevc: Intel Low-Power HEVC hardware encoder
 
 # Input codecs as the page and CLI name them, keyed by ffmpeg's codec name; others are shown upper-cased.
 codecNames: { h264: H.264, hevc: HEVC, av1: AV1, vp9: VP9, vp8: VP8, mpeg2video: MPEG-2, mpeg4: MPEG-4, vc1: VC-1, theora: Theora, flv1: Sorenson Spark, rv30: RealVideo 3, rv40: RealVideo 4, wmv3: WMV 9 }

@@ -150,7 +150,6 @@ internal static class HwProbeApp
                 stderr.Write(Console.IsErrorRedirected ? status + Environment.NewLine : "\r" + status);
             });
 
-            var lowPower = SpeedOptions.MissingLowPower(report);
             if (options.Suite is { } key)
             {
                 var suite = Catalog.Default.Suites.First(s => s.Key == key);
@@ -167,7 +166,9 @@ internal static class HwProbeApp
 
                 var started = DateTimeOffset.UtcNow;
                 var backends = SpeedSuites.Backends(suite, type);
-                var steps = SpeedSuites.Steps(suite, Environment.ProcessorCount, hardware: type);
+
+                // Without a server, Jellyfin's defaults (and any --speed-option) stand for its settings.
+                var steps = SpeedSuites.Steps(suite, Environment.ProcessorCount, speed.Settings, type);
                 List<SpeedReport> reports = [];
 
                 // A stop between steps ends the suite there; what finished is still printed, so these writes aren't cancelled with it.
@@ -175,7 +176,7 @@ internal static class HwProbeApp
                 {
                     var settings = step.Options.Aggregate(speed.Settings, (current, option) => SpeedSettingsOptions.Apply(current, option.Key, option.Value) ?? current);
                     await stderr.WriteLineAsync(string.Create(CultureInfo.InvariantCulture, $"hwprobe: {suite.Name}: {step.Label}, {reports.Count + 1} of {steps.Count}").AsMemory(), CancellationToken.None);
-                    var stepReport = await engine.RunAsync(engineOptions, speed with { Videos = step.Videos, Outputs = step.Outputs, Settings = settings, Backends = step.HardwareOnly ? [.. backends.Where(b => b != HwType.none)] : backends, LowPowerUnsupported = lowPower }, viable, progress, cancellationToken);
+                    var stepReport = await engine.RunAsync(engineOptions, speed.ForReport(report) with { Videos = step.Videos, Outputs = step.Outputs, Settings = settings, Backends = step.HardwareOnly ? [.. backends.Where(b => b != HwType.none)] : backends }, viable, progress, cancellationToken);
                     reports.Add(stepReport with { Suite = suite.Name, SuiteStep = step.Label, SuiteStartedUtc = started });
                     if (stepReport.Cancelled)
                     {
@@ -197,6 +198,11 @@ internal static class HwProbeApp
                     }
 
                     await stdout.WriteAsync(SuiteRenderer.Render(suite.Name, reports).AsMemory(), CancellationToken.None);
+                    var device = candidates.FirstOrDefault(c => c.Type == type).Device ?? string.Empty;
+                    if (reports.Count > 0)
+                    {
+                        await stdout.WriteAsync(SuggestionRenderer.Render(SpeedAdvisor.Advise(reports[^1], reports, type, device, speed.Settings)).AsMemory(), CancellationToken.None);
+                    }
                 }
 
                 if (options.SpeedJsonPath is { } suiteJson)
@@ -206,7 +212,7 @@ internal static class HwProbeApp
             }
             else
             {
-                var measured = await engine.RunAsync(engineOptions, speed with { LowPowerUnsupported = lowPower }, viable, progress, cancellationToken);
+                var measured = await engine.RunAsync(engineOptions, speed.ForReport(report), viable, progress, cancellationToken);
 
                 // A cancelled run still returns what it finished, so its output isn't cancelled with it.
                 await stderr.WriteLineAsync(string.Empty.AsMemory(), CancellationToken.None);

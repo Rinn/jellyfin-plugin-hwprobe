@@ -111,7 +111,9 @@ public static class SpeedMeter
         var note = erroredAt == streams + 1
             ? string.Create(CultureInfo.InvariantCulture, $"{erroredAt} at once failed to start, likely the driver's limit on sessions rather than speed.")
             : null;
-        return new SpeedMeasurement(fps, streams, streams == MaxStreams, note) { Resources = resources, Interrupted = cutOff };
+
+        // A session limit stops the count as the cap does, so it's marked capped: at least that many keep up.
+        return new SpeedMeasurement(fps, streams, streams == MaxStreams || note is not null, note) { Resources = resources, Interrupted = cutOff };
     }
 
     /// <summary>Counts the streams that keep up: doubling from a starting count until they fall behind, then narrowing down.</summary>

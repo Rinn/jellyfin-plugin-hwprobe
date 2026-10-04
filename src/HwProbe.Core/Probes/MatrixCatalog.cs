@@ -12,6 +12,9 @@ public static class MatrixCatalog
 
     private const string H264 = "h264";
 
+    /// <summary>The bitrate low-power encodes are probed at: a common player quality, so the rate control matches a real transcode's.</summary>
+    private const int LowPowerBitrate = 8_000_000;
+
     /// <summary>Gets the smoke probe: H.264 8-bit decode, hardware scale, H.264 encode.</summary>
     public static MatrixCell Smoke { get; } =
         new(MatrixGroup.Smoke, H264, FixtureCatalog.H264, Cell(FixtureCatalog.H264, H264, hardwareDecode: true) with { MaxWidth = 320, MaxHeight = 240 });
@@ -79,7 +82,9 @@ public static class MatrixCatalog
             foreach (var output in new[] { H264, "hevc" })
             {
                 var lowPower = Encode(FixtureCatalog.H264, output, hardwareDecode: true);
-                cells.Add(lowPower with { Key = output + "_lowpower", Cell = lowPower.Cell with { LowPower = true } });
+
+                // With the bitrate Jellyfin encodes to: on a Gen 9 NAS, low power held without one and was dropped with it (qsvenc falls back, jellyfin-ffmpeg patch 0071).
+                cells.Add(lowPower with { Key = output + "_lowpower", Cell = lowPower.Cell with { LowPower = true, FullQuality = true, VideoBitrate = LowPowerBitrate } });
             }
         }
 
@@ -93,17 +98,12 @@ public static class MatrixCatalog
         return cells;
     }
 
-    /// <summary>Report key for a fixture, e.g. <c>hevc_rext_12bit</c>; 8-bit 4:2:0 is the bare codec.</summary>
-    /// <param name="fixture">The fixture.</param>
-    /// <returns>The key.</returns>
-    private static string Key(FixtureSpec fixture) => fixture.Key ?? Key(fixture.Codec, fixture.BitDepth, fixture.Profile);
-
     /// <summary>Report key for a codec, bit depth and profile.</summary>
     /// <param name="codec">The codec.</param>
     /// <param name="bitDepth">The bit depth.</param>
     /// <param name="profile">The profile, e.g. <c>Rext</c>, or null.</param>
     /// <returns>The key.</returns>
-    private static string Key(string codec, int bitDepth, string? profile = null)
+    internal static string Key(string codec, int bitDepth, string? profile = null)
     {
         var key = profile switch
         {
@@ -113,6 +113,11 @@ public static class MatrixCatalog
         };
         return bitDepth > 8 ? $"{key}_{bitDepth.ToString(CultureInfo.InvariantCulture)}bit" : key;
     }
+
+    /// <summary>Report key for a fixture, e.g. <c>hevc_rext_12bit</c>; 8-bit 4:2:0 is the bare codec.</summary>
+    /// <param name="fixture">The fixture.</param>
+    /// <returns>The key.</returns>
+    private static string Key(FixtureSpec fixture) => fixture.Key ?? Key(fixture.Codec, fixture.BitDepth, fixture.Profile);
 
     /// <summary>An encode cell from a fixture to an output codec at the fixture's bit depth.</summary>
     /// <param name="fixture">The input fixture.</param>

@@ -20,6 +20,8 @@ namespace Jellyfin.Plugin.HwProbe.Api;
 /// <param name="Advice">The thresholds measurements are judged by.</param>
 /// <param name="SoftwareName">What the page calls software encoding.</param>
 /// <param name="Labels">Labels and caveats for server settings suggestions change that aren't run options.</param>
+/// <param name="ResourceHeaders">The Resource Usage view's column header for each resource.</param>
+/// <param name="PowerDomains">What each energy meter's domain is called.</param>
 /// <param name="ResourceNames">What the page calls each measured resource, in sentence case.</param>
 /// <param name="Backends">The backends, in the order of Jellyfin's dropdown.</param>
 /// <param name="GpuEngines">What the page calls each GPU engine.</param>
@@ -44,6 +46,8 @@ public sealed record CatalogInfo(
     CatalogAdvice Advice,
     string SoftwareName,
     IReadOnlyDictionary<string, string> Labels,
+    IReadOnlyDictionary<string, string> ResourceHeaders,
+    IReadOnlyDictionary<string, string> PowerDomains,
     IReadOnlyDictionary<string, string> ResourceNames,
     IReadOnlyList<CatalogBackend> Backends,
     IReadOnlyDictionary<string, string> GpuEngines,
@@ -75,6 +79,8 @@ public sealed record CatalogInfo(
             catalog.Advice,
             catalog.SoftwareName,
             catalog.Labels,
+            catalog.ResourceHeaders,
+            catalog.PowerDomains,
             catalog.ResourceNames,
             catalog.Backends,
             catalog.GpuEngines,

@@ -50,7 +50,7 @@ Pull files with `gh` and grep locally. WebFetch truncates `EncodingHelper.cs` (8
 ## House rules
 
 - **Verify against source; never describe upstream behaviour from memory.** The owner checks provenance and has caught real errors. Anything claimed about Jellyfin should trace to a file and symbol; if it rests on a summary, say so.
-- **Put catalog-like data in `catalog.yaml`, not code.** Lists, labels, defaults, and orderings the page, CLI, or advisor share (inputs, outputs, run options, quality order) belong in the catalog, served to the page by `HwProbe/Catalog`; the page shouldn't keep its own copy. Upstream constants and logic stay in code.
+- **Put catalog-like data in `catalog.yaml`, not code.** Lists, labels, defaults, orderings, thresholds, and the report's remedy, fix, and finding text (`texts`, read with `Catalog.Text`) belong in the catalog, served to the page by `HwProbe/Catalog`; the page shouldn't keep its own copy. Upstream constants and logic stay in code.
 - **Don't hardcode ffmpeg arguments.** Generate them through `EncodingHelper`. The pinned drift strings detect upstream changes; they aren't the source of truth. The one exception is the bare device-open probe, which upstream never emits.
 - **Keep this file current in every PR**, along with `README.md`, `DEVELOPMENT.md`, `ARCHITECTURE.md`, and `build.yaml`: state, commands, traps, and the to-do list.
 - **Never auto-apply settings and never restart the server.** Apply writes only advised `EncodingOptions` values through `SaveConfiguration`, with history and Revert.
@@ -101,7 +101,7 @@ The page should look and behave like a native Jellyfin dashboard page, stay calm
 
 ## To do
 
-- **Power draw** (researched 2026-10-04): first NVML total energy (`nvmlDeviceGetTotalEnergyConsumption`, Linux and Windows, no admin) and Windows' `\Energy Meter(RAPL_Package0_PKG)\Energy` counter; Linux RAPL is root-only and masked in containers, Intel iGPUs have no unprivileged source, macOS IOReport is private. All whole-device, so report watts above an idle reading taken before each measurement, and feed it to `ResourceComparison`. Intel and AMD GPU usage on Linux 5.19+ is unverified, as no such host is available.
+- **Power draw, next steps**: AMD GPU power (amdgpu hwmon `power1_average`, watts only, to integrate over samples) and macOS (IOReport is a private API whose CPU channels read 0 on macOS 27). Intel and AMD GPU usage on Linux 5.19+ is unverified, as no such host is available.
 
 Queued by the user on 2026-10-03, in no particular order:
 

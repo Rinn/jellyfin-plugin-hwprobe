@@ -61,6 +61,15 @@ public sealed partial class Catalog
     /// <summary>Gets labels for server settings suggestions change that aren't run options, keyed as suggestions name them, with any caveat under <c>{key}Caveat</c>.</summary>
     public required IReadOnlyDictionary<string, string> Labels { get; init; }
 
+    /// <summary>Gets the Resource Usage view's column header for each resource, keyed as <see cref="ResourceNames"/> is.</summary>
+    public required IReadOnlyDictionary<string, string> ResourceHeaders { get; init; }
+
+    /// <summary>Gets what each energy meter's domain is called, keyed as <see cref="Resources.ResourceUsage.Joules"/> is.</summary>
+    public required IReadOnlyDictionary<string, string> PowerDomains { get; init; }
+
+    /// <summary>Gets the report's remedies, fix links, and findings, by key, with <c>{name}</c> placeholders.</summary>
+    public required IReadOnlyDictionary<string, string> Texts { get; init; }
+
     /// <summary>Gets what inputs' codecs are called, keyed as ffmpeg names them.</summary>
     public required IReadOnlyDictionary<string, string> CodecNames { get; init; }
 
@@ -111,6 +120,17 @@ public sealed partial class Catalog
 
     /// <summary>Gets the subtitle files the burn-in variation reads; null only in a file that leaves them out, which <see cref="Check"/> refuses.</summary>
     internal CatalogSubtitles? Subtitles { get; init; }
+
+    /// <summary>Returns a text from <see cref="Texts"/> with its placeholders filled in.</summary>
+    /// <param name="key">The text's key.</param>
+    /// <param name="values">Each placeholder's name and value.</param>
+    /// <returns>The text.</returns>
+    public static string Text(string key, params (string Name, string Value)[] values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        var text = Default.Texts.TryGetValue(key, out var found) ? found : throw new InvalidDataException($"catalog.yaml: texts has no {key}.");
+        return values.Aggregate(text, (t, v) => t.Replace("{" + v.Name + "}", v.Value, StringComparison.Ordinal));
+    }
 
     /// <summary>Reads and checks a catalog.</summary>
     /// <param name="yaml">The catalog file's text.</param>
@@ -293,10 +313,10 @@ public sealed partial class Catalog
             throw new InvalidDataException("catalog.yaml: advice requires noise, maxStreamLoss, and resourceMargin between 0 and 1, and headroom of at least 1.");
         }
 
-        string[] resources = ["Cpu", "Memory", "Gpu", "GpuMemory"];
-        if (ResourceNames is null || resources.Any(r => !ResourceNames.ContainsKey(r)) || Labels is null || !Labels.ContainsKey(Speed.SpeedAdvisor.BitrateLimitKey) || CodecNames is null || SoftwareName is null)
+        string[] resources = ["Cpu", "Memory", "Gpu", "GpuMemory", "Power"];
+        if (ResourceNames is null || resources.Any(r => !ResourceNames.ContainsKey(r)) || ResourceHeaders is null || resources.Any(r => !ResourceHeaders.ContainsKey(r)) || Labels is null || !Labels.ContainsKey(Speed.SpeedAdvisor.BitrateLimitKey) || !Labels.ContainsKey("ServerSetting") || !Labels.ContainsKey("ServerSettingAfter") || CodecNames is null || SoftwareName is null || PowerDomains is null)
         {
-            throw new InvalidDataException($"catalog.yaml: resourceNames requires {string.Join(", ", resources)}, labels requires {Speed.SpeedAdvisor.BitrateLimitKey}, and codecNames and softwareName are required.");
+            throw new InvalidDataException($"catalog.yaml: resourceNames and resourceHeaders require {string.Join(", ", resources)}, labels requires {Speed.SpeedAdvisor.BitrateLimitKey} ServerSetting, and ServerSettingAfter, and codecNames and softwareName are required.");
         }
     }
 
