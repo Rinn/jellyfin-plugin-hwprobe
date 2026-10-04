@@ -188,7 +188,7 @@ public sealed class ProbeServiceTests : IDisposable
 
         Assert.Equal([null, "faster", "fast", "medium", "slow"], asked.Select(a => a.Settings.EncoderPreset));
         Assert.All(asked, a => Assert.Equal([HwType.vaapi, HwType.none], a.Backends));
-        Assert.All(asked, a => Assert.Equal((SpeedMethod.Confirm, true), (a.Method, a.MeasureResources)));
+        Assert.All(asked, a => Assert.Equal((SpeedMethod.Confirm, true, true), (a.Method, a.MeasureResources, a.ReuseResults)));
         var history = await service.SpeedHistoryAsync(ct);
         Assert.Equal(["slow", "medium", "fast", "faster", "Auto"], history.Select(h => h.SuiteStep));
         Assert.All(history, h => Assert.Equal("Encoder presets", h.Suite));

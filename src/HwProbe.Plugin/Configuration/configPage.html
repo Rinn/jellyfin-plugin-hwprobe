@@ -204,6 +204,7 @@
                 let speedResources = null;
                 let speedWhenTranscoding = null;
                 let suiteResources = null;
+                let suiteReuse = true;
                 let chosenSuite = null;
                 // The suites as last listed, for their notes beside a suite's results.
                 let suiteList = [];
@@ -1746,7 +1747,7 @@
                         }
                         const estimate = el('span', null, 'secondaryText');
                         const button = idleAction('Run suite', () => {
-                            ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Suite'), data: JSON.stringify({ Key: chosenSuite, MeasureResources: suiteResources, WhenTranscoding: suiteWhenTranscoding }), contentType: 'application/json' })
+                            ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Suite'), data: JSON.stringify({ Key: chosenSuite, MeasureResources: suiteResources, WhenTranscoding: suiteWhenTranscoding, ReuseResults: suiteReuse }), contentType: 'application/json' })
                                 .then(() => {
                                     showTab(tabs[3][0]);
                                     return loadStatus();
@@ -1908,7 +1909,9 @@
                     form.appendChild(el('h3', 'Accuracy and time', 'sectionTitle'));
                     options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });
                     options('Repeats', repeatOptions, speedRepeats, v => { speedRepeats = Number(v); });
-                    options('Earlier results', [['true', 'Reuse when the settings match'], ['false', 'Measure everything again']], String(speedReuse), v => { speedReuse = v === 'true'; }, 'Reuses a measurement from an earlier run with the same input, output, backend, accuracy, repeats, and ffmpeg, and the same values for the settings that affect it, so a repeated comparison completes faster.');
+                    const reuseChoices = [['true', 'Reuse when the settings match'], ['false', 'Measure everything again']];
+                    const reuseHelp = 'Reuses a measurement from an earlier run with the same input, output, backend, accuracy, repeats, and ffmpeg, and the same values for the settings that affect it, so a repeated comparison completes faster.';
+                    options('Earlier results', reuseChoices, String(speedReuse), v => { speedReuse = v === 'true'; }, reuseHelp);
                     // What this server's platform can measure, and whose usage it is.
                     const coverage = {
                         windows: 'CPU, memory, GPU, and GPU memory usage are measured per transcode. Power is measured for the CPU package and NVIDIA GPUs where their meters exist, covering the whole device above its idle draw.',
@@ -1925,6 +1928,7 @@
                     };
                     renderSuites(suites, idle);
                     shared(suites, suiteResources, v => { suiteResources = v; }, suiteWhenTranscoding, v => { suiteWhenTranscoding = v; });
+                    options('Earlier results', reuseChoices, String(suiteReuse), v => { suiteReuse = v === 'true'; }, reuseHelp, suites);
                     shared(form, speedResources, v => { speedResources = v; }, speedWhenTranscoding, v => { speedWhenTranscoding = v; });
                     options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); }, 'A measurement that reaches the limit stops and reports what it measured.');
 

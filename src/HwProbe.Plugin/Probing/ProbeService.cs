@@ -265,6 +265,7 @@ public sealed partial class ProbeService : IDisposable
                     Options = step.Options,
                     MeasureResources = request.MeasureResources,
                     WhenTranscoding = request.WhenTranscoding,
+                    ReuseResults = request.ReuseResults,
                 }, step.Videos.Count * step.Outputs.Count * stepBackends.Count);
             })
             .ToList();

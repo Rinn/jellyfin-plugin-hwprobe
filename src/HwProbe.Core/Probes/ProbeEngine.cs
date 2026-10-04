@@ -103,19 +103,22 @@ public sealed class ProbeEngine : IDisposable
         {
             var key = Fingerprint.Compute(new FingerprintInputs(ffmpeg, caps.VersionLine, null, null, null, null, null, null));
             FixtureCacheContents.Prune(options.FixturesDirectory, key);
-            Progress?.Report(new ProbeProgress("Generating test clips", 0, run.Total));
 
-            // Each new clip's first step means the one before it is done; cached clips report nothing and count once all are ready.
+            // Only clips that aren't cached count. Each new clip's first step means the one before it is done.
             HashSet<string> begun = new(StringComparer.Ordinal);
+            var pending = 0;
             var steps = Progress is { } progress ? new FixtureStepProgress(step =>
             {
                 begun.Add(step.Spec.FileName);
-                progress.Report(new ProbeProgress(step.Describe(step.Spec.FileName), begun.Count - 1, run.Total));
+                progress.Report(new ProbeProgress(step.Describe(step.Spec.FileName), Math.Min(begun.Count - 1, pending), run.Total));
             }) : null;
-            var fixtures = await new FixtureBuilder(_runner, ffmpeg, options.FixturesDirectory, options.FixtureTimeout, FixtureDownloader, specs, null) { Progress = steps }
-                .BuildAsync(key, caps.Encoders, cancellationToken);
+            var builder = new FixtureBuilder(_runner, ffmpeg, options.FixturesDirectory, options.FixtureTimeout, FixtureDownloader, specs, null) { Progress = steps };
+            pending = await builder.PendingAsync(key, caps.Encoders, cancellationToken);
+            run.Total -= specs.Count - pending;
+            Progress?.Report(new ProbeProgress("Generating test clips", 0, run.Total));
+            var fixtures = await builder.BuildAsync(key, caps.Encoders, cancellationToken);
             run.Fixtures = fixtures.ToDictionary(f => f.Spec.FileName, StringComparer.Ordinal);
-            run.Done = specs.Count;
+            run.Done = pending;
 
             foreach (var (candidate, open) in run.Opened)
             {

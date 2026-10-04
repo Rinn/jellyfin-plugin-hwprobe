@@ -77,6 +77,21 @@ public sealed class ProbeEngineIntelTests : IDisposable
         Assert.True(counted[^1].Total > FixtureCatalog.All.Count);
     }
 
+    /// <summary>A second probe finds its clips cached, so they aren't counted or generated again: the count is the tests alone.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task CachedClipsAreNotCounted()
+    {
+        var first = new CollectingProgress<ProbeProgress>();
+        await RunAsync(openclStarts: true, progress: first);
+        var second = new CollectingProgress<ProbeProgress>();
+        await RunAsync(openclStarts: true, progress: second);
+
+        var counted = second.Reports.Where(p => p.Total > 0).ToList();
+        Assert.DoesNotContain(counted, p => p.Step.StartsWith("Generating ", StringComparison.Ordinal) && p.Step != "Generating test clips");
+        Assert.Equal(first.Reports[^1].Total - counted[^1].Total, first.Reports.Count(p => p.Step.StartsWith("Generating ", StringComparison.Ordinal) && p.Step != "Generating test clips"));
+    }
+
     /// <summary>A failed open of a node this user can't access is PermissionDenied with the render-group fix, not NotPresent.</summary>
     /// <param name="denied">Whether the OS refuses to open the node.</param>
     /// <param name="verdict">The expected verdict.</param>
