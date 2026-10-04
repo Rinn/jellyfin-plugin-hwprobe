@@ -88,7 +88,6 @@
             #HwProbeConfigPage .hwprobe-emoji { font-size: 1em; line-height: 1; }
             #HwProbeConfigPage .hwprobe-notes { margin: 0; padding-left: 1.4em; }
             #HwProbeConfigPage .selectContainer .hwprobe-notes { margin: 0 14px; padding-left: 1.4em; }
-            #HwProbeConfigPage .hwprobe-progress { position: relative; width: 16em; }
             #HwProbeConfigPage .hwprobe-loadbar { position: relative; flex: 1; min-width: 0; height: 2.2em; border-radius: 0.25em; overflow: hidden; background: var(--jf-palette-action-hover, rgba(255, 255, 255, 0.08)); }
             #HwProbeConfigPage .hwprobe-loadbar > div { position: absolute; left: 0; top: 0; bottom: 0; background: var(--jf-palette-primary-main, #00a4dc); transition: width 0.25s linear, left 0.25s linear; }
             #HwProbeConfigPage .hwprobe-loadbar > div.hwprobe-current { background: var(--jf-palette-warning-main, #ffa726); animation: hwprobe-flash 1.2s ease-in-out infinite; }
@@ -97,7 +96,6 @@
             #HwProbeConfigPage .hwprobe-loadbar > span > span:not(:nth-child(2)) { font-variant-numeric: tabular-nums; }
             #HwProbeConfigPage .hwprobe-loadbar > span > span:nth-child(2) { flex: 1; min-width: 0; text-align: center; overflow: hidden; text-overflow: ellipsis; }
             #hwprobeCard, #HwProbeConfigPage .hwprobe-progress-card { position: relative; }
-            #HwProbeConfigPage .hwprobe-progress.hwprobe-progress-wide { position: absolute; left: 1em; right: 1em; bottom: 0.3em; width: auto; margin: 0; }
             #HwProbeConfigPage .hwprobe-inline { margin: 0 0 0 0.5em; padding: 0.2em 0.8em; }
             /* jellyfin-web's legacy buttons look the same when disabled; this follows the dashboard's MUI buttons. */
             #HwProbeConfigPage .emby-button:disabled { color: var(--jf-palette-action-disabled, rgba(255, 255, 255, 0.3)); background: var(--jf-palette-action-disabledBackground, rgba(255, 255, 255, 0.12)); cursor: default; }
@@ -146,6 +144,7 @@
                 const messageText = page.querySelector('#hwprobeMessage');
                 // Kept across renders: the status updates while a run polls, without redrawing the page.
                 const statusText = el('span', null, 'secondaryText');
+                const probeBar = loadBar();
                 const changeText = el('div');
                 let running = false;
                 // Buttons that start work or change settings, which the server refuses while a probe or performance test runs.
@@ -1028,16 +1027,17 @@
                 // The configured backend, its result, the run state, and anything that needs doing now.
                 // The Hardware Probe card: run the probe and see its state.
                 function renderCard() {
+                    // A running probe shows the same loading bar as a performance test, kept across polls so it isn't rebuilt.
+                    probeBar.update(probeBarState(probeProgress || {}));
+                    const shown = probeProgress ? probeBar : statusText;
+                    if (card.firstElementChild && card.firstElementChild.firstElementChild === shown) {
+                        return;
+                    }
                     card.replaceChildren();
                     const top = el('div', null, 'hwprobe-row');
-                    top.appendChild(statusText);
+                    top.appendChild(shown);
                     top.appendChild(runButton);
                     card.appendChild(top);
-                    if (probeProgress) {
-                        const bar = jf('<div class="itemProgressBar hwprobe-progress hwprobe-progress-wide"><div class="itemProgressBarForeground"></div></div>');
-                        bar.firstElementChild.style.width = (probeProgress.Total ? Math.round(100 * (probeProgress.Done || 0) / probeProgress.Total) : 0) + '%';
-                        card.appendChild(bar);
-                    }
                 }
 
                 // What Jellyfin uses now, and whether it works; then a failed backend's way out, a pending restart and the last change.
@@ -1312,32 +1312,63 @@
                 let speedDrawn = null;
                 let speedProgressParts = null;
 
-                // A poll redraws only the progress text and bar unless the results or the run's phase changed.
-                // Hidden while paused, cancelling, or before the count is known.
-                function placeCurrent(node, s) {
-                    const c = speedCounts(s);
-                    const working = c.total && c.done < c.total && s.Phase !== 'Paused' && s.Phase !== 'Cancelling';
-                    node.style.display = working ? '' : 'none';
-                    if (working) {
-                        node.style.left = (100 * c.done / c.total) + '%';
-                        node.style.width = (100 / c.total) + '%';
-                    }
+                // The loading bar a running probe or performance test shows: done / total on the left, what's running in the middle,
+                // and how long it has run on the right; the item in progress flashes after the finished ones. update() takes
+                // { done, total, text, elapsedSeconds, working }, so a poll changes the bar without rebuilding it.
+                function loadBar() {
+                    const bar = el('div', null, 'hwprobe-loadbar');
+                    const fill = el('div');
+                    const current = el('div', null, 'hwprobe-current');
+                    const label = el('span');
+                    const count = el('span');
+                    const text = el('span');
+                    const elapsed = el('span');
+                    label.append(count, text, elapsed);
+                    bar.append(fill, current, label);
+                    bar.update = p => {
+                        fill.style.width = (p.total ? 100 * p.done / p.total : 0) + '%';
+                        const working = p.working && p.total && p.done < p.total;
+                        current.style.display = working ? '' : 'none';
+                        if (working) {
+                            current.style.left = (100 * p.done / p.total) + '%';
+                            current.style.width = (100 / p.total) + '%';
+                        }
+                        // The count is padded with figure spaces to the total's width, so the text doesn't shift.
+                        count.textContent = p.total ? String(p.done).padStart(String(p.total).length, '\u2007') + ' / ' + p.total : '';
+                        text.textContent = p.text || '';
+                        elapsed.textContent = elapsedText(p.elapsedSeconds);
+                    };
+                    return bar;
                 }
 
-                function progressWidth(s) {
+                // How long a run has been going, as mm:ss, or hh:mm:ss from an hour.
+                function elapsedText(seconds) {
+                    if (seconds === null || seconds === undefined) {
+                        return '';
+                    }
+                    const total = Math.max(0, seconds);
+                    const [h, m, sec] = [Math.floor(total / 3600), Math.floor(total / 60) % 60, total % 60];
+                    const two = n => String(n).padStart(2, '0');
+                    return (h ? two(h) + ':' : '') + two(m) + ':' + two(sec);
+                }
+
+                // A performance test's progress for the bar: across the whole suite in a suite.
+                function speedBarState(s) {
                     const c = speedCounts(s);
-                    return (c.total ? 100 * c.done / c.total : 0) + '%';
+                    return { done: c.done, total: c.total, text: speedStatusText(s), elapsedSeconds: s.ElapsedSeconds, working: s.Phase !== 'Paused' && s.Phase !== 'Cancelling' };
+                }
+
+                // A probe's progress for the bar: tests done, and the step running.
+                function probeBarState(s) {
+                    return { done: s.Done || 0, total: s.Total || 0, text: s.Step || 'Probing\u2026', elapsedSeconds: s.ElapsedSeconds, working: true };
                 }
 
                 function renderSpeedResults(poll) {
                     syncRunPicker();
                     const drawn = JSON.stringify([speedLive && speedLive.results, speedReport && speedReport.generatedUtc, speedProgress && speedProgress.Phase, speedProgress && speedProgress.Done]);
+                    // A poll redraws only the bar unless the results or the run's phase changed.
                     if (poll === true && drawn === speedDrawn && speedProgress && speedProgressParts) {
-                        speedProgressParts.count.textContent = speedCountText(speedProgress);
-                        speedProgressParts.text.textContent = speedStatusText(speedProgress);
-                        speedProgressParts.eta.textContent = speedElapsedText(speedProgress);
-                        speedProgressParts.fill.style.width = progressWidth(speedProgress);
-                        placeCurrent(speedProgressParts.current, speedProgress);
+                        speedProgressParts.update(speedBarState(speedProgress));
                         return;
                     }
                     speedDrawn = drawn;
@@ -1347,21 +1378,8 @@
                         const box = el('div', null, 'paperList hwprobe-card hwprobe-progress-card');
                         const line = el('div', null, 'hwprobe-row');
 
-                        // A loading bar: measurements done on the left, what's running in the middle, and how long it has run on the right.
-                        const bar = el('div', null, 'hwprobe-loadbar');
-                        const fill = el('div');
-                        fill.style.width = progressWidth(speedProgress);
-                        bar.appendChild(fill);
-                        // The measurement in progress flashes after the finished ones.
-                        const current = el('div', null, 'hwprobe-current');
-                        placeCurrent(current, speedProgress);
-                        bar.appendChild(current);
-                        const label = el('span');
-                        const count = el('span', speedCountText(speedProgress));
-                        const text = el('span', speedStatusText(speedProgress));
-                        const eta = el('span', speedElapsedText(speedProgress));
-                        label.append(count, text, eta);
-                        bar.appendChild(label);
+                        const bar = loadBar();
+                        bar.update(speedBarState(speedProgress));
                         line.appendChild(bar);
                         const buttons = el('div', null, 'hwprobe-row hwprobe-end');
                         const cancel = action('Cancel', () => {
@@ -1381,7 +1399,7 @@
                         line.appendChild(buttons);
                         box.appendChild(line);
                         speedResults.appendChild(box);
-                        speedProgressParts = { count, text, eta, fill, current };
+                        speedProgressParts = bar;
                     }
                     const shown = speedLive || speedReport;
                     if (shown && shown.suiteStartedUtc && !speedProgress) {
@@ -2247,26 +2265,15 @@
                     return s.SuiteTotal ? { done: (s.SuiteDone || 0) + (s.Done || 0), total: s.SuiteTotal } : { done: s.Done || 0, total: s.Total || 0 };
                 }
 
-                // Measurements done and planned, e.g. " 2 / 20": the count is padded with figure spaces to the total's width, so the text doesn't shift.
+                // Measurements done and planned, e.g. "2 / 20", for one line of text.
                 function speedCountText(s) {
                     const c = speedCounts(s);
-                    return c.total ? String(c.done).padStart(String(c.total).length, '\u2007') + ' / ' + c.total : '';
-                }
-
-                // How long the run or suite has been going, as mm:ss, or hh:mm:ss from an hour.
-                function speedElapsedText(s) {
-                    if (s.ElapsedSeconds === null || s.ElapsedSeconds === undefined) {
-                        return '';
-                    }
-                    const total = Math.max(0, s.ElapsedSeconds);
-                    const [h, m, sec] = [Math.floor(total / 3600), Math.floor(total / 60) % 60, total % 60];
-                    const two = n => String(n).padStart(2, '0');
-                    return (h ? two(h) + ':' : '') + two(m) + ':' + two(sec);
+                    return c.total ? c.done + ' / ' + c.total : '';
                 }
 
                 // One line for the status text elsewhere on the page.
                 function speedProgressText(s) {
-                    return [speedStatusText(s), speedCountText(s), speedElapsedText(s)].filter(t => t).join(' \u00b7 ');
+                    return [speedStatusText(s), speedCountText(s), elapsedText(s.ElapsedSeconds)].filter(t => t).join(' \u00b7 ');
                 }
 
                 function streamsText(x) {
