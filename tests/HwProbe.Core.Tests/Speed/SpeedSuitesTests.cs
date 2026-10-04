@@ -38,6 +38,17 @@ public sealed class SpeedSuitesTests
         Assert.Equal(2, SpeedSuites.Steps(Suite("lowpower"), 8, new SpeedSettings()).Count);
     }
 
+    /// <summary>Every suite but VBR audio copies the audio, so only video is measured, including the server's added step; VBR transcodes it.</summary>
+    [Fact]
+    public void SuitesCopyAudioExceptVbr()
+    {
+        var steps = Catalog.Default.Suites.Where(s => s.Key != "decode").ToDictionary(s => s.Key, s => SpeedSuites.Steps(s, 8, new SpeedSettings { EncoderPreset = "veryfast" }));
+
+        Assert.All(steps.Where(s => s.Key != "audio").SelectMany(s => s.Value), step => Assert.Equal("copy", step.Options["Audio"]));
+        Assert.All(steps["audio"], step => Assert.Equal("transcode", step.Options["Audio"]));
+        Assert.Equal(("veryfast", "copy"), (steps["presets"][^1].Options["EncoderPreset"], steps["presets"][^1].Options["Audio"]));
+    }
+
     /// <summary>Steps for another backend are left out: tone mapping offers VPP on Intel and VideoToolbox's on Apple.</summary>
     [Fact]
     public void StepsFollowTheBackend()

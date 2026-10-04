@@ -36,6 +36,9 @@ public sealed class CatalogSuite
     /// <summary>Gets how the one-thread step is labelled.</summary>
     public string ThreadLabelOne { get; init; } = "1";
 
+    /// <summary>Gets the settings every step sets besides the one it varies, by catalog option key; a step's own value wins.</summary>
+    public IReadOnlyDictionary<string, string> Options { get; init; } = new Dictionary<string, string>();
+
     /// <summary>Gets the steps, in order.</summary>
     public IReadOnlyList<CatalogSuiteStep> Steps { get; init; } = [];
 }
