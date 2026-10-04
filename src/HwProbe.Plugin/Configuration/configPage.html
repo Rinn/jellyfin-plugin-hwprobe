@@ -1626,7 +1626,7 @@
                     options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });
                     options('Repeats', repeatOptions, speedRepeats, v => { speedRepeats = Number(v); });
                     options('Earlier results', [['true', 'Reuse when the settings match'], ['false', 'Measure everything again']], String(speedReuse), v => { speedReuse = v === 'true'; }, 'Reuses a measurement from an earlier run with the same input, output, backend, accuracy, repeats, and ffmpeg, and the same values for the settings that affect it, so a repeated comparison completes faster.');
-                    options('Resources', [['false', 'Don\u2019t measure'], ['true', 'Measure CPU, memory, and GPU usage']], String(speedResources), v => { speedResources = v === 'true'; });
+                    options('Resource Usage', [['false', 'Don\u2019t measure'], ['true', 'Measure CPU, memory, and GPU usage']], String(speedResources), v => { speedResources = v === 'true'; });
                     options('When the server starts transcoding', whenTranscodingOptions, speedWhenTranscoding, v => { speedWhenTranscoding = v; });
                     options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); }, 'A measurement that reaches the limit stops and reports what it measured.');
 
@@ -1641,7 +1641,7 @@
                         .sort((a, b) => b[1] - a[1]);
                 }
 
-                // A results cell in the Resources view: CPU cores in use and peak memory, then the busiest GPU engine.
+                // A results cell in the Resource Usage view: CPU cores in use and peak memory, then the busiest GPU engine.
                 function resourceCell(cell, r) {
                     if (!r) {
                         cell.textContent = '\u2013';
@@ -1664,7 +1664,7 @@
                     }
                 }
 
-                // The Resources view's tooltip lines: CPU, memory, and every GPU engine that did work.
+                // The Resource Usage view's tooltip lines: CPU, memory, and every GPU engine that did work.
                 function resourceFacts(r) {
                     if (!r) {
                         return ['Resources not measured'];
@@ -1691,7 +1691,7 @@
                 // Which comparison rows are open, by test, kept across redraws.
                 const speedOpen = new Set();
 
-                const speedViews = [['bars', 'Bars'], ['relative', 'Relative to fastest'], ['values', 'Values'], ['resources', 'Resources']];
+                const speedViews = [['bars', 'Bars'], ['relative', 'Relative to fastest'], ['values', 'Values'], ['resources', 'Resource Usage']];
                 let speedView = speedViews.some(([k]) => k === localStorage.getItem('hwprobe-speed-view')) ? localStorage.getItem('hwprobe-speed-view') : 'bars';
 
                 // Rows grouped by video, one per output; one column per backend; comparisons fold under their row.
@@ -1732,7 +1732,7 @@
                     const per = values && counted ? 2 : 1;
                     // Per backend: concurrent streams kept up with (Values view, when counted), and one transcode's speed as a value, a bar or a share of the row's fastest.
                     const cellsFor = (x, best, baseline, fastest) => {
-                        // The highlight marks the fastest; the Resources view isn't about speed.
+                        // The highlight marks the fastest; the Resource Usage view isn't about speed.
                         const tint = x && x === best && backends.length > 1 && speedView !== 'resources' ? ' hwprobe-best' : '';
                         const streams = el('td', null, 'hwprobe-num' + tint);
                         const speedCell = el('td', null, 'hwprobe-num' + tint);
@@ -1943,7 +1943,7 @@
                             notes.push('Concurrent streams: how many keep up when run together; 16+ is the most measured.');
                         }
                         if (speedView === 'resources') {
-                            notes.push('Resources: what one transcode on its own used, on average CPU cores in use, peak memory, and its busiest GPU engine, where the platform reports them.');
+                            notes.push('Resource usage: what one transcode on its own used, on average CPU cores in use, peak memory, and its busiest GPU engine, where the platform reports them.');
                         }
                         used.appendChild(el('div', notes.join(' '), 'fieldDescription'));
                     }
