@@ -435,7 +435,7 @@ public sealed class SpeedEngine : IDisposable
                 catch (NotSupportedException)
                 {
                     // The command-line tool has no subtitle encoder to extract a file's internal text subtitles with.
-                    return new SpeedResult(type, device, test.Key, string.Empty, null, null, false, "Burning in a file's own text subtitles needs Jellyfin; measure it from the plugin.");
+                    return new SpeedResult(type, device, test.Key, string.Empty, null, null, false, "Burning in a file's own text subtitles requires Jellyfin; measure it from the plugin.");
                 }
 
                 // A hardware column needs the step it's about on the GPU: the encode for a transcode, the decode for a decode test. Software has its own column.

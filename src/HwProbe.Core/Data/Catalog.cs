@@ -206,7 +206,7 @@ public sealed partial class Catalog
             var sample = option.Switch ? "true" : option.Range is [var low, _] ? low.ToString(CultureInfo.InvariantCulture) : option.Choices is [var first, ..] ? first.Key : string.Empty;
             if (kinds != 1 || SpeedSettingsOptions.Apply(new SpeedSettings(), option.Key, sample) is null)
             {
-                throw new InvalidDataException($"catalog.yaml: option {option.Key} needs one of switch, range or choices, and a key SpeedSettingsOptions applies.");
+                throw new InvalidDataException($"catalog.yaml: option {option.Key} requires one of switch, range, or choices, and a key SpeedSettingsOptions applies.");
             }
         }
 
@@ -222,7 +222,7 @@ public sealed partial class Catalog
             var made = clip.Arguments.Length > 0 || clip.Download is not null || clip.Piece is not null;
             if (unknown.Count > 0 || (hash is not null && !Sha256().IsMatch(hash)) || (clip.Download is not null && clip.Sha256 is null) || !made)
             {
-                throw new InvalidDataException($"catalog.yaml: {clip.File} needs arguments or a download with a lowercase SHA-256, and no unknown placeholders ({string.Join(", ", unknown)}).");
+                throw new InvalidDataException($"catalog.yaml: {clip.File} requires arguments or a download with a lowercase SHA-256, and no unknown placeholders ({string.Join(", ", unknown)}).");
             }
         }
     }

@@ -111,7 +111,7 @@ internal static class HwProbeApp
             var speed = requested;
             if (options.SpeedFilePath is null && speed.Videos.Contains(SpeedCatalog.LibraryKey))
             {
-                await stderr.WriteLineAsync("hwprobe: the library speed video needs --speed-file.".AsMemory(), cancellationToken);
+                await stderr.WriteLineAsync("hwprobe: the library speed video requires --speed-file.".AsMemory(), cancellationToken);
                 return (int)HwProbeExitCode.UsageError;
             }
 

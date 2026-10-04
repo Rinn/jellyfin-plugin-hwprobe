@@ -6,10 +6,10 @@ The performance tests are called speed runs in the code. Never rename the packag
 
 | Path | Contents |
 |---|---|
-| `src/HwProbe.Core` | Probe and speed engines, report, fixtures and the cache listing. No Jellyfin dependency. |
-| `src/HwProbe.Core/Data/catalog.yaml` | Everything the plugin page lists: speed inputs, codecs, qualities, run options and labels. Compiled in and checked by `Catalog.Parse`; served to the page by `HwProbe/Catalog`. |
+| `src/HwProbe.Core` | Probe and speed engines, report, fixtures, and the cache listing. No Jellyfin dependency. |
+| `src/HwProbe.Core/Data/catalog.yaml` | Everything the plugin page lists: speed inputs, codecs, qualities, run options, and labels. Compiled in and checked by `Catalog.Parse`; served to the page by `HwProbe/Catalog`. |
 | `src/HwProbe.Jellyfin` | Builds ffmpeg commands with Jellyfin's own `EncodingHelper`. |
-| `src/HwProbe.Plugin` | The Jellyfin plugin: service, API and the page (`Configuration/configPage.html`). |
+| `src/HwProbe.Plugin` | The Jellyfin plugin: service, API, and the page (`Configuration/configPage.html`). |
 | `src/HwProbe.Cli` | The `hwprobe` command-line tool. |
 | `tests/` | Tests, with recorded ffmpeg output in `tests/Corpus`. |
 | `scripts/` | Pre-commit hook, container tests, packaging. |
@@ -68,7 +68,7 @@ Test clips are made with the server's ffmpeg and cached per ffmpeg build. A clip
 - Downloaded only when generation fails: `h264-conformance/BA1_Sony_D.jsv`, `h264-conformance/CVFI1_Sony_D.jsv`, `hevc-conformance/WP_A_Toshiba_3.bit`, `hevc-conformance/WP_A_MAIN10_Toshiba_3.bit`, `hevc-conformance/Main_422_10_A_RExt_Sony_1.bin`, `vp9-test-vectors/vp90-2-09-lf_deltas.webm`, `vp9-test-vectors/vp92-2-20-10bit-yuv420.webm`, `vp8-test-vectors-r1/vp80-00-comprehensive-001.ivf`, `av1-test-vectors/av1-1-b8-02-allintra.ivf`.
 - For PGS subtitle burn-in: `sub/pgs_sub.sup` (ffmpeg has no PGS encoder).
 
-Film samples for speed runs are downloaded only when chosen: a pinned piece of each Wikimedia Commons file (its WebM header plus whole clusters, two range requests), checked by SHA-256, used as downloaded and cached apart from the ffmpeg build. The 1080p ones are VP9 with Opus audio: Tears of Steel and Sintel (CC BY 3.0), Sol Levante (CC BY 4.0). The 4K one is Sol Levante's HDR10 AV1 copy (Professional profile, 4:4:4 12-bit, which GPUs don't decode). Requests carry a descriptive User-Agent, as Wikimedia asks. To re-pin after Wikimedia re-encodes a file, find the cluster offsets around the wanted time and hash the header plus those bytes.
+Film samples for speed runs are downloaded only when chosen: a pinned piece of each Wikimedia Commons file (its WebM header plus whole clusters, two range requests), checked by SHA-256, used as downloaded, and cached apart from the ffmpeg build. The 1080p ones are VP9 with Opus audio: Tears of Steel and Sintel (CC BY 3.0), Sol Levante (CC BY 4.0). The 4K one is Sol Levante's HDR10 AV1 copy (Professional profile, 4:4:4 12-bit, which GPUs don't decode). Requests carry a descriptive User-Agent, as Wikimedia asks. To re-pin after Wikimedia re-encodes a file, find the cluster offsets around the wanted time and hash the header plus those bytes.
 
 Tests never download, and `HWPROBE_NO_DOWNLOADS=1` (set in CI and `container-plugin.sh`) turns off every download, so a download-only clip like the VC-1 sample is reported as untested.
 
@@ -77,10 +77,10 @@ Tests never download, and `HWPROBE_NO_DOWNLOADS=1` (set in CI and `container-plu
 A user's zip (**Download diagnostics** on the Help tab, or `--diagnostics`) is laid out like `tests/Corpus`:
 
 - `ffmpeg/*.txt`: capability listings. Copy them to `tests/Corpus/ffmpeg/<build>/` for `ScriptedFfmpegRunner.FromCorpus`.
-- `stderr/NNN-<probe>.txt`: every launch in order, with `#` lines for the arguments, environment, outcome and result, then the full stderr. Copy one to `tests/Corpus/stderr/`, replacing the header with an `# Observed:` line naming the host and build.
+- `stderr/NNN-<probe>.txt`: every launch in order, with `#` lines for the arguments, environment, outcome, and result, then the full stderr. Copy one to `tests/Corpus/stderr/`, replacing the header with an `# Observed:` line naming the host and build.
 - `report.json`: the report.
 
-Zips aren't anonymised. Remove user names, host names and home paths before committing anything from one.
+Zips aren't anonymised. Remove user names, host names, and home paths before committing anything from one.
 
 ## Releasing
 

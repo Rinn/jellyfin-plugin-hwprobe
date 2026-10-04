@@ -191,7 +191,7 @@ public static class SettingsAdvisor
             : new(TrickplaySection, "Trickplay:EnableHwEncoding", MjpegLabel, type is HwType.nvenc or HwType.amf ? SettingState.LeaveOff : SettingState.NotTested, type is HwType.nvenc or HwType.amf ? NotUsed : NotTested);
         var encoding = transcoding.Find(a => a.Setting == "EnableHardwareEncoding");
         yield return mjpeg.State == SettingState.TurnOn && encoding?.State != SettingState.TurnOn
-            ? mjpeg with { State = SettingState.LeaveOff, Note = "Needs hardware encoding" }
+            ? mjpeg with { State = SettingState.LeaveOff, Note = "Requires hardware encoding" }
             : mjpeg;
 
         // Key-frame-only extraction quietly drops to software decoding on backends that can't do it.
@@ -239,7 +239,7 @@ public static class SettingsAdvisor
             ProbeOutcome.Pass => new(section, setting, label, SettingState.TurnOn, string.Empty),
             null or ProbeOutcome.Skipped or ProbeOutcome.Untested => new(section, setting, label, SettingState.NotTested, notTested),
             ProbeOutcome.CodecUnsupported => new(section, setting, label, SettingState.LeaveOff, NotSupported),
-            ProbeOutcome.NotUsed => new(section, setting, label, SettingState.LeaveOff, "Jellyfin uses software for this"),
+            ProbeOutcome.NotUsed => new(section, setting, label, SettingState.LeaveOff, "Jellyfin doesn't use hardware for this"),
             _ => new(section, setting, label, SettingState.LeaveOff, "Test failed"),
         };
 
@@ -257,7 +257,7 @@ public static class SettingsAdvisor
     private static SettingAdvice WithHucFix(SettingAdvice advice, Fix? fix)
     {
         var fixedAdvice = WithFix(advice, fix);
-        return fixedAdvice.Fix is not null && fixedAdvice.Note == NotSupported ? fixedAdvice with { Note = "Needs HuC firmware" } : fixedAdvice;
+        return fixedAdvice.Fix is not null && fixedAdvice.Note == NotSupported ? fixedAdvice with { Note = "Requires HuC firmware" } : fixedAdvice;
     }
 
     /// <summary>Advice for an option that picks between two hardware decoders, from tests of each.</summary>
@@ -298,7 +298,7 @@ public static class SettingsAdvisor
         ProbeOutcome? outcome = cells.Count == 0 ? null : cells.Contains(ProbeOutcome.Pass) ? ProbeOutcome.Pass : cells[0];
 
         // The engine only tone-maps after a 10-bit decode passes.
-        var notTested = Cell(backend.Decode, "hevc_10bit") == ProbeOutcome.Pass ? "Not used with this setup" : "Needs HEVC 10bit decoding";
+        var notTested = Cell(backend.Decode, "hevc_10bit") == ProbeOutcome.Pass ? "Not used with this setup" : "Requires HEVC 10bit decoding";
         return Advise(TonemapSection, setting, label, outcome, notTested);
     }
 

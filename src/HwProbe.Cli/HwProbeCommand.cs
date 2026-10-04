@@ -11,7 +11,7 @@ namespace Jellyfin.Plugin.HwProbe.Cli;
 internal sealed class HwProbeCommand
 {
     private readonly Option<string?> _ffmpeg = new("--ffmpeg") { Description = "ffmpeg binary. Default: auto-discover." };
-    private readonly Option<StopStage> _stage = new("--stage") { Description = "Stop after this step: build, devices or matrix.", DefaultValueFactory = _ => StopStage.Matrix };
+    private readonly Option<StopStage> _stage = new("--stage") { Description = "Stop after this step: build, devices, or matrix.", DefaultValueFactory = _ => StopStage.Matrix };
     private readonly Option<IReadOnlySet<HwType>> _types = new("--type")
     {
         Description = "Restrict to backends, e.g. vaapi,qsv.",
@@ -26,7 +26,7 @@ internal sealed class HwProbeCommand
     private readonly Option<string?> _diagnostics = new("--diagnostics") { Description = "Also write a zip of the report and every ffmpeg log, to attach to an issue. Runs a fresh probe." };
     private readonly Option<SpeedMethod?> _speed = new("--speed")
     {
-        Description = "After the probe, measure the speed of each working backend and software: quick (speed only), confirm or full (also concurrent streams, starting from the speed or from one).",
+        Description = "After the probe, measure the speed of each working backend and software: quick (speed only), confirm, or full (also concurrent streams, starting from the speed or from one).",
         Arity = ArgumentArity.ZeroOrOne,
         CustomParser = r => r.Tokens.Count == 0 ? SpeedMethod.Confirm : Enum.TryParse<SpeedMethod>(r.Tokens[0].Value, ignoreCase: true, out var m) ? m : Error<SpeedMethod?>(r, $"Unknown speed method '{r.Tokens[0].Value}'. Expected: quick, confirm, full."),
     };

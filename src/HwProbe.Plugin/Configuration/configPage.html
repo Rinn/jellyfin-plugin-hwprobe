@@ -7,8 +7,8 @@
 <body>
     <div id="HwProbeConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-button,emby-checkbox,emby-select,emby-input">
         <style>
-            /* Layout only: colours, buttons, inputs and panels come from jellyfin-web's theme classes. */
-            /* Headings, width and help text as the dashboard's own pages have them (jellyfin-web src/themes/_base/theme.ts and MUI's defaults, v12.1). */
+            /* Layout only: colours, buttons, inputs, and panels come from jellyfin-web's theme classes. */
+            /* Headings, width, and help text as the dashboard's own pages have them (jellyfin-web src/themes/_base/theme.ts and MUI's defaults, v12.1). */
             #HwProbeConfigPage .content-primary > * { max-width: 54em; }
             #HwProbeConfigPage h1 { font-size: 1.8rem; font-weight: 300; line-height: 1.167; margin: 0 0 0.5em; }
             #HwProbeConfigPage h2.sectionTitle { font-size: 1.5rem; font-weight: 300; line-height: 1.2; margin: 24px 0 8px; }
@@ -759,7 +759,7 @@
                     const list = el('div', null, 'hwprobe-change-list');
                     list.id = 'hwprobeChangeList';
                     list.appendChild(el('div', nothing ? 'Every setting was changed since; nothing to revert.' : 'Revert sets:', 'secondaryText'));
-                    const table = el('table');
+                    const table = el('table', null, 'hwprobe-full');
                     for (const r of rows) {
                         const c = r.change;
                         // The server labels every setting it knows; the key is a last resort.
@@ -810,7 +810,7 @@
                 }
 
                 function restartPrompt() {
-                    const pending = el('p', 'Backend changed; Jellyfin needs a restart. ');
+                    const pending = el('p', 'Backend changed; Jellyfin requires a restart. ');
                     const button = idleAction('Restart Jellyfin', restart, 'raised button-delete');
                     pending.appendChild(button);
                     return pending;
@@ -1447,6 +1447,7 @@
                     multiSelect(container, 'Input', speedVideos.map(v => ({ key: v.Key, text: v.Name, secondary: v.Input })).concat([{ key: 'library', text: 'Library video', secondary: libraryVideo ? libraryVideo.Name : 'A movie or episode' }]), chosenVideos, () => { sourceLines(sources, update); update(); })
                         .appendChild(sources);
                     sourceLines(sources, update);
+                    sources.parentNode.appendChild(el('div', 'Test videos encode faster than real video.', 'fieldDescription'));
                     container.appendChild(el('h3', 'Output', 'sectionTitle'));
                     multiSelect(container, 'Codec', speedCodecs.map(c => ({ key: c.Key, text: c.Name })).concat(speedOutputs.filter(o => o.DecodeOnly).map(o => ({ key: o.Key, text: o.Label }))), chosenCodecs, () => update())
                         .appendChild(el('div', 'Every selected codec at every selected quality is made from every selected input, as a player asks for it.', 'fieldDescription'));
@@ -1700,23 +1701,9 @@
                         div.appendChild(line);
                     });
                     // Only what this table shows.
-                    const legend = [];
-                    if (values && counted) {
-                        legend.push('Concurrent streams: how many keep up when run together; 16+ is the most measured.');
-                    }
-                    if (speedView === 'relative') {
-                        legend.push('Each backend\u2019s speed as a percentage of the fastest result.');
-                    } else {
-                        legend.push('Speed: one transcode on its own; 2\u00d7 is twice as fast as playing.' + (speedView === 'bars' ? ' Bars are relative to the fastest backend for the row.' : ''));
-                    }
                     if (backends.length > 1) {
-                        legend.push(values && counted ? 'The highlighted cell keeps up with the most concurrent streams, then is the fastest, for the row.' : 'The highlighted cell is the fastest for the row.');
+                        div.appendChild(el('div', values && counted ? 'The highlighted cell keeps up with the most concurrent streams, then is the fastest, for the row.' : 'The highlighted cell is the fastest for the row.', 'fieldDescription'));
                     }
-                    // Catalog videos without a film title are generated.
-                    if (r.results.some(x => speedVideos.some(v => v.Key === x.test.split('|')[0] && !v.Title))) {
-                        legend.push('Test videos encode faster than real video.');
-                    }
-                    div.appendChild(el('div', legend.join(' '), 'fieldDescription'));
 
                     const credits = new Map();
                     for (const x of r.results) {
@@ -1744,6 +1731,11 @@
                             row(table, [label, el('td', value, 'secondaryText')]);
                         }
                         used.appendChild(sortable(table, 'settings-used'));
+                        const notes = ['Speed: one transcode on its own; 2\u00d7 is twice as fast as playing. Bars and percentages are relative to the fastest result in the row.'];
+                        if (counted) {
+                            notes.push('Concurrent streams: how many keep up when run together; 16+ is the most measured.');
+                        }
+                        used.appendChild(el('div', notes.join(' '), 'fieldDescription'));
                     }
                     return div;
                 }
@@ -1830,7 +1822,7 @@
                 function renderReporting() {
                     const div = el('div');
                     div.appendChild(el('p', 'The report and every ffmpeg log of the last probe, to attach to a GitHub issue.', 'secondaryText'));
-                    div.appendChild(el('div', 'The archive may include file paths, user names and host names from this server. Review it before sharing.', 'infoBanner hwprobe-warning'));
+                    div.appendChild(el('div', 'The archive may include file paths, user names, and host names from this server. Review it before sharing.', 'infoBanner hwprobe-warning'));
                     const buttons = el('p');
                     const download = action('Download diagnostics', () => {
                         // ApiClient.ajax returns the raw response for a non-JSON request, with the session's token sent.

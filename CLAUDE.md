@@ -28,7 +28,7 @@ Releases: run `release.yml` by hand (see `DEVELOPMENT.md`). Releases are immutab
 
 - Dev machine: macOS. Only VideoToolbox is exercisable here. ffmpeg at `/opt/homebrew/bin/ffmpeg` is not the binary the server uses; always report the resolved path and flag non-Jellyfin builds.
 - Real hardware: an Intel NAS (QSV over VAAPI) and an RTX 5080 Windows PC; see the NAS and Windows testing memories.
-- No AMD, AMF or Rockchip hardware: ship those as argument-string tests plus recorded logs and report them `Untested`. Never imply a verdict that wasn't tested.
+- No AMD, AMF, or Rockchip hardware: ship those as argument-string tests plus recorded logs and report them `Untested`. Never imply a verdict that wasn't tested.
 - Pinned argument strings: Linux in `LinuxDriftTests` (from recorded jellyfin-ffmpeg builds in `tests/Corpus/ffmpeg/`), Windows in `WindowsDriftTests` (blessed on the PC with `HWPROBE_BLESS`). Each runs only on its OS; re-bless when upstream changes.
 
 ## Consulting upstream Jellyfin source
@@ -50,7 +50,7 @@ Pull files with `gh` and grep locally. WebFetch truncates `EncodingHelper.cs` (8
 
 - **Verify against source; never describe upstream behaviour from memory.** The owner checks provenance and has caught real errors. Anything claimed about Jellyfin should trace to a file and symbol; if it rests on a summary, say so.
 - **Don't hardcode ffmpeg arguments.** Generate them through `EncodingHelper`. The pinned drift strings detect upstream changes; they aren't the source of truth. The one exception is the bare device-open probe, which upstream never emits.
-- **Keep this file current in every PR**, along with `README.md`, `DEVELOPMENT.md` and `build.yaml`: state, commands, traps and the to-do list.
+- **Keep this file current in every PR**, along with `README.md`, `DEVELOPMENT.md`, and `build.yaml`: state, commands, traps, and the to-do list.
 - **Never auto-apply settings and never restart the server.** Apply writes only advised `EncodingOptions` values through `SaveConfiguration`, with history and Revert.
 
 ## Code style
@@ -94,4 +94,4 @@ Pull files with `gh` and grep locally. WebFetch truncates `EncodingHelper.cs` (8
 Queued by the user on 2026-10-03, in no particular order:
 
 - **Test suites** (queued 2026-10-03): named sets of performance tests run in sequence to draw suggestions from, e.g. one input at every encoding preset to see which presets cost no speed. Defined in YAML (like catalog.yaml), mostly on real video (film samples or a library file) rather than test videos. Recommend suites to the user before adding them.
-- Trickplay generation as a Performance Tests output (deferred 2026-10-03). `MediaEncoder.ExtractVideoImagesOnIntervalAccelerated` takes its input, filter and encoder from EncodingHelper but assembles the command itself (skip_frame, setpts, qscale per encoder, image2), so it needs either a pinned copy of that assembly or a direct call limited to the configured backend.
+- Trickplay generation as a Performance Tests output (deferred 2026-10-03). `MediaEncoder.ExtractVideoImagesOnIntervalAccelerated` takes its input, filter, and encoder from EncodingHelper but assembles the command itself (skip_frame, setpts, qscale per encoder, image2), so it needs either a pinned copy of that assembly or a direct call limited to the configured backend.
