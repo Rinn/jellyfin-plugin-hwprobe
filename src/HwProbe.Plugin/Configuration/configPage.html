@@ -1248,7 +1248,9 @@
                         for (const library of libraries) {
                             const name = el('td');
                             name.appendChild(externalLink(library.Name, library.Url));
-                            row(table, [name, el('td', library.Version, 'secondaryText'), el('td', library.License, 'secondaryText')]);
+                            const license = el('td');
+                            license.appendChild(externalLink(library.License, library.LicenseUrl));
+                            row(table, [name, el('td', library.Version, 'secondaryText'), license]);
                         }
                         div.appendChild(sortable(table, 'libraries'));
                         const more = el('div', 'Runs inside Jellyfin (GPL-3.0). The command-line tool\u2019s libraries are listed in ', 'fieldDescription');
@@ -1262,7 +1264,7 @@
                 function renderHelp(container) {
                     fold(container, 'Diagnostics', true).appendChild(renderReporting());
                     fold(container, 'Cache').appendChild(renderCache());
-                    fold(container, 'Libraries').appendChild(renderLibraries());
+                    fold(container, 'Third-Party Notices').appendChild(renderLibraries());
                 }
 
                 // What the results area last drew, so a poll that changes only the time left doesn't redraw it under the cursor.

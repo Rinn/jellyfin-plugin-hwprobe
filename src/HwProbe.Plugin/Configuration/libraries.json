@@ -3,6 +3,7 @@
     "Name": "YamlDotNet",
     "Version": "18.1.0",
     "License": "MIT",
+    "LicenseUrl": "https://spdx.org/licenses/MIT.html",
     "Url": "https://github.com/aaubry/YamlDotNet/wiki"
   }
 ]
