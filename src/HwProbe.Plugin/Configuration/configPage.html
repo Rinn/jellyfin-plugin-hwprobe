@@ -858,7 +858,7 @@
                     }
 
                     const settings = selected.settings || [];
-                    const table = el('table');
+                    const table = el('table', null, 'hwprobe-full');
                     const everything = configured ? settings.filter(differs) : [];
                     const header = el('th');
                     if (everything.length > 1) {
