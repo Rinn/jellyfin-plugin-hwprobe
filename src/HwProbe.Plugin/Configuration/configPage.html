@@ -862,9 +862,11 @@
                         return;
                     }
                     const warning = el('div', null, 'infoBanner hwprobe-warning');
-                    warning.appendChild(document.createTextNode('Unsuccessful in last probe; transcodes may fail. '));
-                    warning.appendChild(idleAction('Switch to None', () => post('HwProbe/UseBackend', { Type: 'none', Device: '' })));
+                    warning.textContent = 'Unsuccessful in last probe; transcodes may fail.';
                     container.appendChild(warning);
+                    const line = el('div', null, 'hwprobe-row hwprobe-end');
+                    line.appendChild(idleAction('Switch to None', () => post('HwProbe/UseBackend', { Type: 'none', Device: '' }), 'raised'));
+                    container.appendChild(line);
                 }
 
                 function renderSettings(container, viable, title) {
@@ -990,13 +992,15 @@
                 function renderBackendStatus(container, viable) {
                     const box = el('div', null, 'paperList hwprobe-card');
                     const type = encoding && encoding.HardwareAccelerationType;
+                    // While a probe runs, the last report's verdicts aren't shown.
+                    const shown = probeProgress ? null : report;
                     const title = el('div');
                     if (!encoding) {
                         title.textContent = 'Hardware acceleration: unknown (Jellyfin\u2019s settings didn\u2019t load)';
                     } else if (!type || type === 'none') {
                         title.textContent = 'Hardware acceleration: None';
                     } else {
-                        const entry = report && report.backends.find(isConfigured);
+                        const entry = shown && shown.backends.find(isConfigured);
                         const device = type === 'vaapi' ? encoding.VaapiDevice : (type === 'qsv' ? encoding.QsvDevice : '');
                         title.appendChild(document.createTextNode('Hardware acceleration: ' + (names[type] || type) + (device ? ' ' + device : '') + '  '));
                         if (entry && entry.verdict === 'Viable') {
@@ -1006,12 +1010,12 @@
                         } else if (entry) {
                             title.appendChild(el('span', '\u274c', 'hwprobe-emoji'));
                             title.appendChild(document.createTextNode(' ' + (verdicts[entry.verdict] || entry.verdict)));
-                        } else if (report) {
+                        } else if (shown) {
                             title.appendChild(el('span', 'not tested', 'secondaryText'));
                         }
                     }
                     box.appendChild(title);
-                    if (report) {
+                    if (shown) {
                         renderBrokenBackend(box, viable);
                     }
                     if (restartRequired) {
