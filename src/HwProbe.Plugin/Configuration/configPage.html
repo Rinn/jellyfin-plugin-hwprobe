@@ -1157,7 +1157,11 @@
                             size.dataset.sort = String(e.Bytes);
                             const written = el('td', new Date(e.ModifiedUtc).toLocaleDateString(), 'secondaryText hwprobe-num');
                             written.dataset.sort = String(Date.parse(e.ModifiedUtc));
-                            row(table, [el('td', e.Description || 'Not used by this version', e.Description ? '' : 'secondaryText'), el('td', e.File, 'secondaryText hwprobe-small hwprobe-file'), size, written]);
+                            // Downloads are named by SHA-256; the first 12 characters tell them apart, and the whole name is in the tooltip.
+                            const file = el('td', e.File.replace(/^([0-9a-f]{12})[0-9a-f]{52}/, '$1\u2026'), 'secondaryText hwprobe-small hwprobe-file');
+                            file.title = e.File;
+                            file.dataset.sort = e.File;
+                            row(table, [el('td', e.Description || 'Not used by this version', e.Description ? '' : 'secondaryText'), file, size, written]);
                         }
                         const scroll = el('div', null, 'hwprobe-scroll');
                         scroll.appendChild(sortable(table, 'cache'));
