@@ -48,6 +48,16 @@ public sealed class SpeedVariantsTests
         Assert.DoesNotContain(SpeedCatalog.ImageSubtitles, SpeedVariants.Clips([SpeedCatalog.Find("pattern|decode")!], settings));
     }
 
+    /// <summary>A sample without audio asks upstream for no audio stream, so ffmpeg isn't told to map one that isn't there.</summary>
+    [Fact]
+    public void SilentSampleHasNoAudio()
+    {
+        var spec = SpeedCatalog.Find("drama-8k|h264-8mbps")!;
+        var clips = SpeedVariants.Clips([spec], new SpeedSettings()).ToDictionary(f => f.FileName, f => "/c/" + f.FileName, StringComparer.Ordinal);
+
+        Assert.False(SpeedVariants.Base(spec, new SpeedSettings(), clips).Audio);
+    }
+
     /// <summary>Every catalog option, at every value it takes, changes the settings.</summary>
     [Fact]
     public void EveryOptionApplies()
@@ -102,6 +112,8 @@ public sealed class SpeedVariantsTests
         Assert.Equal("Decoded only, not encoded", SpeedTestText.Output(SpeedCatalog.Find("anime|decode")!));
         Assert.Equal(("Live-action + CGI", "Tears of Steel", "10.1 s, 2 MB"), (SpeedCatalog.FindVideo("live-action")!.Name, SpeedCatalog.FindVideo("live-action")!.Title, SpeedCatalog.FindVideo("live-action")!.Origin));
         Assert.Equal("1080p VP9, 24 fps, stereo Opus", SpeedTestText.Input(SpeedCatalog.FindVideo("live-action")!));
+        Assert.Equal("8K VP9, 25 fps", SpeedTestText.Input(SpeedCatalog.FindVideo("drama-8k")!));
+        Assert.Equal("H.264 at 8 Mbps", SpeedTestText.Output(SpeedCatalog.Find("drama-8k|h264-8mbps")!));
         Assert.Equal(("av1", 12, "Professional"), (SpeedCatalog.FindVideo("anime-4k")!.Fixture!.Codec, SpeedCatalog.FindVideo("anime-4k")!.Fixture!.BitDepth, SpeedCatalog.FindVideo("anime-4k")!.Fixture!.Profile));
     }
 

@@ -133,7 +133,7 @@ internal static class SpeedVariants
             ColorTransfer = color?.Transfer,
             ColorSpace = color?.Space,
             Tonemap = test.Tonemap,
-            Audio = !test.DecodeOnly,
+            Audio = !test.DecodeOnly && test.SourceAudio is not null,
             AudioCodec = fixture.AudioCodec ?? "aac",
             AudioChannels = fixture.AudioChannels ?? 6,
             SourcePath = clips[fixture.FileName],

@@ -42,7 +42,7 @@ public sealed class CatalogTests
     [InlineData("holderUrl: https://mango.blender.org/", "holderUrl: mango.blender.org")]
     [InlineData("  - { type: amf,", "  - { type: amd,")]
     [InlineData("  FullCuda: Full GPU pipeline (CUDA)\n", "")]
-    [InlineData("defaultVideos: [drama]", "defaultVideos: [drama-8k]")]
+    [InlineData("defaultVideos: [drama]", "defaultVideos: [drama-16k]")]
     [InlineData("{testSource} -c:v libx264", "{testSourc} -c:v libx264")]
     [InlineData("    name: Test video, H.264", "    nmae: Test video, H.264")]
     [InlineData("sha256: 0da88a6b", "sha256: 0DA88A6B")]

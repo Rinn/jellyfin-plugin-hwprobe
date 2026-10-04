@@ -73,6 +73,27 @@ videos:
       seconds: 8.6
       piece: { url: "https://upload.wikimedia.org/wikipedia/commons/9/9d/The_Man_Behind_the_Machine_%28sci-fi_thriller_short_film%29.webm", headerLength: 632, start: 110647202, length: 6719911, sha256: 487d78ebf149d52f0e65dd1ac764d7aa78e17ec23c3091b44ba5648d60f63449 }
   - <<: *sampleVideo
+    key: drama-8k
+    name: Live action 8K
+    frameRate: 25
+    width: 8192
+    height: 4320
+    sample:
+      title: Sherman "Fury" at Tankfest 2021
+      credit: Fury Tank tankfest 2021, Geni, CC BY-SA 4.0, via Wikimedia Commons
+      holder: Geni
+      holderUrl: https://commons.wikimedia.org/wiki/User:Geni
+      license: https://creativecommons.org/licenses/by-sa/4.0/
+      licenseName: CC BY-SA 4.0
+      source: https://commons.wikimedia.org/wiki/File:Fury_Tank_tankfest_2021.webm
+    # The whole 10 s file, one cluster: VP9 profile 0, 58 Mbps, no audio; Jellyfin outputs at most 4K (EncodingHelper.GetFixedOutputSize).
+    clip:
+      file: sample_live_action_8k.webm
+      seconds: 10.1
+      codec: vp9
+      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/4/45/Fury_Tank_tankfest_2021.webm", headerLength: 495, start: 495, length: 73946061, sha256: b398285f93f25d56962f67e5d7c49f4478d26497d84c7e34db02866628992107 }
+      keepAcrossBuilds: true
+  - <<: *sampleVideo
     key: live-action
     name: Live-action + CGI
     # Films are wider than 16:9.
