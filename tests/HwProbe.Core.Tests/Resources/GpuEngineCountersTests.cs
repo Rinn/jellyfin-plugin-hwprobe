@@ -18,10 +18,18 @@ public sealed class GpuEngineCountersTests
     [InlineData("", -1, "")]
     [InlineData("pid", -1, "")]
     [InlineData("pid_x_luid_0_engtype_3D", -1, "")]
-    public void ParsesInstanceNames(string instance, int pid, string engine)
+    public void ParsesEngineInstanceNames(string instance, int pid, string engine)
     {
         var parsed = GpuEngineCounters.Parse(instance);
 
         Assert.Equal(pid < 0 ? null : (pid, engine), parsed);
+    }
+
+    /// <summary>A GPU Process Memory instance names its process the same way, without an engine.</summary>
+    [Fact]
+    public void ParsesMemoryInstanceNames()
+    {
+        Assert.Equal(1234, GpuEngineCounters.Pid("pid_1234_luid_0x00000000_0x0000C2F3_phys_0"));
+        Assert.Null(GpuEngineCounters.Pid("_Total"));
     }
 }

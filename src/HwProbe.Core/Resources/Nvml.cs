@@ -32,6 +32,19 @@ internal static unsafe class Nvml
         return new Dictionary<string, double>(StringComparer.Ordinal) { ["VideoEncode"] = encode / 100.0, ["VideoDecode"] = decode / 100.0, ["3D"] = rates.Gpu / 100.0 };
     }
 
+    /// <summary>Returns GPU 0's memory in use, by every process.</summary>
+    /// <returns>The bytes, or null when NVML isn't available or the read fails.</returns>
+    public static long? MemoryUsed()
+    {
+        if (_functions.Value is not { } f || f.Memory == 0)
+        {
+            return null;
+        }
+
+        Memory memory;
+        return ((delegate* unmanaged<nint, Memory*, int>)f.Memory)(f.Device, &memory) == 0 ? (long)memory.Used : null;
+    }
+
     /// <summary>Loads libnvidia-ml and opens GPU 0.</summary>
     /// <returns>The functions, or null without NVIDIA's driver or a GPU.</returns>
     private static Functions? Load()
@@ -61,10 +74,11 @@ internal static unsafe class Nvml
         var encoder = Export("nvmlDeviceGetEncoderUtilization");
         var decoder = Export("nvmlDeviceGetDecoderUtilization");
         var rates = Export("nvmlDeviceGetUtilizationRates");
+        var memory = Export("nvmlDeviceGetMemoryInfo");
         nint device;
         return init == null || handle == null || encoder == 0 || decoder == 0 || rates == 0 || init() != 0 || handle(0, &device) != 0
             ? null
-            : new Functions(device, encoder, decoder, rates);
+            : new Functions(device, encoder, decoder, rates, memory);
     }
 
     /// <summary>nvmlUtilization_t.</summary>
@@ -73,10 +87,18 @@ internal static unsafe class Nvml
     [StructLayout(LayoutKind.Sequential)]
     private readonly record struct Utilization(uint Gpu, uint Memory);
 
+    /// <summary>nvmlMemory_t.</summary>
+    /// <param name="Total">Installed memory in bytes.</param>
+    /// <param name="Free">Unallocated memory in bytes.</param>
+    /// <param name="Used">Allocated memory in bytes, by every process.</param>
+    [StructLayout(LayoutKind.Sequential)]
+    private readonly record struct Memory(ulong Total, ulong Free, ulong Used);
+
     /// <summary>The loaded NVML functions and GPU 0's handle.</summary>
     /// <param name="Device">GPU 0.</param>
     /// <param name="Encoder">nvmlDeviceGetEncoderUtilization.</param>
     /// <param name="Decoder">nvmlDeviceGetDecoderUtilization.</param>
     /// <param name="Rates">nvmlDeviceGetUtilizationRates.</param>
-    private sealed record Functions(nint Device, nint Encoder, nint Decoder, nint Rates);
+    /// <param name="Memory">nvmlDeviceGetMemoryInfo, or 0 when missing.</param>
+    private sealed record Functions(nint Device, nint Encoder, nint Decoder, nint Rates, nint Memory);
 }

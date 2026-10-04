@@ -46,6 +46,15 @@ public sealed class ProcFilesTests
         Assert.Equal((500L, 2000L), client.Cycles["vcs"]);
     }
 
+    /// <summary>Resident GPU memory adds up every region, in the unit each line gives; amdgpu's older keys count when the common ones are missing.</summary>
+    [Fact]
+    public void DrmResidentMemory()
+    {
+        Assert.Equal((4L * 1024 * 1024) + 512, ProcFiles.Drm("drm-client-id:\t1\ndrm-total-system0:\t8 MiB\ndrm-resident-system0:\t4 MiB\ndrm-resident-local0:\t512\n")!.ResidentBytes);
+        Assert.Equal(3L * 1024, ProcFiles.Drm("drm-client-id:\t1\ndrm-memory-vram:\t2 KiB\ndrm-memory-gtt:\t1 KiB\n")!.ResidentBytes);
+        Assert.Null(ProcFiles.Drm("drm-client-id:\t1\ndrm-engine-render:\t5 ns\n")!.ResidentBytes);
+    }
+
     /// <summary>A descriptor that isn't a DRM client has no client id.</summary>
     [Fact]
     public void OtherDescriptorsAreSkipped() => Assert.Null(ProcFiles.Drm("pos:\t0\nflags:\t02\nmnt_id:\t25\n"));

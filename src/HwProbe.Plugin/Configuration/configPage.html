@@ -1627,6 +1627,15 @@
                     options('Repeats', repeatOptions, speedRepeats, v => { speedRepeats = Number(v); });
                     options('Earlier results', [['true', 'Reuse when the settings match'], ['false', 'Measure everything again']], String(speedReuse), v => { speedReuse = v === 'true'; }, 'Reuses a measurement from an earlier run with the same input, output, backend, accuracy, repeats, and ffmpeg, and the same values for the settings that affect it, so a repeated comparison completes faster.');
                     options('Resource Usage', [['false', 'Don\u2019t measure'], ['true', 'Measure CPU, memory, and GPU usage']], String(speedResources), v => { speedResources = v === 'true'; });
+                    // What this server's platform can measure, and whose usage it is.
+                    const coverage = {
+                        windows: 'CPU, memory, GPU, and GPU memory are the transcode\u2019s own.',
+                        linux: 'CPU and memory are the transcode\u2019s own. Intel and AMD GPU usage and GPU memory are the transcode\u2019s own and require kernel 5.19 or newer (6.8 for Intel\u2019s xe driver). NVIDIA GPU usage and GPU memory cover the whole GPU, including anything else running on it.',
+                        macos: 'CPU and memory are the transcode\u2019s own. GPU usage isn\u2019t available on macOS: VideoToolbox runs on the media engine, which macOS only reports to root.',
+                    }[report && report.host ? report.host.os : ''];
+                    if (coverage) {
+                        form.lastElementChild.appendChild(el('div', coverage, 'infoBanner'));
+                    }
                     options('When the server starts transcoding', whenTranscodingOptions, speedWhenTranscoding, v => { speedWhenTranscoding = v; });
                     options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); }, 'A measurement that reaches the limit stops and reports what it measured.');
 
@@ -1641,9 +1650,9 @@
                         .sort((a, b) => b[1] - a[1]);
                 }
 
-                // A result's three cells in the Resource Usage view: CPU cores in use, peak memory, and the busiest GPU engine; each tooltip lists every figure.
+                // A result's cells in the Resource Usage view: CPU cores in use, peak memory, the busiest GPU engine, and peak GPU memory; each tooltip lists every figure.
                 function resourceCells(x, measuring) {
-                    const cells = [el('td', null, 'hwprobe-num'), el('td', null, 'hwprobe-num'), el('td', null, 'hwprobe-num')];
+                    const cells = [0, 1, 2, 3].map(() => el('td', null, 'hwprobe-num'));
                     if (!x) {
                         return cells;
                     }
@@ -1659,6 +1668,7 @@
                         [cores, cores === null ? '\u2013' : cores.toFixed(1) + ' cores'],
                         [r && r.peakMemoryBytes ? r.peakMemoryBytes : null, r && r.peakMemoryBytes ? sizeText(r.peakMemoryBytes) : '\u2013'],
                         [busiest ? busiest[1] : null, busiest ? busiest[0] + ' ' + Math.round(Math.min(1, busiest[1]) * 100) + '%' : '\u2013'],
+                        [r && r.peakGpuMemoryBytes ? r.peakGpuMemoryBytes : null, r && r.peakGpuMemoryBytes ? sizeText(r.peakGpuMemoryBytes) : '\u2013'],
                     ];
                     const title = resourceFacts(r).join('\n');
                     cells.forEach((cell, i) => {
@@ -1680,6 +1690,9 @@
                     }
                     if (r.peakMemoryBytes) {
                         facts.push(sizeText(r.peakMemoryBytes) + ' peak memory');
+                    }
+                    if (r.peakGpuMemoryBytes) {
+                        facts.push(sizeText(r.peakGpuMemoryBytes) + ' peak GPU memory');
                     }
                     for (const [name, share] of gpuShares(r)) {
                         facts.push('GPU ' + name + ' busy ' + Math.round(Math.min(1, share) * 100) + '% of the time');
@@ -1735,7 +1748,7 @@
                     const current = speedProgress && (speedProgress.Phase === 'Measuring' || speedProgress.Phase === 'Pausing') ? r.results.find(x => x.pending) : null;
                     const values = speedView === 'values';
                     const resources = speedView === 'resources';
-                    const per = resources ? 3 : values && counted ? 2 : 1;
+                    const per = resources ? 4 : values && counted ? 2 : 1;
                     // Per backend: concurrent streams kept up with (Values view, when counted), and one transcode's speed as a value, a bar or a share of the row's fastest.
                     const cellsFor = (x, best, baseline, fastest) => {
                         const tint = x && x === best && backends.length > 1 ? ' hwprobe-best' : '';
@@ -1827,7 +1840,7 @@
                             top.appendChild(th);
                         }
                         table.appendChild(top);
-                        const parts = resources ? ['CPU', 'Memory', 'GPU'] : ['Concurrent streams', 'Speed'];
+                        const parts = resources ? ['CPU', 'Memory', 'GPU', 'GPU memory'] : ['Concurrent streams', 'Speed'];
                         row(table, [el('th', 'Input'), el('th', 'Output'), el('th', 'Size')].concat(backends.flatMap(() => parts.map(part => el('th', part, 'hwprobe-num secondaryText')))));
                     } else {
                         row(table, [el('th', 'Input'), el('th', 'Output'), el('th', 'Size')].concat(backends.map(b => el('th', columnName(b), 'hwprobe-num'))));
@@ -1948,7 +1961,7 @@
                             notes.push('Concurrent streams: how many keep up when run together; 16+ is the most measured.');
                         }
                         if (speedView === 'resources') {
-                            notes.push('Resource usage: what one transcode on its own used, on average CPU cores in use, peak memory, and its busiest GPU engine, where the platform reports them.');
+                            notes.push('Resource usage: what one transcode on its own used: CPU cores in use on average, peak memory, its busiest GPU engine, and peak GPU memory, where the platform reports them.');
                         }
                         used.appendChild(el('div', notes.join(' '), 'fieldDescription'));
                     }

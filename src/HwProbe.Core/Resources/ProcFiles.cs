@@ -56,6 +56,8 @@ public static class ProcFiles
         var device = string.Empty;
         var nanoseconds = new Dictionary<string, long>(StringComparer.Ordinal);
         var cycles = new Dictionary<string, (long Busy, long Total)>(StringComparer.Ordinal);
+        long? resident = null;
+        long? legacy = null;
         foreach (var raw in fdinfo.Split('\n'))
         {
             var colon = raw.IndexOf(':', StringComparison.Ordinal);
@@ -65,7 +67,8 @@ public static class ProcFiles
             }
 
             var key = raw[..colon];
-            var value = raw[(colon + 1)..].Trim().Split(' ')[0];
+            var parts = raw[(colon + 1)..].Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var value = parts.Length > 0 ? parts[0] : string.Empty;
             if (key == "drm-client-id")
             {
                 client = value;
@@ -89,8 +92,37 @@ public static class ProcFiles
                 var engine = key["drm-total-cycles-".Length..];
                 cycles[engine] = (cycles.GetValueOrDefault(engine).Busy, total);
             }
+            else if (key.StartsWith("drm-resident-", StringComparison.Ordinal) && Bytes(parts) is { } bytes)
+            {
+                // drm-usage-stats memory keys (kernel 6.4+), one per region such as system0 or vram0.
+                resident = (resident ?? 0) + bytes;
+            }
+            else if (key.StartsWith("drm-memory-", StringComparison.Ordinal) && Bytes(parts) is { } older)
+            {
+                // amdgpu's keys before the common ones (vram, gtt, cpu).
+                legacy = (legacy ?? 0) + older;
+            }
         }
 
-        return client is null ? null : new DrmClient(device.Length > 0 ? device + "/" + client : client, nanoseconds, cycles);
+        return client is null ? null : new DrmClient(device.Length > 0 ? device + "/" + client : client, nanoseconds, cycles) { ResidentBytes = resident ?? legacy };
+    }
+
+    /// <summary>Reads a drm-usage-stats memory value, a number with an optional KiB, MiB, or GiB unit.</summary>
+    /// <param name="parts">The value and its unit.</param>
+    /// <returns>The bytes, or null when the number doesn't parse.</returns>
+    private static long? Bytes(string[] parts)
+    {
+        if (parts.Length == 0 || !long.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out var number))
+        {
+            return null;
+        }
+
+        return (parts.Length > 1 ? parts[1] : string.Empty) switch
+        {
+            "KiB" => number * 1024,
+            "MiB" => number * 1024 * 1024,
+            "GiB" => number * 1024 * 1024 * 1024,
+            _ => number,
+        };
     }
 }

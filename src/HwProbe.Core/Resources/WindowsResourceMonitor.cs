@@ -12,7 +12,8 @@ internal sealed class WindowsResourceMonitor : SampledResourceMonitor
     private readonly JobObject? _job;
     private readonly int _pid;
     private readonly Dictionary<string, long> _engines = new(StringComparer.Ordinal);
-    private (nint Query, nint Counter)? _gpu;
+    private (nint Query, nint Engines, nint Memory)? _gpu;
+    private long? _gpuPeak;
 
     /// <summary>Initializes a new instance of the <see cref="WindowsResourceMonitor"/> class and starts sampling.</summary>
     /// <param name="process">The started process.</param>
@@ -60,7 +61,7 @@ internal sealed class WindowsResourceMonitor : SampledResourceMonitor
             .GroupBy(e => GpuEngineCounters.Parse(e.Key)!.Value.Engine, StringComparer.Ordinal)
             .Where(g => g.Any(e => e.Value > 0))
             .ToDictionary(g => g.Key, g => g.Sum(e => e.Value / 1e7), StringComparer.Ordinal);
-        return new ResourceUsage(seconds, cpu, peak) { GpuSeconds = gpu.Count > 0 ? gpu : null };
+        return new ResourceUsage(seconds, cpu, peak) { GpuSeconds = gpu.Count > 0 ? gpu : null, PeakGpuMemoryBytes = Failed ? null : _gpuPeak };
     }
 
     /// <inheritdoc/>
@@ -71,12 +72,24 @@ internal sealed class WindowsResourceMonitor : SampledResourceMonitor
             return;
         }
 
-        foreach (var (instance, time) in WindowsNativeMethods.ReadRunningTimes(gpu.Query, gpu.Counter))
+        if (!WindowsNativeMethods.Collect(gpu.Query))
+        {
+            return;
+        }
+
+        foreach (var (instance, time) in WindowsNativeMethods.ReadRaw(gpu.Engines))
         {
             if (GpuEngineCounters.Parse(instance)?.Pid == _pid)
             {
                 _engines[instance] = time;
             }
+        }
+
+        // One instance per adapter the process uses.
+        var memory = WindowsNativeMethods.ReadRaw(gpu.Memory).Where(m => GpuEngineCounters.Pid(m.Key) == _pid).Sum(m => m.Value);
+        if (memory > 0)
+        {
+            _gpuPeak = Math.Max(_gpuPeak ?? 0, memory);
         }
     }
 

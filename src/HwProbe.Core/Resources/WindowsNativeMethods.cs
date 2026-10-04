@@ -3,40 +3,45 @@ using System.Runtime.Versioning;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Resources;
 
-/// <summary>The PDH calls that read the "GPU Engine" performance counters.</summary>
+/// <summary>The PDH calls that read the "GPU Engine" and "GPU Process Memory" performance counters.</summary>
 [SupportedOSPlatform("windows")]
 internal static partial class WindowsNativeMethods
 {
-    // Every engine of every process; the monitor keeps its own process's.
+    // Every engine and every process's memory; the monitor keeps its own process's.
     private const string RunningTime = @"\GPU Engine(*)\Running Time";
+    private const string DedicatedUsage = @"\GPU Process Memory(*)\Dedicated Usage";
     private const uint MoreData = 0x800007D2;
 
-    /// <summary>Opens a query on every GPU engine's running time.</summary>
-    /// <returns>The query and counter handles, or null when the counters aren't available.</returns>
-    public static (nint Query, nint Counter)? OpenGpuQuery()
+    /// <summary>Opens a query on every GPU engine's running time and every process's dedicated GPU memory.</summary>
+    /// <returns>The query and counter handles (the memory counter is 0 when unavailable), or null when the engine counters aren't available.</returns>
+    public static (nint Query, nint Engines, nint Memory)? OpenGpuQuery()
     {
         if (PdhOpenQuery(null, 0, out var query) != 0)
         {
             return null;
         }
 
-        if (PdhAddEnglishCounter(query, RunningTime, 0, out var counter) != 0)
+        if (PdhAddEnglishCounter(query, RunningTime, 0, out var engines) != 0)
         {
             _ = PdhCloseQuery(query);
             return null;
         }
 
-        return (query, counter);
+        return (query, engines, PdhAddEnglishCounter(query, DedicatedUsage, 0, out var memory) == 0 ? memory : 0);
     }
 
-    /// <summary>Collects the counters and returns each engine instance's running time.</summary>
+    /// <summary>Collects every counter in a query once.</summary>
     /// <param name="query">The query.</param>
+    /// <returns>True when the values were collected.</returns>
+    public static bool Collect(nint query) => PdhCollectQueryData(query) == 0;
+
+    /// <summary>Returns a counter's raw value for each instance, from the last <see cref="Collect"/>.</summary>
     /// <param name="counter">The counter.</param>
-    /// <returns>Running time in 100-nanosecond units, by instance name; empty when collection fails.</returns>
-    public static Dictionary<string, long> ReadRunningTimes(nint query, nint counter)
+    /// <returns>Raw values by instance name: 100-nanosecond units for running time, bytes for memory; empty when unavailable.</returns>
+    public static Dictionary<string, long> ReadRaw(nint counter)
     {
         var times = new Dictionary<string, long>(StringComparer.Ordinal);
-        if (PdhCollectQueryData(query) != 0)
+        if (counter == 0)
         {
             return times;
         }

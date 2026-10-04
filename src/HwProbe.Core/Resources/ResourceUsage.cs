@@ -11,4 +11,7 @@ public sealed record ResourceUsage(double Seconds, double? CpuSeconds, long? Pea
 
     /// <summary>Gets a value indicating whether <see cref="GpuSeconds"/> covers the whole GPU rather than this process alone (NVIDIA on Linux).</summary>
     public bool GpuWholeDevice { get; init; }
+
+    /// <summary>Gets the most GPU memory held at once (dedicated memory on Windows, resident GPU buffers on Linux), or null when unavailable.</summary>
+    public long? PeakGpuMemoryBytes { get; init; }
 }

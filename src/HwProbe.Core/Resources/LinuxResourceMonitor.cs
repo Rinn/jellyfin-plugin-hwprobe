@@ -13,6 +13,9 @@ internal sealed class LinuxResourceMonitor : SampledResourceMonitor
     private readonly Dictionary<string, double> _cycleSeconds = new(StringComparer.Ordinal);
     private readonly Dictionary<string, double> _nvmlSeconds = new(StringComparer.Ordinal);
     private double? _lastNvml;
+    private long? _gpuPeak;
+    private long? _nvmlBaseline;
+    private long? _nvmlPeak;
     private long? _ticks;
     private long? _peak;
 
@@ -49,7 +52,9 @@ internal sealed class LinuxResourceMonitor : SampledResourceMonitor
             return new ResourceUsage(seconds, null, null);
         }
 
-        return new ResourceUsage(seconds, _ticks is { } ticks ? (double)ticks / _ticksPerSecond : null, _peak) { GpuSeconds = gpu.Count > 0 ? gpu : null, GpuWholeDevice = whole };
+        // NVML's memory is the whole GPU's, so only what was added after the run started counts.
+        var gpuMemory = _gpuPeak ?? (whole && _nvmlPeak is { } top && _nvmlBaseline is { } start && top > start ? top - start : null);
+        return new ResourceUsage(seconds, _ticks is { } ticks ? (double)ticks / _ticksPerSecond : null, _peak) { GpuSeconds = gpu.Count > 0 ? gpu : null, GpuWholeDevice = whole, PeakGpuMemoryBytes = gpuMemory };
     }
 
     /// <inheritdoc/>
@@ -73,6 +78,7 @@ internal sealed class LinuxResourceMonitor : SampledResourceMonitor
     {
         var now = _clock.Elapsed.TotalSeconds;
         var seen = new HashSet<string>(StringComparer.Ordinal);
+        long? resident = null;
         foreach (var file in Directory.EnumerateFiles(Path.Combine(_root, "fdinfo")))
         {
             string text;
@@ -91,6 +97,11 @@ internal sealed class LinuxResourceMonitor : SampledResourceMonitor
                 continue;
             }
 
+            if (client.ResidentBytes is { } bytes)
+            {
+                resident = (resident ?? 0) + bytes;
+            }
+
             foreach (var (engine, ns) in client.Nanoseconds)
             {
                 _nanoseconds[(client.Id, engine)] = ns;
@@ -107,6 +118,11 @@ internal sealed class LinuxResourceMonitor : SampledResourceMonitor
                 _cycles[key] = (busy, total, now);
             }
         }
+
+        if (resident is { } held)
+        {
+            _gpuPeak = Math.Max(_gpuPeak ?? 0, held);
+        }
     }
 
     /// <summary>Adds NVIDIA GPU 0's engine use since the last sample, weighted by the time between samples.</summary>
@@ -115,6 +131,12 @@ internal sealed class LinuxResourceMonitor : SampledResourceMonitor
         if (!Nvml.Available || Nvml.Read() is not { } use)
         {
             return;
+        }
+
+        if (Nvml.MemoryUsed() is { } used)
+        {
+            _nvmlBaseline ??= used;
+            _nvmlPeak = Math.Max(_nvmlPeak ?? 0, used);
         }
 
         var now = _clock.Elapsed.TotalSeconds;
