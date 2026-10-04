@@ -303,32 +303,6 @@ videos:
       keepAcrossBuilds: true
       download: "https://archive.org/download/sincomplejosmalecon/malecon.flv"
       sha256: 633ad92483f0b9561e5c0682b41104704abad424189618b2c95486fce55b1201
-  - key: 3gp-cif
-    name: Phone, 3GP
-    legacy: true
-    frameRate: 20.6
-    width: 352
-    height: 288
-    audio: mono AMR
-    sample:
-      title: Celebrations
-      credit: Celebrations, Börkur Sigurbjörnsson, CC BY 2.0, via the Internet Archive
-      holder: Börkur Sigurbjörnsson
-      article: https://www.flickr.com/photos/61732101@N00/4616137128
-      license: https://creativecommons.org/licenses/by/2.0/
-      licenseName: CC BY 2.0
-      source: https://archive.org/details/Flickr-4616137128
-      sourceName: Internet Archive
-    # Flickr's original file, used whole: an early phone's H.263 at a variable frame rate (about 20.6 fps) with 8 kHz AMR-NB audio.
-    clip:
-      file: sample_3gp_cif.3gp
-      seconds: 24.9
-      codec: h263
-      audioCodec: amr_nb
-      audioChannels: 1
-      keepAcrossBuilds: true
-      download: "https://archive.org/download/Flickr-4616137128/Celebrations-4616137128.3gp"
-      sha256: 36a776d215485139ed4b9e094919a2b3934c35cf7f096722314295fed36e3ff2
   - key: realvideo-240p
     name: Public access TV, RealVideo
     legacy: true
@@ -666,10 +640,10 @@ suites:
   - key: legacy
     name: Legacy formats
     description: Transcodes legacy, low-quality inputs to H.264.
-    videos: [sports-576i, theora-240p, xvid-240p, flv-280p, 3gp-cif, realvideo-240p, wmv-480p]
+    videos: [sports-576i, theora-240p, xvid-240p, flv-280p, realvideo-240p, wmv-480p]
     outputs: [decode, h264-4mbps]
     steps:
-      - { label: "MPEG-2 576i, Theora, Xvid AVI, Flash video, 3GP, RealVideo, and WMV" }
+      - { label: "MPEG-2 576i, Theora, Xvid AVI, Flash video, RealVideo, and WMV" }
   - key: tonemap
     name: Tone mapping
     description: Encodes HDR video to H.264 with tone mapping on and off.
