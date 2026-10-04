@@ -25,7 +25,7 @@ sh scripts/check-page.sh           # syntax-checks the plugin page's script
 HWPROBE_HW_TESTS=1 dotnet test     # also real-ffmpeg and hardware tests
 ```
 
-The first four run before every commit through the hook; install it once per clone with `git config core.hooksPath scripts/`. After changing a package version, run `dotnet restore --force-evaluate` and commit the lock files.
+`python3 scripts/notices.py` rewrites `THIRD-PARTY-NOTICES.md` and the plugin's `libraries.json` (the Help tab's list) from the restore output after a package change; `--check` runs with the others. The checks above and `notices.py --check` run before every commit through the hook; install it once per clone with `git config core.hooksPath scripts/`. After changing a package version, run `dotnet restore --force-evaluate` and commit the lock files.
 
 With podman:
 

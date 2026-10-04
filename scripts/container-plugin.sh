@@ -143,6 +143,7 @@ check "backends reported" True "$(printf "%s" "$report" | json 'len(j["backends"
 curl -sf "$base/HwProbe/Diagnostics" -H "$h" -o "$work/diagnostics.zip"
 check "diagnostics zip" True "$(python3 -c "import sys,zipfile; n=zipfile.ZipFile(sys.argv[1]).namelist(); print('report.json' in n and 'ffmpeg/version.txt' in n and any(x.startswith('stderr/') for x in n))" "$work/diagnostics.zip")"
 check "catalog listed" True "$(curl -sf "$base/HwProbe/Catalog" -H "$h" | json 'any(v["Key"] == "drama" and v["Default"] for v in j["Videos"]) and any(o["Key"] == "decode" for o in j["Outputs"]) and j["Backends"][0]["Type"] == "amf" and j["Tiers"]["FullOpencl"] != ""')"
+check "libraries listed" True "$(curl -sf "$base/HwProbe/Libraries" -H "$h" | json 'any(l["Name"] == "YamlDotNet" and l["License"] == "MIT" for l in j)')"
 check "speed with an unknown video" 400 "$(code -X POST "$base/HwProbe/Speed" -H "$h" -H 'Content-Type: application/json' -d '{"Method":"Quick","Videos":["nope"],"Outputs":[]}')"
 check "start speed run" 202 "$(code -X POST "$base/HwProbe/Speed" -H "$h" -H 'Content-Type: application/json' -d '{"Method":"Quick","Videos":["pattern"],"Outputs":["decode"]}')"
 state=Running

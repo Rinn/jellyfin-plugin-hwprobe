@@ -29,4 +29,4 @@ Tested on Intel (QSV, VAAPI), NVIDIA (NVENC), and Apple (VideoToolbox). AMD, Roc
 
 AI-generated with Claude Code.
 
-[Building from source](DEVELOPMENT.md) · [GPL-3.0](LICENSE)
+[Building from source](DEVELOPMENT.md) · [GPL-3.0](LICENSE) · [Third-party notices](THIRD-PARTY-NOTICES.md)
