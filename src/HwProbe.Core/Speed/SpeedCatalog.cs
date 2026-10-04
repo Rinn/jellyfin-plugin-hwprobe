@@ -117,6 +117,7 @@ public static class SpeedCatalog
         return new SpeedVideo(video.Key, video.Name, fixture, video.FrameRate, video.Width, video.Height)
         {
             Audio = video.Audio,
+            Legacy = video.Legacy,
             Origin = origin,
             Description = video.Description,
             Credit = video.Sample?.Credit,
@@ -126,6 +127,7 @@ public static class SpeedCatalog
             LicenseUrl = video.Sample is null ? null : new Uri(video.Sample.License),
             LicenseName = video.Sample?.LicenseName,
             SourceUrl = video.Sample is null ? null : new Uri(video.Sample.Source),
+            SourceName = video.Sample?.SourceName,
             ArticleUrl = video.Sample?.Article is { } article ? new Uri(article) : null,
         };
     }

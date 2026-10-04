@@ -17,6 +17,9 @@ public sealed record SpeedVideo(string Key, string Name, FixtureSpec? Fixture, f
     /// <summary>Gets its audio as the page describes it, e.g. <c>5.1 AAC</c>, or null for none.</summary>
     public string? Audio { get; init; }
 
+    /// <summary>Gets a value indicating whether it's an old, low-quality format, listed after the library video.</summary>
+    public bool Legacy { get; init; }
+
     /// <summary>Gets where it comes from, e.g. <c>Generated, 10 s</c> or <c>10.1 s, 2 MB</c>.</summary>
     public string Origin { get; init; } = string.Empty;
 
@@ -37,6 +40,9 @@ public sealed record SpeedVideo(string Key, string Name, FixtureSpec? Fixture, f
 
     /// <summary>Gets the page the sample comes from, with its credit and licence, or null.</summary>
     public Uri? SourceUrl { get; init; }
+
+    /// <summary>Gets the name of the sample's source site, e.g. <c>Wikimedia Commons</c>, or null.</summary>
+    public string? SourceName { get; init; }
 
     /// <summary>Gets a page about the film (its Wikipedia article or release page), or null.</summary>
     public Uri? ArticleUrl { get; init; }

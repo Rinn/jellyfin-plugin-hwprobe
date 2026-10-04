@@ -27,6 +27,9 @@ internal sealed class CatalogVideo
     /// <summary>Gets the clip.</summary>
     public required CatalogClip Clip { get; init; }
 
+    /// <summary>Gets a value indicating whether it's an old, low-quality format (SD, interlaced, or a legacy codec), listed after the library video.</summary>
+    public bool Legacy { get; init; }
+
     /// <summary>Gets where a downloaded sample comes from, or null for a generated video.</summary>
     public CatalogSample? Sample { get; init; }
 }

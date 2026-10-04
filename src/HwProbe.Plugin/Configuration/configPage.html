@@ -1579,15 +1579,15 @@
                         credit.appendChild(document.createTextNode(', '));
                         credit.appendChild(externalLink(v.LicenseName, v.LicenseUrl));
                         const download = inputEntry(credit, v.Origin + ', ');
-                        download.lastElementChild.appendChild(externalLink('Wikimedia Commons', v.SourceUrl));
+                        download.lastElementChild.appendChild(externalLink(v.SourceName, v.SourceUrl));
                         line.appendChild(download);
                     }
                     return line;
                 }
 
-                // The catalog's videos in its order, with the library video before the first test video.
+                // The catalog's videos in its order, with the library video after the current-format samples, before the legacy ones and the test videos.
                 function inputOrder() {
-                    const tests = speedVideos.findIndex(v => !v.SourceUrl);
+                    const tests = speedVideos.findIndex(v => v.Legacy || !v.SourceUrl);
                     const at = tests === -1 ? speedVideos.length : tests;
                     return [...speedVideos.slice(0, at), 'library', ...speedVideos.slice(at)];
                 }

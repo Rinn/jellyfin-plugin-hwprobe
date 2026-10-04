@@ -203,6 +203,7 @@ videos:
       keepAcrossBuilds: true
   - key: sports-576i
     name: Sports, interlaced SD
+    legacy: true
     frameRate: 25
     width: 720
     height: 576
@@ -227,6 +228,56 @@ videos:
       keepAcrossBuilds: true
       download: "https://upload.wikimedia.org/wikipedia/commons/b/bb/2014-02-14_-_Bolshoy_Ice_Dome_during_XXII_Winter_Olympics.mpg"
       sha256: 137265646230688007039c8a9bfd46bd1452d217404b5fa119a9bbd5c2f87a98
+  - key: theora-240p
+    name: Compact camera, Theora
+    legacy: true
+    frameRate: 30
+    width: 320
+    height: 240
+    audio: mono Vorbis
+    sample:
+      title: Arrival St-Pancras International 01
+      credit: Arrival St-Pancras International 01, Clicsouris, CC BY-SA 3.0, via Wikimedia Commons
+      holder: Clicsouris
+      holderUrl: https://commons.wikimedia.org/wiki/User:Clicsouris
+      article: https://en.wikipedia.org/wiki/St_Pancras_railway_station
+      license: https://creativecommons.org/licenses/by-sa/3.0/
+      licenseName: CC BY-SA 3.0
+      source: https://commons.wikimedia.org/wiki/File:Arrival_St-Pancras_International_01.ogv
+    # 24.6 to 34.1 s of Commons' original: a compact camera's soft, blocky 320x240 Theora from a Eurostar window, which no GPU decodes.
+    clip:
+      file: sample_theora_240p.ogv
+      seconds: 9.7
+      codec: theora
+      audioCodec: vorbis
+      audioChannels: 1
+      keepAcrossBuilds: true
+      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/6/6d/Arrival_St-Pancras_International_01.ogv", headerLength: 6342, start: 2951044, length: 1159010, sha256: 0537755506ec11b585cc4020d16a89f5ca6f19159249d0f6371ea4b4e8b2aa7b }
+  - key: xvid-240p
+    name: Night street, Xvid AVI
+    legacy: true
+    frameRate: 29.97
+    width: 360
+    height: 240
+    audio: stereo MP3
+    sample:
+      title: 41th Sao Paulo Critical Mass - Carnival
+      credit: 41th Sao Paulo Critical Mass - Carnival, luddista, public domain, via the Internet Archive
+      holder: luddista
+      article: https://en.wikipedia.org/wiki/Critical_Mass_(cycling)
+      license: https://creativecommons.org/licenses/publicdomain/
+      licenseName: Public domain
+      source: https://archive.org/details/41th_Sao_Paulo_Critical_Mass-Carnival
+      sourceName: Internet Archive
+    # 96.6 to 106.6 s of the original upload: dark, noisy MPEG-4 ASP with packed B-frames in AVI, as old DivX and Xvid files are; the header runs to the movi list.
+    clip:
+      file: sample_xvid_240p.avi
+      seconds: 10
+      codec: mpeg4
+      audioCodec: mp3
+      audioChannels: 2
+      keepAcrossBuilds: true
+      piece: { url: "https://archive.org/download/41th_Sao_Paulo_Critical_Mass-Carnival/41th_Sao_Paulo_Critical_Mass-Carnival_xvid.avi", headerLength: 10252, start: 7926814, length: 919492, sha256: 2ae67f057fef607a47afcddc8b741a5e05dc382ed62fb808a369f683a50fd362 }
   - <<: *testVideo
     key: pattern
     name: Test video, H.264
@@ -509,6 +560,13 @@ suites:
     outputs: [decode]
     steps:
       - { label: "H.264, HEVC, HEVC 10-bit, VP9, AV1, and 4K HDR HEVC" }
+  - key: legacy
+    name: Old formats
+    description: Decodes and encodes to H.264 the old, low-quality inputs.
+    videos: [sports-576i, theora-240p, xvid-240p]
+    outputs: [decode, h264-4mbps]
+    steps:
+      - { label: "MPEG-2 576i, Theora, and Xvid AVI" }
   - key: tonemap
     name: Tone mapping
     description: Encodes HDR video to H.264 with tone mapping on and off.

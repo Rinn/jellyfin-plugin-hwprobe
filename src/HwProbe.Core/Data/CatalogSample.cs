@@ -24,6 +24,9 @@ internal sealed class CatalogSample
     /// <summary>Gets the page the file comes from, with its credit and licence.</summary>
     public required string Source { get; init; }
 
+    /// <summary>Gets what the page calls the source's site.</summary>
+    public string SourceName { get; init; } = "Wikimedia Commons";
+
     /// <summary>Gets a page about the film: its Wikipedia article, or else its release page; null when there's neither.</summary>
     public string? Article { get; init; }
 }

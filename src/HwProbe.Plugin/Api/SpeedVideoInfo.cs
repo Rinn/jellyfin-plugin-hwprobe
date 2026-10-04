@@ -18,7 +18,9 @@ namespace Jellyfin.Plugin.HwProbe.Api;
 /// <param name="SourceUrl">The page the sample comes from, or null.</param>
 /// <param name="Title">The sample's title, or null.</param>
 /// <param name="ArticleUrl">A page about the film (its Wikipedia article or release page), or null.</param>
-public sealed record SpeedVideoInfo(string Key, string Name, string Input, string Origin, string? Description, bool Interlaced, bool Default, string? Credit, string? CreditHolder, Uri? HolderUrl, Uri? LicenseUrl, string? LicenseName, Uri? SourceUrl, string? Title, Uri? ArticleUrl)
+/// <param name="SourceName">The name of the sample's source site, or null.</param>
+/// <param name="Legacy">Whether it's an old, low-quality format, listed after the library video.</param>
+public sealed record SpeedVideoInfo(string Key, string Name, string Input, string Origin, string? Description, bool Interlaced, bool Default, string? Credit, string? CreditHolder, Uri? HolderUrl, Uri? LicenseUrl, string? LicenseName, Uri? SourceUrl, string? Title, Uri? ArticleUrl, string? SourceName, bool Legacy)
 {
     /// <summary>Returns the page's view of a video.</summary>
     /// <param name="video">The video.</param>
@@ -27,6 +29,6 @@ public sealed record SpeedVideoInfo(string Key, string Name, string Input, strin
     {
         ArgumentNullException.ThrowIfNull(video);
         var interlaced = video.File?.Video.Interlaced ?? video.Fixture?.Interlaced ?? false;
-        return new(video.Key, video.Name, SpeedTestText.Input(video), video.Origin, video.Description, interlaced, SpeedCatalog.DefaultVideos.Contains(video.Key), video.Credit, video.CreditHolder, video.HolderUrl, video.LicenseUrl, video.LicenseName, video.SourceUrl, video.Title, video.ArticleUrl);
+        return new(video.Key, video.Name, SpeedTestText.Input(video), video.Origin, video.Description, interlaced, SpeedCatalog.DefaultVideos.Contains(video.Key), video.Credit, video.CreditHolder, video.HolderUrl, video.LicenseUrl, video.LicenseName, video.SourceUrl, video.Title, video.ArticleUrl, video.SourceName, video.Legacy);
     }
 }
