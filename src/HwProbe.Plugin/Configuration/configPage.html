@@ -92,6 +92,7 @@
             #HwProbeConfigPage .hwprobe-loadbar { position: relative; flex: 1; min-width: 0; height: 2.2em; border-radius: 0.25em; overflow: hidden; background: var(--jf-palette-action-hover, rgba(255, 255, 255, 0.08)); }
             #HwProbeConfigPage .hwprobe-loadbar > div { position: absolute; left: 0; top: 0; bottom: 0; background: var(--jf-palette-primary-main, #00a4dc); transition: width 0.25s linear; }
             #HwProbeConfigPage .hwprobe-loadbar > span { position: relative; display: flex; gap: 1em; line-height: 2.2em; padding: 0 0.8em; font-size: 0.9em; color: var(--jf-palette-text-primary, #fff); white-space: nowrap; }
+            #HwProbeConfigPage .hwprobe-loadbar > span > span:not(:nth-child(2)) { font-variant-numeric: tabular-nums; }
             #HwProbeConfigPage .hwprobe-loadbar > span > span:nth-child(2) { flex: 1; min-width: 0; text-align: center; overflow: hidden; text-overflow: ellipsis; }
             #hwprobeCard, #HwProbeConfigPage .hwprobe-progress-card { position: relative; }
             #HwProbeConfigPage .hwprobe-progress.hwprobe-progress-wide { position: absolute; left: 1em; right: 1em; bottom: 0.3em; width: auto; margin: 0; }
@@ -2155,14 +2156,15 @@
                     return c.total ? c.done + ' / ' + c.total : '';
                 }
 
-                // How long the run or suite has been going, e.g. "8m30s" or "1h20m".
+                // How long the run or suite has been going, as mm:ss, or hh:mm:ss from an hour.
                 function speedElapsedText(s) {
                     if (s.ElapsedSeconds === null || s.ElapsedSeconds === undefined) {
                         return '';
                     }
                     const total = Math.max(0, s.ElapsedSeconds);
                     const [h, m, sec] = [Math.floor(total / 3600), Math.floor(total / 60) % 60, total % 60];
-                    return h ? h + 'h' + String(m).padStart(2, '0') + 'm' : m ? m + 'm' + String(sec).padStart(2, '0') + 's' : sec + 's';
+                    const two = n => String(n).padStart(2, '0');
+                    return (h ? two(h) + ':' : '') + two(m) + ':' + two(sec);
                 }
 
                 // One line for the status text elsewhere on the page.
