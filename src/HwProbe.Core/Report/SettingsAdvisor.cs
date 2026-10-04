@@ -243,7 +243,7 @@ public static class SettingsAdvisor
             ProbeOutcome.SoftwareFallback => new(section, setting, label, SettingState.LeaveOff, "Hardware not used"),
             ProbeOutcome.FilterUnsupported => new(section, setting, label, SettingState.LeaveOff, "Filter missing from ffmpeg"),
             ProbeOutcome.Timeout => new(section, setting, label, SettingState.LeaveOff, "Timed out"),
-            ProbeOutcome.DeviceUnavailable => new(section, setting, label, SettingState.LeaveOff, "Device didn't open"),
+            ProbeOutcome.DeviceUnavailable => new(section, setting, label, SettingState.LeaveOff, "Device unavailable"),
             ProbeOutcome.PermissionDenied => new(section, setting, label, SettingState.LeaveOff, "No permission to use the device"),
             _ => new(section, setting, label, SettingState.LeaveOff, "Test failed"),
         };

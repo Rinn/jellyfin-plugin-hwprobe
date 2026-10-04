@@ -601,7 +601,7 @@
 
                 function outcomeRow(table, label, outcome) {
                     const state = outcome === 'Pass' ? 'TurnOn' : (outcome ? 'LeaveOff' : 'NotTested');
-                    const reason = outcome === 'Pass' ? '' : !outcome ? 'Not tested' : ({ SoftwareFallback: 'Hardware not used', FilterUnsupported: 'Filter missing from ffmpeg', CodecUnsupported: 'Not supported by this GPU', Timeout: 'Timed out', DeviceUnavailable: 'Device didn\u2019t open', PermissionDenied: 'No permission to use the device', NotUsed: 'Software only' }[outcome] || 'Test failed');
+                    const reason = outcome === 'Pass' ? '' : !outcome ? 'Not tested' : ({ SoftwareFallback: 'Hardware not used', FilterUnsupported: 'Filter missing from ffmpeg', CodecUnsupported: 'Not supported by this GPU', Timeout: 'Timed out', DeviceUnavailable: 'Device unavailable', PermissionDenied: 'No permission to use the device', NotUsed: 'Software only' }[outcome] || 'Test failed');
                     row(table, [mark(state), label, el('td', reason, 'secondaryText'), el('td')]);
                 }
 
