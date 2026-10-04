@@ -37,11 +37,7 @@
             #HwProbeConfigPage table { border-collapse: collapse; margin: 0.25em 0 1em; }
             #HwProbeConfigPage td, #HwProbeConfigPage th { padding: 0.35em 1.2em 0.35em 0.4em; text-align: left; vertical-align: middle; height: 1.8em; border-bottom: 1px solid var(--jf-palette-divider, rgba(255, 255, 255, 0.12)); }
             #HwProbeConfigPage th { font-weight: 600; background: var(--jf-palette-background-paper, #202020); border-bottom: 2px solid var(--jf-palette-divider, rgba(255, 255, 255, 0.12)); }
-            /* jellyfin-web has no striped tables of its own. */
-            #HwProbeConfigPage tr:nth-child(even):not(.hwprobe-group) > td { background: var(--jf-palette-action-hover, rgba(255, 255, 255, 0.08)); }
-            #HwProbeConfigPage tr:nth-child(n):hover > td { background: var(--jf-palette-action-selected, rgba(255, 255, 255, 0.16)); }
-            #HwProbeConfigPage table.hwprobe-plain tr:nth-child(even) > td { background: none; }
-            #HwProbeConfigPage table.hwprobe-plain tr:not(.hwprobe-group):nth-child(n):hover > td { background: var(--jf-palette-action-selected, rgba(255, 255, 255, 0.16)); }
+            #HwProbeConfigPage tr:nth-child(n):hover > td { background: var(--jf-palette-action-hover, rgba(255, 255, 255, 0.08)); }
             #HwProbeConfigPage table tr:hover > td.hwprobe-best:nth-child(n) { background: color-mix(in srgb, var(--jf-palette-primary-main, #00a4dc) 30%, transparent); }
             #HwProbeConfigPage .hwprobe-scroll { overflow-x: auto; }
             #HwProbeConfigPage table.hwprobe-full { width: 100%; }
@@ -859,7 +855,7 @@
                     }
 
                     const settings = selected.settings || [];
-                    const table = el('table', null, 'hwprobe-plain');
+                    const table = el('table');
                     const everything = configured ? settings.filter(differs) : [];
                     const header = el('th');
                     if (everything.length > 1) {
@@ -1086,7 +1082,7 @@
                             ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('HwProbe/Cache') })
                                 .then(render, () => { setMessage('Could not delete: a probe or performance test is using the cache.'); render(); });
                         }, 'button-flat hwprobe-danger'));
-                        const table = el('table', null, 'hwprobe-plain');
+                        const table = el('table');
                         row(table, [el('th', 'Contents'), el('th', 'File'), el('th', 'Size', 'hwprobe-num'), el('th', 'Written')]);
                         let folder = null;
                         for (const e of entries) {
