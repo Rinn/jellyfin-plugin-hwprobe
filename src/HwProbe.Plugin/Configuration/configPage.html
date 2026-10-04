@@ -940,7 +940,8 @@
                                 glyph.setAttribute('aria-hidden', 'true');
                                 result.appendChild(glyph);
                                 result.appendChild(document.createTextNode(outcome));
-                                const seconds = outcome === 'NotUsed' ? 0 : (b.seconds || {})[column + ':' + key];
+                                // A test with no time launched nothing; a report from before times were recorded has none at all.
+                                const seconds = b.seconds ? b.seconds[column + ':' + key] || 0 : undefined;
                                 const time = el('td', seconds === undefined ? '-' : seconds.toFixed(1) + ' s', 'hwprobe-num');
                                 time.dataset.sort = seconds === undefined ? '' : String(seconds);
                                 row(table, [b.type, b.device || '-', column, key, result, time]);
