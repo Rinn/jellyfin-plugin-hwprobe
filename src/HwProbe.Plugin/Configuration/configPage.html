@@ -1078,10 +1078,18 @@
                         if (!entries.length) {
                             return;
                         }
-                        line.appendChild(idleAction('Delete', () => {
+                        let sure = false;
+                        const all = idleAction('Delete all', () => {
+                            if (!sure) {
+                                sure = true;
+                                all.firstElementChild.textContent = 'Delete all ' + entries.length + ' files';
+                                all.disabled = false;
+                                return;
+                            }
                             ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('HwProbe/Cache') })
                                 .then(render, () => { setMessage('Could not delete: a probe or performance test is using the cache.'); render(); });
-                        }, 'raised button-delete'));
+                        }, 'raised button-delete');
+                        line.appendChild(all);
                         const table = el('table');
                         row(table, [el('th', 'Contents'), el('th', 'File'), el('th', 'Size', 'hwprobe-num'), el('th', 'Written')]);
                         let folder = null;
