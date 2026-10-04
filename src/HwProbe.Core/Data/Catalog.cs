@@ -67,6 +67,9 @@ public sealed partial class Catalog
     /// <summary>Gets what each energy meter's domain is called, keyed as <see cref="Resources.ResourceUsage.Joules"/> is.</summary>
     public required IReadOnlyDictionary<string, string> PowerDomains { get; init; }
 
+    /// <summary>Gets the report's remedies, fix links, and findings, by key, with <c>{name}</c> placeholders.</summary>
+    public required IReadOnlyDictionary<string, string> Texts { get; init; }
+
     /// <summary>Gets what inputs' codecs are called, keyed as ffmpeg names them.</summary>
     public required IReadOnlyDictionary<string, string> CodecNames { get; init; }
 
@@ -117,6 +120,17 @@ public sealed partial class Catalog
 
     /// <summary>Gets the subtitle files the burn-in variation reads; null only in a file that leaves them out, which <see cref="Check"/> refuses.</summary>
     internal CatalogSubtitles? Subtitles { get; init; }
+
+    /// <summary>Returns a text from <see cref="Texts"/> with its placeholders filled in.</summary>
+    /// <param name="key">The text's key.</param>
+    /// <param name="values">Each placeholder's name and value.</param>
+    /// <returns>The text.</returns>
+    public static string Text(string key, params (string Name, string Value)[] values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        var text = Default.Texts.TryGetValue(key, out var found) ? found : throw new InvalidDataException($"catalog.yaml: texts has no {key}.");
+        return values.Aggregate(text, (t, v) => t.Replace("{" + v.Name + "}", v.Value, StringComparison.Ordinal));
+    }
 
     /// <summary>Reads and checks a catalog.</summary>
     /// <param name="yaml">The catalog file's text.</param>

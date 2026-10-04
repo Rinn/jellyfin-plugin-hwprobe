@@ -50,7 +50,7 @@ Pull files with `gh` and grep locally. WebFetch truncates `EncodingHelper.cs` (8
 ## House rules
 
 - **Verify against source; never describe upstream behaviour from memory.** The owner checks provenance and has caught real errors. Anything claimed about Jellyfin should trace to a file and symbol; if it rests on a summary, say so.
-- **Put catalog-like data in `catalog.yaml`, not code.** Lists, labels, defaults, and orderings the page, CLI, or advisor share (inputs, outputs, run options, quality order) belong in the catalog, served to the page by `HwProbe/Catalog`; the page shouldn't keep its own copy. Upstream constants and logic stay in code.
+- **Put catalog-like data in `catalog.yaml`, not code.** Lists, labels, defaults, orderings, thresholds, and the report's remedy, fix, and finding text (`texts`, read with `Catalog.Text`) belong in the catalog, served to the page by `HwProbe/Catalog`; the page shouldn't keep its own copy. Upstream constants and logic stay in code.
 - **Don't hardcode ffmpeg arguments.** Generate them through `EncodingHelper`. The pinned drift strings detect upstream changes; they aren't the source of truth. The one exception is the bare device-open probe, which upstream never emits.
 - **Keep this file current in every PR**, along with `README.md`, `DEVELOPMENT.md`, `ARCHITECTURE.md`, and `build.yaml`: state, commands, traps, and the to-do list.
 - **Never auto-apply settings and never restart the server.** Apply writes only advised `EncodingOptions` values through `SaveConfiguration`, with history and Revert.
