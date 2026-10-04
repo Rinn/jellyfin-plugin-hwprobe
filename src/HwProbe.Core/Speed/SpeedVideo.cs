@@ -17,7 +17,7 @@ public sealed record SpeedVideo(string Key, string Name, FixtureSpec? Fixture, f
     /// <summary>Gets its audio as the page describes it, e.g. <c>5.1 AAC</c>, or null for none.</summary>
     public string? Audio { get; init; }
 
-    /// <summary>Gets where it comes from, e.g. <c>Generated</c> or <c>10 MB download</c>.</summary>
+    /// <summary>Gets where it comes from, e.g. <c>Generated, 10 s</c> or <c>10.1 s, 2 MB</c>.</summary>
     public string Origin { get; init; } = string.Empty;
 
     /// <summary>Gets what a generated video's picture shows, or null.</summary>

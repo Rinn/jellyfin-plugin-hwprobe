@@ -6,7 +6,7 @@ namespace Jellyfin.Plugin.HwProbe.Api;
 /// <param name="Key">The video key.</param>
 /// <param name="Name">What it's called.</param>
 /// <param name="Input">What it is, e.g. <c>1080p H.264, 24 fps, 5.1 AAC</c>.</param>
-/// <param name="Origin">Where it comes from, e.g. <c>Generated</c> or <c>10 MB download</c>.</param>
+/// <param name="Origin">Where it comes from, e.g. <c>Generated, 10 s</c> or <c>10.1 s, 2 MB</c>.</param>
 /// <param name="Description">What a generated video's picture shows, or null.</param>
 /// <param name="Interlaced">Whether it's interlaced, so the deinterlace comparison applies.</param>
 /// <param name="Default">Whether it's chosen when the page first loads.</param>

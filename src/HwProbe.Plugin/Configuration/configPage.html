@@ -1448,7 +1448,7 @@
                             credit.appendChild(v.HolderUrl ? externalLink(v.CreditHolder, v.HolderUrl) : document.createTextNode(v.CreditHolder));
                             credit.appendChild(document.createTextNode(', '));
                             credit.appendChild(externalLink(v.LicenseName, v.LicenseUrl));
-                            const download = entry(credit, v.Origin + ' from ');
+                            const download = entry(credit, v.Origin + ', ');
                             download.lastElementChild.appendChild(externalLink('Wikimedia Commons', v.SourceUrl));
                             line.appendChild(download);
                         }
