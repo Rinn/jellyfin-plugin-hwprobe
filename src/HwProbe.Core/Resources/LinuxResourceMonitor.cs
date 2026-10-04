@@ -8,7 +8,7 @@ internal sealed class LinuxResourceMonitor : SampledResourceMonitor
     private readonly string _root;
     private readonly long _ticksPerSecond;
     private readonly Stopwatch _clock = Stopwatch.StartNew();
-    private readonly Dictionary<(string Client, string Engine), (long First, long Last)> _nanoseconds = [];
+    private readonly Dictionary<(string Client, string Engine), long> _nanoseconds = [];
     private readonly Dictionary<(string Client, string Engine), (long Busy, long Total, double At)> _cycles = [];
     private readonly Dictionary<string, double> _cycleSeconds = new(StringComparer.Ordinal);
     private long? _ticks;
@@ -28,9 +28,11 @@ internal sealed class LinuxResourceMonitor : SampledResourceMonitor
     public override ResourceUsage Finish(double seconds)
     {
         var gpu = new Dictionary<string, double>(_cycleSeconds, StringComparer.Ordinal);
-        foreach (var ((_, engine), (first, last)) in _nanoseconds)
+
+        // A client the process opened starts at zero, so its last reading is all its busy time.
+        foreach (var ((_, engine), ns) in _nanoseconds)
         {
-            gpu[engine] = gpu.GetValueOrDefault(engine) + ((last - first) / 1e9);
+            gpu[engine] = gpu.GetValueOrDefault(engine) + (ns / 1e9);
         }
 
         return new ResourceUsage(seconds, _ticks is { } ticks ? (double)ticks / _ticksPerSecond : null, _peak) { GpuSeconds = gpu.Count > 0 ? gpu : null };
@@ -76,8 +78,7 @@ internal sealed class LinuxResourceMonitor : SampledResourceMonitor
 
             foreach (var (engine, ns) in client.Nanoseconds)
             {
-                var key = (client.Id, engine);
-                _nanoseconds[key] = _nanoseconds.TryGetValue(key, out var known) ? (known.First, ns) : (ns, ns);
+                _nanoseconds[(client.Id, engine)] = ns;
             }
 
             foreach (var (engine, (busy, total)) in client.Cycles)

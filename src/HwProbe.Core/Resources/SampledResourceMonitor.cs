@@ -26,8 +26,18 @@ internal abstract class SampledResourceMonitor : IResourceMonitor
     /// <inheritdoc/>
     public void Dispose()
     {
-        _timer?.Dispose();
+        Dispose(true);
         GC.SuppressFinalize(this);
+    }
+
+    /// <summary>Releases the timer and anything a subclass holds.</summary>
+    /// <param name="disposing">True when called from <see cref="Dispose()"/>.</param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _timer?.Dispose();
+        }
     }
 
     /// <summary>Reads the process's counters.</summary>
