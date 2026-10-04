@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.13.2.0",
+        "changelog": "Third-party notices link each library's source repository.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.13.2/hwprobe-plugin_0.13.2.0.zip",
+        "checksum": "02cb6a3c625bf642e868b3cf9418799a",
+        "timestamp": "2026-10-04T10:19:04Z"
+      },
+      {
         "version": "0.13.1.0",
         "changelog": "Third-party notices: the Help tab lists the plugin's libraries with links to their licences, and every download carries LICENSE and THIRD-PARTY-NOTICES.md.",
         "targetAbi": "12.1.0.0",
