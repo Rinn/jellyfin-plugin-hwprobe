@@ -905,7 +905,7 @@
                     const everything = configured ? settings.filter(differs) : [];
                     const header = el('th');
                     if (everything.length > 1) {
-                        header.appendChild(idleAction('Apply all', () => apply(everything)));
+                        header.appendChild(idleAction('Apply all', () => apply(everything), 'raised'));
                     }
                     row(table, [el('th'), el('th', 'Setting'), el('th', 'Result'), header]);
                     let group = null;
@@ -915,13 +915,13 @@
                             const pending = configured ? settings.filter(x => x.section === group && differs(x)) : [];
                             const cell = el('td');
                             if (pending.length > 1) {
-                                cell.appendChild(idleAction('Apply section', () => apply(pending)));
+                                cell.appendChild(idleAction('Apply section', () => apply(pending), 'raised'));
                             }
                             row(table, [el('td'), el('td', group), el('td'), cell]).className = 'hwprobe-group';
                         }
                         const cell = el('td');
                         if (configured && differs(a)) {
-                            cell.appendChild(idleAction('Apply', () => apply([a])));
+                            cell.appendChild(idleAction('Apply', () => apply([a]), 'raised'));
                         }
                         row(table, [mark(a.state), a.label, resultCell(a.note, a.fix, 'secondaryText'), cell]);
                     }
@@ -1331,11 +1331,11 @@
                             } else if (s.Kind === 'FasterSetting') {
                                 title = label + ': ' + optionValueText(s.Setting, s.Value);
                                 reason = percent + ' faster than ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + (s.LowerQuality ? ', at lower quality.' : '.');
-                                actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }));
+                                actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }), 'raised');
                             } else if (s.Kind === 'HigherQuality') {
                                 title = label + ': ' + optionValueText(s.Setting, s.Value);
                                 reason = 'Better quality than ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + '; at most ' + percent + ' slower, still ' + s.Speed.toFixed(1) + '\u00d7 real time.';
-                                actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }));
+                                actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }), 'raised');
                             }
                             text.appendChild(el('div', title));
                             text.appendChild(el('div', reason, 'secondaryText'));
