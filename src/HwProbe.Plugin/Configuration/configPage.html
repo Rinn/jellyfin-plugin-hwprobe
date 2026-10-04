@@ -892,7 +892,7 @@
                     renderHelp(helpTab);
                     if (!report) {
                         results.appendChild(el('p', 'No results yet. Run a probe while nothing is being transcoded; the first run takes a few minutes.', 'secondaryText'));
-                        settingsTab.appendChild(el('p', 'Run a probe first: the settings are advised from what it finds.', 'secondaryText'));
+                        settingsTab.appendChild(el('div', 'Recommended settings require first running the hardware probe.', 'infoBanner'));
                         speedTab.appendChild(el('div', 'Performance testing requires first running the hardware probe.', 'infoBanner'));
                         return;
                     }
