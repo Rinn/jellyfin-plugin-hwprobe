@@ -845,7 +845,7 @@
                         });
                         pick.addEventListener('change', () => { selected = viable[Number(pick.value)]; renderSettings(container, viable, title); });
                     } else {
-                        title.appendChild(el('span', names[selected.type] || selected.type, 'secondaryText'));
+                        title.firstElementChild.textContent = 'Settings for ' + (names[selected.type] || selected.type);
                     }
 
                     const configured = isConfigured(selected);
