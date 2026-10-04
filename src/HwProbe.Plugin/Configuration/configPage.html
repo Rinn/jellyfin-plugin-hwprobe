@@ -1913,7 +1913,7 @@
                 function renderReporting() {
                     const div = el('div');
                     div.appendChild(el('p', 'The report and every ffmpeg log of the last probe, to attach to a GitHub issue.', 'secondaryText'));
-                    div.appendChild(el('div', 'The archive may include file paths, user names, and host names from this server. Review it before sharing.', 'infoBanner hwprobe-warning'));
+                    div.appendChild(el('div', 'The archive may include file paths, user names, and host names from this server.', 'infoBanner hwprobe-warning'));
                     const buttons = el('p');
                     const download = action('Download diagnostics', () => {
                         // ApiClient.ajax returns the raw response for a non-JSON request, with the session's token sent.
