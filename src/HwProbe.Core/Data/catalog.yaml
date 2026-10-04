@@ -172,7 +172,7 @@ videos:
       piece: { url: "https://upload.wikimedia.org/wikipedia/commons/4/44/Sol_Levante.webm", headerLength: 1022, start: 563867512, length: 21230224, sha256: d1d4c263e3ab895dad850c4110e9161f563414ca5c4609ae095434d4911ac8ae }
       keepAcrossBuilds: true
 
-defaultVideos: [live-action]
+defaultVideos: [drama]
 
 # Outputs are every codec at every quality, as a player asks for them, plus decoding alone; keys are codec-quality, e.g. hevc-8mbps.
 # Every video codec Jellyfin transcodes to (EncodingHelper.GetVideoEncoder, v12.1).
