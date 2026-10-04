@@ -493,7 +493,7 @@
                     const table = el('table', null, 'hwprobe-backends hwprobe-full');
                     row(table, [el('th'), el('th', 'Backend'), el('th', 'Device'), el('th', 'Status')]);
                     for (const [type, device, status, fix, state] of rows) {
-                        const markCell = state === 'works' ? emojiMark('\u2705', 'Works') : state === 'failed' ? emojiMark('\u274c', 'Failed') : spokenMark('NotTested', 'Not available');
+                        const markCell = state === 'works' ? emojiMark('\u2705', 'Works') : state === 'failed' ? emojiMark('\u274c', 'Failed') : emojiMark('\ud83d\udeab', 'Not available');
                         row(table, [markCell, names[type] || type, breakable(device || '-'), resultCell(status, fix, state === 'works' ? '' : 'secondaryText')]);
                     }
                     return sortable(table, 'backends');
@@ -579,13 +579,9 @@
 
                 function mark(state) {
                     const td = el('td', null, 'hwprobe-mark');
-                    if (state === 'TurnOn' || state === 'Optional' || state === 'LeaveOff') {
-                        const glyph = el('span', state === 'LeaveOff' ? '\u274c' : '\u2705', 'hwprobe-emoji');
-                        glyph.setAttribute('aria-hidden', 'true');
-                        td.appendChild(glyph);
-                    } else {
-                        td.appendChild(icon('remove'));
-                    }
+                    const glyph = el('span', state === 'LeaveOff' ? '\u274c' : state === 'TurnOn' || state === 'Optional' ? '\u2705' : '\u2754', 'hwprobe-emoji');
+                    glyph.setAttribute('aria-hidden', 'true');
+                    td.appendChild(glyph);
                     return td;
                 }
 
@@ -886,7 +882,7 @@
                             for (const [key, outcome] of Object.entries(b[column] || {})) {
                                 const result = el('td');
                                 result.dataset.sort = outcome;
-                                const glyph = el('span', outcome === 'Pass' ? '\u2705 ' : ['Untested', 'NotUsed', 'Skipped'].indexOf(outcome) !== -1 ? '\u2796 ' : outcome === 'SoftwareFallback' ? '\u26a0\ufe0f ' : '\u274c ', 'hwprobe-emoji');
+                                const glyph = el('span', { Pass: '\u2705 ', NotUsed: '\u26aa ', Untested: '\u2754 ', Skipped: '\u2754 ', SoftwareFallback: '\u26a0\ufe0f ' }[outcome] || '\u274c ', 'hwprobe-emoji');
                                 glyph.setAttribute('aria-hidden', 'true');
                                 result.appendChild(glyph);
                                 result.appendChild(document.createTextNode(outcome));
