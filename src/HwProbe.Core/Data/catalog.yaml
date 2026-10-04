@@ -523,6 +523,9 @@ whenTranscoding:
 
 defaultWhenTranscoding: Pause
 
+# Whether runs measure resource usage when the page or CLI doesn't say. Only the single copy is sampled, every 200 ms.
+defaultMeasureResources: true
+
 # Seconds per measurement; no value for no limit.
 timeLimits:
   - { label: No limit }

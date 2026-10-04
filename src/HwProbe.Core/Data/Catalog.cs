@@ -43,6 +43,9 @@ public sealed partial class Catalog
     /// <summary>Gets what a run does when the server starts transcoding and the request doesn't say.</summary>
     public required TranscodeAction DefaultWhenTranscoding { get; init; }
 
+    /// <summary>Gets a value indicating whether a run measures resource usage when the request doesn't say.</summary>
+    public bool DefaultMeasureResources { get; init; }
+
     /// <summary>Gets the backends, in the order of Jellyfin's dropdown.</summary>
     public required IReadOnlyList<CatalogBackend> Backends { get; init; }
 

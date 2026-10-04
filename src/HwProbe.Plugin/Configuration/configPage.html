@@ -194,9 +194,9 @@
                 let speedMethod = null;
                 let speedRepeats = 1;
                 let speedReuse = true;
-                let speedResources = false;
+                let speedResources = null;
                 let speedWhenTranscoding = null;
-                let suiteResources = false;
+                let suiteResources = null;
                 let suiteWhenTranscoding = null;
                 let speedTimeLimit = null;
                 // Null measures with the server's own thread count.
@@ -261,6 +261,8 @@
                     whenTranscodingOptions = c.WhenTranscoding.map(o => [o.Key, o.Label]);
                     speedWhenTranscoding = speedWhenTranscoding || c.DefaultWhenTranscoding;
                     suiteWhenTranscoding = suiteWhenTranscoding || c.DefaultWhenTranscoding;
+                    speedResources = speedResources === null ? c.DefaultMeasureResources : speedResources;
+                    suiteResources = suiteResources === null ? c.DefaultMeasureResources : suiteResources;
                     defaultMethod = c.DefaultMethod;
                     speedMethod = speedMethod || c.DefaultMethod;
                 }
