@@ -476,6 +476,13 @@ suites:
     outputs: [h264-40mbps, h264-20mbps, h264-8mbps, h264-4mbps, h264-1.5mbps, hevc-40mbps, hevc-20mbps, hevc-8mbps, hevc-4mbps, hevc-1.5mbps]
     steps:
       - { label: "40, 20, 8, 4, and 1.5 Mbps" }
+  - key: decode
+    name: Decoding
+    description: Decodes every input codec on the configured backend and in software.
+    videos: [pattern, pattern-hevc, pattern-hevc10, pattern-vp9, pattern-av1, pattern-4k-hdr]
+    outputs: [decode]
+    steps:
+      - { label: "H.264, HEVC, HEVC 10-bit, VP9, AV1, and 4K HDR HEVC" }
   - key: tonemap
     name: Tone mapping
     description: Encodes HDR video to H.264 with tone mapping on and off.

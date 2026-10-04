@@ -89,6 +89,9 @@
             #HwProbeConfigPage .hwprobe-notes { margin: 0; padding-left: 1.4em; }
             #HwProbeConfigPage .selectContainer .hwprobe-notes { margin: 0 14px; padding-left: 1.4em; }
             #HwProbeConfigPage .hwprobe-progress { position: relative; width: 16em; }
+            #HwProbeConfigPage .hwprobe-meter { margin-top: 0.6em; }
+            #HwProbeConfigPage .hwprobe-meter .itemProgressBar { position: relative; flex: 1; margin: 0; }
+            #HwProbeConfigPage .hwprobe-meter > span { white-space: nowrap; }
             #hwprobeCard, #HwProbeConfigPage .hwprobe-progress-card { position: relative; }
             #HwProbeConfigPage .hwprobe-progress.hwprobe-progress-wide { position: absolute; left: 1em; right: 1em; bottom: 0.3em; width: auto; margin: 0; }
             #HwProbeConfigPage .hwprobe-inline { margin: 0 0 0 0.5em; padding: 0.2em 0.8em; }
@@ -1287,11 +1290,18 @@
                 let speedProgressParts = null;
 
                 // A poll redraws only the progress text and bar unless the results or the run's phase changed.
+                function progressWidth(s) {
+                    const c = speedCounts(s);
+                    return (c.total ? Math.round(100 * c.done / c.total) : 0) + '%';
+                }
+
                 function renderSpeedResults(poll) {
                     syncRunPicker();
                     const drawn = JSON.stringify([speedLive && speedLive.results, speedReport && speedReport.generatedUtc, speedProgress && speedProgress.Phase, speedProgress && speedProgress.Done]);
                     if (poll === true && drawn === speedDrawn && speedProgress && speedProgressParts) {
-                        speedProgressParts.text.textContent = speedProgressText(speedProgress);
+                        speedProgressParts.text.textContent = speedStatusText(speedProgress);
+                        speedProgressParts.count.textContent = speedCountText(speedProgress);
+                        speedProgressParts.fill.style.width = progressWidth(speedProgress);
                         return;
                     }
                     speedDrawn = drawn;
@@ -1300,7 +1310,7 @@
                     if (speedProgress) {
                         const box = el('div', null, 'paperList hwprobe-card hwprobe-progress-card');
                         const line = el('div', null, 'hwprobe-row');
-                        const text = el('span', speedProgressText(speedProgress), 'secondaryText');
+                        const text = el('span', speedStatusText(speedProgress), 'secondaryText');
                         line.appendChild(text);
                         const buttons = el('div', null, 'hwprobe-row hwprobe-end');
                         const cancel = action('Cancel', () => {
@@ -1319,11 +1329,15 @@
                         buttons.appendChild(cancel);
                         line.appendChild(buttons);
                         box.appendChild(line);
-                        const bar = jf('<div class="itemProgressBar hwprobe-progress hwprobe-progress-wide"><div class="itemProgressBarForeground"></div></div>');
-                        bar.firstElementChild.style.width = (speedProgress.Total ? Math.round(100 * (speedProgress.Done || 0) / speedProgress.Total) : 0) + '%';
-                        box.appendChild(bar);
+                        const meter = el('div', null, 'hwprobe-row hwprobe-meter');
+                        const bar = jf('<div class="itemProgressBar"><div class="itemProgressBarForeground"></div></div>');
+                        bar.firstElementChild.style.width = progressWidth(speedProgress);
+                        meter.appendChild(bar);
+                        const count = el('span', speedCountText(speedProgress), 'secondaryText');
+                        meter.appendChild(count);
+                        box.appendChild(meter);
                         speedResults.appendChild(box);
-                        speedProgressParts = { text };
+                        speedProgressParts = { text, count, fill: bar.firstElementChild };
                     }
                     const shown = speedLive || speedReport;
                     if (shown && shown.suiteStartedUtc && !speedProgress) {
@@ -2113,39 +2127,48 @@
                     ].map(([key, value]) => [settingLabels[key] || key, value]);
                 }
 
-                // Status of a running speed run: test videos being prepared, then measurements with the time left.
-                function speedProgressText(s) {
-                    if (s.Phase === 'Cancelling') {
-                        return 'Cancelling\u2026';
-                    }
-                    if (s.Phase === 'Deferring') {
-                        return 'Waiting: the server is transcoding. Measured ' + (s.Done || 0) + ' of ' + s.Total + '; the interrupted measurement runs again when it ends.';
-                    }
-                    if (s.Phase === 'Paused') {
-                        return 'Paused after ' + (s.Done || 0) + ' of ' + s.Total;
-                    }
-                    if (s.Phase === 'Pausing') {
-                        return 'Pausing when this measurement finishes\u2026';
-                    }
-                    if (s.Phase === 'Preparing' || !s.Total) {
-                        const ahead = s.Total ? timeLeft(s) : '';
-                        return (s.Preparing || 'Preparing test videos') + (ahead ? '\u2026 ' + ahead : '\u2026');
-                    }
-                    const done = s.Done || 0;
-                    const left = timeLeft(s);
-                    return 'Measured ' + done + ' of ' + s.Total + (left ? ', ' + left : '');
+                // What a running speed run is doing; in a suite, which step.
+                function speedStatusText(s) {
+                    const what = s.Phase === 'Cancelling' ? 'Cancelling\u2026'
+                        : s.Phase === 'Deferring' ? 'Waiting: the server is transcoding; the interrupted measurement runs again when it ends.'
+                        : s.Phase === 'Paused' ? 'Paused'
+                        : s.Phase === 'Pausing' ? 'Pausing when this measurement finishes\u2026'
+                        : s.Phase === 'Preparing' || !s.Total ? (s.Preparing || 'Preparing test videos') + '\u2026'
+                        : 'Measuring\u2026';
+                    return (s.Suite ? s.Suite + ' \u00b7 ' : '') + what;
                 }
 
-                // From the measurements so far; before the first, from the accuracy's typical time per measurement.
+                // Measurements done and planned: across the whole suite in a suite, else the run's.
+                function speedCounts(s) {
+                    return s.SuiteTotal ? { done: (s.SuiteDone || 0) + (s.Done || 0), total: s.SuiteTotal } : { done: s.Done || 0, total: s.Total || 0 };
+                }
+
+                // The count beside the progress bar, with the time left.
+                function speedCountText(s) {
+                    const c = speedCounts(s);
+                    if (!c.total) {
+                        return '';
+                    }
+                    const left = timeLeft(s);
+                    return c.done + ' of ' + c.total + (left ? ' \u00b7 ' + left : '');
+                }
+
+                // One line for the status bar elsewhere on the page.
+                function speedProgressText(s) {
+                    const count = speedCountText(s);
+                    return speedStatusText(s) + (count ? ' ' + count : '');
+                }
+
+                // From the run's measurements so far; before the first, from the accuracy's typical time per measurement.
                 function timeLeft(s) {
-                    const done = s.Done || 0;
-                    const remaining = s.Total - done;
+                    const c = speedCounts(s);
+                    const remaining = c.total - c.done;
                     if (remaining <= 0) {
                         return '';
                     }
                     let seconds;
-                    if (done > 0 && s.MeasuringSeconds) {
-                        seconds = s.MeasuringSeconds / done * remaining;
+                    if (s.Done > 0 && s.MeasuringSeconds) {
+                        seconds = s.MeasuringSeconds / s.Done * remaining;
                     } else {
                         const per = methodSeconds[speedLive ? speedLive.method : speedMethod] || methodSeconds[defaultMethod];
                         // A page opened mid-run polls before the catalog loads.
@@ -2155,9 +2178,9 @@
                         seconds = remaining * (per[0] + per[1]) / 2 * (speedLive && speedLive.repeats ? speedLive.repeats : 1);
                     }
                     const minutes = Math.round(seconds / 60);
-                    return seconds < 60 ? 'under a minute remains\u2026'
-                        : minutes < 90 ? 'about ' + minutes + (minutes === 1 ? ' minute remains\u2026' : ' minutes remain\u2026')
-                        : 'about ' + Math.round(minutes / 60) + ' hours remain\u2026';
+                    return seconds < 60 ? 'under a minute remains'
+                        : minutes < 90 ? 'about ' + minutes + (minutes === 1 ? ' minute remains' : ' minutes remain')
+                        : 'about ' + Math.round(minutes / 60) + ' hours remain';
                 }
 
                 function streamsText(x) {
@@ -2242,7 +2265,7 @@
                         setRunning(s.State === 'Running');
                         if (running) {
                             const text = s.Activity === 'Speed'
-                                ? (s.Suite ? s.Suite + ' \u00b7 ' : '') + speedProgressText(s)
+                                ? speedProgressText(s)
                                 : (s.Step || 'Probing') + (s.Total ? ' \u00b7 ' + (s.Done || 0) + ' of ' + s.Total + ' tests' : '\u2026');
                             statusText.textContent = text;
                             const wasProbing = !!probeProgress;

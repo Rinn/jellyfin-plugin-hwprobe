@@ -215,7 +215,7 @@ public sealed partial class ProbeService : IDisposable
     public Task<ProbeRunResult> StartSpeedAsync(SpeedRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return StartRunsAsync([(null, null, request)], request.WhenTranscoding, cancellationToken);
+        return StartRunsAsync([(null, null, request, 0)], request.WhenTranscoding, cancellationToken);
     }
 
     /// <summary>Starts a test suite in the background: its steps run one after another on the backends it names.</summary>
@@ -249,7 +249,7 @@ public sealed partial class ProbeService : IDisposable
                 Options = step.Options,
                 MeasureResources = request.MeasureResources,
                 WhenTranscoding = request.WhenTranscoding,
-            }))
+            }, step.Videos.Count * step.Outputs.Count * backends.Count))
             .ToList();
         return await StartRunsAsync(runs, request.WhenTranscoding, cancellationToken);
     }
@@ -893,14 +893,14 @@ public sealed partial class ProbeService : IDisposable
         BackendPreference.Prefer(ServerBackend(), report.Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device))).Type;
 
     /// <summary>Checks speed runs and starts them one after another in the background.</summary>
-    /// <param name="requests">The runs, with the suite and step each belongs to.</param>
+    /// <param name="requests">The runs, with the suite and step each belongs to and, in a suite, its expected number of measurements.</param>
     /// <param name="whenTranscoding">What the runs do when the server transcodes.</param>
     /// <param name="cancellationToken">Cancels the checks.</param>
     /// <returns><see cref="ProbeRunResult.Started"/>, or why they can't start.</returns>
-    private async Task<ProbeRunResult> StartRunsAsync(IReadOnlyList<(string? Suite, string? Step, SpeedRequest Request)> requests, TranscodeAction whenTranscoding, CancellationToken cancellationToken)
+    private async Task<ProbeRunResult> StartRunsAsync(IReadOnlyList<(string? Suite, string? Step, SpeedRequest Request, int Estimate)> requests, TranscodeAction whenTranscoding, CancellationToken cancellationToken)
     {
-        List<(string?, string?, SpeedOptions, SpeedRequest)> parsed = [];
-        foreach (var (suite, step, request) in requests)
+        List<(string?, string?, SpeedOptions, SpeedRequest, int)> parsed = [];
+        foreach (var (suite, step, request, estimate) in requests)
         {
             var file = request.ItemId is { } item ? FindFile(item) : null;
             if (MeasureSpeed is null || (request.ItemId is not null && file is null) || ParseSpeed(request, file) is not { } speed)
@@ -908,7 +908,7 @@ public sealed partial class ProbeService : IDisposable
                 return ProbeRunResult.Invalid;
             }
 
-            parsed.Add((suite, step, speed, request));
+            parsed.Add((suite, step, speed, request, estimate));
         }
 
         if (MeasureSpeed is not { } measure)
@@ -944,14 +944,14 @@ public sealed partial class ProbeService : IDisposable
         var missingLowPower = SpeedOptions.MissingLowPower(report);
         var runs = parsed.Select(p =>
         {
-            var (suite, step, speed, request) = p;
+            var (suite, step, speed, request, estimate) = p;
             var settings = ServerSpeedSettings();
             foreach (var (key, value) in request.Options ?? new Dictionary<string, string>())
             {
                 settings = SpeedSettingsOptions.Apply(settings, key, value) ?? settings;
             }
 
-            return (suite, step, speed with { Settings = settings, Pause = _speedPause, LowPowerUnsupported = missingLowPower });
+            return (suite, step, speed with { Settings = settings, Pause = _speedPause, LowPowerUnsupported = missingLowPower }, estimate);
         }).ToList();
         _background = Task.Run(() => RunSpeedHeldAsync(measure, runs, backends, _speedCancel.Token), CancellationToken.None);
         return ProbeRunResult.Started;
@@ -959,24 +959,34 @@ public sealed partial class ProbeService : IDisposable
 
     /// <summary>Runs speed measurements one after another, a test suite's steps or a single run; the caller already holds the gate, which this releases.</summary>
     /// <param name="measure">The speed run.</param>
-    /// <param name="runs">What to measure, with the suite and step each run belongs to (null for a run on its own).</param>
+    /// <param name="runs">What to measure, with the suite and step each run belongs to (null for a run on its own) and, in a suite, its expected number of measurements.</param>
     /// <param name="backends">The working backends.</param>
     /// <param name="cancellationToken">Cancels the runs, from <see cref="CancelSpeed"/>.</param>
     /// <returns>The result.</returns>
     private async Task<ProbeRunResult> RunSpeedHeldAsync(
         Func<SpeedOptions, IReadOnlyCollection<(HwType Type, string Device)>, IProgress<SpeedProgress>, CancellationToken, Task<SpeedReport>> measure,
-        List<(string? Suite, string? Step, SpeedOptions Speed)> runs,
+        List<(string? Suite, string? Step, SpeedOptions Speed, int Estimate)> runs,
         IReadOnlyCollection<(HwType Type, string Device)> backends,
         CancellationToken cancellationToken)
     {
         var started = _time.GetUtcNow();
-        _status = _status with { State = ProbeState.Running, Activity = ProbeActivity.Speed, LastStartedUtc = started, LastError = null, Done = 0, Total = null, Preparing = null, Suite = null };
+        _status = _status with { State = ProbeState.Running, Activity = ProbeActivity.Speed, LastStartedUtc = started, LastError = null, Done = 0, Total = null, Preparing = null, Suite = null, SuiteDone = null, SuiteTotal = null };
+
+        // Each step's planned count replaces its estimate once the engine plans it.
+        var totals = runs.Select(r => r.Estimate).ToList();
+        var doneBefore = 0;
         try
         {
             for (var i = 0; i < runs.Count && !cancellationToken.IsCancellationRequested; i++)
             {
-                var (suite, step, speed) = runs[i];
-                _status = _status with { Suite = suite is null ? null : string.Create(CultureInfo.InvariantCulture, $"{suite}: {step}, {i + 1} of {runs.Count}") };
+                var (suite, step, speed, _) = runs[i];
+                var index = i;
+                _status = _status with
+                {
+                    Suite = suite is null ? null : string.Create(CultureInfo.InvariantCulture, $"{suite}: {step}, {i + 1} of {runs.Count}"),
+                    SuiteDone = suite is null ? null : doneBefore,
+                    SuiteTotal = suite is null ? null : totals.Sum(),
+                };
                 lock (_speedSoFar)
                 {
                     _speedSoFar.Clear();
@@ -1012,7 +1022,12 @@ public sealed partial class ProbeService : IDisposable
                         }
                     }
 
-                    _status = _status with { Done = p.Done, Total = p.Total, Preparing = p.Preparing };
+                    if (suite is not null && p.Total is { } stepTotal)
+                    {
+                        totals[index] = stepTotal;
+                    }
+
+                    _status = _status with { Done = p.Done, Total = p.Total, Preparing = p.Preparing, SuiteTotal = suite is null ? null : totals.Sum() };
                 });
                 var report = await measure(speed, backends, progress, cancellationToken);
                 report = report with { CancelledForTranscode = report.Cancelled && _cancelledForTranscode, Suite = suite, SuiteStep = step, SuiteStartedUtc = suite is null ? null : started };
@@ -1031,6 +1046,7 @@ public sealed partial class ProbeService : IDisposable
 
                 await SpeedReportStore.WriteAsync(report, SpeedPath, CancellationToken.None);
                 await SaveSpeedHistoryAsync(report);
+                doneBefore += totals[i];
             }
 
             return ProbeRunResult.Completed;
@@ -1059,7 +1075,7 @@ public sealed partial class ProbeService : IDisposable
                 _measuringSince = null;
             }
 
-            _status = _status with { State = ProbeState.Idle, LastCompletedUtc = _time.GetUtcNow(), Done = null, Total = null, Preparing = null, Suite = null };
+            _status = _status with { State = ProbeState.Idle, LastCompletedUtc = _time.GetUtcNow(), Done = null, Total = null, Preparing = null, Suite = null, SuiteDone = null, SuiteTotal = null };
             _gate.Release();
         }
     }
