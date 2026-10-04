@@ -58,6 +58,9 @@ public sealed partial class Catalog
     /// <summary>Gets what the page calls each measured resource, keyed as <see cref="Speed.ResourceSaving.Resource"/> is, in sentence case.</summary>
     public required IReadOnlyDictionary<string, string> ResourceNames { get; init; }
 
+    /// <summary>Gets labels for server settings suggestions change that aren't run options, keyed as suggestions name them, with any caveat under <c>{key}Caveat</c>.</summary>
+    public required IReadOnlyDictionary<string, string> Labels { get; init; }
+
     /// <summary>Gets what inputs' codecs are called, keyed as ffmpeg names them.</summary>
     public required IReadOnlyDictionary<string, string> CodecNames { get; init; }
 

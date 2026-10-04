@@ -8,6 +8,9 @@ namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 /// <remarks>Software is never suggested over hardware: a GPU encoder draws less power for the same work.</remarks>
 public static class SpeedAdvisor
 {
+    /// <summary>The setting a bitrate-limit suggestion names: Jellyfin's Internet streaming bitrate limit, in bits per second.</summary>
+    public const string BitrateLimitKey = "RemoteClientBitrateLimit";
+
     /// <summary>The settings a run records, by catalog option key, with the value it used; Audio and BurnIn describe the client, not the server, so they're left out.</summary>
     private static readonly Dictionary<string, Func<SpeedSettings, string>> _values = new(StringComparer.Ordinal)
     {
@@ -95,6 +98,11 @@ public static class SpeedAdvisor
                     Savings = alike ? Common(beaten.Select(w => ResourceComparison.Savings(w, Mine(w)!))) : [],
                 });
             }
+        }
+
+        if (BitrateLimit([.. measured.Where(Configured)], shown.Settings) is { } limit)
+        {
+            suggestions.Add(limit with { Type = type, Device = device });
         }
 
         // A test video that falls behind means real video will too: test videos encode faster.
@@ -245,6 +253,42 @@ public static class SpeedAdvisor
                 TestVideosOnly = against.All(s => s.Generated),
             };
         }
+    }
+
+    /// <summary>Finds the highest quality the configured backend keeps at real time when higher ones of the same codec fall behind, as an Internet streaming bitrate limit.</summary>
+    /// <param name="configured">The configured backend's measured results.</param>
+    /// <param name="settings">The run's settings, for the outputs' labels.</param>
+    /// <returns>The suggestion, or null when every quality keeps up or fewer than two were measured.</returns>
+    /// <remarks>H.264 decides, as the codec Jellyfin encodes to unless HEVC encoding is allowed (EncodingOptions.AllowHevcEncoding, off by default, v12.1).</remarks>
+    private static SpeedSuggestion? BitrateLimit(List<SpeedResult> configured, SpeedSettings? settings)
+    {
+        var ladder = configured
+            .Select(r => (Result: r, Output: SpeedCatalog.Find(r.Test)))
+            .Where(x => x.Output is { DecodeOnly: false, OutputCodec: "h264" })
+            .OrderByDescending(x => x.Output!.Bitrate)
+            .ToList();
+        if (ladder.Select(x => x.Output!.Bitrate).Distinct().Count() < 2)
+        {
+            return null;
+        }
+
+        static bool KeepsUp(SpeedResult r) => Speed(r) >= 1 && r.Streams is not 0;
+        var behind = ladder.Where(x => !KeepsUp(x.Result)).ToList();
+        var keeping = ladder.Where(x => KeepsUp(x.Result) && behind.All(b => x.Output!.Bitrate < b.Output!.Bitrate)).ToList();
+        if (behind.Count == 0 || keeping.Count == 0)
+        {
+            return null;
+        }
+
+        var best = keeping[0];
+        return new SpeedSuggestion(SpeedSuggestionKind.BitrateLimit, [.. behind.Select(x => Label(x.Result, settings)).Distinct(StringComparer.Ordinal)])
+        {
+            Setting = BitrateLimitKey,
+            Value = best.Output!.Bitrate.ToString(CultureInfo.InvariantCulture),
+            Speed = Speed(best.Result),
+            Streams = best.Result.Streams,
+            TestVideosOnly = behind.All(x => IsGenerated(x.Result)),
+        };
     }
 
     /// <summary>Reports whether a value gives a better picture than another.</summary>

@@ -117,6 +117,18 @@ public sealed class SpeedAdvisorTests
         Assert.Equal(("VppTonemap", "false"), (faster.Setting, faster.Value));
     }
 
+    /// <summary>When higher H.264 qualities fall behind, the highest that keeps up is suggested as the Internet streaming bitrate limit.</summary>
+    [Fact]
+    public void SuggestsABitrateLimit()
+    {
+        var run = Run(new SpeedSettings(), Result(HwType.none, "drama|h264-40mbps", 20), Result(HwType.none, "drama|h264-20mbps", 30), Result(HwType.none, "drama|h264-8mbps", 60));
+        var fine = Run(new SpeedSettings(), Result(HwType.none, "drama|h264-40mbps", 30), Result(HwType.none, "drama|h264-8mbps", 60));
+
+        var limit = Assert.Single(SpeedAdvisor.Advise(run, [run], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.BitrateLimit);
+        Assert.Equal(("RemoteClientBitrateLimit", "20000000"), (limit.Setting, limit.Value));
+        Assert.DoesNotContain(SpeedAdvisor.Advise(fine, [fine], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.BitrateLimit);
+    }
+
     /// <summary>Outputs below real time on the configured backend are flagged, and marked when only test videos showed it.</summary>
     [Fact]
     public void FlagsOutputsThatFallBehind()

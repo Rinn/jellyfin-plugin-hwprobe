@@ -18,6 +18,9 @@ public enum SpeedSuggestionKind
     /// <summary>A setting's other value measured as fast and is more efficient: less CPU, memory, or GPU.</summary>
     EfficientSetting,
 
+    /// <summary>An Internet streaming bitrate limit at the highest quality the configured backend keeps at real time, when higher ones fall behind.</summary>
+    BitrateLimit,
+
     /// <summary>Nothing compared with the server's value is worth changing to, so it's kept.</summary>
     NoChange,
 }

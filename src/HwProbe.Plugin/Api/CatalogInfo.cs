@@ -19,6 +19,7 @@ namespace Jellyfin.Plugin.HwProbe.Api;
 /// <param name="DefaultMeasureResources">Whether a run measures resource usage by default.</param>
 /// <param name="Advice">The thresholds measurements are judged by.</param>
 /// <param name="SoftwareName">What the page calls software encoding.</param>
+/// <param name="Labels">Labels and caveats for server settings suggestions change that aren't run options.</param>
 /// <param name="ResourceNames">What the page calls each measured resource, in sentence case.</param>
 /// <param name="Backends">The backends, in the order of Jellyfin's dropdown.</param>
 /// <param name="GpuEngines">What the page calls each GPU engine.</param>
@@ -42,6 +43,7 @@ public sealed record CatalogInfo(
     bool DefaultMeasureResources,
     CatalogAdvice Advice,
     string SoftwareName,
+    IReadOnlyDictionary<string, string> Labels,
     IReadOnlyDictionary<string, string> ResourceNames,
     IReadOnlyList<CatalogBackend> Backends,
     IReadOnlyDictionary<string, string> GpuEngines,
@@ -72,6 +74,7 @@ public sealed record CatalogInfo(
             catalog.DefaultMeasureResources,
             catalog.Advice,
             catalog.SoftwareName,
+            catalog.Labels,
             catalog.ResourceNames,
             catalog.Backends,
             catalog.GpuEngines,
