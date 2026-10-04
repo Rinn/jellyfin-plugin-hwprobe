@@ -1701,9 +1701,9 @@
                         legend.push('Concurrent streams: how many keep up when run together; 16+ is the most measured.');
                     }
                     if (speedView === 'relative') {
-                        legend.push('Speed of one transcode on its own, as a share of the fastest backend for the row. Point at a value for the details.');
+                        legend.push('Speed of one transcode on its own, as a share of the fastest backend for the row.');
                     } else {
-                        legend.push('Speed: one transcode on its own; 2\u00d7 is twice as fast as playing.' + (speedView === 'bars' ? ' Bars are relative to the fastest backend for the row.' : '') + ' Point at a value for the details.');
+                        legend.push('Speed: one transcode on its own; 2\u00d7 is twice as fast as playing.' + (speedView === 'bars' ? ' Bars are relative to the fastest backend for the row.' : ''));
                     }
                     if (backends.length > 1) {
                         legend.push(values && counted ? 'The highlighted cell keeps up with the most concurrent streams, then is the fastest, for the row.' : 'The highlighted cell is the fastest for the row.');
@@ -1734,11 +1734,12 @@
                     }
                     if (r.settings) {
                         const used = fold(div, 'Settings used', false, 'h3');
-                        const table = el('table');
+                        const table = el('table', null, 'hwprobe-full');
+                        row(table, [el('th', 'Setting'), el('th', 'Value')]);
                         for (const [label, value] of settingsRows(r.settings)) {
                             row(table, [label, el('td', value, 'secondaryText')]);
                         }
-                        used.appendChild(table);
+                        used.appendChild(sortable(table, 'settings-used'));
                     }
                     return div;
                 }
