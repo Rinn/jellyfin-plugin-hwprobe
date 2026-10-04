@@ -188,7 +188,7 @@
                 let probeProgress = null;
                 let speedMethod = null;
                 let speedRepeats = 1;
-                let speedReuse = false;
+                let speedReuse = true;
                 let speedDefer = true;
                 let speedTimeLimit = null;
                 // Null measures with the server's own thread count.
@@ -1440,7 +1440,7 @@
                     container.appendChild(el('h3', 'Accuracy and time', 'sectionTitle'));
                     options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });
                     options('Repeats', repeatOptions, speedRepeats, v => { speedRepeats = Number(v); });
-                    options('Earlier results', [['false', 'Measure everything again'], ['true', 'Reuse when the settings match']], String(speedReuse), v => { speedReuse = v === 'true'; }, 'Reuses a measurement from an earlier run with the same input, output, backend, accuracy, repeats and ffmpeg, and the same values for the settings that affect it, so a repeated comparison completes faster.');
+                    options('Earlier results', [['true', 'Reuse when the settings match'], ['false', 'Measure everything again']], String(speedReuse), v => { speedReuse = v === 'true'; }, 'Reuses a measurement from an earlier run with the same input, output, backend, accuracy, repeats and ffmpeg, and the same values for the settings that affect it, so a repeated comparison completes faster.');
                     options('When the server starts transcoding', [['true', 'Pause, then repeat the interrupted measurement'], ['false', 'Keep measuring']], String(speedDefer), v => { speedDefer = v === 'true'; });
                     options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); }, 'A measurement that reaches the limit stops and reports what it measured.');
 
