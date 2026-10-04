@@ -1173,10 +1173,8 @@
                 }
 
                 function renderHelp(container) {
-                    heading(container, 'Diagnostics');
-                    container.appendChild(renderReporting());
-                    heading(container, 'Cache');
-                    container.appendChild(renderCache());
+                    fold(container, 'Diagnostics', true).appendChild(renderReporting());
+                    fold(container, 'Cache').appendChild(renderCache());
                 }
 
                 function renderSpeedResults() {
