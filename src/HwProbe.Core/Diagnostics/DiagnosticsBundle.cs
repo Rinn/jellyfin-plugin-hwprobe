@@ -11,9 +11,6 @@ namespace Jellyfin.Plugin.HwProbe.Core.Diagnostics;
 /// <summary>Writes a zip of a probe's report and every ffmpeg launch, laid out like <c>tests/Corpus</c>, for attaching to an issue.</summary>
 public static partial class DiagnosticsBundle
 {
-    /// <summary>The GitHub issue form a bundle is attached to.</summary>
-    public const string IssueUrl = "https://github.com/Rinn/jellyfin-plugin-hwprobe/issues/new?template=hardware-report.yml";
-
     private static readonly string[] _listings = ["-version", "-hwaccels", "-encoders", "-decoders", "-filters"];
 
     /// <summary>Writes a bundle to a file, atomically.</summary>
@@ -157,7 +154,7 @@ public static partial class DiagnosticsBundle
         HwProbe diagnostics
         HwProbe {report.HwProbeVersion}, ffmpeg {report.Ffmpeg.Version} ({report.Ffmpeg.Path}), {report.Host.Os} {report.Host.Kernel} {report.Host.Architecture}, made {report.GeneratedUtc:u}.
 
-        To report results, attach this zip to an issue: {IssueUrl}
+        To report results, attach this zip to an issue: {IssueLink.For(report, null)}
 
         report.json  The probe report.
         ffmpeg/      What this ffmpeg was built with: -version, -hwaccels, -encoders, -decoders, -filters, and the -h filter= pages Jellyfin reads.

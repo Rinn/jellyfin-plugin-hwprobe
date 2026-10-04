@@ -2065,6 +2065,8 @@
                     buttons.appendChild(document.createTextNode(' '));
                     const issue = el('a', 'Report on GitHub', 'emby-button button-flat hwprobe-inline');
                     issue.href = 'https://github.com/Rinn/jellyfin-plugin-hwprobe/issues/new?template=hardware-report.yml';
+                    // The form opens with the server's details filled in from the latest probe.
+                    ApiClient.getPublicSystemInfo().then(info => ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/IssueLink', { jellyfin: info.Version }), dataType: 'json' })).then(link => { issue.href = link; }, () => {});
                     issue.target = '_blank';
                     buttons.appendChild(issue);
                     div.appendChild(buttons);
