@@ -1441,7 +1441,7 @@
                     const videoLine = v => {
                         const line = el('li');
                         const name = el('span', v.Name + (v.SourceUrl || v.Description ? ': ' : ''));
-                        name.appendChild(v.SourceUrl ? externalLink(v.Title, v.ArticleUrl || v.SourceUrl) : document.createTextNode(v.Description || ''));
+                        name.appendChild(v.SourceUrl ? externalLink(v.Title, v.ArticleUrl) : document.createTextNode(v.Description || ''));
                         line.appendChild(entry(name, v.Input));
                         if (v.SourceUrl) {
                             const credit = el('span', null, 'hwprobe-small');

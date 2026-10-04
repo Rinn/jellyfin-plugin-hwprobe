@@ -38,7 +38,7 @@ public sealed record SpeedVideo(string Key, string Name, FixtureSpec? Fixture, f
     /// <summary>Gets the page the sample comes from, with its credit and licence, or null.</summary>
     public Uri? SourceUrl { get; init; }
 
-    /// <summary>Gets the Wikipedia article about the film, or null.</summary>
+    /// <summary>Gets a page about the film (its Wikipedia article or release page), or null.</summary>
     public Uri? ArticleUrl { get; init; }
 
     /// <summary>Gets the sample's licence, or null.</summary>

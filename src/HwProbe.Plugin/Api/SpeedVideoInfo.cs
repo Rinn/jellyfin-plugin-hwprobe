@@ -17,7 +17,7 @@ namespace Jellyfin.Plugin.HwProbe.Api;
 /// <param name="LicenseName">The licence's short name, e.g. <c>CC BY 3.0</c>, or null.</param>
 /// <param name="SourceUrl">The page the sample comes from, or null.</param>
 /// <param name="Title">The sample's title, or null.</param>
-/// <param name="ArticleUrl">The Wikipedia article about the film, or null.</param>
+/// <param name="ArticleUrl">A page about the film (its Wikipedia article or release page), or null.</param>
 public sealed record SpeedVideoInfo(string Key, string Name, string Input, string Origin, string? Description, bool Interlaced, bool Default, string? Credit, string? CreditHolder, Uri? HolderUrl, Uri? LicenseUrl, string? LicenseName, Uri? SourceUrl, string? Title, Uri? ArticleUrl)
 {
     /// <summary>Returns the page's view of a video.</summary>
