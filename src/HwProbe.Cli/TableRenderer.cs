@@ -110,7 +110,7 @@ internal static class TableRenderer
         }
 
         var failed = tested.Where(c => c.Value != ProbeOutcome.Pass).Select(c => c.Key).Order(StringComparer.Ordinal).ToList();
-        var summary = $"{tested.Count - failed.Count}/{tested.Count}";
+        var summary = string.Create(CultureInfo.InvariantCulture, $"{tested.Count - failed.Count}/{tested.Count}");
         return failed.Count == 0 ? summary : $"{summary} (no {string.Join(",", failed)})";
     }
 

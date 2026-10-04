@@ -65,6 +65,22 @@ public sealed class ArgumentSourceTests
         Assert.True(args.HardwareTonemap);
     }
 
+    /// <summary>EncodingHelper's arguments, including bitrates, frame rates and tone mapping numbers, read the same in every culture.</summary>
+    /// <param name="culture">The current culture.</param>
+    [Theory(Skip = "Requires macOS: EncodingHelper only emits VideoToolbox args there.", SkipUnless = nameof(TestEnvironment.IsMacOS), SkipType = typeof(TestEnvironment))]
+    [MemberData(nameof(CultureScope.Different), MemberType = typeof(CultureScope))]
+    public void SameInEveryCulture(string culture)
+    {
+        var cell = _hdr10 with { VideoBitrate = 4_500_000, SourceFrameRate = 23.976f, MaxWidth = 1280, TonemapPeak = 400.5, TonemapDesat = 0.5, Audio = true, FullQuality = true, SourcePath = "/c/a.mkv", DownmixBoost = 1.5 };
+        static string Text(ProbeArguments a) => string.Join('|', a.InputArgs, a.FilterArgs, a.VideoEncoder, a.EncoderArgs, a.AudioArgs, string.Join(';', a.Environment.Select(e => e.Key + "=" + e.Value)));
+        var invariant = Text(Build(HwType.none, null, cell));
+        using var scope = new CultureScope(culture);
+
+        Assert.Equal(invariant, Text(Build(HwType.none, null, cell)));
+        Assert.Contains("-maxrate 4500000", invariant, StringComparison.Ordinal);
+        Assert.Contains("volume=1.5", invariant, StringComparison.Ordinal);
+    }
+
     /// <summary>Encode-only VideoToolbox emits the device init without a hardware decoder.</summary>
     [Fact(Skip = "Requires macOS: EncodingHelper only emits VideoToolbox args there.", SkipUnless = nameof(TestEnvironment.IsMacOS), SkipType = typeof(TestEnvironment))]
     public void VideoToolboxEncodeOnly()

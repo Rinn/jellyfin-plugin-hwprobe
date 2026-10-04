@@ -1,4 +1,5 @@
 using Jellyfin.Plugin.HwProbe.Settings;
+using Jellyfin.Plugin.HwProbe.TestSupport;
 using MediaBrowser.Model.Configuration;
 using MediaBrowser.Model.Entities;
 using Xunit;
@@ -9,6 +10,23 @@ namespace Jellyfin.Plugin.HwProbe.PluginTests;
 [Trait("Category", "Unit")]
 public sealed class EncodingSettingsTests
 {
+    /// <summary>Numbers read and write with dots in every culture, so history entries and suggestions compare the same.</summary>
+    /// <param name="culture">The current culture.</param>
+    [Theory]
+    [MemberData(nameof(CultureScope.Different), MemberType = typeof(CultureScope))]
+    public void NumbersAreInvariant(string culture)
+    {
+        using var scope = new CultureScope(culture);
+        var options = new EncodingOptions();
+
+        EncodingSettings.Write(options, nameof(EncodingOptions.DownMixAudioBoost), "1.5");
+        EncodingSettings.Write(options, nameof(EncodingOptions.EncodingThreadCount), "-1");
+
+        Assert.Equal(1.5, options.DownMixAudioBoost);
+        Assert.Equal("1.5", EncodingSettings.Read(options, nameof(EncodingOptions.DownMixAudioBoost)));
+        Assert.Equal("-1", EncodingSettings.Read(options, nameof(EncodingOptions.EncodingThreadCount)));
+    }
+
     /// <summary>A codec key adds and removes one entry of the decoding list.</summary>
     [Fact]
     public void CodecKeysEditTheDecodingList()

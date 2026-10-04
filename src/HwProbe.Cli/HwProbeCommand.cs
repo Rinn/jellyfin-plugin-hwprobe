@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Globalization;
 using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
@@ -56,11 +57,11 @@ internal sealed class HwProbeCommand
         AllowMultipleArgumentsPerToken = false,
     };
 
-    private readonly Option<int> _speedRepeats = new("--speed-repeats") { Description = "Run each speed measurement 1 to 3 times and report the median.", DefaultValueFactory = _ => 1 };
-    private readonly Option<int?> _speedTimeLimit = new("--speed-time-limit") { Description = "Seconds each speed measurement may take before it reports what it has." };
+    private readonly Option<int> _speedRepeats = new("--speed-repeats") { Description = "Run each speed measurement 1 to 3 times and report the median.", DefaultValueFactory = _ => 1, CustomParser = Whole };
+    private readonly Option<int?> _speedTimeLimit = new("--speed-time-limit") { Description = "Seconds each speed measurement may take before it reports what it has.", CustomParser = r => Whole(r) };
     private readonly Option<string?> _speedJson = new("--speed-json") { Description = "Also write the speed report to this file." };
-    private readonly Option<int> _timeout = new("--timeout") { Description = "Per-probe hard timeout, seconds.", DefaultValueFactory = _ => 15 };
-    private readonly Option<int> _fixtureTimeout = new("--fixture-timeout") { Description = "Fixture generation timeout, seconds.", DefaultValueFactory = _ => 120 };
+    private readonly Option<int> _timeout = new("--timeout") { Description = "Per-probe hard timeout, seconds.", DefaultValueFactory = _ => 15, CustomParser = Whole };
+    private readonly Option<int> _fixtureTimeout = new("--fixture-timeout") { Description = "Fixture generation timeout, seconds.", DefaultValueFactory = _ => 120, CustomParser = Whole };
     private readonly Option<bool> _refresh = new("--refresh") { Description = "Ignore cached results for this fingerprint." };
     private readonly Option<string> _fixtures = new("--fixtures")
     {
@@ -206,11 +207,18 @@ internal sealed class HwProbeCommand
     /// <param name="name">Option name for the error message.</param>
     private static void RequirePositive(System.CommandLine.Parsing.OptionResult result, string name)
     {
-        if (result.GetValueOrDefault<int>() <= 0)
+        // A value that didn't parse already has its error; reading it would throw.
+        if (result.Tokens.Count > 0 && int.TryParse(result.Tokens[0].Value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var seconds) && seconds <= 0)
         {
             result.AddError($"{name} must be a positive number of seconds.");
         }
     }
+
+    /// <summary>Parses a whole number the same way in every culture; the default parser follows the current culture, and some don't take "-1".</summary>
+    /// <param name="result">The option's argument result.</param>
+    /// <returns>The number, or 0 with an error.</returns>
+    private static int Whole(System.CommandLine.Parsing.ArgumentResult result) =>
+        int.TryParse(result.Tokens[0].Value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var n) ? n : Error<int>(result, $"'{result.Tokens[0].Value}' isn't a whole number.");
 
     /// <summary>Binds the speed options.</summary>
     /// <param name="result">The parse result.</param>

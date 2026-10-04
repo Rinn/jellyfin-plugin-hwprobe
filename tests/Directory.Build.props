@@ -19,5 +19,6 @@
 
   <ItemGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
     <Compile Include="$(MSBuildThisFileDirectory)TestSupport/TestEnvironment.cs" Link="TestSupport/TestEnvironment.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestSupport/CultureScope.cs" Link="TestSupport/CultureScope.cs" />
   </ItemGroup>
 </Project>

@@ -81,7 +81,7 @@ public sealed class FfmpegRunner : IFfmpegRunner
     /// <summary>Builds start info with redirected stdio and the invocation's environment overrides.</summary>
     /// <param name="invocation">The invocation to launch.</param>
     /// <returns>The start info.</returns>
-    private static ProcessStartInfo CreateStartInfo(FfmpegInvocation invocation)
+    internal static ProcessStartInfo CreateStartInfo(FfmpegInvocation invocation)
     {
         var info = new ProcessStartInfo(invocation.ExecutablePath, invocation.Arguments)
         {
@@ -92,6 +92,9 @@ public sealed class FfmpegRunner : IFfmpegRunner
             RedirectStandardError = true,
         };
 
+        // Verdicts match stderr text such as strerror's "Permission denied" and parse numbers with dots; the server's
+        // locale could change both in libraries ffmpeg loads (drivers, OpenCL). An invocation can still override it.
+        info.Environment["LC_ALL"] = "C";
         foreach (var (name, value) in invocation.Environment)
         {
             if (value is null)

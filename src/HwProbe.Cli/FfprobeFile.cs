@@ -24,6 +24,9 @@ internal static class FfprobeFile
         }
 
         var start = new ProcessStartInfo(ffprobe) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+
+        // As FfmpegRunner does, so its messages and numbers don't follow the host's language.
+        start.Environment["LC_ALL"] = "C";
         foreach (var argument in new[] { "-v", "error", "-show_streams", "-show_format", "-of", "json", path })
         {
             start.ArgumentList.Add(argument);

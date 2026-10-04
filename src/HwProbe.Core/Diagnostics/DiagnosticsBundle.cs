@@ -138,7 +138,7 @@ public static partial class DiagnosticsBundle
         var result = run.Result;
         var ended = result.Status switch
         {
-            FfmpegRunStatus.Exited => $"exit {result.ExitCode}" + (result.Frames is { } frames ? $", {frames} frames" : string.Empty),
+            FfmpegRunStatus.Exited => string.Create(CultureInfo.InvariantCulture, $"exit {result.ExitCode}") + (result.Frames is { } frames ? string.Create(CultureInfo.InvariantCulture, $", {frames} frames") : string.Empty),
             FfmpegRunStatus.TimedOut => "timed out",
             _ => $"launch failed: {result.LaunchError}",
         };
