@@ -13,6 +13,9 @@ public sealed class FfmpegRunner : IFfmpegRunner
     // Pipes still open after this mean a descendant escaped the tree kill.
     private static readonly TimeSpan _drainGrace = TimeSpan.FromSeconds(5);
 
+    /// <summary>Gets the variables every launch starts from, before the invocation's own.</summary>
+    public static IReadOnlyDictionary<string, string> BaseEnvironment { get; } = new Dictionary<string, string>(StringComparer.Ordinal) { ["LC_ALL"] = "C" };
+
     /// <inheritdoc/>
     public async Task<FfmpegRunResult> RunAsync(FfmpegInvocation invocation, CancellationToken cancellationToken)
     {
@@ -98,7 +101,11 @@ public sealed class FfmpegRunner : IFfmpegRunner
 
         // Verdicts match stderr text such as strerror's "Permission denied" and parse numbers with dots; the server's
         // locale could change both in libraries ffmpeg loads (drivers, OpenCL). An invocation can still override it.
-        info.Environment["LC_ALL"] = "C";
+        foreach (var (name, value) in BaseEnvironment)
+        {
+            info.Environment[name] = value;
+        }
+
         foreach (var (name, value) in invocation.Environment)
         {
             if (value is null)

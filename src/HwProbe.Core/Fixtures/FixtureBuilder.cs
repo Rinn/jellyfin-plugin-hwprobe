@@ -146,7 +146,7 @@ public sealed partial class FixtureBuilder
         {
             FfmpegRunStatus.LaunchFailed => $"ffmpeg failed to launch: {result.LaunchError}",
             FfmpegRunStatus.TimedOut => "fixture generation timed out",
-            _ when result.ExitCode != 0 => $"ffmpeg exited {result.ExitCode}: {lastLine}",
+            _ when result.ExitCode != 0 => string.Create(CultureInfo.InvariantCulture, $"ffmpeg exited {result.ExitCode}: {lastLine}"),
             _ => "ffmpeg exited 0 but wrote no output",
         };
     }

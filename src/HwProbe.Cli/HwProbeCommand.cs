@@ -79,7 +79,7 @@ internal sealed class HwProbeCommand
         _fixtureTimeout.Validators.Add(r => RequirePositive(r, "--fixture-timeout"));
         _speedRepeats.Validators.Add(r =>
         {
-            if (r.GetValueOrDefault<int>() is < 1 or > 3)
+            if (Parsed(r) is < 1 or > 3)
             {
                 r.AddError("--speed-repeats must be 1, 2 or 3.");
             }
@@ -107,7 +107,7 @@ internal sealed class HwProbeCommand
         });
         _speedTimeLimit.Validators.Add(r =>
         {
-            if (r.GetValueOrDefault<int?>() is <= 0)
+            if (Parsed(r) is <= 0)
             {
                 r.AddError("--speed-time-limit must be a positive number of seconds.");
             }
@@ -207,12 +207,17 @@ internal sealed class HwProbeCommand
     /// <param name="name">Option name for the error message.</param>
     private static void RequirePositive(System.CommandLine.Parsing.OptionResult result, string name)
     {
-        // A value that didn't parse already has its error; reading it would throw.
-        if (result.Tokens.Count > 0 && int.TryParse(result.Tokens[0].Value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var seconds) && seconds <= 0)
+        if (Parsed(result) is <= 0)
         {
             result.AddError($"{name} must be a positive number of seconds.");
         }
     }
+
+    /// <summary>Returns the whole number given for an option, or null when none was given or it didn't parse.</summary>
+    /// <param name="result">The option result.</param>
+    /// <returns>The number, or null; a value that didn't parse already has its error, and reading it from the result would throw.</returns>
+    private static int? Parsed(System.CommandLine.Parsing.OptionResult result) =>
+        result.Tokens.Count > 0 && int.TryParse(result.Tokens[0].Value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var n) ? n : null;
 
     /// <summary>Parses a whole number the same way in every culture; the default parser follows the current culture, and some don't take "-1".</summary>
     /// <param name="result">The option's argument result.</param>

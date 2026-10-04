@@ -80,6 +80,8 @@ public sealed class HwProbeCommandTests
 
         Assert.NotEmpty(new HwProbeCommand().Root.Parse(["--fixture-timeout", "-1"]).Errors);
         Assert.NotEmpty(new HwProbeCommand().Root.Parse(["--timeout", "x"]).Errors);
+        Assert.NotEmpty(new HwProbeCommand().Root.Parse(["--speed-repeats", "x"]).Errors);
+        Assert.NotEmpty(new HwProbeCommand().Root.Parse(["--speed-time-limit", "x"]).Errors);
         Assert.Empty(new HwProbeCommand().Root.Parse(["--timeout", "30", "--speed-time-limit", "60"]).Errors);
     }
 

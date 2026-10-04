@@ -124,9 +124,12 @@ public static partial class DiagnosticsBundle
     {
         var header = new StringBuilder();
         header.Append(CultureInfo.InvariantCulture, $"# ffmpeg {run.Invocation.Arguments}\n");
-        if (run.Invocation.Environment.Count > 0)
+
+        // The runner's own variables come first, as it sets them, so the header shows the environment the stderr came from.
+        var environment = FfmpegRunner.BaseEnvironment.Where(e => !run.Invocation.Environment.ContainsKey(e.Key)).Select(e => KeyValuePair.Create(e.Key, (string?)e.Value)).Concat(run.Invocation.Environment).ToList();
+        if (environment.Count > 0)
         {
-            var variables = run.Invocation.Environment.OrderBy(e => e.Key, StringComparer.Ordinal).Select(e => e.Value is null ? $"-{e.Key}" : $"{e.Key}={e.Value}");
+            var variables = environment.OrderBy(e => e.Key, StringComparer.Ordinal).Select(e => e.Value is null ? $"-{e.Key}" : $"{e.Key}={e.Value}");
             header.Append(CultureInfo.InvariantCulture, $"# env: {string.Join(' ', variables)}\n");
         }
 
