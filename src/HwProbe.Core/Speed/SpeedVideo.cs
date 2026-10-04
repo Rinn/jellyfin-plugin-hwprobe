@@ -26,6 +26,9 @@ public sealed record SpeedVideo(string Key, string Name, FixtureSpec? Fixture, f
     /// <summary>Gets who holds the sample's rights, with the licence, or null.</summary>
     public string? CreditHolder { get; init; }
 
+    /// <summary>Gets the rights holder's site, named by its host in <see cref="CreditHolder"/>, or null.</summary>
+    public Uri? HolderUrl { get; init; }
+
     /// <summary>Gets the sample's title, e.g. <c>Tears of Steel</c>, or null.</summary>
     public string? Title { get; init; }
 

@@ -9,6 +9,9 @@ internal sealed class CatalogSample
     /// <summary>Gets who holds the rights, with the licence, as the page shows it beside the title, e.g. <c>Blender Foundation (mango.blender.org), CC BY 3.0</c>.</summary>
     public required string Holder { get; init; }
 
+    /// <summary>Gets the rights holder's site, linked where <see cref="Holder"/> names its host, or null.</summary>
+    public string? HolderUrl { get; init; }
+
     /// <summary>Gets the credit.</summary>
     public required string Credit { get; init; }
 

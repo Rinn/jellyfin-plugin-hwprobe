@@ -39,6 +39,7 @@ public sealed class CatalogTests
     [InlineData("  - { key: H265Crf, label: H.265 encoding CRF, server: H265Crf, range: [0, 51], lowerIsBetter: true }", "  - { key: H265Crf, label: x, range: [0, 51], switch: true }")]
     [InlineData("    qualityOrder: [bwdif, yadif]", "    qualityOrder: [bwdif, nnedi]")]
     [InlineData("defaultWhenTranscoding: Pause", "defaultWhenTranscoding: Wait")]
+    [InlineData("holderUrl: https://mango.blender.org/", "holderUrl: https://www.blender.org/")]
     [InlineData("  - { type: amf,", "  - { type: amd,")]
     [InlineData("  FullCuda: Full GPU pipeline (CUDA)\n", "")]
     [InlineData("defaultVideos: [live-action]", "defaultVideos: [live-action-8k]")]

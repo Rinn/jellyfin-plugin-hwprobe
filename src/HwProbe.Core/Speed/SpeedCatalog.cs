@@ -120,6 +120,7 @@ public static class SpeedCatalog
             Origin = origin,
             Credit = video.Sample?.Credit,
             CreditHolder = video.Sample?.Holder,
+            HolderUrl = video.Sample?.HolderUrl is { } site ? new Uri(site) : null,
             Title = video.Sample?.Title,
             LicenseUrl = video.Sample is null ? null : new Uri(video.Sample.License),
             SourceUrl = video.Sample is null ? null : new Uri(video.Sample.Source),

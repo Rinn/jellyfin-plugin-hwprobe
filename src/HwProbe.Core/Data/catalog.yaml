@@ -78,6 +78,7 @@ videos:
       title: Tears of Steel
       credit: Tears of Steel, Blender Foundation (mango.blender.org), CC BY 3.0, via Wikimedia Commons
       holder: Blender Foundation (mango.blender.org), CC BY 3.0
+      holderUrl: https://mango.blender.org/
       license: https://creativecommons.org/licenses/by/3.0/
       source: https://commons.wikimedia.org/wiki/File:Tears_of_Steel_in_4k_-_Official_Blender_Foundation_release.webm
       article: https://en.wikipedia.org/wiki/Tears_of_Steel
@@ -96,6 +97,7 @@ videos:
       title: Sintel
       credit: Sintel, Blender Foundation (durian.blender.org), CC BY 3.0, via Wikimedia Commons
       holder: Blender Foundation (durian.blender.org), CC BY 3.0
+      holderUrl: https://durian.blender.org/
       license: https://creativecommons.org/licenses/by/3.0/
       source: https://commons.wikimedia.org/wiki/File:Sintel_movie_4K.webm
       article: https://en.wikipedia.org/wiki/Sintel

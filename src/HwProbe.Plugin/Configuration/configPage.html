@@ -1414,12 +1414,19 @@
                     td.appendChild(external(v.Title, v.ArticleUrl));
                     td.appendChild(document.createTextNode(', ' + v.Origin + ' from '));
                     td.appendChild(external('Wikimedia Commons', v.SourceUrl));
-                    const credit = el('div', v.CreditHolder + ' (', 'hwprobe-small');
-                    const licence = el('a', 'licence', 'button-link');
-                    licence.href = v.LicenseUrl;
-                    licence.target = '_blank';
-                    licence.rel = 'noopener noreferrer';
-                    credit.appendChild(licence);
+                    const credit = el('div', null, 'hwprobe-small');
+                    // The holder's site is linked where the credit names its host.
+                    const host = v.HolderUrl ? new URL(v.HolderUrl).host : null;
+                    const at = host ? v.CreditHolder.indexOf(host) : -1;
+                    if (at === -1) {
+                        credit.appendChild(document.createTextNode(v.CreditHolder));
+                    } else {
+                        credit.appendChild(document.createTextNode(v.CreditHolder.slice(0, at)));
+                        credit.appendChild(external(host, v.HolderUrl));
+                        credit.appendChild(document.createTextNode(v.CreditHolder.slice(at + host.length)));
+                    }
+                    credit.appendChild(document.createTextNode(' ('));
+                    credit.appendChild(external('licence', v.LicenseUrl));
                     credit.appendChild(document.createTextNode(')'));
                     td.appendChild(credit);
                     return td;
