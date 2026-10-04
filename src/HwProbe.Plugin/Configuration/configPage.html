@@ -84,6 +84,9 @@
             #HwProbeConfigPage .hwprobe-variant td:first-child { padding-left: 1.2em; }
             #HwProbeConfigPage .hwprobe-small { font-size: 0.85em; }
             #HwProbeConfigPage .hwprobe-file { word-break: break-all; }
+            #HwProbeConfigPage th.hwprobe-sortable { cursor: pointer; user-select: none; }
+            #HwProbeConfigPage th.hwprobe-sortable[aria-sort="ascending"]::after { content: " \25B2"; font-size: 0.7em; }
+            #HwProbeConfigPage th.hwprobe-sortable[aria-sort="descending"]::after { content: " \25BC"; font-size: 0.7em; }
             #HwProbeConfigPage .hwprobe-emoji { font-size: 1em; line-height: 1; }
             #HwProbeConfigPage .selectContainer .hwprobe-notes { margin: 0 14px; padding-left: 1.4em; }
             #HwProbeConfigPage .hwprobe-progress { position: relative; width: 16em; }
@@ -432,6 +435,62 @@
                 }
 
                 // Working and not, in one layout: backend, device, status. Green works, red failed, grey doesn't apply here.
+                // Which column each sortable table is sorted by, kept across redraws: name -> [column, ascending].
+                const sortState = {};
+
+                // Clicking a header sorts the rows below it by that column, and again reverses it. A cell's data-sort, when set, is its value;
+                // numbers sort as numbers, and empty cells go last either way.
+                function sortable(table, name) {
+                    const header = [...table.rows].filter(r => r.querySelector('th')).pop();
+                    if (!header) {
+                        return table;
+                    }
+                    const value = (r, i) => {
+                        const c = r.cells[i];
+                        return c ? (c.dataset.sort !== undefined ? c.dataset.sort : c.textContent.trim()) : '';
+                    };
+                    const apply = (i, ascending) => {
+                        [...header.cells].forEach((c, j) => {
+                            if (j === i) {
+                                c.setAttribute('aria-sort', ascending ? 'ascending' : 'descending');
+                            } else {
+                                c.removeAttribute('aria-sort');
+                            }
+                        });
+                        const rows = [...table.rows].filter(r => !r.querySelector('th'));
+                        rows.sort((a, b) => {
+                            const x = value(a, i);
+                            const y = value(b, i);
+                            if (x === '' || y === '') {
+                                return (x === '') - (y === '');
+                            }
+                            const order = !isNaN(Number(x)) && !isNaN(Number(y)) ? Number(x) - Number(y) : x.localeCompare(y, undefined, { numeric: true });
+                            return ascending ? order : -order;
+                        });
+                        rows.forEach(r => table.appendChild(r));
+                        sortState[name] = [i, ascending];
+                    };
+                    [...header.cells].forEach((th, i) => {
+                        if (!th.textContent.trim()) {
+                            return;
+                        }
+                        th.classList.add('hwprobe-sortable');
+                        th.tabIndex = 0;
+                        const go = () => apply(i, th.getAttribute('aria-sort') !== 'ascending');
+                        th.addEventListener('click', go);
+                        th.addEventListener('keydown', e => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                go();
+                            }
+                        });
+                    });
+                    if (sortState[name] && sortState[name][0] < header.cells.length) {
+                        apply(sortState[name][0], sortState[name][1]);
+                    }
+                    return table;
+                }
+
                 function backendTable(rows) {
                     const table = el('table', null, 'hwprobe-backends');
                     row(table, [el('th'), el('th', 'Backend'), el('th', 'Device'), el('th', 'Status')]);
@@ -439,7 +498,7 @@
                         const markCell = state === 'works' ? emojiMark('\u2705', 'Works') : state === 'failed' ? emojiMark('\u274c', 'Failed') : spokenMark('NotTested', 'Not available');
                         row(table, [markCell, names[type] || type, breakable(device || '-'), resultCell(status, fix, state === 'works' ? '' : 'secondaryText')]);
                     }
-                    return table;
+                    return sortable(table, 'backends');
                 }
 
                 function notBuilt(type) {
@@ -824,6 +883,7 @@
                             }
                         }
                     }
+                    sortable(table, 'details');
                     // Five columns of ids and outcomes don't fit a phone, and breaking them mid-word reads worse than scrolling.
                     const scroll = el('div', null, 'hwprobe-scroll');
                     scroll.appendChild(table);
@@ -848,7 +908,7 @@
                         const g = grouped[code];
                         row(table, [resultCell(notes[code] || g.finding.message, g.finding.fix, ''), g.backends.join(', ')]);
                     }
-                    fold(results, 'Notes (' + codes.length + ')').appendChild(table);
+                    fold(results, 'Notes (' + codes.length + ')').appendChild(sortable(table, 'notes'));
                 }
 
                 // The configured backend, its result, the run state, and anything that needs doing now.
@@ -1466,6 +1526,8 @@
                         }
                         const speed = speedOf(x);
                         const speedText = speed ? speed.toFixed(1) + '\u00d7' : '\u2013';
+                        speedCell.dataset.sort = speed ? String(speed) : '';
+                        streams.dataset.sort = x.streams === null || x.streams === undefined ? '' : String(x.streams);
                         if (!speed) {
                             speedCell.textContent = speedText;
                         } else if (speedView === 'relative') {
@@ -1524,9 +1586,10 @@
                     const fastestOf = cells => Math.max(0, ...cells.filter(x => x && !x.pending).map(speedOf).filter(v => v));
 
                     const table = el('table', null, 'hwprobe-matrix');
-                    const columns = backends.length * per + 2;
+                    const columns = backends.length * per + 3;
                     if (per === 2) {
                         const top = el('tr');
+                        top.appendChild(el('th'));
                         top.appendChild(el('th'));
                         top.appendChild(el('th'));
                         for (const b of backends) {
@@ -1535,34 +1598,31 @@
                             top.appendChild(th);
                         }
                         table.appendChild(top);
-                        row(table, [el('th', 'Output'), el('th', 'Size')].concat(backends.flatMap(() => [el('th', 'Concurrent streams', 'hwprobe-num secondaryText'), el('th', 'Speed', 'hwprobe-num secondaryText')])));
+                        row(table, [el('th', 'Input'), el('th', 'Output'), el('th', 'Size')].concat(backends.flatMap(() => [el('th', 'Concurrent streams', 'hwprobe-num secondaryText'), el('th', 'Speed', 'hwprobe-num secondaryText')])));
                     } else {
-                        row(table, [el('th', 'Output'), el('th', 'Size')].concat(backends.map(b => el('th', columnName(b), 'hwprobe-num'))));
+                        row(table, [el('th', 'Input'), el('th', 'Output'), el('th', 'Size')].concat(backends.map(b => el('th', columnName(b), 'hwprobe-num'))));
                     }
-                    let video = null;
+                    let hasVariants = false;
                     for (const key of [...new Set(r.results.map(x => x.test))]) {
                         const base = backends.map(b => r.results.find(x => x.test === key && !x.variant && keyOf(x) === keyOf(b)));
                         const first = base.find(x => x) || r.results.find(x => x.test === key);
                         // Reports from before videos and outputs were recorded show their test's label alone.
-                        if (first.video && first.video !== video) {
-                            video = first.video;
-                            const name = el('td');
-                            name.colSpan = columns;
-                            name.appendChild(document.createTextNode(first.video + '  '));
-                            name.appendChild(el('span', first.input || '', 'secondaryText hwprobe-small'));
-                            const tr = el('tr', null, 'hwprobe-group');
-                            tr.appendChild(name);
-                            table.appendChild(tr);
+                        const input = el('td');
+                        input.dataset.sort = first.video || '';
+                        if (first.video) {
+                            input.appendChild(el('div', first.video));
+                            input.appendChild(el('div', first.input || '', 'secondaryText hwprobe-small'));
                         }
                         const best = bestOf(base);
                         const fastest = fastestOf(r.results.filter(x => x.test === key));
                         const sized = base.find(x => x && x.outputSize);
-                        row(table, [el('td', first.output || first.label || key), el('td', sized ? sized.outputSize : '', 'secondaryText')].concat(base.flatMap(x => cellsFor(x, best, null, fastest))));
+                        row(table, [input, el('td', first.output || first.label || key), el('td', sized ? sized.outputSize : '', 'secondaryText')].concat(base.flatMap(x => cellsFor(x, best, null, fastest))));
 
                         const variants = [...new Set(r.results.filter(x => x.test === key && x.variant).map(x => x.variant))];
                         if (!variants.length) {
                             continue;
                         }
+                        hasVariants = true;
                         const toggle = el('button', null, 'hwprobe-disclosure hwprobe-small secondaryText');
                         toggle.type = 'button';
                         const toggleRow = el('tr', null, 'hwprobe-variant');
@@ -1573,7 +1633,7 @@
                         table.appendChild(toggleRow);
                         const rows = variants.map(v => {
                             const cells = backends.map(b => r.results.find(x => x.test === key && x.variant === v && keyOf(x) === keyOf(b)));
-                            const tr = row(table, [el('td', v), el('td')].concat(cells.flatMap((x, i) => cellsFor(x, null, base[i], fastest))));
+                            const tr = row(table, [el('td'), el('td', v), el('td')].concat(cells.flatMap((x, i) => cellsFor(x, null, base[i], fastest))));
                             tr.className = 'hwprobe-variant';
                             return tr;
                         });
@@ -1588,6 +1648,10 @@
                             show();
                         });
                         show();
+                    }
+                    // Old reports' comparison rows belong under their row, so those tables keep their order.
+                    if (!hasVariants) {
+                        sortable(table, 'results-' + per);
                     }
                     const scroll = el('div', null, 'hwprobe-scroll');
                     scroll.appendChild(table);
