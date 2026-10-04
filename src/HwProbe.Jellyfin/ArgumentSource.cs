@@ -173,7 +173,8 @@ public sealed class ArgumentSource : IArgumentSource
             inputArgs = _helper.GetInputVideoHwaccelArgs(state, options);
 
             // Generates the hwaccel arguments again, so it stays inside the same environment snapshot.
-            if (cell.FullQuality)
+            // A probe cell has no source path (the probe names its clip itself), and GetInputArgument requires one.
+            if (cell.FullQuality && cell.SourcePath is not null)
             {
                 inputArgument = _helper.GetInputArgument(state, options, null);
             }
