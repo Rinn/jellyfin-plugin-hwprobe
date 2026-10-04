@@ -81,6 +81,17 @@ public sealed class ArgumentSourceTests
         Assert.Contains("volume=1.5", invariant, StringComparison.Ordinal);
     }
 
+    /// <summary>A low-power probe cell is built at a real bitrate, from a probe clip without audio, as a speed cell is.</summary>
+    [Fact]
+    public void FullQualityProbeCellBuilds()
+    {
+        var cell = _smoke with { FullQuality = true, VideoBitrate = 8_000_000 };
+
+        var args = Build(HwType.none, null, cell);
+
+        Assert.Contains("8000000", args.EncoderArgs, StringComparison.Ordinal);
+    }
+
     /// <summary>Encode-only VideoToolbox emits the device init without a hardware decoder.</summary>
     [Fact(Skip = "Requires macOS: EncodingHelper only emits VideoToolbox args there.", SkipUnless = nameof(TestEnvironment.IsMacOS), SkipType = typeof(TestEnvironment))]
     public void VideoToolboxEncodeOnly()
