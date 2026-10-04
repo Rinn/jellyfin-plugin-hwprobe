@@ -17,7 +17,7 @@ import time
 import zipfile
 
 # Third-party assemblies the plugin zip carries; Jellyfin provides the rest. scripts/notices.py lists their licences.
-PLUGIN_LIBRARIES = ["YamlDotNet.dll"]
+PLUGIN_LIBRARIES = ["Meziantou.Framework.Win32.Jobs.dll", "YamlDotNet.dll"]
 CLI_RIDS = ["linux-x64", "linux-arm64", "osx-arm64", "win-x64", "win-arm64"]
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

@@ -9,4 +9,8 @@ public sealed record FfmpegInvocation(
     string ExecutablePath,
     string Arguments,
     IReadOnlyDictionary<string, string?> Environment,
-    TimeSpan Timeout);
+    TimeSpan Timeout)
+{
+    /// <summary>Gets a value indicating whether the run's CPU time, peak memory, and GPU engine time are measured.</summary>
+    public bool MeasureResources { get; init; }
+}

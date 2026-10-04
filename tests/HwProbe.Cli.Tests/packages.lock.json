@@ -380,6 +380,7 @@
       "Jellyfin.Plugin.HwProbe.Core": {
         "type": "Project",
         "dependencies": {
+          "Meziantou.Framework.Win32.Jobs": "[4.0.3, )",
           "YamlDotNet": "[18.1.0, )"
         }
       },
@@ -413,6 +414,12 @@
           "Jellyfin.Data": "12.1.0",
           "Jellyfin.Extensions": "12.1.0"
         }
+      },
+      "Meziantou.Framework.Win32.Jobs": {
+        "type": "CentralTransitive",
+        "requested": "[4.0.3, )",
+        "resolved": "4.0.3",
+        "contentHash": "DpOFyclPYbmayan0EEbEQOGSt0n8fcjoD3HdwB+PPyWFhepsD8l9FGU/obNiI8eyq5G4Gy7ABC2W/sfKjBKpbQ=="
       },
       "System.CommandLine": {
         "type": "CentralTransitive",

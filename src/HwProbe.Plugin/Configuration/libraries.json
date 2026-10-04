@@ -1,5 +1,12 @@
 [
   {
+    "Name": "Meziantou.Framework.Win32.Jobs",
+    "Version": "4.0.3",
+    "License": "MIT",
+    "LicenseUrl": "https://www.nuget.org/packages/Meziantou.Framework.Win32.Jobs/4.0.3/license",
+    "Url": "https://github.com/meziantou/Meziantou.Framework"
+  },
+  {
     "Name": "YamlDotNet",
     "Version": "18.1.0",
     "License": "MIT",

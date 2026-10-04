@@ -62,11 +62,11 @@ trap 'podman rm -f --ignore "$name" "$repo" >/dev/null; podman network rm "$net"
 case "$install" in
     copy)
         mkdir -p "$work/config/plugins/HwProbe_$version"
-        cp "$work"/publish/Jellyfin.Plugin.HwProbe*.dll "$work"/publish/YamlDotNet.dll "$work/config/plugins/HwProbe_$version/"
+        cp "$work"/publish/Jellyfin.Plugin.HwProbe*.dll "$work"/publish/YamlDotNet.dll "$work"/publish/Meziantou.Framework.Win32.Jobs.dll "$work/config/plugins/HwProbe_$version/"
         ;;
     repository)
         zip="hwprobe-plugin_$version.zip"
-        (cd "$work/publish" && zip -q "$work/repo/$zip" Jellyfin.Plugin.HwProbe*.dll YamlDotNet.dll)
+        (cd "$work/publish" && zip -q "$work/repo/$zip" Jellyfin.Plugin.HwProbe*.dll YamlDotNet.dll Meziantou.Framework.Win32.Jobs.dll)
         python3 "$root/scripts/manifest.py" --build-yaml "$root/build.yaml" --zip "$work/repo/$zip" \
             --version "$version" --source-url "http://$repo:8000/$zip" --out "$work/repo/manifest.json"
         podman network create "$net" >/dev/null

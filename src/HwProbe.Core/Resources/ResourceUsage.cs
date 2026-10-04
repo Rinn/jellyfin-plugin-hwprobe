@@ -1,0 +1,11 @@
+namespace Jellyfin.Plugin.HwProbe.Core.Resources;
+
+/// <summary>What one ffmpeg run used, as far as the platform reports it.</summary>
+/// <param name="Seconds">Wall-clock time the figures cover.</param>
+/// <param name="CpuSeconds">CPU time across all cores, or null when unavailable.</param>
+/// <param name="PeakMemoryBytes">The most memory held at once, or null when unavailable.</param>
+public sealed record ResourceUsage(double Seconds, double? CpuSeconds, long? PeakMemoryBytes)
+{
+    /// <summary>Gets the seconds each GPU engine was busy, by the engine's name as the platform gives it (e.g. <c>VideoDecode</c>, <c>video</c>); null when unavailable.</summary>
+    public IReadOnlyDictionary<string, double>? GpuSeconds { get; init; }
+}

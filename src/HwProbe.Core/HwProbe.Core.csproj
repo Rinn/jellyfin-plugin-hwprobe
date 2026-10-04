@@ -3,6 +3,8 @@
   <PropertyGroup>
     <AssemblyName>Jellyfin.Plugin.HwProbe.Core</AssemblyName>
     <RootNamespace>Jellyfin.Plugin.HwProbe.Core</RootNamespace>
+    <!-- The LibraryImport source generator emits unsafe marshalling stubs for the resource monitors' libc and libproc calls. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Meziantou.Framework.Win32.Jobs" />
     <PackageReference Include="YamlDotNet" />
   </ItemGroup>
 

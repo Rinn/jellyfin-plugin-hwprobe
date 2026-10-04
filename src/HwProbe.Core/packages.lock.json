@@ -2,6 +2,12 @@
   "version": 2,
   "dependencies": {
     "net10.0": {
+      "Meziantou.Framework.Win32.Jobs": {
+        "type": "Direct",
+        "requested": "[4.0.3, )",
+        "resolved": "4.0.3",
+        "contentHash": "DpOFyclPYbmayan0EEbEQOGSt0n8fcjoD3HdwB+PPyWFhepsD8l9FGU/obNiI8eyq5G4Gy7ABC2W/sfKjBKpbQ=="
+      },
       "Microsoft.VisualStudio.Threading.Analyzers": {
         "type": "Direct",
         "requested": "[18.7.23, )",

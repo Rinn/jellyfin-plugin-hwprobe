@@ -38,6 +38,10 @@ public sealed record SpeedResult(HwType Type, string Device, string Test, string
     /// <summary>Gets the size Jellyfin makes, e.g. <c>720p</c>, or null for a decode test or when not measured.</summary>
     public string? OutputSize { get; init; }
 
+    /// <summary>Gets what one copy used: CPU time, peak memory, and GPU engine time, as far as the platform reports them; null when not measured.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Resources.ResourceUsage? Resources { get; init; }
+
     /// <summary>Gets a hash of the ffmpeg command measured, or null when nothing ran; equal hashes mean a setting didn't change the command.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Command { get; init; }
