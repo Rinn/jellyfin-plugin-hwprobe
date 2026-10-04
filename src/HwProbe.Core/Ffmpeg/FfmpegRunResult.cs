@@ -15,4 +15,8 @@ public sealed record FfmpegRunResult(
     string Stderr,
     long? Frames,
     TimeSpan Duration,
-    string? LaunchError);
+    string? LaunchError)
+{
+    /// <summary>Gets when progress was first and last reported, or null when no report had frames done.</summary>
+    public FrameTiming? Timing { get; init; }
+}

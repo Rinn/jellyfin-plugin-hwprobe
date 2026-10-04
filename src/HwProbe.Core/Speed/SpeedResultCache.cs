@@ -11,7 +11,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 public sealed class SpeedResultCache(string directory)
 {
     /// <summary>The way measurements are taken; bump it when SpeedMeter or the command wrapper changes what a measurement reports, so earlier ones aren't reused. Other plugin changes don't matter: the command is keyed.</summary>
-    public const int MeasurementVersion = 1;
+    public const int MeasurementVersion = 2;
 
     /// <summary>Gets where the measurements are kept.</summary>
     public string Directory { get; } = directory;
