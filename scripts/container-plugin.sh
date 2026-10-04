@@ -142,7 +142,7 @@ check "ffmpeg source" Server "$(printf "%s" "$report" | json 'j["ffmpeg"]["sourc
 check "backends reported" True "$(printf "%s" "$report" | json 'len(j["backends"]) > 0')"
 curl -sf "$base/HwProbe/Diagnostics" -H "$h" -o "$work/diagnostics.zip"
 check "diagnostics zip" True "$(python3 -c "import sys,zipfile; n=zipfile.ZipFile(sys.argv[1]).namelist(); print('report.json' in n and 'ffmpeg/version.txt' in n and any(x.startswith('stderr/') for x in n))" "$work/diagnostics.zip")"
-check "catalog listed" True "$(curl -sf "$base/HwProbe/Catalog" -H "$h" | json 'any(v["Key"] == "pattern" and v["Default"] for v in j["Videos"]) and any(o["Key"] == "decode" for o in j["Outputs"]) and j["Backends"][0]["Type"] == "amf" and j["Tiers"]["FullOpencl"] != ""')"
+check "catalog listed" True "$(curl -sf "$base/HwProbe/Catalog" -H "$h" | json 'any(v["Key"] == "drama" and v["Default"] for v in j["Videos"]) and any(o["Key"] == "decode" for o in j["Outputs"]) and j["Backends"][0]["Type"] == "amf" and j["Tiers"]["FullOpencl"] != ""')"
 check "speed with an unknown video" 400 "$(code -X POST "$base/HwProbe/Speed" -H "$h" -H 'Content-Type: application/json' -d '{"Method":"Quick","Videos":["nope"],"Outputs":[]}')"
 check "start speed run" 202 "$(code -X POST "$base/HwProbe/Speed" -H "$h" -H 'Content-Type: application/json' -d '{"Method":"Quick","Videos":["pattern"],"Outputs":["decode"]}')"
 state=Running
