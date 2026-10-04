@@ -15,24 +15,11 @@ public static class SpeedSuites
     /// <param name="processorCount">The server's logical CPU count, which bounds the thread limits.</param>
     /// <param name="server">The server's settings; when a suite varies one setting and none of its steps is the server's value, that value is added as a last step, since suggestions compare against it. Null leaves the steps as they are.</param>
     /// <param name="hardware">The hardware backend the suite runs on, which leaves out steps for other backends; null keeps every step.</param>
-    /// <returns>The runs.</returns>
+    /// <returns>The runs, each with the suite's shared settings under its own.</returns>
     public static IReadOnlyList<SuiteStep> Steps(CatalogSuite suite, int processorCount, SpeedSettings? server = null, HwType? hardware = null)
     {
-        var steps = CatalogSteps(suite, processorCount, hardware);
-        var keys = steps.SelectMany(s => s.Options.Keys).Distinct(StringComparer.Ordinal).ToList();
-        if (server is null || keys is not [var key] || steps.Any(s => !s.Options.ContainsKey(key)) || !SpeedAdvisor.Settings.Contains(key))
-        {
-            return steps;
-        }
-
-        var value = SpeedAdvisor.ValueOf(server, key);
-        if (steps.Any(s => s.Options[key] == value) || Catalog.Default.Options.FirstOrDefault(o => o.Key == key) is not { } option || !option.Takes(value))
-        {
-            return steps;
-        }
-
-        var label = option.Choices?.FirstOrDefault(c => c.Key == value)?.Label ?? value;
-        return [.. steps, new SuiteStep($"{label} ({Catalog.Default.Labels["ServerSettingAfter"]})", new Dictionary<string, string>(StringComparer.Ordinal) { [key] = value }, suite.Videos, suite.Outputs)];
+        ArgumentNullException.ThrowIfNull(suite);
+        return [.. VariedSteps(suite, processorCount, server, hardware).Select(s => s with { Options = suite.Options.Where(o => !s.Options.ContainsKey(o.Key)).Concat(s.Options).ToDictionary(StringComparer.Ordinal) })];
     }
 
     /// <summary>Returns the backends a suite runs on.</summary>
@@ -66,6 +53,31 @@ public static class SpeedSuites
             "lowPower" => configured == HwType.qsv && report.Backends.Any(b => b.Type == HwType.qsv && b.Encode.Any(e => e.Key.EndsWith("_lowpower", StringComparison.Ordinal) && e.Value == ProbeOutcome.Pass)),
             _ => true,
         };
+    }
+
+    /// <summary>Returns a suite's runs with only the settings each varies, plus the server's value of a varied setting none of them is.</summary>
+    /// <param name="suite">The suite.</param>
+    /// <param name="processorCount">The server's logical CPU count.</param>
+    /// <param name="server">The server's settings, or null.</param>
+    /// <param name="hardware">The hardware backend, or null to keep every step.</param>
+    /// <returns>The runs.</returns>
+    private static IReadOnlyList<SuiteStep> VariedSteps(CatalogSuite suite, int processorCount, SpeedSettings? server, HwType? hardware)
+    {
+        var steps = CatalogSteps(suite, processorCount, hardware);
+        var keys = steps.SelectMany(s => s.Options.Keys).Distinct(StringComparer.Ordinal).ToList();
+        if (server is null || keys is not [var key] || steps.Any(s => !s.Options.ContainsKey(key)) || !SpeedAdvisor.Settings.Contains(key))
+        {
+            return steps;
+        }
+
+        var value = SpeedAdvisor.ValueOf(server, key);
+        if (steps.Any(s => s.Options[key] == value) || Catalog.Default.Options.FirstOrDefault(o => o.Key == key) is not { } option || !option.Takes(value))
+        {
+            return steps;
+        }
+
+        var label = option.Choices?.FirstOrDefault(c => c.Key == value)?.Label ?? value;
+        return [.. steps, new SuiteStep($"{label} ({Catalog.Default.Labels["ServerSettingAfter"]})", new Dictionary<string, string>(StringComparer.Ordinal) { [key] = value }, suite.Videos, suite.Outputs)];
     }
 
     /// <summary>Returns a suite's runs as the catalog defines them.</summary>
