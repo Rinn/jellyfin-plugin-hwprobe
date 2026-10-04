@@ -1481,7 +1481,7 @@
                     sourceLines(sources, update);
                     form.appendChild(el('h3', 'Output', 'sectionTitle'));
                     multiSelect(form, 'Codec', speedCodecs.map(c => ({ key: c.Key, text: c.Name })).concat(speedOutputs.filter(o => o.DecodeOnly).map(o => ({ key: o.Key, text: o.Label }))), chosenCodecs, () => update())
-                        .appendChild(el('div', 'Every selected codec at every selected quality is made from every selected input, as a player asks for it.', 'fieldDescription'));
+                        .appendChild(el('div', 'Every selected codec at every selected quality is processed for every selected input.', 'fieldDescription'));
                     multiSelect(form, 'Quality', speedQualities.map(q => ({ key: q.Key, text: q.Name })), chosenQualities, () => update())
                         .appendChild(el('div', 'The player\u2019s quality choices. Jellyfin picks the output size from the quality and codec; the results show it.', 'fieldDescription'));
 
