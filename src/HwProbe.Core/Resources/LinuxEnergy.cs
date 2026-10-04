@@ -18,7 +18,7 @@ internal static class LinuxEnergy
             foreach (var zone in Directory.EnumerateDirectories(Powercap, "intel-rapl:*").Where(z => Path.GetFileName(z).Count(c => c == ':') == 1))
             {
                 var energy = Path.Combine(zone, "energy_uj");
-                if (File.ReadAllText(Path.Combine(zone, "name")).Trim().StartsWith("package", StringComparison.Ordinal) && Microjoules(energy) is not null)
+                if (Name(zone)?.StartsWith("package", StringComparison.Ordinal) == true && Microjoules(energy) is not null)
                 {
                     var wrap = Microjoules(Path.Combine(zone, "max_energy_range_uj"));
                     yield return new EnergySource("Cpu", wrap * JoulesPerMicrojoule, () => Microjoules(energy) * JoulesPerMicrojoule);
@@ -43,6 +43,21 @@ internal static class LinuxEnergy
                     yield return new EnergySource("Gpu", null, () => Microjoules(energy) * JoulesPerMicrojoule);
                 }
             }
+        }
+    }
+
+    /// <summary>Reads a powercap zone's name.</summary>
+    /// <param name="zone">The zone's folder.</param>
+    /// <returns>The name, or null when unreadable, so one zone doesn't hide the others.</returns>
+    private static string? Name(string zone)
+    {
+        try
+        {
+            return File.ReadAllText(Path.Combine(zone, "name")).Trim();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
         }
     }
 

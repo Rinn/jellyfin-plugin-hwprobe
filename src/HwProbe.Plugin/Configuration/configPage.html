@@ -1887,7 +1887,6 @@
                         .sort((a, b) => b[1] - a[1]);
                 }
 
-                // A result's cells in the Resource Usage view: CPU cores in use, peak memory, the busiest GPU engine, and peak GPU memory; each tooltip lists every figure.
                 // Each resource the view can show: whether a result has it, its sort value, and its text.
                 const resourceKinds = {
                     Cpu: { has: r => r.cpuSeconds !== null && r.cpuSeconds !== undefined, value: r => r.cpuSeconds / r.seconds, text: v => v.toFixed(1) + ' cores' },
@@ -1904,7 +1903,8 @@
 
                 // Watts above idle over every energy meter.
                 function totalWatts(r) {
-                    return Object.keys(r.joules).reduce((sum, d) => sum + Math.max(0, r.joules[d] / r.seconds - ((r.idleWatts || {})[d] || 0)), 0);
+                    // Only domains with an idle reading count, as the server's figures do.
+                    return r.seconds > 0 && r.idleWatts ? Object.keys(r.joules).filter(d => d in r.idleWatts).reduce((sum, d) => sum + Math.max(0, r.joules[d] / r.seconds - r.idleWatts[d]), 0) : 0;
                 }
 
                 // A result's cells in the Resource Usage view, one per measured resource; each tooltip lists every figure.
@@ -2010,7 +2010,7 @@
                         const speedCell = el('td', null, 'hwprobe-num' + tint);
                         const cells = per === 2 ? [streams, speedCell] : [speedCell];
                         if (resources) {
-                            return kinds.length ? resourceCells(x, x === current, kinds) : [el('td', '\u2013', 'hwprobe-num secondaryText')];
+                            return kinds.length ? resourceCells(x, x === current, kinds) : [el('td', x && x.pending ? (x === current ? 'Measuring\u2026' : '\u2026') : '\u2013', 'hwprobe-num secondaryText')];
                         }
 
                         if (!x) {
@@ -2083,7 +2083,8 @@
 
                     const table = el('table', null, 'hwprobe-matrix hwprobe-full');
                     const columns = backends.length * per + 3;
-                    if (per > 1) {
+                    // The Resource Usage view always names its columns, even when only one resource was measured.
+                    if (per > 1 || resources) {
                         const top = el('tr');
                         top.appendChild(el('th'));
                         top.appendChild(el('th'));

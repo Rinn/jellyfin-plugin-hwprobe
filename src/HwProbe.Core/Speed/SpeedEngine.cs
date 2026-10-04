@@ -461,12 +461,14 @@ public sealed class SpeedEngine : IDisposable
                     : test.DecodeOnly ? (softwareDecode ? "decoded" : null)
                     : args.HardwareEncoder ? null
                     : "encoded";
+
+                // Decoding the probe found failing is named as the reason, as the advice to untick that codec is.
                 if (softwareStep is not null)
                 {
-                    return new SpeedResult(type, device, test.Key, string.Empty, null, null, false, $"Not measured: {softwareStep} in software with this backend.");
+                    return new SpeedResult(type, device, test.Key, string.Empty, null, null, false, softwareStep == "decoded" && !cell.HardwareDecode ? Data.Catalog.Text("noteDecodeFailed") : $"Not measured: {softwareStep} in software with this backend.");
                 }
 
-                var note = softwareDecode ? "Decoded in software with this backend, then encoded on the GPU." : null;
+                var note = !softwareDecode ? null : Data.Catalog.Text(cell.HardwareDecode ? "noteSoftwareDecode" : "noteSoftwareDecodeFailed");
                 var width = Math.Min(args.OutputWidth ?? test.Width, test.Width);
                 var size = test.DecodeOnly ? null : SpeedTestText.Resolution(width, test.Height * width / test.Width, false);
 

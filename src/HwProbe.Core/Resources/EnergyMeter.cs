@@ -7,7 +7,12 @@ internal static class EnergyMeter
     // Long enough to settle a GPU's clocks from the previous run, short enough not to stretch a test much.
     private static readonly TimeSpan _idle = TimeSpan.FromSeconds(1);
 
+    // A copy measured again right after another reads its idle while the GPU is still busy, so one reading serves a while.
+    private static readonly TimeSpan _idleReuse = TimeSpan.FromSeconds(30);
+
     private static readonly Lazy<List<IEnergySource>> _sources = new(Discover);
+    private static readonly Lock _idleGate = new();
+    private static (Dictionary<string, double>? Watts, long At) _lastIdle;
 
     /// <summary>Gets a value indicating whether any meter is readable.</summary>
     public static bool Available => _sources.Value.Count > 0;
@@ -59,9 +64,23 @@ internal static class EnergyMeter
             return null;
         }
 
+        lock (_idleGate)
+        {
+            if (_lastIdle.Watts is { } recent && System.Diagnostics.Stopwatch.GetElapsedTime(_lastIdle.At) < _idleReuse)
+            {
+                return recent;
+            }
+        }
+
         var start = Read();
         await Task.Delay(_idle, cancellationToken);
-        return Used(start, Read())?.ToDictionary(d => d.Key, d => d.Value / _idle.TotalSeconds, StringComparer.Ordinal);
+        var watts = Used(start, Read())?.ToDictionary(d => d.Key, d => d.Value / _idle.TotalSeconds, StringComparer.Ordinal);
+        lock (_idleGate)
+        {
+            _lastIdle = (watts, System.Diagnostics.Stopwatch.GetTimestamp());
+        }
+
+        return watts;
     }
 
     /// <summary>Returns the energy between two reads of one counter, allowing for one wrap.</summary>

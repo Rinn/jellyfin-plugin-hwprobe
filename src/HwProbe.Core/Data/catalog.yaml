@@ -802,6 +802,10 @@ texts:
   findingVulkanUnprobed: Vulkan DRM interop is not probed, so FullVulkan is never reported.
   findingUnvalidated: "hwprobe's {backend} checks have not been validated on real hardware."
   findingOpenclUnavailable: "OpenCL doesn't start, but Jellyfin still picks its OpenCL pipeline because this ffmpeg was built with OpenCL, so OpenCL tone-mapping fails. {remedy}"
+  # Performance test notes.
+  noteSoftwareDecode: Decoded in software with this backend, then encoded on the GPU.
+  noteSoftwareDecodeFailed: Decoded in software, as the probe found this GPU can't decode it, then encoded on the GPU.
+  noteDecodeFailed: "Not measured: the probe found this GPU can't decode it."
   lowPowerOptionH264: Intel Low-Power H.264 hardware encoder
   lowPowerOptionHevc: Intel Low-Power HEVC hardware encoder
 

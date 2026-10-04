@@ -54,7 +54,8 @@ public static class ResourceComparison
                 continue;
             }
 
-            if (mine > theirs * (1 + Catalog.Default.Advice.ResourceMargin) && mine - theirs > floor)
+            // Power is whole-device and its idle reading can run high after a busy run, so it only ever counts as a saving.
+            if (resource != "Power" && mine > theirs * (1 + Catalog.Default.Advice.ResourceMargin) && mine - theirs > floor)
             {
                 return [];
             }

@@ -23,8 +23,8 @@ public sealed record ResourceUsage(double Seconds, double? CpuSeconds, long? Pea
     public IReadOnlyDictionary<string, double>? IdleWatts { get; init; }
 
     /// <summary>Returns each domain's average power over the run above its idle reading, in watts.</summary>
-    /// <returns>Watts by domain, or empty without energy figures.</returns>
+    /// <returns>Watts by domain that has both readings, or empty without them.</returns>
     public IReadOnlyDictionary<string, double> WattsAboveIdle() =>
-        Joules is null || Seconds <= 0 ? new Dictionary<string, double>(StringComparer.Ordinal)
-        : Joules.ToDictionary(j => j.Key, j => Math.Max(0, (j.Value / Seconds) - (IdleWatts?.GetValueOrDefault(j.Key) ?? 0)), StringComparer.Ordinal);
+        Joules is null || IdleWatts is null || Seconds <= 0 ? new Dictionary<string, double>(StringComparer.Ordinal)
+        : Joules.Where(j => IdleWatts.ContainsKey(j.Key)).ToDictionary(j => j.Key, j => Math.Max(0, (j.Value / Seconds) - IdleWatts[j.Key]), StringComparer.Ordinal);
 }
