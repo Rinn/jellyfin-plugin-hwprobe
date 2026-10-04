@@ -86,6 +86,7 @@ public sealed partial class ProbeService : IDisposable
         FixturesDirectory = ServerEngineOptions(mediaEncoder, paths).FixturesDirectory;
         SpeedResultsDirectory = SpeedEngine.ResultCacheFor(ServerEngineOptions(mediaEncoder, paths)).Directory;
         ReportCacheDirectory = ServerEngineOptions(mediaEncoder, paths).ReportCacheDirectory;
+        LogDirectory = paths.LogDirectoryPath;
     }
 
     /// <summary>Initializes a new instance of the <see cref="ProbeService"/> class with injected behaviour.</summary>
@@ -163,6 +164,9 @@ public sealed partial class ProbeService : IDisposable
 
     /// <summary>Gets where measurements are saved for reuse, or null when unset.</summary>
     internal string? SpeedResultsDirectory { get; init; }
+
+    /// <summary>Gets Jellyfin's log folder, whose HwProbe entries the diagnostics zip includes, or null.</summary>
+    internal string? LogDirectory { get; init; }
 
     /// <summary>Gets where probe reports are cached by fingerprint, or null when this service doesn't probe the server.</summary>
     internal string? ReportCacheDirectory { get; init; }
@@ -417,7 +421,13 @@ public sealed partial class ProbeService : IDisposable
 
         var latest = ReportStore.Deserialize(json);
         var bundled = await DiagnosticsBundle.ReadReportAsync(bytes, cancellationToken);
-        return bundled is not null && bundled.GeneratedUtc == latest?.GeneratedUtc ? bytes : null;
+        if (bundled is null || bundled.GeneratedUtc != latest?.GeneratedUtc)
+        {
+            return null;
+        }
+
+        // Read when downloaded, so it holds what happened since the probe too.
+        return await DiagnosticsBundle.WithFileAsync(bytes, "jellyfin.log", await PluginLog.ReadAsync(LogDirectory, cancellationToken), cancellationToken);
     }
 
     /// <summary>Lists the saved speed runs, newest first.</summary>

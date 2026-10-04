@@ -105,6 +105,26 @@ public static partial class DiagnosticsBundle
         }
     }
 
+    /// <summary>Returns a copy of a bundle with a text file added, such as log lines read when it's downloaded.</summary>
+    /// <param name="zip">The bundle.</param>
+    /// <param name="name">The file's name in the zip.</param>
+    /// <param name="text">Its contents.</param>
+    /// <param name="cancellationToken">Cancels the write.</param>
+    /// <returns>The new bundle.</returns>
+    public static async Task<byte[]> WithFileAsync(byte[] zip, string name, string text, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(zip);
+        using var stream = new MemoryStream();
+        await stream.WriteAsync(zip, cancellationToken);
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Update, leaveOpen: true))
+        {
+            archive.GetEntry(name)?.Delete();
+            await AddAsync(archive, name, text, cancellationToken);
+        }
+
+        return stream.ToArray();
+    }
+
     /// <summary>Returns the corpus file name for a capability listing, as <c>ScriptedFfmpegRunner.FromCorpus</c> reads them.</summary>
     /// <param name="arguments">The launch's arguments.</param>
     /// <returns>e.g. <c>hwaccels</c> or <c>h-filter-scale_cuda</c>; null when the launch isn't a listing.</returns>
