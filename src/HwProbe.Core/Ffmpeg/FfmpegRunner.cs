@@ -90,6 +90,10 @@ public sealed class FfmpegRunner : IFfmpegRunner
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+
+            // ffmpeg writes UTF-8 to a pipe on every platform; the console code page (850 on a Windows PC tested) doesn't apply.
+            StandardOutputEncoding = System.Text.Encoding.UTF8,
+            StandardErrorEncoding = System.Text.Encoding.UTF8,
         };
 
         // Verdicts match stderr text such as strerror's "Permission denied" and parse numbers with dots; the server's
