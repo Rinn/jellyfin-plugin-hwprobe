@@ -1073,7 +1073,7 @@
                     ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Cache/Contents'), dataType: 'json' }).then(entries => {
                         const bytes = entries.reduce((sum, e) => sum + e.Bytes, 0);
                         const line = el('div', null, 'hwprobe-row');
-                        line.appendChild(el('span', 'Cache: ' + sizeText(bytes) + ' in ' + entries.length + ' file' + (entries.length === 1 ? '' : 's'), 'secondaryText'));
+                        line.appendChild(el('span', sizeText(bytes) + ' in ' + entries.length + ' file' + (entries.length === 1 ? '' : 's'), 'secondaryText'));
                         div.appendChild(line);
                         if (!entries.length) {
                             return;
