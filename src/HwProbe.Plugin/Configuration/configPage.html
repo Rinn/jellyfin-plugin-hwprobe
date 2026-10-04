@@ -1777,9 +1777,9 @@
                         line.appendChild(document.createTextNode(' ' + note));
                         div.appendChild(line);
                     });
-                    // Only what this table shows.
-                    if (backends.length > 1) {
-                        div.appendChild(el('div', values && counted ? 'The highlighted cell keeps up with the most concurrent streams, then is the fastest, for the row.' : 'The highlighted cell is the fastest for the row.', 'fieldDescription'));
+                    // The Values view ranks by streams first, which the highlight alone doesn't show.
+                    if (backends.length > 1 && values && counted) {
+                        div.appendChild(el('div', 'The highlighted cell keeps up with the most concurrent streams, then is the fastest, for the row.', 'fieldDescription'));
                     }
 
                     const credits = new Map();
