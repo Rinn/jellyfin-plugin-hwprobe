@@ -19,6 +19,10 @@ public static class LowPowerAdvice
     /// <summary>Jellyfin's guide to setting up low-power mode on Linux (<c>intelLowPowerGuide</c> in catalog.yaml).</summary>
     public static readonly Uri Guide = new(Data.Catalog.Default.Links["intelLowPowerGuide"]);
 
+    /// <summary>Gets the remedy when the encoder opened in low-power mode but dropped it for Jellyfin's settings, which no firmware change helps.</summary>
+    /// <remarks>jellyfin-ffmpeg's qsvenc turns low power off when "some encoding parameters are not supported under Low power mode" (debian/patches/0071). On a Gen 9 (Apollo Lake) NAS it was the bitrate target.</remarks>
+    public static string Dropped => "Low power doesn't work with the bitrate Jellyfin sets, so ffmpeg uses normal mode.";
+
     /// <summary>Returns the remedy for a codec whose low-power encode fails.</summary>
     /// <param name="codec">The output codec, e.g. <c>hevc</c>.</param>
     /// <param name="os">The host OS.</param>
@@ -67,8 +71,9 @@ public static class LowPowerAdvice
     /// <param name="inContainer">Whether the probe ran in a container.</param>
     /// <param name="enableGuc">The i915 <c>enable_guc</c> value, or null.</param>
     /// <param name="support">The low-power encoders the device's generation has.</param>
+    /// <param name="dropped">The output codecs whose low-power encode opened and then fell back to normal mode for Jellyfin's settings, or null.</param>
     /// <returns>One finding per codec that has both results.</returns>
-    public static IEnumerable<Finding> Findings(HwType type, string device, IReadOnlyDictionary<string, ProbeOutcome> encode, HostOs os, bool inContainer, string? enableGuc, LowPowerSupport support)
+    public static IEnumerable<Finding> Findings(HwType type, string device, IReadOnlyDictionary<string, ProbeOutcome> encode, HostOs os, bool inContainer, string? enableGuc, LowPowerSupport support, IReadOnlySet<string>? dropped = null)
     {
         ArgumentNullException.ThrowIfNull(encode);
 
@@ -94,7 +99,11 @@ public static class LowPowerAdvice
             }
             else if (normalOk && !lowPowerOk)
             {
-                yield return new Finding(FindingSeverity.Info, $"lowpower-unavailable-{codec}", prefix + $"leave '{option}' off. " + Remedy(codec, os, inContainer, enableGuc, support)) { Backend = type };
+                // A generation without the encoder at all says so, whatever ffmpeg did with the option.
+                var missing = support == LowPowerSupport.None || (codec == "hevc" && support == LowPowerSupport.H264Only);
+                yield return dropped?.Contains(codec) == true && !missing
+                    ? new Finding(FindingSeverity.Info, $"lowpower-dropped-{codec}", prefix + $"'{option}' has no effect: " + char.ToLowerInvariant(Dropped[0]) + Dropped[1..]) { Backend = type }
+                    : new Finding(FindingSeverity.Info, $"lowpower-unavailable-{codec}", prefix + $"leave '{option}' off. " + Remedy(codec, os, inContainer, enableGuc, support)) { Backend = type };
             }
         }
     }

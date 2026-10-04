@@ -533,6 +533,7 @@ public sealed class ProbeEngine : IDisposable
         Dictionary<string, ProbeOutcome> subtitles = [];
         Dictionary<string, double> seconds = [];
         var decodedTenBit = false;
+        HashSet<string> droppedLowPower = new(StringComparer.Ordinal);
         if (run.Options.StopAfter == StopStage.Matrix)
         {
             foreach (var cell in MatrixCatalog.For(candidate.Type))
@@ -561,6 +562,11 @@ public sealed class ProbeEngine : IDisposable
                 }
 
                 column[key] = result.Outcome;
+                if (cell.Cell.LowPower && result.Hint == LowPowerAdvice.Dropped)
+                {
+                    droppedLowPower.Add(cell.Cell.OutputCodec);
+                }
+
                 if (result.CommandLine is not null)
                 {
                     seconds[ColumnName(cell.Group) + ":" + key] = result.Duration.TotalSeconds;
@@ -572,7 +578,7 @@ public sealed class ProbeEngine : IDisposable
 
         if (candidate.Type is HwType.qsv or HwType.vaapi)
         {
-            run.Findings.AddRange(LowPowerAdvice.Findings(candidate.Type, candidate.Device, encode, run.Host.Os, inContainer, EnableGuc(), IntelLowPower(run, candidate)));
+            run.Findings.AddRange(LowPowerAdvice.Findings(candidate.Type, candidate.Device, encode, run.Host.Os, inContainer, EnableGuc(), IntelLowPower(run, candidate), droppedLowPower));
         }
 
         var row = new BackendReport(candidate.Type, candidate.Device, BackendVerdict.Viable, tier, decode, encode, tonemap, deinterlace, subtitles, string.Empty);
@@ -726,12 +732,14 @@ public sealed class ProbeEngine : IDisposable
                 var commandLine = ProbeCommandLine.Build(args, fixture.Path!, MatrixCatalog.Frames);
                 var invocation = new FfmpegInvocation(run.Options.Ffmpeg.Path, commandLine, args.Environment, run.Options.ProbeTimeout);
                 var ran = await _runner.RunAsync(invocation, ct);
+                var lowPowerDropped = cell.Cell.LowPower && StderrMarkers.LowPowerDisabled.Any(m => ran.Stderr.Contains(m, StringComparison.Ordinal));
                 var outcome = ran.Status == FfmpegRunStatus.LaunchFailed
                     ? ProbeOutcome.DeviceUnavailable
-                    : cell.Cell.LowPower && StderrMarkers.LowPowerDisabled.Any(m => ran.Stderr.Contains(m, StringComparison.Ordinal))
+                    : lowPowerDropped
                     ? ProbeOutcome.CodecUnsupported
                     : VerdictEvaluator.Evaluate(ran, new ProbeExpectation(MatrixCatalog.Frames, StderrMarkers.HardwareFrames(candidate.Type, args.Hwaccel)));
                 var hint = outcome == ProbeOutcome.Pass ? string.Empty
+                    : lowPowerDropped && IntelLowPower(run, candidate) is var gen && gen != LowPowerSupport.None && !(cell.Cell.OutputCodec == "hevc" && gen == LowPowerSupport.H264Only) ? LowPowerAdvice.Dropped
                     : cell.Cell.LowPower ? LowPowerAdvice.Remedy(cell.Cell.OutputCodec, run.Host.Os, inContainer, EnableGuc(), IntelLowPower(run, candidate))
                     : cell.Group == MatrixGroup.Tonemap && !cell.Cell.VppTonemap && run.NoOpencl.Contains(candidate) ? Hints.OpenclUnavailable(inContainer)
                     : Hints.For(outcome, candidate.Type, run.Host.Os, inContainer);

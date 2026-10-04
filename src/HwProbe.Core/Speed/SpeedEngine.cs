@@ -134,7 +134,10 @@ public sealed class SpeedEngine : IDisposable
                     var cell = SpeedVariants.ForBackend(type, test, SpeedVariants.Base(test, speed.Settings, Paths(clips)), speed.Settings);
 
                     // A codec the probe found this GPU can't decode is left unticked, as the probe advises, so Jellyfin decodes it in software.
-                    if (speed.DecodeUnsupported.Contains((type, device, cell.InputCodec + (cell.BitDepth > 8 ? "_10bit" : string.Empty))))
+                    // The probe's key names the codec, depth, and profile, and the decoder the settings pick (QSV's own or the native one, CUVID or NVDEC).
+                    var decoder = type == HwType.qsv && !speed.Settings.PreferNativeDecoder ? "_qsvdecoder" : type == HwType.nvenc && !speed.Settings.EnhancedNvdec ? "_cuvid" : string.Empty;
+                    var probeSoftware = speed.DecodeUnsupported.Contains((type, device, Probes.MatrixCatalog.Key(cell.InputCodec, cell.BitDepth, cell.Profile) + decoder));
+                    if (probeSoftware)
                     {
                         cell = cell with { HardwareDecode = false };
                     }

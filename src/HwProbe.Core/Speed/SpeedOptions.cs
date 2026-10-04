@@ -52,7 +52,9 @@ public sealed record SpeedOptions(SpeedMethod Method, IReadOnlyList<string> Vide
         return this with
         {
             LowPowerUnsupported = MissingLowPower(report),
-            DecodeUnsupported = report.Backends.SelectMany(b => b.Decode.Where(d => d.Value is not (Model.ProbeOutcome.Pass or Model.ProbeOutcome.NotUsed)).Select(d => (b.Type, b.Device, d.Key))).ToHashSet(),
+
+            // Only decodes that ran and failed: untested and skipped ones weren't shown to fail, and Jellyfin decides NotUsed itself.
+            DecodeUnsupported = report.Backends.SelectMany(b => b.Decode.Where(d => d.Value is not (Model.ProbeOutcome.Pass or Model.ProbeOutcome.NotUsed or Model.ProbeOutcome.Untested or Model.ProbeOutcome.Skipped)).Select(d => (b.Type, b.Device, d.Key))).ToHashSet(),
         };
     }
 
