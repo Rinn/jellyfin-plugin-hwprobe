@@ -469,6 +469,29 @@ backends:
   - { type: v4l2m2m, name: Video4Linux2 (V4L2), platforms: [linux], platformNote: Linux only, armNote: ARM devices only }
 
 # Keyed by PipelineTier.
+# GPU engine names as Windows's GPU Engine counters (engtype) and Linux's DRM fdinfo (i915, xe, amdgpu) give them, and what the page calls them.
+# Intel's Linux video engine both decodes and encodes, so it can't be split.
+gpuEngines:
+  VideoDecode: decode
+  VideoEncode: encode
+  VideoProcessing: video processing
+  3D: 3D
+  Copy: copy
+  Cuda: compute
+  video: decode and encode
+  vcs: decode and encode
+  video-enhance: video processing
+  vecs: video processing
+  render: 3D
+  rcs: 3D
+  gfx: 3D
+  dec: decode
+  enc: encode
+  copy: copy
+  bcs: copy
+  compute: compute
+  ccs: compute
+
 tiers:
   FullOpencl: Full GPU pipeline (OpenCL)
   FullVulkan: Full GPU pipeline (Vulkan)

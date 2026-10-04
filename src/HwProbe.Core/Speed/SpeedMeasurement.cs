@@ -9,4 +9,7 @@ public sealed record SpeedMeasurement(double? Fps, int? Streams, bool Capped, st
 {
     /// <summary>Gets a value indicating whether a run was cut off by a timeout or the time limit, so the figures may be short of a full measurement.</summary>
     public bool Interrupted { get; init; }
+
+    /// <summary>Gets what the single copy whose speed is reported used, or null when not measured.</summary>
+    public Resources.ResourceUsage? Resources { get; init; }
 }

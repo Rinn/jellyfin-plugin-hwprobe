@@ -27,6 +27,7 @@ public sealed class SpeedResultCacheTests : IDisposable
         Assert.NotEqual(key, Key(Command + " -preset slow", _speed));
         Assert.NotEqual(key, Key(Command, _speed with { Repeats = 3 }));
         Assert.NotEqual(key, Key(Command, _speed with { Method = SpeedMethod.Confirm }));
+        Assert.NotEqual(key, Key(Command, _speed with { MeasureResources = !_speed.MeasureResources }));
         Assert.NotEqual(key, SpeedResultCache.Key("/usr/bin/ffmpeg", "ffmpeg version 8", HwType.videotoolbox, string.Empty, _test, Command, _speed));
         Assert.NotEqual(key, SpeedResultCache.Key("/usr/bin/ffmpeg", "ffmpeg version 7", HwType.none, string.Empty, _test, Command, _speed));
     }

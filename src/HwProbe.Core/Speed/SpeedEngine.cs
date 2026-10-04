@@ -310,7 +310,7 @@ public sealed class SpeedEngine : IDisposable
         List<SpeedResult> runs = [];
         for (var i = 0; i < Math.Max(1, speed.Repeats); i++)
         {
-            var run = await MeasureAsync(options, speed.Method, source, type, device, test, cell, TimeUp, cancellationToken);
+            var run = await MeasureAsync(options, speed.Method, speed.MeasureResources, source, type, device, test, cell, TimeUp, cancellationToken);
             runs.Add(run);
 
             // Nothing to repeat when it couldn't be measured.
@@ -395,6 +395,7 @@ public sealed class SpeedEngine : IDisposable
     /// <summary>Generates one variant's arguments and measures them, inside the probe lock.</summary>
     /// <param name="options">The ffmpeg.</param>
     /// <param name="method">How streams are counted.</param>
+    /// <param name="measureResources">Whether the single copy is measured for CPU, memory, and GPU usage.</param>
     /// <param name="source">The device's argument source.</param>
     /// <param name="type">The backend.</param>
     /// <param name="device">The device.</param>
@@ -406,6 +407,7 @@ public sealed class SpeedEngine : IDisposable
     private Task<SpeedResult> MeasureAsync(
         EngineOptions options,
         SpeedMethod method,
+        bool measureResources,
         IArgumentSource source,
         HwType type,
         string device,
@@ -455,12 +457,12 @@ public sealed class SpeedEngine : IDisposable
 
                 async Task<IReadOnlyList<FfmpegRunResult>> LaunchAsync(int copies, TimeSpan content, CancellationToken token)
                 {
-                    var invocation = new FfmpegInvocation(options.Ffmpeg.Path, Command(content), args.Environment, copies == 1 ? _singleTimeout : _copiesTimeout);
+                    var invocation = new FfmpegInvocation(options.Ffmpeg.Path, Command(content), args.Environment, copies == 1 ? _singleTimeout : _copiesTimeout) { MeasureResources = measureResources && copies == 1 };
                     return await Task.WhenAll(Enumerable.Range(0, copies).Select(_ => _runner.RunAsync(invocation, token)));
                 }
 
                 var measured = await SpeedMeter.MeasureAsync(LaunchAsync, method, test.FrameRate, !test.DecodeOnly, ct, timeUp);
-                return new SpeedResult(type, device, test.Key, string.Empty, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note) { OutputSize = size, Interrupted = measured.Interrupted, Command = CommandHash(Command(SpeedMeter.Content)) };
+                return new SpeedResult(type, device, test.Key, string.Empty, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note) { OutputSize = size, Interrupted = measured.Interrupted, Command = CommandHash(Command(SpeedMeter.Content)), Resources = measured.Resources };
             },
             cancellationToken);
 

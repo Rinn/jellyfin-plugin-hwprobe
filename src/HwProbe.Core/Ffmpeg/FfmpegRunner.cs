@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+using Jellyfin.Plugin.HwProbe.Core.Resources;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
 
@@ -23,6 +24,11 @@ public sealed class FfmpegRunner : IFfmpegRunner
     {
         ArgumentNullException.ThrowIfNull(invocation);
 
+        if (invocation.MeasureResources)
+        {
+            ResourceMonitors.Prepare();
+        }
+
         using var process = new Process { StartInfo = CreateStartInfo(invocation) };
         var stopwatch = Stopwatch.StartNew();
         try
@@ -37,6 +43,7 @@ public sealed class FfmpegRunner : IFfmpegRunner
         // Closed stdin stops ffmpeg waiting for interactive keys.
         process.StandardInput.Close();
         LowerPriority(process);
+        using var monitor = invocation.MeasureResources ? ResourceMonitors.Start(process) : null;
 
         // Drain both streams concurrently, or >1 MB of output deadlocks (jellyfin#17429).
         FrameTiming? timing = null;
@@ -65,6 +72,11 @@ public sealed class FfmpegRunner : IFfmpegRunner
             await process.WaitForExitAsync(CancellationToken.None);
         }
 
+        if (monitor is not null)
+        {
+            await monitor.StopAsync();
+        }
+
         try
         {
             await drained.WaitAsync(_drainGrace, CancellationToken.None);
@@ -81,7 +93,7 @@ public sealed class FfmpegRunner : IFfmpegRunner
         var stdout = drained.IsCompletedSuccessfully ? await stdoutTask : string.Empty;
         var stderr = drained.IsCompletedSuccessfully ? await stderrTask : string.Empty;
         var exitCode = status == FfmpegRunStatus.Exited ? process.ExitCode : (int?)null;
-        return new FfmpegRunResult(status, exitCode, stdout, stderr, ProgressParser.LastFrame(stdout), stopwatch.Elapsed, null) { Timing = timing };
+        return new FfmpegRunResult(status, exitCode, stdout, stderr, ProgressParser.LastFrame(stdout), stopwatch.Elapsed, null) { Timing = timing, Resources = monitor?.Finish(stopwatch.Elapsed.TotalSeconds) };
     }
 
     /// <summary>Builds start info with redirected stdio and the invocation's environment overrides.</summary>

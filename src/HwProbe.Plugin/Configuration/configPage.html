@@ -62,9 +62,6 @@
             #HwProbeConfigPage .infoBanner.hwprobe-warning { background: var(--jf-palette-Alert-warningStandardBg, rgb(25, 18, 7)); color: var(--jf-palette-Alert-warningColor, rgb(255, 226, 183)); }
             #HwProbeConfigPage .infoBanner.hwprobe-warning::before { background: var(--jf-palette-Alert-warningIconColor, #ffa726); -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 5.99 19.53 19H4.47zM12 2 1 21h22zm1 14h-2v2h2zm0-6h-2v4h2z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 5.99 19.53 19H4.47zM12 2 1 21h22zm1 14h-2v2h2zm0-6h-2v4h2z'/%3E%3C/svg%3E"); }
             #HwProbeConfigPage .hwprobe-card .infoBanner { margin: 0.5em 0; }
-            #HwProbeConfigPage .hwprobe-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em 1em; margin: 1.5em 0 0.3em; }
-            #HwProbeConfigPage .hwprobe-heading h2 { margin: 0; }
-            #HwProbeConfigPage .hwprobe-heading .selectContainer { margin: 0; flex: 1 1 16em; max-width: 28em; }
             #HwProbeConfigPage .hwprobe-views { font-size: 0.85em; margin: 0.3em 0 0.6em; }
             #HwProbeConfigPage .hwprobe-views label { display: inline-flex; align-items: center; gap: 0.3em; cursor: pointer; }
             #HwProbeConfigPage .hwprobe-views input { accent-color: var(--jf-palette-primary-main, #00a4dc); margin: 0; }
@@ -196,6 +193,7 @@
                 let speedMethod = null;
                 let speedRepeats = 1;
                 let speedReuse = true;
+                let speedResources = false;
                 let speedWhenTranscoding = null;
                 let speedTimeLimit = null;
                 // Null measures with the server's own thread count.
@@ -224,6 +222,7 @@
                 let timeLimitOptions = [];
                 let whenTranscodingOptions = [];
                 let defaultMethod = null;
+                let gpuEngines = {};
                 let names = {};
                 let order = [];
                 let platforms = {};
@@ -249,6 +248,7 @@
                     verdicts = c.Verdicts;
                     notes = c.Findings;
                     settingLabels = c.Settings;
+                    gpuEngines = c.GpuEngines;
                     speedVideos = c.Videos;
                     speedOutputs = c.Outputs;
                     speedCodecs = c.Codecs;
@@ -277,13 +277,6 @@
                     }
                     table.appendChild(tr);
                     return tr;
-                }
-
-                function heading(container, title) {
-                    const div = el('div', null, 'hwprobe-heading');
-                    div.appendChild(el('h2', title, 'sectionTitle'));
-                    container.appendChild(div);
-                    return div;
                 }
 
                 // Which sections were opened or closed, by key, kept across redraws.
@@ -1141,7 +1134,7 @@
                             ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('HwProbe/Cache') })
                                 .then(render, () => { setMessage('Could not delete: a probe or performance test is using the cache.'); render(); });
                         }, 'raised button-delete'));
-                        const table = el('table');
+                        const table = el('table', null, 'hwprobe-full');
                         row(table, [el('th', 'Contents'), el('th', 'File'), el('th', 'Size', 'hwprobe-num'), el('th', 'Written')]);
                         let folder = null;
                         for (const e of entries) {
@@ -1334,8 +1327,8 @@
                         if (!list.length) {
                             return;
                         }
-                        heading(div, 'Suggestions');
-                        const table = el('table');
+                        const section = fold(div, 'Suggestions', true);
+                        const table = el('table', null, 'hwprobe-full');
                         const configured = encoding && encoding.HardwareAccelerationType;
                         for (const s of list) {
                             const text = el('td');
@@ -1376,8 +1369,8 @@
                             }
                             row(table, [text, cell]);
                         }
-                        div.appendChild(table);
-                        div.appendChild(el('div', 'Settings are compared between saved runs that differ in that setting alone. Software is never suggested over a working hardware backend.', 'fieldDescription'));
+                        section.appendChild(table);
+                        section.appendChild(el('div', 'Settings are compared between saved runs that differ in that setting alone. Software is never suggested over a working hardware backend.', 'fieldDescription'));
                     }, () => {});
                     return div;
                 }
@@ -1530,7 +1523,7 @@
                         button.disabled = runs === 0 || running;
                     };
                     button = action('Measure performance', () => {
-                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, ReuseResults: speedReuse, WhenTranscoding: speedWhenTranscoding, Options: speedSettings, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Backends: [...chosenBackends], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
+                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, ReuseResults: speedReuse, MeasureResources: speedResources, WhenTranscoding: speedWhenTranscoding, Options: speedSettings, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Backends: [...chosenBackends], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
                         ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed'), data: JSON.stringify(body), contentType: 'application/json' })
                             .then(() => {
                                 showTab(tabs[3][0]);
@@ -1623,11 +1616,81 @@
                     options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });
                     options('Repeats', repeatOptions, speedRepeats, v => { speedRepeats = Number(v); });
                     options('Earlier results', [['true', 'Reuse when the settings match'], ['false', 'Measure everything again']], String(speedReuse), v => { speedReuse = v === 'true'; }, 'Reuses a measurement from an earlier run with the same input, output, backend, accuracy, repeats, and ffmpeg, and the same values for the settings that affect it, so a repeated comparison completes faster.');
+                    options('Resource Usage', [['false', 'Don\u2019t measure'], ['true', 'Measure CPU, memory, and GPU usage']], String(speedResources), v => { speedResources = v === 'true'; });
+                    // What this server's platform can measure, and whose usage it is.
+                    const coverage = {
+                        windows: 'CPU, memory, GPU, and GPU memory usage are measured per transcode.',
+                        linux: 'CPU and memory usage are measured per transcode. Intel and AMD GPU usage is measured per transcode on kernel 5.19 or newer (6.8 for Intel\u2019s xe driver). NVIDIA GPU usage covers the whole GPU, including any other work on it.',
+                        macos: 'CPU and memory usage are measured per transcode. GPU usage can\u2019t be measured on macOS.',
+                    }[report && report.host ? report.host.os : ''];
+                    if (coverage) {
+                        form.lastElementChild.appendChild(el('div', coverage, 'infoBanner'));
+                    }
                     options('When the server starts transcoding', whenTranscodingOptions, speedWhenTranscoding, v => { speedWhenTranscoding = v; });
                     options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); }, 'A measurement that reaches the limit stops and reports what it measured.');
 
                     update();
                     speedUpdate = update;
+                }
+
+                // One copy's GPU engines busy share, busiest first, named as the catalog names them.
+                function gpuShares(r) {
+                    return Object.entries(r.gpuSeconds || {})
+                        .map(([engine, seconds]) => [gpuEngines[engine] || engine, seconds / r.seconds])
+                        .sort((a, b) => b[1] - a[1]);
+                }
+
+                // A result's cells in the Resource Usage view: CPU cores in use, peak memory, the busiest GPU engine, and peak GPU memory; each tooltip lists every figure.
+                function resourceCells(x, measuring) {
+                    const cells = [0, 1, 2, 3].map(() => el('td', null, 'hwprobe-num'));
+                    if (!x) {
+                        return cells;
+                    }
+                    if (x.pending) {
+                        cells[0].textContent = measuring ? 'Measuring\u2026' : '\u2026';
+                        cells[0].classList.add('secondaryText');
+                        return cells;
+                    }
+                    const r = x.resources;
+                    const cores = r && r.cpuSeconds !== null && r.cpuSeconds !== undefined ? r.cpuSeconds / r.seconds : null;
+                    const busiest = r ? gpuShares(r)[0] : null;
+                    const values = [
+                        [cores, cores === null ? '\u2013' : cores.toFixed(1) + ' cores'],
+                        [r && r.peakMemoryBytes ? r.peakMemoryBytes : null, r && r.peakMemoryBytes ? sizeText(r.peakMemoryBytes) : '\u2013'],
+                        [busiest ? busiest[1] : null, busiest ? busiest[0] + ' ' + Math.round(Math.min(1, busiest[1]) * 100) + '%' : '\u2013'],
+                        [r && r.peakGpuMemoryBytes ? r.peakGpuMemoryBytes : null, r && r.peakGpuMemoryBytes ? sizeText(r.peakGpuMemoryBytes) : '\u2013'],
+                    ];
+                    const title = resourceFacts(r).join('\n');
+                    cells.forEach((cell, i) => {
+                        cell.textContent = values[i][1];
+                        cell.dataset.sort = values[i][0] === null ? '' : String(values[i][0]);
+                        cell.title = title;
+                    });
+                    return cells;
+                }
+
+                // The Resource Usage view's tooltip lines: CPU, memory, and every GPU engine that did work.
+                function resourceFacts(r) {
+                    if (!r) {
+                        return ['Resources not measured'];
+                    }
+                    const facts = [];
+                    if (r.cpuSeconds !== null && r.cpuSeconds !== undefined) {
+                        facts.push((r.cpuSeconds / r.seconds).toFixed(1) + ' CPU cores in use on average');
+                    }
+                    if (r.peakMemoryBytes) {
+                        facts.push(sizeText(r.peakMemoryBytes) + ' peak memory');
+                    }
+                    if (r.peakGpuMemoryBytes) {
+                        facts.push(sizeText(r.peakGpuMemoryBytes) + ' peak GPU memory');
+                    }
+                    for (const [name, share] of gpuShares(r)) {
+                        facts.push('GPU ' + name + ' busy ' + Math.round(Math.min(1, share) * 100) + '% of the time');
+                    }
+                    if (r.gpuWholeDevice) {
+                        facts.push('GPU figures cover the whole GPU, not this transcode alone');
+                    }
+                    return facts;
                 }
 
                 // Runs of the same command vary by a few percent, so smaller differences aren't shown as one.
@@ -1636,7 +1699,7 @@
                 // Which comparison rows are open, by test, kept across redraws.
                 const speedOpen = new Set();
 
-                const speedViews = [['bars', 'Bars'], ['relative', 'Relative to fastest'], ['values', 'Values']];
+                const speedViews = [['bars', 'Bars'], ['relative', 'Relative to fastest'], ['values', 'Values'], ['resources', 'Resource Usage']];
                 let speedView = speedViews.some(([k]) => k === localStorage.getItem('hwprobe-speed-view')) ? localStorage.getItem('hwprobe-speed-view') : 'bars';
 
                 // Rows grouped by video, one per output; one column per backend; comparisons fold under their row.
@@ -1674,13 +1737,18 @@
                     // Results run in their planned order, so the first pending one is being measured.
                     const current = speedProgress && (speedProgress.Phase === 'Measuring' || speedProgress.Phase === 'Pausing') ? r.results.find(x => x.pending) : null;
                     const values = speedView === 'values';
-                    const per = values && counted ? 2 : 1;
+                    const resources = speedView === 'resources';
+                    const per = resources ? 4 : values && counted ? 2 : 1;
                     // Per backend: concurrent streams kept up with (Values view, when counted), and one transcode's speed as a value, a bar or a share of the row's fastest.
                     const cellsFor = (x, best, baseline, fastest) => {
                         const tint = x && x === best && backends.length > 1 ? ' hwprobe-best' : '';
                         const streams = el('td', null, 'hwprobe-num' + tint);
                         const speedCell = el('td', null, 'hwprobe-num' + tint);
                         const cells = per === 2 ? [streams, speedCell] : [speedCell];
+                        if (resources) {
+                            return resourceCells(x, x === current);
+                        }
+
                         if (!x) {
                             return cells;
                         }
@@ -1735,7 +1803,7 @@
                         if (x.reusedFromUtc) {
                             facts.push('Measured ' + new Date(x.reusedFromUtc).toLocaleString());
                         }
-                        speedCell.title = facts.join('. ');
+                        speedCell.title = facts.join('\n');
                         return cells;
                     };
                     // Values ranks by concurrent streams, then speed; the other views show speed alone, so they rank by it.
@@ -1751,7 +1819,7 @@
 
                     const table = el('table', null, 'hwprobe-matrix hwprobe-full');
                     const columns = backends.length * per + 3;
-                    if (per === 2) {
+                    if (per > 1) {
                         const top = el('tr');
                         top.appendChild(el('th'));
                         top.appendChild(el('th'));
@@ -1762,7 +1830,8 @@
                             top.appendChild(th);
                         }
                         table.appendChild(top);
-                        row(table, [el('th', 'Input'), el('th', 'Output'), el('th', 'Size')].concat(backends.flatMap(() => [el('th', 'Concurrent streams', 'hwprobe-num secondaryText'), el('th', 'Speed', 'hwprobe-num secondaryText')])));
+                        const parts = resources ? ['CPU', 'Memory', 'GPU', 'GPU memory'] : ['Concurrent streams', 'Speed'];
+                        row(table, [el('th', 'Input'), el('th', 'Output'), el('th', 'Size')].concat(backends.flatMap(() => parts.map(part => el('th', part, 'hwprobe-num secondaryText')))));
                     } else {
                         row(table, [el('th', 'Input'), el('th', 'Output'), el('th', 'Size')].concat(backends.map(b => el('th', columnName(b), 'hwprobe-num'))));
                     }
@@ -1880,6 +1949,9 @@
                         const notes = ['Speed: one transcode on its own; 2\u00d7 is twice as fast as playing. Bars and percentages are relative to the fastest result in the row.'];
                         if (counted) {
                             notes.push('Concurrent streams: how many keep up when run together; 16+ is the most measured.');
+                        }
+                        if (speedView === 'resources') {
+                            notes.push('Resource usage: what one transcode on its own used: CPU cores in use on average, peak memory, its busiest GPU engine, and peak GPU memory, where the platform reports them.');
                         }
                         used.appendChild(el('div', notes.join(' '), 'fieldDescription'));
                     }

@@ -19,4 +19,7 @@ public sealed record FfmpegRunResult(
 {
     /// <summary>Gets when progress was first and last reported, or null when no report had frames done.</summary>
     public FrameTiming? Timing { get; init; }
+
+    /// <summary>Gets what the run used, when the invocation asked for it and the platform reports it.</summary>
+    public Resources.ResourceUsage? Resources { get; init; }
 }

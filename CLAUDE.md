@@ -102,7 +102,7 @@ The page should look and behave like a native Jellyfin dashboard page, stay calm
 ## To do
 
 - **Speed tier on real hardware**: run it on the RTX 5080 PC (NVENC, session limits) and the NAS (QSV/VAAPI, the QSV low-power settings). So far only macOS (VideoToolbox) and the software container.
-- **Resource stats (on hold)**: memory and CPU time per encode process, and GPU use and power where exposed (nvidia-smi, intel_gpu_top, powermetrics, RAPL), to compare cost as well as speed.
+- **Resource stats, next steps**: power where readable without root (NVML, AMD hwmon, RAPL), and checking Intel and AMD GPU figures on a Linux 5.19+ host (the NAS runs 4.4, which has none). CPU, memory, and GPU engine time are measured already (`src/HwProbe.Core/Resources`).
 
 Queued by the user on 2026-10-03, in no particular order:
 

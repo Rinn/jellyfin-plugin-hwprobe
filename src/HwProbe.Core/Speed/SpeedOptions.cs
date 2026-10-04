@@ -22,6 +22,9 @@ public sealed record SpeedOptions(SpeedMethod Method, IReadOnlyList<string> Vide
     /// <summary>Gets a value indicating whether a measurement saved by an earlier run with exactly the same settings is reused rather than measured again.</summary>
     public bool ReuseResults { get; init; }
 
+    /// <summary>Gets a value indicating whether each measurement's single copy is measured for CPU, memory, and GPU usage.</summary>
+    public bool MeasureResources { get; init; }
+
     /// <summary>Gets the library file the <c>library</c> video reads, or null.</summary>
     public SpeedFile? File { get; init; }
 

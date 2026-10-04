@@ -607,6 +607,7 @@ public sealed partial class ProbeService : IDisposable
             Repeats = request.Repeats,
             TimeLimit = request.TimeLimitSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null,
             ReuseResults = request.ReuseResults,
+            MeasureResources = request.MeasureResources,
         };
     }
 
