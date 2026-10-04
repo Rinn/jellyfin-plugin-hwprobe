@@ -81,10 +81,11 @@ public sealed class ProbeEngine : IDisposable
             await OpenDevicesAsync(run, cancellationToken);
         }
 
-        // Each opened device runs its smoke test, then its matrix; a device that fails smoke skips the rest. The test clips come
-        // first and count too, as making them can take most of a first probe.
-        var clips = run.Opened.Count > 0 ? FixtureCatalog.All.Count : 0;
-        run.Total = clips + run.Opened.Sum(o => 1 + (options.StopAfter == StopStage.Matrix ? MatrixCatalog.For(o.Candidate.Type).Count : 0));
+        // Each opened device runs its smoke test, then its matrix; a device that fails smoke skips the rest. Software runs its
+        // tests last. The test clips come first and count too, as making them can take most of a first probe.
+        var software = options.StopAfter == StopStage.Matrix && options.Device is null && (options.Types.Count == 0 || options.Types.Contains(HwType.none));
+        var specs = run.Opened.Count > 0 ? FixtureCatalog.All : software ? MatrixCatalog.Software.Select(c => c.Fixture).Distinct().ToList() : [];
+        run.Total = specs.Count + run.Opened.Sum(o => 1 + (options.StopAfter == StopStage.Matrix ? MatrixCatalog.For(o.Candidate.Type).Count : 0)) + (software ? MatrixCatalog.Software.Count : 0);
 
         var fingerprint = ComputeFingerprint(run, ToolBuild(_arguments));
         var store = new ReportStore(options.ReportCacheDirectory);
@@ -97,7 +98,8 @@ public sealed class ProbeEngine : IDisposable
             }
         }
 
-        if (run.Opened.Count > 0)
+        BackendReport? softwareRow = null;
+        if (specs.Count > 0)
         {
             var key = Fingerprint.Compute(new FingerprintInputs(ffmpeg, caps.VersionLine, null, null, null, null, null, null));
             FixtureCacheContents.Prune(options.FixturesDirectory, key);
@@ -110,10 +112,10 @@ public sealed class ProbeEngine : IDisposable
                 begun.Add(step.Spec.FileName);
                 progress.Report(new ProbeProgress(step.Describe(step.Spec.FileName), begun.Count - 1, run.Total));
             }) : null;
-            var fixtures = await new FixtureBuilder(_runner, ffmpeg, options.FixturesDirectory, options.FixtureTimeout, FixtureDownloader) { Progress = steps }
+            var fixtures = await new FixtureBuilder(_runner, ffmpeg, options.FixturesDirectory, options.FixtureTimeout, FixtureDownloader, specs, null) { Progress = steps }
                 .BuildAsync(key, caps.Encoders, cancellationToken);
             run.Fixtures = fixtures.ToDictionary(f => f.Spec.FileName, StringComparer.Ordinal);
-            run.Done = clips;
+            run.Done = specs.Count;
 
             foreach (var (candidate, open) in run.Opened)
             {
@@ -121,6 +123,11 @@ public sealed class ProbeEngine : IDisposable
                 var planned = run.Done + 1 + (options.StopAfter == StopStage.Matrix ? MatrixCatalog.For(candidate.Type).Count : 0);
                 await ProbeBackendAsync(run, candidate, open, cancellationToken);
                 run.Done = planned;
+            }
+
+            if (software)
+            {
+                softwareRow = await ProbeSoftwareAsync(run, cancellationToken);
             }
         }
 
@@ -142,6 +149,7 @@ public sealed class ProbeEngine : IDisposable
         {
             HwProbeVersion = CapabilityReport.CurrentHwProbeVersion,
             Seconds = _time.GetElapsedTime(started).TotalSeconds,
+            Software = softwareRow,
         };
 
         if (options.StopAfter == StopStage.Matrix)
@@ -595,6 +603,31 @@ public sealed class ProbeEngine : IDisposable
         run.Backends.Add(row with { Seconds = seconds, Settings = SettingsAdvisor.For(row, new AdviceContext(run.Host.Os, inContainer, run.NoOpencl.Contains(candidate)) { IntelLowPower = IntelLowPower(run, candidate) }) });
     }
 
+    /// <summary>Runs the software tests and advises the settings that still apply with no hardware backend.</summary>
+    /// <param name="run">Run state.</param>
+    /// <param name="cancellationToken">Cancels the run.</param>
+    /// <returns>The software row.</returns>
+    private async Task<BackendReport> ProbeSoftwareAsync(Run run, CancellationToken cancellationToken)
+    {
+        var candidate = new DeviceCandidate(HwType.none, string.Empty);
+        var source = _arguments.Create(run.Caps, new DeviceTraits(VaapiDriver.Other));
+        Dictionary<string, ProbeOutcome> decode = [];
+        Dictionary<string, ProbeOutcome> deinterlace = [];
+        Dictionary<string, double> seconds = [];
+        foreach (var cell in MatrixCatalog.Software)
+        {
+            var result = await RunCellAsync(run, candidate, source, cell, ProbeStage.Matrix, cancellationToken);
+            (cell.Group == MatrixGroup.Decode ? decode : deinterlace)[cell.Key] = result.Outcome;
+            if (result.CommandLine is not null)
+            {
+                seconds[ColumnName(cell.Group) + ":" + cell.Key] = result.Duration.TotalSeconds;
+            }
+        }
+
+        var row = new BackendReport(HwType.none, string.Empty, BackendVerdict.Viable, PipelineTier.Unknown, decode, new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), deinterlace, new Dictionary<string, ProbeOutcome>(), string.Empty);
+        return row with { Seconds = seconds, Settings = SettingsAdvisor.For(row, new AdviceContext(run.Host.Os, run.Host.Container is not null, OpenclUnavailable: false)) };
+    }
+
     /// <summary>Opens OpenCL on a device that upstream will send through its OpenCL pipeline.</summary>
     /// <param name="run">Run state.</param>
     /// <param name="candidate">The device.</param>
@@ -642,7 +675,7 @@ public sealed class ProbeEngine : IDisposable
             MatrixGroup.Subtitles => "subtitle burn-in " + cell.Key,
             _ => cell.Key,
         };
-        Progress?.Report(new ProbeProgress($"Testing {candidate.Type}: {what}", run.Done, run.Total));
+        Progress?.Report(new ProbeProgress($"Testing {(candidate.Type == HwType.none ? "software" : candidate.Type)}: {what}", run.Done, run.Total));
         try
         {
             return await RunCellCountedAsync(run, candidate, source, cell, stage, cancellationToken);
@@ -720,15 +753,16 @@ public sealed class ProbeEngine : IDisposable
                     return Record(candidate, cell, stage, ProbeOutcome.Skipped, null, $"Jellyfin emits no hardware tone-map for this backend and build (filters:{args.FilterArgs}).", null);
                 }
 
-                if (cell.Group == MatrixGroup.Deinterlace && args.HardwareDeinterlacer is null)
+                var software = candidate.Type == HwType.none;
+                if (cell.Group == MatrixGroup.Deinterlace && args.HardwareDeinterlacer is null && !software)
                 {
                     return Record(candidate, cell, stage, ProbeOutcome.Skipped, null, $"Jellyfin deinterlaces on the CPU for this backend and build (filters:{args.FilterArgs}).", null);
                 }
 
                 // Jellyfin falls back to YADIF when the build lacks the BWDIF filter, and VAAPI and QSV ignore the method.
-                if (cell.Cell.Bwdif && !args.FilterArgs.Contains("bwdif_", StringComparison.Ordinal))
+                if (cell.Cell.Bwdif && !args.FilterArgs.Contains(software ? "bwdif=" : "bwdif_", StringComparison.Ordinal))
                 {
-                    return Record(candidate, cell, stage, ProbeOutcome.Skipped, null, $"Jellyfin doesn't use a hardware BWDIF filter for this backend and build (filters:{args.FilterArgs}).", null);
+                    return Record(candidate, cell, stage, ProbeOutcome.Skipped, null, $"Jellyfin doesn't use a{(software ? string.Empty : " hardware")} BWDIF filter for this backend and build (filters:{args.FilterArgs}).", null);
                 }
 
                 // Checked after asking Jellyfin: a codec it won't hardware-decode needs no clip to say so.
@@ -745,6 +779,8 @@ public sealed class ProbeEngine : IDisposable
                 var lowPowerDropped = cell.Cell.LowPower && StderrMarkers.LowPowerDisabled.Any(m => ran.Stderr.Contains(m, StringComparison.Ordinal));
                 var outcome = ran.Status == FfmpegRunStatus.LaunchFailed
                     ? ProbeOutcome.DeviceUnavailable
+                    : software
+                    ? VerdictEvaluator.EvaluateSoftware(ran, MatrixCatalog.Frames)
                     : lowPowerDropped
                     ? ProbeOutcome.CodecUnsupported
                     : VerdictEvaluator.Evaluate(ran, new ProbeExpectation(MatrixCatalog.Frames, StderrMarkers.HardwareFrames(candidate.Type, args.Hwaccel)));
@@ -756,7 +792,7 @@ public sealed class ProbeEngine : IDisposable
                 var recorded = Record(candidate, cell, stage, outcome, ran, hint, commandLine);
 
                 // The deinterlace column is keyed by the hardware filter family that did the work.
-                return cell.Group == MatrixGroup.Deinterlace ? recorded with { Codec = args.HardwareDeinterlacer + (cell.Cell.Bwdif ? "_bwdif" : string.Empty) } : recorded;
+                return cell.Group == MatrixGroup.Deinterlace && !software ? recorded with { Codec = args.HardwareDeinterlacer + (cell.Cell.Bwdif ? "_bwdif" : string.Empty) } : recorded;
             },
             cancellationToken);
 

@@ -4,7 +4,7 @@ using Jellyfin.Plugin.HwProbe.Core.Probes;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Tests.Probes;
 
-/// <summary>Returns VideoToolbox-shaped arguments, or a construction error for chosen codecs.</summary>
+/// <summary>Returns VideoToolbox-shaped arguments (software ones for none), or a construction error for chosen codecs.</summary>
 internal sealed class FakeArgumentSource : IArgumentSource, IArgumentSourceFactory
 {
     /// <summary>Gets input codecs that raise <see cref="ArgumentConstructionException"/>.</summary>
@@ -29,6 +29,11 @@ internal sealed class FakeArgumentSource : IArgumentSource, IArgumentSourceFacto
         if (Unconstructible.Contains(cell.InputCodec))
         {
             throw new ArgumentConstructionException($"no {type} args for {cell.InputCodec}");
+        }
+
+        if (type == HwType.none)
+        {
+            return new ProbeArguments(string.Empty, cell.Bwdif ? " -vf \"bwdif=0:-1:0\"" : string.Empty, "libx264", Environment);
         }
 
         var input = cell.HardwareDecode ? "-init_hw_device videotoolbox=vt -hwaccel videotoolbox" : "-init_hw_device videotoolbox=vt";

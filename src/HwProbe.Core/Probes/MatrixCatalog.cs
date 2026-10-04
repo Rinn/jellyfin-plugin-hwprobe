@@ -19,6 +19,14 @@ public static class MatrixCatalog
     public static MatrixCell Smoke { get; } =
         new(MatrixGroup.Smoke, H264, FixtureCatalog.H264, Cell(FixtureCatalog.H264, H264, hardwareDecode: true) with { MaxWidth = 320, MaxHeight = 240 });
 
+    /// <summary>Gets the software tests: the settings Jellyfin's Transcoding page and Trickplay page still apply with no hardware backend.</summary>
+    /// <remarks>Software deinterlacing takes the method as set, with no check that the build has the filter (EncodingHelper.GetSwDeinterlaceFilter).</remarks>
+    public static IReadOnlyList<MatrixCell> Software { get; } =
+    [
+        new(MatrixGroup.Deinterlace, "bwdif", FixtureCatalog.H264Interlaced, Cell(FixtureCatalog.H264Interlaced, H264, hardwareDecode: false) with { HardwareEncode = false, Bwdif = true }),
+        new(MatrixGroup.Decode, FixtureCatalog.H264KeyFrames.Key!, FixtureCatalog.H264KeyFrames, Cell(FixtureCatalog.H264KeyFrames, H264, hardwareDecode: false) with { HardwareEncode = false, KeyFramesOnly = true }),
+    ];
+
     /// <summary>Returns the codec matrix cells for a backend.</summary>
     /// <param name="type">The backend.</param>
     /// <returns>Decode, encode and tone-map cells.</returns>

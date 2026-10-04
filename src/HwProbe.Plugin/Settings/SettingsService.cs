@@ -272,10 +272,15 @@ public sealed class SettingsService : IDisposable
     /// <summary>Finds the report row for the backend and device the server is configured to use.</summary>
     /// <param name="report">The latest report.</param>
     /// <param name="options">The current encoding options.</param>
-    /// <returns>The viable row, or null.</returns>
+    /// <returns>The viable row, the software row for none, or null.</returns>
     private static BackendReport? ConfiguredBackend(CapabilityReport report, EncodingOptions options)
     {
         var type = (HwType)(int)options.HardwareAccelerationType;
+        if (type == HwType.none)
+        {
+            return report.Software;
+        }
+
         var device = type switch
         {
             HwType.vaapi => options.VaapiDevice,

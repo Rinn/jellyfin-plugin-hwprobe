@@ -47,7 +47,8 @@ internal sealed class EngineRunner : IFfmpegRunner
             return Exited(0, 25, string.Empty);
         }
 
-        if (invocation.Arguments.Contains("-init_hw_device", StringComparison.Ordinal))
+        // Device opens, and probes, which software ones are too though they open no device.
+        if (invocation.Arguments.Contains("-init_hw_device", StringComparison.Ordinal) || invocation.Arguments.Contains("-progress pipe:1", StringComparison.Ordinal))
         {
             return Probe(invocation);
         }

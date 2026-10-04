@@ -33,6 +33,7 @@ public static class EncodingSettings
         [nameof(EncodingOptions.EnableVideoToolboxTonemapping)] = (o => o.EnableVideoToolboxTonemapping, (o, v) => o.EnableVideoToolboxTonemapping = v),
         [nameof(EncodingOptions.EnableAudioVbr)] = (o => o.EnableAudioVbr, (o, v) => o.EnableAudioVbr = v),
         [nameof(EncodingOptions.DeinterlaceDoubleRate)] = (o => o.DeinterlaceDoubleRate, (o, v) => o.DeinterlaceDoubleRate = v),
+        [nameof(EncodingOptions.EnableSubtitleExtraction)] = (o => o.EnableSubtitleExtraction, (o, v) => o.EnableSubtitleExtraction = v),
     };
 
     // Values a performance test can suggest, kept as strings in the forms the enums and invariant numbers print.

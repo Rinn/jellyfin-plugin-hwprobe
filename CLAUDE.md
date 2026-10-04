@@ -4,7 +4,7 @@ Operating manual for this repo: what it is, commands, conventions, the traps tha
 
 ## What this is
 
-A device-verified hardware-transcode detector for Jellyfin, shipped as a CLI (`src/HwProbe.Cli`) and a plugin (`src/HwProbe.Plugin`) over a shared engine (`src/HwProbe.Core`, with Jellyfin's own `EncodingHelper` wired in by `src/HwProbe.Jellyfin`). Jellyfin's hardware acceleration dropdown is a fixed list in jellyfin-web, so it offers backends that fail every job; HwProbe runs small real transcodes and reports what works, with a fix for each failure. The page has five tabs: Hardware Probe, Recommended Settings (Apply, history and Revert), Performance Tests and Test Results (transcode speed per backend, single runs or test suites, driven by `src/HwProbe.Core/Data/catalog.yaml`; "speed" in code, "performance" in user-facing text), and Help (diagnostics zip, cache contents).
+A device-verified hardware-transcode detector for Jellyfin, shipped as a CLI (`src/HwProbe.Cli`) and a plugin (`src/HwProbe.Plugin`) over a shared engine (`src/HwProbe.Core`, with Jellyfin's own `EncodingHelper` wired in by `src/HwProbe.Jellyfin`). Jellyfin's hardware acceleration dropdown is a fixed list in jellyfin-web, so it offers backends that fail every job; HwProbe runs small real transcodes and reports what works, with a fix for each failure. The page has five tabs: Hardware Probe, Recommended Settings (per working backend and software, with Apply, history and Revert), Performance Tests and Test Results (transcode speed per backend, single runs or test suites, driven by `src/HwProbe.Core/Data/catalog.yaml`; "speed" in code, "performance" in user-facing text), and Help (diagnostics zip, cache contents).
 
 Public at https://github.com/Rinn/jellyfin-plugin-hwprobe (`origin`).
 
@@ -83,7 +83,7 @@ The page should look and behave like a native Jellyfin dashboard page, stay calm
 
 1. **Probes and speed measurements run strictly serially.** `GetInputVideoHwaccelArgs` sets process-wide environment variables as a side effect; concurrent generation corrupts a neighbour's environment and gives plausible, wrong results. Snapshot, generate, launch, await, restore is one critical section (`SerialProbeGate`).
 2. **`GetInputVideoHwaccelArgs` returns empty** when neither decoder nor encoder matches the backend. Empty means the probe can't be built, not that no arguments are needed; running it anyway scores a software transcode as a hardware pass. Exception: v4l2m2m, which is encoder-only upstream and always empty.
-3. **Exit code 0 is not a pass.** ffmpeg exits cleanly after falling back to software. Require exit 0, frames produced, and device-init confirmation in verbose stderr.
+3. **Exit code 0 is not a pass.** ffmpeg exits cleanly after falling back to software. Require exit 0, frames produced, and device-init confirmation in verbose stderr. Software tests (`MatrixCatalog.Software`) are the one exception: there is no hardware to confirm, so exit 0 with frames passes.
 4. **Drain stdout and stderr concurrently**, or output past about 1 MB deadlocks (jellyfin#17429).
 5. **Kill the whole process tree on timeout.** A leaked ffmpeg holding a render node makes later, unrelated probes fail.
 6. **The pipeline tier comes from OpenCL/Vulkan/`alphasrc`, not codec support.** A host can pass every codec probe and still be on the slow copy-back path; reporting that is the headline feature.
