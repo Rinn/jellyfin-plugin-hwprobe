@@ -55,7 +55,6 @@
             #HwProbeConfigPage .hwprobe-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5em 1em; margin: 0.2em 0; }
             #HwProbeConfigPage .hwprobe-row.hwprobe-start { justify-content: flex-start; }
             #HwProbeConfigPage .hwprobe-row.hwprobe-end { justify-content: flex-end; }
-            #HwProbeConfigPage .hwprobe-row.hwprobe-grow { flex: 1 1 auto; margin: 0; }
             /* Banners drawn like the dashboard's MUI Alert (standard variant), with its outlined icons. */
             #HwProbeConfigPage .infoBanner { position: relative; margin: 0.5em 0 1em; padding: 14px 16px 14px 50px; border: none; border-radius: 4px; box-shadow: none; background: var(--jf-palette-Alert-infoStandardBg, rgb(7, 19, 24)); color: var(--jf-palette-Alert-infoColor, rgb(184, 231, 251)); font-size: 0.875rem; line-height: 1.43; letter-spacing: 0.01071em; }
             #HwProbeConfigPage .infoBanner[hidden] { display: none; }
@@ -92,6 +91,7 @@
             #HwProbeConfigPage .hwprobe-emoji { font-size: 1em; line-height: 1; }
             #HwProbeConfigPage .selectContainer .hwprobe-notes { margin: 0 14px; padding-left: 1.4em; }
             #HwProbeConfigPage .hwprobe-progress { position: relative; width: 16em; }
+            #HwProbeConfigPage .hwprobe-progress.hwprobe-progress-wide { width: auto; margin: 0.4em 0 0.2em; }
             #HwProbeConfigPage .hwprobe-inline { margin: 0 0 0 0.5em; padding: 0.2em 0.8em; }
             /* jellyfin-web's legacy buttons look the same when disabled; this follows the dashboard's MUI buttons. */
             #HwProbeConfigPage .emby-button:disabled { color: var(--jf-palette-action-disabled, rgba(255, 255, 255, 0.3)); background: var(--jf-palette-action-disabledBackground, rgba(255, 255, 255, 0.12)); cursor: default; }
@@ -601,7 +601,7 @@
 
                 function outcomeRow(table, label, outcome) {
                     const state = outcome === 'Pass' ? 'TurnOn' : (outcome ? 'LeaveOff' : 'NotTested');
-                    const reason = outcome === 'Pass' ? '' : !outcome ? 'Not tested' : ({ SoftwareFallback: 'Fell back to software', FilterUnsupported: 'Filter missing from ffmpeg', CodecUnsupported: 'Not supported by this GPU', Timeout: 'Timed out', DeviceUnavailable: 'Device didn\u2019t open', PermissionDenied: 'No permission to use the device', NotUsed: 'Software only' }[outcome] || 'Test failed');
+                    const reason = outcome === 'Pass' ? '' : !outcome ? 'Not tested' : ({ SoftwareFallback: 'Hardware not used', FilterUnsupported: 'Filter missing from ffmpeg', CodecUnsupported: 'Not supported by this GPU', Timeout: 'Timed out', DeviceUnavailable: 'Device didn\u2019t open', PermissionDenied: 'No permission to use the device', NotUsed: 'Software only' }[outcome] || 'Test failed');
                     row(table, [mark(state), label, el('td', reason, 'secondaryText'), el('td')]);
                 }
 
@@ -939,18 +939,14 @@
                 function renderCard() {
                     card.replaceChildren();
                     const top = el('div', null, 'hwprobe-row');
-                    if (probeProgress) {
-                        const line = el('div', null, 'hwprobe-row hwprobe-start hwprobe-grow');
-                        const bar = jf('<div class="itemProgressBar hwprobe-progress"><div class="itemProgressBarForeground"></div></div>');
-                        bar.firstElementChild.style.width = (probeProgress.Total ? Math.round(100 * (probeProgress.Done || 0) / probeProgress.Total) : 0) + '%';
-                        line.appendChild(bar);
-                        line.appendChild(statusText);
-                        top.appendChild(line);
-                    } else {
-                        top.appendChild(statusText);
-                    }
+                    top.appendChild(statusText);
                     top.appendChild(runButton);
                     card.appendChild(top);
+                    if (probeProgress) {
+                        const bar = jf('<div class="itemProgressBar hwprobe-progress hwprobe-progress-wide"><div class="itemProgressBarForeground"></div></div>');
+                        bar.firstElementChild.style.width = (probeProgress.Total ? Math.round(100 * (probeProgress.Done || 0) / probeProgress.Total) : 0) + '%';
+                        card.appendChild(bar);
+                    }
                 }
 
                 // What Jellyfin uses now, and whether it works; then a failed backend's way out, a pending restart and the last change.
