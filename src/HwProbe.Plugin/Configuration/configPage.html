@@ -1357,6 +1357,9 @@
                         }
                         target.appendChild(line);
                     }
+                    if (speedVideos.some(v => chosenVideos.has(v.Key) && !v.SourceUrl)) {
+                        target.appendChild(el('div', 'Test videos encode faster than real video.', 'infoBanner'));
+                    }
                     if (chosenVideos.has('library')) {
                         target.appendChild(libraryCell(update));
                         if (libraryVideo) {
@@ -1476,7 +1479,6 @@
                     multiSelect(form, 'Input', speedVideos.map(v => ({ key: v.Key, text: v.Name, secondary: v.Input })).concat([{ key: 'library', text: 'Library video', secondary: libraryVideo ? libraryVideo.Name : 'A movie or episode' }]), chosenVideos, () => { sourceLines(sources, update); update(); })
                         .appendChild(sources);
                     sourceLines(sources, update);
-                    sources.parentNode.appendChild(el('div', 'Test videos encode faster than real video.', 'fieldDescription'));
                     form.appendChild(el('h3', 'Output', 'sectionTitle'));
                     multiSelect(form, 'Codec', speedCodecs.map(c => ({ key: c.Key, text: c.Name })).concat(speedOutputs.filter(o => o.DecodeOnly).map(o => ({ key: o.Key, text: o.Label }))), chosenCodecs, () => update())
                         .appendChild(el('div', 'Every selected codec at every selected quality is made from every selected input, as a player asks for it.', 'fieldDescription'));
