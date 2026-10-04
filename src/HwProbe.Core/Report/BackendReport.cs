@@ -31,6 +31,6 @@ public sealed record BackendReport(
     /// <summary>Gets a short fix for a backend that doesn't work, when there is one.</summary>
     public Fix? Fix { get; init; }
 
-    /// <summary>Gets each cell's run time in seconds, keyed by column and cell key, e.g. <c>decode:hevc10</c>.</summary>
+    /// <summary>Gets the run time in seconds of each cell that launched ffmpeg, keyed by column and cell key, e.g. <c>decode:hevc10</c>.</summary>
     public IReadOnlyDictionary<string, double> Seconds { get; init; } = new Dictionary<string, double>();
 }

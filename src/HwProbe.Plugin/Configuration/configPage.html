@@ -91,12 +91,13 @@
             #HwProbeConfigPage .hwprobe-emoji { font-size: 1em; line-height: 1; }
             #HwProbeConfigPage .selectContainer .hwprobe-notes { margin: 0 14px; padding-left: 1.4em; }
             #HwProbeConfigPage .hwprobe-progress { position: relative; width: 16em; }
-            #hwprobeCard { position: relative; }
+            #hwprobeCard, #HwProbeConfigPage .hwprobe-progress-card { position: relative; }
             #HwProbeConfigPage .hwprobe-progress.hwprobe-progress-wide { position: absolute; left: 1em; right: 1em; bottom: 0.3em; width: auto; margin: 0; }
             #HwProbeConfigPage .hwprobe-inline { margin: 0 0 0 0.5em; padding: 0.2em 0.8em; }
             /* jellyfin-web's legacy buttons look the same when disabled; this follows the dashboard's MUI buttons. */
             #HwProbeConfigPage .emby-button:disabled { color: var(--jf-palette-action-disabled, rgba(255, 255, 255, 0.3)); background: var(--jf-palette-action-disabledBackground, rgba(255, 255, 255, 0.12)); cursor: default; }
             #HwProbeConfigPage .emby-button.button-flat:disabled { background: transparent; }
+            #HwProbeConfigPage .emby-select-withcolor:disabled { opacity: 1; background-color: var(--jf-palette-action-disabledBackground, rgba(255, 255, 255, 0.12)); border-bottom: 1px dotted var(--jf-palette-action-disabled, rgba(255, 255, 255, 0.3)); color: var(--jf-palette-action-disabled, rgba(255, 255, 255, 0.3)); }
             #HwProbeConfigPage sup { font-size: 0.7em; }
             /* Phones: let columns size to their content and wrap, so nothing runs off the screen. */
             @media (max-width: 40em) {
@@ -145,9 +146,9 @@
                 const runButton = idleAction('Run probe', () => {
                     statusText.textContent = 'Probing\u2026';
                     probeProgress = {};
-                    renderCard();
+                    render();
                     ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Run') })
-                        .then(loadStatus, () => { setMessage('Could not start: a probe is running or a session is transcoding.'); runButton.disabled = false; probeProgress = null; renderCard(); loadStatus(); });
+                        .then(loadStatus, () => { setMessage('Could not start: a probe is running or a session is transcoding.'); runButton.disabled = false; probeProgress = null; render(); loadStatus(); });
                 }, 'raised button-submit');
 
                 // The banner is a themed panel, so it's hidden while empty.
@@ -646,6 +647,29 @@
                     return button;
                 }
 
+                // Can't be undone, so the first press only asks; a click anywhere else takes the question back.
+                function confirmAction(text, question, onConfirm, kind) {
+                    let sure = false;
+                    const button = idleAction(text, () => {
+                        if (sure) {
+                            onConfirm();
+                            return;
+                        }
+                        sure = true;
+                        button.firstElementChild.textContent = question;
+                        button.disabled = false;
+                        const elsewhere = e => {
+                            document.removeEventListener('click', elsewhere, true);
+                            if (!button.contains(e.target)) {
+                                sure = false;
+                                button.firstElementChild.textContent = text;
+                            }
+                        };
+                        document.addEventListener('click', elsewhere, true);
+                    }, kind);
+                    return button;
+                }
+
                 function setRunning(on) {
                     running = on;
                     idleButtons = idleButtons.filter(b => b.isConnected || b === runButton);
@@ -1002,14 +1026,17 @@
                     for (const tab of [results, settingsTab, speedTab, resultsTab, helpTab]) {
                         tab.replaceChildren();
                     }
-                    const viable = report ? report.backends.filter(b => b.verdict === 'Viable').sort(byDropdown) : [];
+                    // While a probe runs, the page shows no results, as before the first run.
+                    const viable = report && !probeProgress ? report.backends.filter(b => b.verdict === 'Viable').sort(byDropdown) : [];
                     renderCard();
                     renderBackendStatus(settingsTab, viable);
                     speedViable = viable;
                     renderResultsTab(resultsTab);
                     renderHelp(helpTab);
-                    if (!report) {
-                        results.appendChild(el('p', 'No results yet. Run a probe while nothing is being transcoded; the first run takes a few minutes.', 'secondaryText'));
+                    if (!report || probeProgress) {
+                        if (!probeProgress) {
+                            results.appendChild(el('p', 'No results yet. Run a probe while nothing is being transcoded; the first run takes a few minutes.', 'secondaryText'));
+                        }
                         settingsTab.appendChild(el('div', 'Recommended settings require first running a hardware probe.', 'infoBanner'));
                         speedTab.appendChild(el('div', 'Performance testing requires first running a hardware probe.', 'infoBanner'));
                         return;
@@ -1092,18 +1119,10 @@
                         if (!entries.length) {
                             return;
                         }
-                        let sure = false;
-                        const all = idleAction('Delete all', () => {
-                            if (!sure) {
-                                sure = true;
-                                all.firstElementChild.textContent = 'Delete all ' + entries.length + ' files';
-                                all.disabled = false;
-                                return;
-                            }
+                        line.appendChild(confirmAction('Delete all', 'Delete all ' + entries.length + ' files', () => {
                             ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('HwProbe/Cache') })
                                 .then(render, () => { setMessage('Could not delete: a probe or performance test is using the cache.'); render(); });
-                        }, 'raised button-delete');
-                        line.appendChild(all);
+                        }, 'raised button-delete'));
                         const table = el('table');
                         row(table, [el('th', 'Contents'), el('th', 'File'), el('th', 'Size', 'hwprobe-num'), el('th', 'Written')]);
                         let folder = null;
@@ -1166,8 +1185,8 @@
                     }
                 }
 
-                function renderResultsTab(container) {
-                    heading(container, 'Results');
+                function renderResultsTab(tab) {
+                    const container = fold(tab, 'Results', true);
                     runPicker = null;
                     if (speedHistory.length) {
                         const runs = themedSelect(container, 'Run');
@@ -1189,20 +1208,9 @@
                             .then(loadReport, () => { setMessage('Could not delete: a probe or performance test is running.'); loadReport(); });
                         const actions = el('div', null, 'hwprobe-row hwprobe-end');
                         container.appendChild(actions);
-                        actions.appendChild(idleAction('Delete', () => remove('HwProbe/SpeedHistory/' + runs.value), 'button-flat hwprobe-danger'));
+                        actions.appendChild(idleAction('Delete', () => remove('HwProbe/SpeedHistory/' + runs.value), 'raised hwprobe-danger'));
                         if (speedHistory.length > 1) {
-                            // Can't be undone, so the first press only asks.
-                            let sure = false;
-                            const all = idleAction('Delete all', () => {
-                                if (sure) {
-                                    remove('HwProbe/SpeedHistory');
-                                    return;
-                                }
-                                sure = true;
-                                all.firstElementChild.textContent = 'Delete all ' + speedHistory.length + ' runs';
-                                all.disabled = false;
-                            }, 'raised button-delete');
-                            actions.appendChild(all);
+                            actions.appendChild(confirmAction('Delete all', 'Delete all ' + speedHistory.length + ' runs', () => remove('HwProbe/SpeedHistory'), 'raised button-delete'));
                         }
                     }
                     container.appendChild(speedResults);
@@ -1214,30 +1222,48 @@
                     fold(container, 'Cache').appendChild(renderCache());
                 }
 
-                function renderSpeedResults() {
+                // What the results area last drew, so a poll that changes only the time left doesn't redraw it under the cursor.
+                let speedDrawn = null;
+                let speedProgressParts = null;
+
+                // A poll redraws only the progress text and bar unless the results or the run's phase changed.
+                function renderSpeedResults(poll) {
                     syncRunPicker();
+                    const drawn = JSON.stringify([speedLive && speedLive.results, speedReport && speedReport.generatedUtc, speedProgress && speedProgress.Phase, speedProgress && speedProgress.Done]);
+                    if (poll === true && drawn === speedDrawn && speedProgress && speedProgressParts) {
+                        speedProgressParts.text.textContent = speedProgressText(speedProgress);
+                        return;
+                    }
+                    speedDrawn = drawn;
+                    speedProgressParts = null;
                     speedResults.replaceChildren();
                     if (speedProgress) {
-                        const line = el('div', null, 'hwprobe-row hwprobe-start');
-                        const bar = jf('<div class="itemProgressBar hwprobe-progress"><div class="itemProgressBarForeground"></div></div>');
-                        bar.firstElementChild.style.width = (speedProgress.Total ? Math.round(100 * speedProgress.Done / speedProgress.Total) : 0) + '%';
-                        line.appendChild(bar);
-                        line.appendChild(el('span', speedProgressText(speedProgress), 'secondaryText'));
+                        const box = el('div', null, 'paperList hwprobe-card hwprobe-progress-card');
+                        const line = el('div', null, 'hwprobe-row');
+                        const text = el('span', speedProgressText(speedProgress), 'secondaryText');
+                        line.appendChild(text);
+                        const buttons = el('div', null, 'hwprobe-row hwprobe-end');
                         const cancel = action('Cancel', () => {
                             cancel.disabled = true;
                             ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed/Cancel') }).then(loadStatus, loadStatus);
-                        });
+                        }, 'raised button-delete');
                         const cancelling = speedProgress.Phase === 'Cancelling';
                         cancel.disabled = cancelling;
                         const paused = speedProgress.Phase === 'Paused' || speedProgress.Phase === 'Pausing';
                         const pause = action(paused ? 'Resume' : 'Pause', () => {
                             pause.disabled = true;
                             ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl(paused ? 'HwProbe/Speed/Resume' : 'HwProbe/Speed/Pause') }).then(loadStatus, loadStatus);
-                        });
+                        }, 'raised');
                         pause.disabled = cancelling;
-                        line.appendChild(pause);
-                        line.appendChild(cancel);
-                        speedResults.appendChild(line);
+                        buttons.appendChild(pause);
+                        buttons.appendChild(cancel);
+                        line.appendChild(buttons);
+                        box.appendChild(line);
+                        const bar = jf('<div class="itemProgressBar hwprobe-progress hwprobe-progress-wide"><div class="itemProgressBarForeground"></div></div>');
+                        bar.firstElementChild.style.width = (speedProgress.Total ? Math.round(100 * (speedProgress.Done || 0) / speedProgress.Total) : 0) + '%';
+                        box.appendChild(bar);
+                        speedResults.appendChild(box);
+                        speedProgressParts = { text };
                     }
                     const shown = speedLive || speedReport;
                     if (shown && shown.results.length) {
@@ -1642,7 +1668,7 @@
                     }, null);
                     const fastestOf = cells => Math.max(0, ...cells.filter(x => x && !x.pending).map(speedOf).filter(v => v));
 
-                    const table = el('table', null, 'hwprobe-matrix');
+                    const table = el('table', null, 'hwprobe-matrix hwprobe-full');
                     const columns = backends.length * per + 3;
                     if (per === 2) {
                         const top = el('tr');
@@ -1673,7 +1699,7 @@
                         const best = bestOf(base);
                         const fastest = fastestOf(r.results.filter(x => x.test === key));
                         const sized = base.find(x => x && x.outputSize);
-                        row(table, [input, el('td', first.output || first.label || key), el('td', sized ? sized.outputSize : '', 'secondaryText')].concat(base.flatMap(x => cellsFor(x, best, null, fastest))));
+                        row(table, [input, el('td', first.output || first.label || key), el('td', sized ? sized.outputSize : base.some(x => x && x.pending) ? '\u2026' : '', 'secondaryText')].concat(base.flatMap(x => cellsFor(x, best, null, fastest))));
 
                         const variants = [...new Set(r.results.filter(x => x.test === key && x.variant).map(x => x.variant))];
                         if (!variants.length) {
@@ -1814,7 +1840,8 @@
                         return 'Pausing when this measurement finishes\u2026';
                     }
                     if (s.Phase === 'Preparing' || !s.Total) {
-                        return (s.Preparing || 'Preparing test videos') + '\u2026';
+                        const ahead = s.Total ? timeLeft(s) : '';
+                        return (s.Preparing || 'Preparing test videos') + (ahead ? '\u2026 ' + ahead : '\u2026');
                     }
                     const done = s.Done || 0;
                     const left = timeLeft(s);
@@ -1926,7 +1953,9 @@
                             statusText.textContent = text;
                             const wasProbing = !!probeProgress;
                             probeProgress = s.Activity === 'Speed' ? null : s;
-                            if (probeProgress || wasProbing) {
+                            if (loaded && !!probeProgress !== wasProbing) {
+                                render();
+                            } else if (probeProgress) {
                                 renderCard();
                             }
                             speedUpdate();
@@ -1938,7 +1967,7 @@
                             if (s.Activity === 'Speed') {
                                 speedProgress = s;
                                 ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedProgress'), dataType: 'json' })
-                                    .then(r => { speedLive = r; }, () => {}).then(renderSpeedResults).then(() => { clearTimeout(pollTimer); pollTimer = setTimeout(loadStatus, 250); });
+                                    .then(r => { speedLive = r; }, () => {}).then(() => renderSpeedResults(true)).then(() => { clearTimeout(pollTimer); pollTimer = setTimeout(loadStatus, 250); });
                             } else {
                                 clearTimeout(pollTimer); pollTimer = setTimeout(loadStatus, 250);
                             }

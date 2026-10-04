@@ -46,20 +46,22 @@ public sealed class ProbeEngineTests : IDisposable
         Assert.Equal(CapabilityReport.CurrentSchemaVersion, report.SchemaVersion);
     }
 
-    /// <summary>Every reported cell has its run time, under its column and key.</summary>
+    /// <summary>Every reported cell that launched ffmpeg has its run time, under its column and key.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
-    public async Task EveryCellHasItsRunTime()
+    public async Task EveryLaunchedCellHasItsRunTime()
     {
         var report = await RunAsync(StopStage.Matrix);
 
         var backend = Assert.Single(report.Backends);
-        var cells = backend.Decode.Keys.Select(k => "decode:" + k)
-            .Concat(backend.Encode.Keys.Select(k => "encode:" + k))
-            .Concat(backend.Tonemap.Keys.Select(k => "tonemap:" + k))
-            .Concat(backend.Deinterlace.Keys.Select(k => "deinterlace:" + k))
-            .Concat(backend.Subtitles.Keys.Select(k => "subtitles:" + k));
-        Assert.Equal(cells.Order(StringComparer.Ordinal), backend.Seconds.Keys.Order(StringComparer.Ordinal));
+        var cells = backend.Decode.Select(c => ("decode:" + c.Key, c.Value))
+            .Concat(backend.Encode.Select(c => ("encode:" + c.Key, c.Value)))
+            .Concat(backend.Tonemap.Select(c => ("tonemap:" + c.Key, c.Value)))
+            .Concat(backend.Deinterlace.Select(c => ("deinterlace:" + c.Key, c.Value)))
+            .Concat(backend.Subtitles.Select(c => ("subtitles:" + c.Key, c.Value)))
+            .ToList();
+        Assert.Equal(cells.Where(c => c.Value == ProbeOutcome.Pass).Select(c => c.Item1).Order(StringComparer.Ordinal), backend.Seconds.Keys.Order(StringComparer.Ordinal));
+        Assert.DoesNotContain("decode:vc1", backend.Seconds.Keys);
         Assert.All(backend.Seconds.Values, s => Assert.True(s >= 0));
     }
 

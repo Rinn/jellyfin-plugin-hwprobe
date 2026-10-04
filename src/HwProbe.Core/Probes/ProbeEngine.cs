@@ -99,7 +99,7 @@ public sealed class ProbeEngine : IDisposable
             var key = Fingerprint.Compute(new FingerprintInputs(ffmpeg, caps.VersionLine, null, null, null, null, null, null));
             FixtureCacheContents.Prune(options.FixturesDirectory, key);
             Progress?.Report(new ProbeProgress("Generating test clips", 0, run.Total));
-            var steps = Progress is { } progress ? new Progress<FixtureStep>(step => progress.Report(new ProbeProgress((step.Action == FixtureAction.Generating ? "Generating " : "Downloading ") + step.Spec.FileName, 0, run.Total))) : null;
+            var steps = Progress is { } progress ? new Progress<FixtureStep>(step => progress.Report(new ProbeProgress(step.Describe(step.Spec.FileName), 0, run.Total))) : null;
             var fixtures = await new FixtureBuilder(_runner, ffmpeg, options.FixturesDirectory, options.FixtureTimeout, FixtureDownloader) { Progress = steps }
                 .BuildAsync(key, caps.Encoders, cancellationToken);
             run.Fixtures = fixtures.ToDictionary(f => f.Spec.FileName, StringComparer.Ordinal);
@@ -559,7 +559,11 @@ public sealed class ProbeEngine : IDisposable
                 }
 
                 column[key] = result.Outcome;
-                seconds[ColumnName(cell.Group) + ":" + key] = result.Duration.TotalSeconds;
+                if (result.CommandLine is not null)
+                {
+                    seconds[ColumnName(cell.Group) + ":" + key] = result.Duration.TotalSeconds;
+                }
+
                 decodedTenBit |= cell.Group == MatrixGroup.Decode && cell.Fixture.BitDepth >= 10 && result.Outcome == ProbeOutcome.Pass;
             }
         }
