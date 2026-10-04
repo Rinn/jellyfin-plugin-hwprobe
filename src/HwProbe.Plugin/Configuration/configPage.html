@@ -675,7 +675,6 @@
                 function idleAction(text, onClick, kind) {
                     const button = action(text, onClick, kind);
                     button.disabled = running;
-                    idleButtons = idleButtons.filter(b => b.isConnected || b === runButton);
                     idleButtons.push(button);
                     return button;
                 }
@@ -691,7 +690,6 @@
                         onClick();
                     });
                     button.disabled = running;
-                    idleButtons = idleButtons.filter(b => b.isConnected || b === runButton);
                     idleButtons.push(button);
                     return button;
                 }
@@ -721,6 +719,7 @@
 
                 function setRunning(on) {
                     running = on;
+                    // Pruned here, not as buttons are made: a table's buttons aren't on the page until the whole table is.
                     idleButtons = idleButtons.filter(b => b.isConnected || b === runButton);
                     // A button for something this server can't do stays off when the run ends.
                     for (const b of idleButtons) {
