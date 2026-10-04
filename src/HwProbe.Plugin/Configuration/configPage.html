@@ -42,6 +42,7 @@
             #HwProbeConfigPage tr:hover > td { background: var(--jf-palette-action-selected, rgba(255, 255, 255, 0.16)); }
             #HwProbeConfigPage table tr:hover > td.hwprobe-best:nth-child(n) { background: color-mix(in srgb, var(--jf-palette-primary-main, #00a4dc) 30%, transparent); }
             #HwProbeConfigPage .hwprobe-scroll { overflow-x: auto; }
+            #HwProbeConfigPage table.hwprobe-full { width: 100%; }
             #HwProbeConfigPage .hwprobe-matrix td:first-child { white-space: nowrap; }
             #HwProbeConfigPage .hwprobe-backends td:nth-child(2), #HwProbeConfigPage .hwprobe-backends th:nth-child(2) { width: 18em; }
             #HwProbeConfigPage .hwprobe-backends td:nth-child(3), #HwProbeConfigPage .hwprobe-backends th:nth-child(3) { width: 12em; }
@@ -66,7 +67,9 @@
             #HwProbeConfigPage .hwprobe-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em 1em; margin: 1.5em 0 0.3em; }
             #HwProbeConfigPage .hwprobe-heading h2 { margin: 0; }
             #HwProbeConfigPage .hwprobe-heading .selectContainer { margin: 0; flex: 1 1 16em; max-width: 28em; }
-            #HwProbeConfigPage .hwprobe-heading .selectContainer.hwprobe-view { flex: 0 1 12em; }
+            #HwProbeConfigPage .hwprobe-views { font-size: 0.85em; margin: 0.3em 0 0.6em; }
+            #HwProbeConfigPage .hwprobe-views label { display: inline-flex; align-items: center; gap: 0.3em; cursor: pointer; }
+            #HwProbeConfigPage .hwprobe-views input { accent-color: var(--jf-palette-primary-main, #00a4dc); margin: 0; }
             #HwProbeConfigPage .hwprobe-change { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em; }
             #HwProbeConfigPage .hwprobe-change-list { margin: 0 0 0.5em 1em; }
             #HwProbeConfigPage .hwprobe-change-list table { margin: 0.2em 0 0; }
@@ -487,7 +490,7 @@
                 }
 
                 function backendTable(rows) {
-                    const table = el('table', null, 'hwprobe-backends');
+                    const table = el('table', null, 'hwprobe-backends hwprobe-full');
                     row(table, [el('th'), el('th', 'Backend'), el('th', 'Device'), el('th', 'Status')]);
                     for (const [type, device, status, fix, state] of rows) {
                         const markCell = state === 'works' ? emojiMark('\u2705', 'Works') : state === 'failed' ? emojiMark('\u274c', 'Failed') : spokenMark('NotTested', 'Not available');
@@ -576,7 +579,13 @@
 
                 function mark(state) {
                     const td = el('td', null, 'hwprobe-mark');
-                    td.appendChild(icon(state === 'TurnOn' || state === 'Optional' ? 'check' : state === 'LeaveOff' ? 'close' : 'remove'));
+                    if (state === 'TurnOn' || state === 'Optional' || state === 'LeaveOff') {
+                        const glyph = el('span', state === 'LeaveOff' ? '\u274c' : '\u2705', 'hwprobe-emoji');
+                        glyph.setAttribute('aria-hidden', 'true');
+                        td.appendChild(glyph);
+                    } else {
+                        td.appendChild(icon('remove'));
+                    }
                     return td;
                 }
 
@@ -870,12 +879,18 @@
                 function renderDetails(r) {
                     const details = fold(results, 'Test details');
 
-                    const table = el('table');
+                    const table = el('table', null, 'hwprobe-full');
                     row(table, [el('th', 'Backend'), el('th', 'Device'), el('th', 'Column'), el('th', 'Test'), el('th', 'Result')]);
                     for (const b of r.backends) {
                         for (const column of columns) {
                             for (const [key, outcome] of Object.entries(b[column] || {})) {
-                                row(table, [b.type, b.device || '-', column, key, outcome]);
+                                const result = el('td');
+                                result.dataset.sort = outcome;
+                                const glyph = el('span', outcome === 'Pass' ? '\u2705 ' : ['Untested', 'NotUsed', 'Skipped'].indexOf(outcome) !== -1 ? '\u2796 ' : outcome === 'SoftwareFallback' ? '\u26a0\ufe0f ' : '\u274c ', 'hwprobe-emoji');
+                                glyph.setAttribute('aria-hidden', 'true');
+                                result.appendChild(glyph);
+                                result.appendChild(document.createTextNode(outcome));
+                                row(table, [b.type, b.device || '-', column, key, result]);
                             }
                         }
                     }
@@ -898,7 +913,7 @@
                     if (!codes.length) {
                         return;
                     }
-                    const table = el('table');
+                    const table = el('table', null, 'hwprobe-full');
                     row(table, [el('th', 'Note'), el('th', 'Backends')]);
                     for (const code of codes) {
                         const g = grouped[code];
@@ -1097,22 +1112,9 @@
                 }
 
                 function renderResultsTab(container) {
-                    const title = heading(container, 'Results');
-                    const view = themedSelect(title, 'View');
-                    view.parentNode.classList.add('hwprobe-view');
-                    for (const [key, text] of speedViews) {
-                        const option = el('option', text);
-                        option.value = key;
-                        option.selected = key === speedView;
-                        view.appendChild(option);
-                    }
-                    view.addEventListener('change', () => {
-                        speedView = view.value;
-                        localStorage.setItem('hwprobe-speed-view', speedView);
-                        renderSpeedResults();
-                    });
+                    heading(container, 'Results');
                     if (speedHistory.length) {
-                        const runs = themedSelect(title, 'Run');
+                        const runs = themedSelect(container, 'Run');
                         for (const h of speedHistory) {
                             const option = el('option', new Date(h.GeneratedUtc).toLocaleString() + ' \u00b7 ' + methodName(h.Method) + ' \u00b7 ' + h.Tests + ' test' + (h.Tests === 1 ? '' : 's') + (h.Current ? '' : ' (another version or ffmpeg)'));
                             option.value = h.Id;
@@ -1128,7 +1130,9 @@
                         });
                         const remove = url => ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl(url) })
                             .then(loadReport, () => { setMessage('Could not delete: a probe or performance test is running.'); loadReport(); });
-                        title.appendChild(idleAction('Delete', () => remove('HwProbe/SpeedHistory/' + runs.value)));
+                        const actions = el('div', null, 'hwprobe-row hwprobe-start');
+                        container.appendChild(actions);
+                        actions.appendChild(idleAction('Delete', () => remove('HwProbe/SpeedHistory/' + runs.value)));
                         if (speedHistory.length > 1) {
                             // Can't be undone, so the first press only asks.
                             let sure = false;
@@ -1141,7 +1145,7 @@
                                 all.firstElementChild.textContent = 'Delete all ' + speedHistory.length + ' runs';
                                 all.disabled = false;
                             }, 'raised button-delete');
-                            title.appendChild(all);
+                            actions.appendChild(all);
                         }
                     }
                     container.appendChild(speedResults);
@@ -1651,6 +1655,26 @@
                     const scroll = el('div', null, 'hwprobe-scroll');
                     scroll.appendChild(table);
                     div.appendChild(scroll);
+                    const views = el('div', null, 'hwprobe-row hwprobe-start hwprobe-views');
+                    views.setAttribute('role', 'radiogroup');
+                    views.setAttribute('aria-label', 'View');
+                    views.appendChild(el('span', 'View', 'secondaryText'));
+                    for (const [key, text] of speedViews) {
+                        const label = el('label');
+                        const radio = el('input');
+                        radio.type = 'radio';
+                        radio.name = 'hwprobeView';
+                        radio.checked = key === speedView;
+                        radio.addEventListener('change', () => {
+                            speedView = key;
+                            localStorage.setItem('hwprobe-speed-view', speedView);
+                            renderSpeedResults();
+                        });
+                        label.appendChild(radio);
+                        label.appendChild(document.createTextNode(' ' + text));
+                        views.appendChild(label);
+                    }
+                    div.appendChild(views);
 
                     footnotes.forEach((note, i) => {
                         const line = el('div', null, 'fieldDescription');
