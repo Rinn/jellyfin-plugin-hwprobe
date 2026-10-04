@@ -1824,10 +1824,6 @@
                         line.appendChild(document.createTextNode(' ' + note));
                         div.appendChild(line);
                     });
-                    // The Values view ranks by streams first, which the highlight alone doesn't show.
-                    if (backends.length > 1 && values && counted) {
-                        div.appendChild(el('div', 'The highlighted cell keeps up with the most concurrent streams, then is the fastest, for the row.', 'fieldDescription'));
-                    }
 
                     // The samples a run used, listed as on Performance Tests; a sample no longer in the catalog keeps the credit it was saved with.
                     const samples = el('ul', null, 'fieldDescription hwprobe-notes');
