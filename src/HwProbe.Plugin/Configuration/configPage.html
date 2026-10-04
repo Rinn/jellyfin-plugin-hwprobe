@@ -278,10 +278,16 @@
                     return div;
                 }
 
+                // Which sections were opened or closed, by key, kept across redraws.
+                const foldOpen = new Map();
+
                 // A collapsible section with Jellyfin's heading style; emby-collapse isn't loaded on plugin pages.
-                function fold(container, title, open, level) {
+                // The key defaults to the title without a trailing count.
+                function fold(container, title, open, level, key) {
                     const details = el('details', null, 'hwprobe-fold');
-                    details.open = !!open;
+                    const id = key || title.replace(/ \(\d+\)$/, '');
+                    details.open = foldOpen.has(id) ? foldOpen.get(id) : !!open;
+                    details.addEventListener('toggle', () => foldOpen.set(id, details.open));
                     const summary = el('summary');
                     summary.appendChild(icon('chevron_right'));
                     summary.appendChild(el(level || 'h2', title, 'sectionTitle'));
@@ -1022,8 +1028,7 @@
                         if (!selected || viable.indexOf(selected) === -1) {
                             selected = viable.find(isConfigured) || viable[0];
                         }
-                        const container = fold(settingsTab, 'Settings', settingsOpen);
-                        container.addEventListener('toggle', () => { settingsOpen = container.open; });
+                        const container = fold(settingsTab, 'Settings', true, null, 'recommended');
                         const title = container.firstElementChild.lastElementChild;
                         const body = el('div');
                         container.appendChild(body);
@@ -1137,10 +1142,33 @@
                     }
                 }
 
+                // The Run select on Test Results, or null when there are no saved runs.
+                let runPicker = null;
+
+                // While a run goes, the Run select shows it and can't be changed.
+                function syncRunPicker() {
+                    if (!runPicker) {
+                        return;
+                    }
+                    const live = runPicker.querySelector('option[value=""]');
+                    runPicker.disabled = !!speedProgress;
+                    if (speedProgress && !live) {
+                        const option = el('option', 'In progress');
+                        option.value = '';
+                        runPicker.prepend(option);
+                        runPicker.value = '';
+                    } else if (!speedProgress && live) {
+                        live.remove();
+                        runPicker.value = speedViewing || speedHistory[0].Id;
+                    }
+                }
+
                 function renderResultsTab(container) {
                     heading(container, 'Results');
+                    runPicker = null;
                     if (speedHistory.length) {
                         const runs = themedSelect(container, 'Run');
+                        runPicker = runs;
                         for (const h of speedHistory) {
                             const option = el('option', new Date(h.GeneratedUtc).toLocaleString() + ' \u00b7 ' + methodName(h.Method) + ' \u00b7 ' + h.Tests + ' test' + (h.Tests === 1 ? '' : 's') + (h.Current ? '' : ' (another version or ffmpeg)'));
                             option.value = h.Id;
@@ -1184,6 +1212,7 @@
                 }
 
                 function renderSpeedResults() {
+                    syncRunPicker();
                     speedResults.replaceChildren();
                     if (speedProgress) {
                         const line = el('div', null, 'hwprobe-row hwprobe-start');
@@ -1368,12 +1397,6 @@
                     }
                 }
 
-                // Whether the performance test's settings are shown, kept across redraws.
-                let speedSetupOpen = true;
-
-                // Whether the recommended settings are shown, kept across redraws.
-                let settingsOpen = true;
-
                 function renderSpeedSetup(container, viable) {
                     chooseSpeedDefaults();
                     let button = null;
@@ -1412,8 +1435,7 @@
                     go.appendChild(estimate);
                     container.appendChild(go);
                     container.appendChild(el('div', 'For more accurate results, measure while the server is idle.', 'infoBanner'));
-                    const form = fold(container, 'Settings', speedSetupOpen);
-                    form.addEventListener('toggle', () => { speedSetupOpen = form.open; });
+                    const form = fold(container, 'Settings', true, null, 'performance');
 
                     // Help goes under its field, before the gap to the next one, as the dashboard's helper text does.
                     const options = (label, values, current, onChange, help) => {
