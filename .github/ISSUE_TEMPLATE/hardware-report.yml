@@ -48,5 +48,4 @@ body:
   - type: textarea
     id: notes
     attributes:
-      label: What's wrong
-      description: A result that doesn't match what happens when Jellyfin transcodes, or anything else. Leave empty when everything matches.
+      label: Additional information
