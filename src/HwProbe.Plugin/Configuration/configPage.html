@@ -1643,8 +1643,8 @@
                             }));
                     }, 'raised button-submit');
                     const idle = 'For more accurate results, measure while the server is idle.';
-                    const suites = fold(container, 'Test Suites', false);
-                    const form = fold(container, 'Performance Test', true, null, 'performance');
+                    const suites = fold(container, 'Test Suites', true);
+                    const form = fold(container, 'Performance Test', false, null, 'performance');
                     const go = el('div', null, 'hwprobe-row hwprobe-start');
                     go.appendChild(button);
                     go.appendChild(estimate);
