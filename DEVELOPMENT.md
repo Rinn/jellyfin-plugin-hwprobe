@@ -64,7 +64,7 @@ A user's zip (**Download diagnostics** on the Help tab, or `--diagnostics`) is l
 - `stderr/NNN-<probe>.txt`: every launch in order, with `#` lines for the arguments, environment, outcome, and result, then the full stderr. Copy one to `tests/Corpus/stderr/`, replacing the header with an `# Observed:` line naming the host and build.
 - `report.json`: the report.
 
-Zips aren't anonymised. Remove user names, host names, and home paths before committing anything from one.
+**Report on GitHub** (Help tab) and the link the CLI prints open the hardware-report form with the OS, versions, and working backends filled in (`IssueLink`; GitHub fills an issue form's fields from query parameters named after their ids). Zips aren't anonymised. Remove user names, host names, and home paths before committing anything from one.
 
 ## Releasing
 

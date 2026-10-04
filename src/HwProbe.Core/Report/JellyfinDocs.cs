@@ -1,11 +1,11 @@
 namespace Jellyfin.Plugin.HwProbe.Core.Report;
 
 /// <summary>Jellyfin's hardware acceleration guides, by section.</summary>
-/// <remarks>URLs and anchors checked against jellyfin.org on 2026-10-01.</remarks>
+/// <remarks>The base URL is <c>jellyfinGuides</c> in catalog.yaml; anchors checked against jellyfin.org on 2026-10-01.</remarks>
 public static class JellyfinDocs
 {
-    /// <summary>The hardware acceleration guides' common prefix.</summary>
-    public const string Base = "https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/";
+    /// <summary>Gets the hardware acceleration guides' common prefix.</summary>
+    public static string Base => Data.Catalog.Default.Links["jellyfinGuides"];
 
     /// <summary>Returns the guide for a vendor.</summary>
     /// <param name="vendor"><c>intel</c>, <c>nvidia</c> or <c>amd</c>; empty for the overview.</param>

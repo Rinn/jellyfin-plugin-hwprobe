@@ -3,35 +3,49 @@ description: HwProbe results and diagnostics from a server.
 body:
   - type: markdown
     attributes:
-      value: "Get the diagnostics zip from the plugin page (**Help** tab, **Download diagnostics**, after a probe) or the command line (`hwprobe --diagnostics hwprobe-diagnostics.zip`). It isn't anonymised: it holds file paths and the server's user and host names. Check it before attaching it."
+      value: "The OS, version, and backend fields are filled in when this form is opened from the plugin's **Help** tab or the link the CLI prints. Attach the diagnostics archive: **Download diagnostics** on the Help tab after a probe, or `hwprobe --diagnostics hwprobe-diagnostics.zip`. The archive may include file paths, user names, and host names."
   - type: input
     id: gpu
     attributes:
       label: GPU
-      placeholder: AMD Radeon RX 7600, Intel N100, Rockchip RK3588
+      placeholder: Intel N100, AMD Radeon RX 7600, NVIDIA RTX 4060
     validations:
       required: true
   - type: input
     id: os
     attributes:
-      label: OS and how Jellyfin runs
-      placeholder: Ubuntu 24.04, Docker (jellyfin/jellyfin)
+      label: OS and container
+      placeholder: linux 6.8.0 x64, docker
     validations:
       required: true
   - type: input
     id: jellyfin
     attributes:
       label: Jellyfin version
-      placeholder: "12.1.0"
+      placeholder: 12.1.0
+  - type: input
+    id: hwprobe
+    attributes:
+      label: HwProbe version
+      placeholder: 0.14.1.0
+  - type: input
+    id: ffmpeg
+    attributes:
+      label: ffmpeg
+      placeholder: 8.1.2 (/usr/lib/jellyfin-ffmpeg/ffmpeg)
+  - type: input
+    id: backends
+    attributes:
+      label: Working backends
+      placeholder: qsv, vaapi
   - type: textarea
     id: diagnostics
     attributes:
-      label: Diagnostics zip
+      label: Diagnostics archive
       description: Drag the zip here.
     validations:
       required: true
   - type: textarea
     id: notes
     attributes:
-      label: What's wrong, if anything
-      description: A result that doesn't match what happens when Jellyfin transcodes, or anything else.
+      label: Additional information

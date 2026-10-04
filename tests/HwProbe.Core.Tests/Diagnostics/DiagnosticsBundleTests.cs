@@ -43,7 +43,19 @@ public sealed class DiagnosticsBundleTests
         var entries = await EntriesAsync(Sample(), []);
 
         Assert.Contains("ffmpeg 8.1.2 (/usr/lib/jellyfin-ffmpeg/ffmpeg)", entries["README.txt"], StringComparison.Ordinal);
-        Assert.Contains(DiagnosticsBundle.IssueUrl, entries["README.txt"], StringComparison.Ordinal);
+        Assert.Contains(IssueLink.For(Sample(), null), entries["README.txt"], StringComparison.Ordinal);
+    }
+
+    /// <summary>The issue link fills the form's fields from the report, escaped for a URL.</summary>
+    [Fact]
+    public void IssueLinkFillsTheForm()
+    {
+        var link = IssueLink.For(Sample(), "12.1.0");
+
+        Assert.StartsWith(IssueLink.Form + "&os=", link, StringComparison.Ordinal);
+        Assert.Contains("&jellyfin=12.1.0", link, StringComparison.Ordinal);
+        Assert.Contains("&ffmpeg=8.1.2%20%28%2Fusr%2Flib%2Fjellyfin-ffmpeg%2Fffmpeg%29", link, StringComparison.Ordinal);
+        Assert.DoesNotContain("&jellyfin=", IssueLink.For(Sample(), null), StringComparison.Ordinal);
     }
 
     /// <summary>The report inside a bundle reads back; anything that isn't a bundle reads as null.</summary>

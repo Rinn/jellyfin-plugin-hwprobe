@@ -103,7 +103,7 @@ internal static class HwProbeApp
                 return (int)HwProbeExitCode.InternalError;
             }
 
-            await stderr.WriteLineAsync($"hwprobe: wrote {options.DiagnosticsPath}. Attach it to an issue: {DiagnosticsBundle.IssueUrl}".AsMemory(), cancellationToken);
+            await stderr.WriteLineAsync($"hwprobe: wrote {options.DiagnosticsPath}. Attach it to an issue: {IssueLink.For(report, null)}".AsMemory(), cancellationToken);
         }
 
         if (options.Speed is { } requested)
