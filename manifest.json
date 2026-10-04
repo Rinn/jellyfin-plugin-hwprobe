@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.14.0.0",
+        "changelog": "Resource usage (optional, off by default): CPU, memory, GPU, and GPU memory for each measurement, in a new Resource Usage view on Test Results. Per transcode on Windows and on Linux with Intel or AMD (kernel 5.19+); whole-GPU figures for NVIDIA on Linux; CPU and memory only on macOS. Full-width cache and suggestions tables.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.14.0/hwprobe-plugin_0.14.0.0.zip",
+        "checksum": "e341f6d237321ff73c328a98e8f2dd92",
+        "timestamp": "2026-10-04T11:34:38Z"
+      },
+      {
         "version": "0.13.2.0",
         "changelog": "Third-party notices link each library's source repository.",
         "targetAbi": "12.1.0.0",
