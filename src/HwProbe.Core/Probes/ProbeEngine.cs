@@ -248,6 +248,18 @@ public sealed class ProbeEngine : IDisposable
         });
     }
 
+    /// <summary>The report column a matrix group fills, as the report's JSON names it.</summary>
+    /// <param name="group">The matrix group.</param>
+    /// <returns>The column name.</returns>
+    private static string ColumnName(MatrixGroup group) => group switch
+    {
+        MatrixGroup.Decode => "decode",
+        MatrixGroup.Encode => "encode",
+        MatrixGroup.Tonemap => "tonemap",
+        MatrixGroup.Deinterlace => "deinterlace",
+        _ => "subtitles",
+    };
+
     /// <summary>Report key for a hardware tone-map: the filter family the tier implies.</summary>
     /// <param name="type">The backend.</param>
     /// <param name="tier">The resolved tier.</param>
@@ -517,6 +529,7 @@ public sealed class ProbeEngine : IDisposable
         Dictionary<string, ProbeOutcome> tonemap = [];
         Dictionary<string, ProbeOutcome> deinterlace = [];
         Dictionary<string, ProbeOutcome> subtitles = [];
+        Dictionary<string, double> seconds = [];
         var decodedTenBit = false;
         if (run.Options.StopAfter == StopStage.Matrix)
         {
@@ -529,29 +542,25 @@ public sealed class ProbeEngine : IDisposable
                 }
 
                 var result = await RunCellAsync(run, candidate, source, cell, ProbeStage.Matrix, cancellationToken);
-                switch (cell.Group)
+                var (column, key) = cell.Group switch
                 {
-                    case MatrixGroup.Decode:
-                        decode[cell.Key] = result.Outcome;
-                        decodedTenBit |= cell.Fixture.BitDepth >= 10 && result.Outcome == ProbeOutcome.Pass;
-                        break;
-                    case MatrixGroup.Encode:
-                        encode[cell.Key] = result.Outcome;
-                        break;
-                    case MatrixGroup.Tonemap when result.Outcome != ProbeOutcome.Skipped:
-                        tonemap[cell.Cell.VppTonemap ? cell.Key : TonemapKey(candidate.Type, tier)] = result.Outcome;
-                        break;
+                    MatrixGroup.Decode => (decode, cell.Key),
+                    MatrixGroup.Encode => (encode, cell.Key),
+                    MatrixGroup.Tonemap when result.Outcome != ProbeOutcome.Skipped => (tonemap, cell.Cell.VppTonemap ? cell.Key : TonemapKey(candidate.Type, tier)),
 
                     // Keyed by the hardware family that deinterlaced; CPU deinterlacing is Skipped and left out, like tone-map.
-                    case MatrixGroup.Deinterlace when result.Outcome != ProbeOutcome.Skipped:
-                        deinterlace[result.Codec is { } family && family != cell.Cell.InputCodec ? family : cell.Key] = result.Outcome;
-                        break;
-                    case MatrixGroup.Subtitles:
-                        subtitles[cell.Key] = result.Outcome;
-                        break;
-                    default:
-                        break;
+                    MatrixGroup.Deinterlace when result.Outcome != ProbeOutcome.Skipped => (deinterlace, result.Codec is { } family && family != cell.Cell.InputCodec ? family : cell.Key),
+                    MatrixGroup.Subtitles => (subtitles, cell.Key),
+                    _ => (null, string.Empty),
+                };
+                if (column is null)
+                {
+                    continue;
                 }
+
+                column[key] = result.Outcome;
+                seconds[ColumnName(cell.Group) + ":" + key] = result.Duration.TotalSeconds;
+                decodedTenBit |= cell.Group == MatrixGroup.Decode && cell.Fixture.BitDepth >= 10 && result.Outcome == ProbeOutcome.Pass;
             }
         }
 
@@ -561,7 +570,7 @@ public sealed class ProbeEngine : IDisposable
         }
 
         var row = new BackendReport(candidate.Type, candidate.Device, BackendVerdict.Viable, tier, decode, encode, tonemap, deinterlace, subtitles, string.Empty);
-        run.Backends.Add(row with { Settings = SettingsAdvisor.For(row, new AdviceContext(run.Host.Os, inContainer, run.NoOpencl.Contains(candidate)) { IntelLowPower = IntelLowPower(run, candidate) }) });
+        run.Backends.Add(row with { Seconds = seconds, Settings = SettingsAdvisor.For(row, new AdviceContext(run.Host.Os, inContainer, run.NoOpencl.Contains(candidate)) { IntelLowPower = IntelLowPower(run, candidate) }) });
     }
 
     /// <summary>Opens OpenCL on a device that upstream will send through its OpenCL pipeline.</summary>

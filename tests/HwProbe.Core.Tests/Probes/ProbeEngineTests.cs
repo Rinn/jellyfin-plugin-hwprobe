@@ -46,6 +46,23 @@ public sealed class ProbeEngineTests : IDisposable
         Assert.Equal(CapabilityReport.CurrentSchemaVersion, report.SchemaVersion);
     }
 
+    /// <summary>Every reported cell has its run time, under its column and key.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task EveryCellHasItsRunTime()
+    {
+        var report = await RunAsync(StopStage.Matrix);
+
+        var backend = Assert.Single(report.Backends);
+        var cells = backend.Decode.Keys.Select(k => "decode:" + k)
+            .Concat(backend.Encode.Keys.Select(k => "encode:" + k))
+            .Concat(backend.Tonemap.Keys.Select(k => "tonemap:" + k))
+            .Concat(backend.Deinterlace.Keys.Select(k => "deinterlace:" + k))
+            .Concat(backend.Subtitles.Keys.Select(k => "subtitles:" + k));
+        Assert.Equal(cells.Order(StringComparer.Ordinal), backend.Seconds.Keys.Order(StringComparer.Ordinal));
+        Assert.All(backend.Seconds.Values, s => Assert.True(s >= 0));
+    }
+
     /// <summary>NVENC with every CUDA filter Jellyfin needs keeps the job on the GPU; without alphasrc it's copy-back, naming it.</summary>
     /// <param name="dropAlphasrc">Whether the recorded build's filter list loses alphasrc.</param>
     /// <returns>A task representing the test.</returns>

@@ -902,7 +902,7 @@
                     const details = fold(results, 'Detailed results');
 
                     const table = el('table', null, 'hwprobe-full');
-                    row(table, [el('th', 'Backend'), el('th', 'Device'), el('th', 'Column'), el('th', 'Test'), el('th', 'Result')]);
+                    row(table, [el('th', 'Backend'), el('th', 'Device'), el('th', 'Column'), el('th', 'Test'), el('th', 'Result'), el('th', 'Time', 'hwprobe-num')]);
                     for (const b of r.backends) {
                         for (const column of columns) {
                             for (const [key, outcome] of Object.entries(b[column] || {})) {
@@ -912,12 +912,15 @@
                                 glyph.setAttribute('aria-hidden', 'true');
                                 result.appendChild(glyph);
                                 result.appendChild(document.createTextNode(outcome));
-                                row(table, [b.type, b.device || '-', column, key, result]);
+                                const seconds = (b.seconds || {})[column + ':' + key];
+                                const time = el('td', seconds === undefined ? '-' : seconds.toFixed(1) + ' s', 'hwprobe-num');
+                                time.dataset.sort = seconds === undefined ? '' : String(seconds);
+                                row(table, [b.type, b.device || '-', column, key, result, time]);
                             }
                         }
                     }
                     sortable(table, 'details');
-                    // Five columns of ids and outcomes don't fit a phone, and breaking them mid-word reads worse than scrolling.
+                    // Six columns of ids and outcomes don't fit a phone, and breaking them mid-word reads worse than scrolling.
                     const scroll = el('div', null, 'hwprobe-scroll');
                     scroll.appendChild(table);
                     details.appendChild(scroll);
