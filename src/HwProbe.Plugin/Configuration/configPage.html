@@ -1086,7 +1086,7 @@
                             ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('HwProbe/Cache') })
                                 .then(render, () => { setMessage('Could not delete: a probe or performance test is using the cache.'); render(); });
                         }, 'button-flat hwprobe-danger'));
-                        const table = el('table');
+                        const table = el('table', null, 'hwprobe-plain');
                         row(table, [el('th', 'Contents'), el('th', 'File'), el('th', 'Size', 'hwprobe-num'), el('th', 'Written')]);
                         let folder = null;
                         for (const e of entries) {
