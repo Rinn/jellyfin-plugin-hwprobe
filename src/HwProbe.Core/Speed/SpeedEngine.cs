@@ -112,7 +112,7 @@ public sealed class SpeedEngine : IDisposable
                 await waitFirst.HoldWhileBusyAsync(cancellationToken);
             }
 
-            var clips = await BuildClipsAsync(options, caps, tests, speed.Settings, progress is null ? null : new StepProgress(step => progress.Report(new SpeedProgress(0, total, null) { Preparing = Preparing(step, names) })), cancellationToken);
+            var clips = await BuildClipsAsync(options, caps, tests, speed.Settings, progress is null ? null : new FixtureStepProgress(step => progress.Report(new SpeedProgress(0, total, null) { Preparing = Preparing(step, names) })), cancellationToken);
             progress?.Report(new SpeedProgress(0, total, null));
             foreach (var (type, device) in measured)
             {
@@ -487,16 +487,8 @@ public sealed class SpeedEngine : IDisposable
                 // Double-rate deinterlacing makes a frame per field, so real time is twice the source rate (EncodingHelper.GetSwDeinterlaceFilter and the hardware deinterlace filters, v12.1: interlaced sources of 30 fps or less).
                 var outputRate = cell.DoubleRate && test.Interlaced && !test.DecodeOnly && test.FrameRate <= 30 ? test.FrameRate * 2 : test.FrameRate;
                 var measured = await SpeedMeter.MeasureAsync(LaunchAsync, method, outputRate, !test.DecodeOnly, ct, timeUp);
-                note = lowPowerDropped ? "Low-power mode isn't supported for this encoder here; ffmpeg used normal mode, so this is the normal-mode speed." : note;
+                note = lowPowerDropped ? Data.Catalog.Text("noteLowPowerDropped") : note;
                 return new SpeedResult(type, device, test.Key, string.Empty, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note) { OutputSize = size, Interrupted = measured.Interrupted, Command = CommandHash(Command(SpeedMeter.Content)), Resources = measured.Resources, LowPowerDropped = lowPowerDropped, FrameRate = outputRate };
             },
             cancellationToken);
-
-    /// <summary>Reports clip steps on the caller's thread, in order.</summary>
-    /// <param name="report">Applies one step.</param>
-    private sealed class StepProgress(Action<FixtureStep> report) : IProgress<FixtureStep>
-    {
-        /// <inheritdoc/>
-        public void Report(FixtureStep value) => report(value);
-    }
 }

@@ -103,9 +103,13 @@ public sealed class ProbeEngine : IDisposable
             FixtureCacheContents.Prune(options.FixturesDirectory, key);
             Progress?.Report(new ProbeProgress("Generating test clips", 0, run.Total));
 
-            // A clip's first step means the ones before it are done; cached clips report nothing and count once all are ready.
-            var order = FixtureCatalog.All.Select(f => f.FileName).ToList();
-            var steps = Progress is { } progress ? new Progress<FixtureStep>(step => progress.Report(new ProbeProgress(step.Describe(step.Spec.FileName), Math.Max(0, order.IndexOf(step.Spec.FileName)), run.Total))) : null;
+            // Each new clip's first step means the one before it is done; cached clips report nothing and count once all are ready.
+            HashSet<string> begun = new(StringComparer.Ordinal);
+            var steps = Progress is { } progress ? new FixtureStepProgress(step =>
+            {
+                begun.Add(step.Spec.FileName);
+                progress.Report(new ProbeProgress(step.Describe(step.Spec.FileName), begun.Count - 1, run.Total));
+            }) : null;
             var fixtures = await new FixtureBuilder(_runner, ffmpeg, options.FixturesDirectory, options.FixtureTimeout, FixtureDownloader) { Progress = steps }
                 .BuildAsync(key, caps.Encoders, cancellationToken);
             run.Fixtures = fixtures.ToDictionary(f => f.Spec.FileName, StringComparer.Ordinal);
