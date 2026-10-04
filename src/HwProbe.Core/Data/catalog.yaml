@@ -201,6 +201,32 @@ videos:
       audioChannels: 2
       piece: { url: "https://upload.wikimedia.org/wikipedia/commons/4/44/Sol_Levante.webm", headerLength: 1022, start: 563867512, length: 21230224, sha256: d1d4c263e3ab895dad850c4110e9161f563414ca5c4609ae095434d4911ac8ae }
       keepAcrossBuilds: true
+  - key: sports-576i
+    name: Sports, interlaced SD
+    frameRate: 25
+    width: 720
+    height: 576
+    audio: 5.1 AC-3
+    sample:
+      title: Bolshoy Ice Dome during XXII Winter Olympics
+      credit: Bolshoy Ice Dome during XXII Winter Olympics, Voltmetro, CC0, via Wikimedia Commons
+      holder: Voltmetro
+      holderUrl: https://commons.wikimedia.org/wiki/User:Voltmetro
+      article: https://en.wikipedia.org/wiki/Ice_hockey_at_the_2014_Winter_Olympics_%E2%80%93_Men%27s_tournament
+      license: https://creativecommons.org/publicdomain/zero/1.0/
+      licenseName: CC0 1.0
+      source: https://commons.wikimedia.org/wiki/File:2014-02-14_-_Bolshoy_Ice_Dome_during_XXII_Winter_Olympics.mpg
+    # Commons' original, used whole: a camcorder's MPEG-2 576i (top field first, 16:9 anamorphic) with 5.1 AC-3, as DVDs and SD TV recordings are.
+    clip:
+      file: sample_sports_576i.mpg
+      seconds: 9.6
+      codec: mpeg2video
+      interlaced: true
+      audioCodec: ac3
+      audioChannels: 6
+      keepAcrossBuilds: true
+      download: "https://upload.wikimedia.org/wikipedia/commons/b/bb/2014-02-14_-_Bolshoy_Ice_Dome_during_XXII_Winter_Olympics.mpg"
+      sha256: 137265646230688007039c8a9bfd46bd1452d217404b5fa119a9bbd5c2f87a98
   - <<: *testVideo
     key: pattern
     name: Test video, H.264
@@ -520,7 +546,7 @@ suites:
   - key: deinterlace
     name: Deinterlacing
     description: Encodes interlaced video to H.264 with each deinterlacing method.
-    videos: [pattern-1080i]
+    videos: [sports-576i]
     outputs: [h264-8mbps]
     steps:
       - { label: YADIF, options: { DeinterlaceMethod: yadif } }
