@@ -54,6 +54,7 @@
             #HwProbeConfigPage .hwprobe-card { padding: 0.8em 1em; margin: 0 0 1.5em; }
             #HwProbeConfigPage .hwprobe-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5em 1em; margin: 0.2em 0; }
             #HwProbeConfigPage .hwprobe-row.hwprobe-start { justify-content: flex-start; }
+            #HwProbeConfigPage .hwprobe-row.hwprobe-end { justify-content: flex-end; }
             #HwProbeConfigPage .hwprobe-row.hwprobe-grow { flex: 1 1 auto; margin: 0; }
             /* Banners drawn like the dashboard's MUI Alert (standard variant), with its outlined icons. */
             #HwProbeConfigPage .infoBanner { position: relative; margin: 0.5em 0 1em; padding: 14px 16px 14px 50px; border: none; border-radius: 4px; box-shadow: none; background: var(--jf-palette-Alert-infoStandardBg, rgb(7, 19, 24)); color: var(--jf-palette-Alert-infoColor, rgb(184, 231, 251)); font-size: 0.875rem; line-height: 1.43; letter-spacing: 0.01071em; }
@@ -68,7 +69,7 @@
             #HwProbeConfigPage .hwprobe-views { font-size: 0.85em; margin: 0.3em 0 0.6em; }
             #HwProbeConfigPage .hwprobe-views label { display: inline-flex; align-items: center; gap: 0.3em; cursor: pointer; }
             #HwProbeConfigPage .hwprobe-views input { accent-color: var(--jf-palette-primary-main, #00a4dc); margin: 0; }
-            #HwProbeConfigPage .hwprobe-change { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em; }
+            #HwProbeConfigPage .hwprobe-change { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5em; }
             #HwProbeConfigPage .hwprobe-change-list { margin: 0 0 0.5em 1em; }
             #HwProbeConfigPage .hwprobe-change-list table { margin: 0.2em 0 0; }
             #HwProbeConfigPage .hwprobe-disclosure { display: inline-flex; align-items: center; gap: 0.3em; padding: 0; border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
@@ -1075,7 +1076,8 @@
                     const div = el('div');
                     ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Cache/Contents'), dataType: 'json' }).then(entries => {
                         const bytes = entries.reduce((sum, e) => sum + e.Bytes, 0);
-                        const line = el('p', 'Cache: ' + sizeText(bytes) + ' in ' + entries.length + ' file' + (entries.length === 1 ? '' : 's') + ' ', 'secondaryText');
+                        const line = el('div', null, 'hwprobe-row');
+                        line.appendChild(el('span', 'Cache: ' + sizeText(bytes) + ' in ' + entries.length + ' file' + (entries.length === 1 ? '' : 's'), 'secondaryText'));
                         div.appendChild(line);
                         if (!entries.length) {
                             return;
@@ -1152,7 +1154,7 @@
                         });
                         const remove = url => ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl(url) })
                             .then(loadReport, () => { setMessage('Could not delete: a probe or performance test is running.'); loadReport(); });
-                        const actions = el('div', null, 'hwprobe-row hwprobe-start');
+                        const actions = el('div', null, 'hwprobe-row hwprobe-end');
                         container.appendChild(actions);
                         actions.appendChild(idleAction('Delete', () => remove('HwProbe/SpeedHistory/' + runs.value), 'button-flat hwprobe-danger'));
                         if (speedHistory.length > 1) {
