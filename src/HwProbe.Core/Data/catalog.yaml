@@ -508,19 +508,32 @@ suites:
     steps:
       - { label: Low power off, options: { QsvLowPowerH264: "false", QsvLowPowerHevc: "false" } }
       - { label: Low power on, options: { QsvLowPowerH264: "true", QsvLowPowerHevc: "true" } }
-  - key: extras
-    name: Extras
-    description: Encodes H.264 with and without subtitle burn-in, deinterlacing, and VBR audio.
+  - key: subtitles
+    name: Subtitle burn-in
+    description: Encodes H.264 with no subtitles, then text and PGS subtitles burned in.
     videos: [drama]
     outputs: [h264-8mbps]
     steps:
-      - { label: Plain }
-      - { label: Text subtitles, options: { BurnIn: text } }
-      - { label: PGS subtitles, options: { BurnIn: image } }
-      - { label: VBR audio, options: { AudioVbr: "true" } }
-      - { label: YADIF, videos: [pattern-1080i], options: { DeinterlaceMethod: yadif } }
-      - { label: BWDIF, videos: [pattern-1080i], options: { DeinterlaceMethod: bwdif } }
-      - { label: BWDIF double rate, videos: [pattern-1080i], options: { DeinterlaceMethod: bwdif, DoubleRate: "true" } }
+      - { label: None, options: { BurnIn: none } }
+      - { label: Text, options: { BurnIn: text } }
+      - { label: PGS, options: { BurnIn: image } }
+  - key: deinterlace
+    name: Deinterlacing
+    description: Encodes interlaced video to H.264 with each deinterlacing method.
+    videos: [pattern-1080i]
+    outputs: [h264-8mbps]
+    steps:
+      - { label: YADIF, options: { DeinterlaceMethod: yadif } }
+      - { label: BWDIF, options: { DeinterlaceMethod: bwdif } }
+      - { label: BWDIF double rate, options: { DeinterlaceMethod: bwdif, DoubleRate: "true" } }
+  - key: audio
+    name: VBR audio
+    description: Encodes H.264 with stereo AAC audio, with VBR audio encoding off and on.
+    videos: [drama]
+    outputs: [h264-8mbps]
+    steps:
+      - { label: VBR off, options: { Audio: transcode, AudioVbr: "false" } }
+      - { label: VBR on, options: { Audio: transcode, AudioVbr: "true" } }
 
 # What a run does when the server starts transcoding for a player; keyed by TranscodeAction.
 whenTranscoding:

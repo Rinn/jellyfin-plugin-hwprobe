@@ -29,10 +29,20 @@ public sealed class SpeedSuitesTests
     [Fact]
     public void StepsCanNameTheirOwnVideos()
     {
-        var steps = SpeedSuites.Steps(Suite("extras"), 8);
+        var suite = new CatalogSuite
+        {
+            Key = "mixed",
+            Name = "Mixed",
+            Description = "Two inputs.",
+            Videos = ["drama"],
+            Outputs = ["h264-8mbps"],
+            Steps = [new CatalogSuiteStep { Label = "Film" }, new CatalogSuiteStep { Label = "Interlaced", Videos = ["pattern-1080i"] }],
+        };
+
+        var steps = SpeedSuites.Steps(suite, 8);
 
         Assert.Equal(["drama"], steps[0].Videos);
-        Assert.Equal(["pattern-1080i"], steps.Single(s => s.Label == "YADIF").Videos);
+        Assert.Equal(["pattern-1080i"], steps[1].Videos);
     }
 
     /// <summary>Suites run on the configured backend and software, or one of them, as each says.</summary>
