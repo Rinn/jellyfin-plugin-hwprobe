@@ -940,7 +940,7 @@
                                 glyph.setAttribute('aria-hidden', 'true');
                                 result.appendChild(glyph);
                                 result.appendChild(document.createTextNode(outcome));
-                                const seconds = (b.seconds || {})[column + ':' + key];
+                                const seconds = outcome === 'NotUsed' ? 0 : (b.seconds || {})[column + ':' + key];
                                 const time = el('td', seconds === undefined ? '-' : seconds.toFixed(1) + ' s', 'hwprobe-num');
                                 time.dataset.sort = seconds === undefined ? '' : String(seconds);
                                 row(table, [b.type, b.device || '-', column, key, result, time]);
