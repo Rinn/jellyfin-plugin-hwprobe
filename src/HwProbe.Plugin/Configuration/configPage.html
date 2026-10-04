@@ -97,7 +97,9 @@
             /* jellyfin-web's legacy buttons look the same when disabled; this follows the dashboard's MUI buttons. */
             #HwProbeConfigPage .emby-button:disabled { color: var(--jf-palette-action-disabled, rgba(255, 255, 255, 0.3)); background: var(--jf-palette-action-disabledBackground, rgba(255, 255, 255, 0.12)); cursor: default; }
             #HwProbeConfigPage .emby-button.button-flat:disabled { background: transparent; }
-            #HwProbeConfigPage .emby-select-withcolor:disabled { opacity: 1; background-color: var(--jf-palette-action-disabledBackground, rgba(255, 255, 255, 0.12)); border-bottom: 1px dotted var(--jf-palette-action-disabled, rgba(255, 255, 255, 0.3)); color: var(--jf-palette-action-disabled, rgba(255, 255, 255, 0.3)); }
+            /* jellyfin-web hides a disabled select's field and arrow with !important; this draws it like the dashboard's disabled MUI select. */
+            #HwProbeConfigPage .emby-select-withcolor:disabled { opacity: 1; background-color: var(--jf-palette-action-disabledBackground, rgba(255, 255, 255, 0.12)) !important; border-bottom-style: dotted; border-bottom-color: var(--jf-palette-action-disabled, rgba(255, 255, 255, 0.3)) !important; color: var(--jf-palette-action-disabled, rgba(255, 255, 255, 0.3)) !important; }
+            #HwProbeConfigPage .emby-select-withcolor:disabled + .selectArrowContainer { display: block; opacity: 0.3; }
             #HwProbeConfigPage sup { font-size: 0.7em; }
             /* Phones: let columns size to their content and wrap, so nothing runs off the screen. */
             @media (max-width: 40em) {
