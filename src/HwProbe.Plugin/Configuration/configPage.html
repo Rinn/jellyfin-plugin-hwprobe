@@ -1563,8 +1563,7 @@
                         if (n) {
                             speedCell.appendChild(el('sup', String(n)));
                         }
-                        // One footnote for every reused cell; each cell's date is in its details.
-                        const reused = x.reusedFromUtc ? footnote('Reused from an earlier run with the same settings; point at the value for when it was measured.') : null;
+                        const reused = x.reusedFromUtc ? footnote('Reused from a prior run.') : null;
                         if (reused) {
                             speedCell.appendChild(el('sup', String(reused)));
                         }
