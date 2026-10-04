@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.17.2.0",
+        "changelog": "Probes and performance tests show the shared loading bar, counting the test videos made before the tests, so the bar moves while they are made (#53).",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.17.2/hwprobe-plugin_0.17.2.0.zip",
+        "checksum": "ab56bc38f8cac985a785c004c185c125",
+        "timestamp": "2026-10-04T22:01:23Z"
+      },
+      {
         "version": "0.17.1.0",
         "changelog": "Fixes probes failing with \"Object reference not set to an instance of an object\" on Intel servers. Probes show the same progress bar as performance tests.",
         "targetAbi": "12.1.0.0",
