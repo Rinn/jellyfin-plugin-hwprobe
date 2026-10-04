@@ -7,6 +7,7 @@ using Jellyfin.Plugin.HwProbe.Core.Pipeline;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
 using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Core.Storage;
+using Jellyfin.Plugin.HwProbe.Core.Verdict;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 
@@ -455,13 +456,18 @@ public sealed class SpeedEngine : IDisposable
 
                 string Command(TimeSpan content) => SpeedCommandLine.Build(args, content, test.DecodeOnly, test.StartAt);
 
+                // jellyfin-ffmpeg's qsvenc drops low-power mode it can't use and carries on (debian/patches/0071), so the run measures normal mode.
+                var lowPowerDropped = false;
                 async Task<IReadOnlyList<FfmpegRunResult>> LaunchAsync(int copies, TimeSpan content, CancellationToken token)
                 {
                     var invocation = new FfmpegInvocation(options.Ffmpeg.Path, Command(content), args.Environment, copies == 1 ? _singleTimeout : _copiesTimeout) { MeasureResources = measureResources && copies == 1 };
-                    return await Task.WhenAll(Enumerable.Range(0, copies).Select(_ => _runner.RunAsync(invocation, token)));
+                    var runs = await Task.WhenAll(Enumerable.Range(0, copies).Select(_ => _runner.RunAsync(invocation, token)));
+                    lowPowerDropped |= cell.LowPower && runs.Any(r => StderrMarkers.LowPowerDisabled.Any(m => r.Stderr.Contains(m, StringComparison.Ordinal)));
+                    return runs;
                 }
 
                 var measured = await SpeedMeter.MeasureAsync(LaunchAsync, method, test.FrameRate, !test.DecodeOnly, ct, timeUp);
+                note = lowPowerDropped ? "Low-power mode isn't supported for this encoder here; ffmpeg used normal mode, so this is the normal-mode speed." : note;
                 return new SpeedResult(type, device, test.Key, string.Empty, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note) { OutputSize = size, Interrupted = measured.Interrupted, Command = CommandHash(Command(SpeedMeter.Content)), Resources = measured.Resources };
             },
             cancellationToken);
