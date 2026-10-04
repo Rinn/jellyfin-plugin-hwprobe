@@ -50,6 +50,9 @@ public sealed class SpeedResultCache(string directory)
         Append("command", command);
         Append("method", speed.Method.ToString());
         Append("repeats", speed.Repeats.ToString(CultureInfo.InvariantCulture));
+
+        // A result saved without resource usage can't stand in for one asked to include it.
+        Append("resources", speed.MeasureResources ? "measured" : "-");
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text.ToString())));
     }
 
