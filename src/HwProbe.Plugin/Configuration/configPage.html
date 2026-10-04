@@ -2043,26 +2043,23 @@
                         div.appendChild(line);
                     });
 
-                    // The samples a run used, listed as on Performance Tests; a sample no longer in the catalog keeps the credit it was saved with.
+                    // The inputs a run used, listed as on Performance Tests; a sample no longer in the catalog keeps the credit it was saved with.
                     const samples = el('ul', null, 'fieldDescription hwprobe-notes');
-                    const listed = new Set();
-                    for (const x of r.results) {
-                        const v = speedVideos.find(o => o.Key === x.test.split('|')[0]);
-                        const key = v ? v.Key : x.credit;
-                        if (!x.credit || listed.has(key)) {
-                            continue;
-                        }
-                        listed.add(key);
-                        if (v) {
-                            samples.appendChild(videoItem(v));
-                        } else {
+                    const inputKeys = new Set(r.results.map(x => x.test.split('|')[0]));
+                    for (const v of speedVideos.filter(o => inputKeys.has(o.Key))) {
+                        samples.appendChild(videoItem(v));
+                    }
+                    const credits = new Set();
+                    for (const x of r.results.filter(o => o.credit && !speedVideos.some(v => v.Key === o.test.split('|')[0]))) {
+                        if (!credits.has(x.credit)) {
+                            credits.add(x.credit);
                             const line = el('li', x.credit + ', ');
                             line.appendChild(externalLink('licence', x.licenseUrl));
                             samples.appendChild(line);
                         }
                     }
                     if (samples.childElementCount) {
-                        fold(div, 'Samples', false, 'h3').appendChild(samples);
+                        fold(div, 'Inputs', false, 'h3').appendChild(samples);
                     }
                     if (r.settings) {
                         const used = fold(div, 'Settings used', false, 'h3');
