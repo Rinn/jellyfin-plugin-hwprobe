@@ -1212,7 +1212,7 @@
                             return;
                         }
                         const table = el('table', null, 'hwprobe-full');
-                        row(table, [el('th', 'Contents'), el('th', 'File'), el('th', 'Size', 'hwprobe-num'), el('th', 'Written'), el('th')]);
+                        row(table, [el('th', 'Contents'), el('th', 'File'), el('th', 'Size', 'hwprobe-num'), el('th', 'Written', 'hwprobe-num'), el('th')]);
                         let folder = null;
                         for (const e of entries) {
                             if (e.Folder !== folder) {
@@ -1225,7 +1225,7 @@
                             }
                             const size = el('td', sizeText(e.Bytes), 'hwprobe-num');
                             size.dataset.sort = String(e.Bytes);
-                            const written = el('td', new Date(e.ModifiedUtc).toLocaleDateString(), 'secondaryText hwprobe-num');
+                            const written = el('td', new Date(e.ModifiedUtc).toLocaleString(), 'secondaryText hwprobe-num');
                             written.dataset.sort = String(Date.parse(e.ModifiedUtc));
                             // Downloads are named by SHA-256; the first 12 characters tell them apart, and the whole name is in the tooltip.
                             const file = el('td', e.File.replace(/^([0-9a-f]{12})[0-9a-f]{52}/, '$1\u2026'), 'secondaryText hwprobe-small hwprobe-file');
