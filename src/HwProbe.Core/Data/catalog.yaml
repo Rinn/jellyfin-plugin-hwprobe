@@ -278,6 +278,108 @@ videos:
       audioChannels: 2
       keepAcrossBuilds: true
       piece: { url: "https://archive.org/download/41th_Sao_Paulo_Critical_Mass-Carnival/41th_Sao_Paulo_Critical_Mass-Carnival_xvid.avi", headerLength: 10252, start: 7926814, length: 919492, sha256: 2ae67f057fef607a47afcddc8b741a5e05dc382ed62fb808a369f683a50fd362 }
+  - key: flv-280p
+    name: Bar, Flash video
+    legacy: true
+    frameRate: 12
+    width: 394
+    height: 281
+    audio: mono MP3
+    sample:
+      title: malecon
+      credit: malecon, sin complejos, CC BY 2.5, via the Internet Archive
+      holder: sin complejos
+      license: https://creativecommons.org/licenses/by/2.5/
+      licenseName: CC BY 2.5
+      source: https://archive.org/details/sincomplejosmalecon
+      sourceName: Internet Archive
+    # The original upload, used whole: 2000s web video, Sorenson Spark (an H.263 variant) at 12 fps with 11 kHz MP3, which no GPU decodes.
+    clip:
+      file: sample_flv_280p.flv
+      seconds: 30.3
+      codec: flv1
+      audioCodec: mp3
+      audioChannels: 1
+      keepAcrossBuilds: true
+      download: "https://archive.org/download/sincomplejosmalecon/malecon.flv"
+      sha256: 633ad92483f0b9561e5c0682b41104704abad424189618b2c95486fce55b1201
+  - key: 3gp-cif
+    name: Phone, 3GP
+    legacy: true
+    frameRate: 20.6
+    width: 352
+    height: 288
+    audio: mono AMR
+    sample:
+      title: Celebrations
+      credit: Celebrations, Börkur Sigurbjörnsson, CC BY 2.0, via the Internet Archive
+      holder: Börkur Sigurbjörnsson
+      article: https://www.flickr.com/photos/61732101@N00/4616137128
+      license: https://creativecommons.org/licenses/by/2.0/
+      licenseName: CC BY 2.0
+      source: https://archive.org/details/Flickr-4616137128
+      sourceName: Internet Archive
+    # Flickr's original file, used whole: an early phone's H.263 at a variable frame rate (about 20.6 fps) with 8 kHz AMR-NB audio.
+    clip:
+      file: sample_3gp_cif.3gp
+      seconds: 24.9
+      codec: h263
+      audioCodec: amr_nb
+      audioChannels: 1
+      keepAcrossBuilds: true
+      download: "https://archive.org/download/Flickr-4616137128/Celebrations-4616137128.3gp"
+      sha256: 36a776d215485139ed4b9e094919a2b3934c35cf7f096722314295fed36e3ff2
+  - key: realvideo-240p
+    name: Public access TV, RealVideo
+    legacy: true
+    frameRate: 25
+    width: 320
+    height: 240
+    audio: mono Cook
+    sample:
+      title: "Forum der Nichtarbeit: kein Gespraech im OKB"
+      credit: "Forum der Nichtarbeit: kein Gespraech im OKB, Forum der Nichtarbeit, public domain, via the Internet Archive"
+      holder: Forum der Nichtarbeit
+      license: https://creativecommons.org/licenses/publicdomain/
+      licenseName: Public domain
+      source: https://archive.org/details/ForumderNichtarbeit_keinGespraech
+      sourceName: Internet Archive
+    # The original upload, used whole: RealVideo 3 with Cook audio in RealMedia, as old streaming archives are.
+    clip:
+      file: sample_realvideo_240p.rm
+      seconds: 81.7
+      codec: rv30
+      audioCodec: cook
+      audioChannels: 1
+      keepAcrossBuilds: true
+      download: "https://archive.org/download/ForumderNichtarbeit_keinGespraech/keinInterviewimOKB.rm"
+      sha256: a9fb0fbbe373bcbe3b167730f05d7caae60a568c46c4fa92c61c6cc90958edf6
+  - key: wmv-480p
+    name: City square, WMV
+    legacy: true
+    frameRate: 30
+    width: 640
+    height: 480
+    audio: stereo WMA
+    sample:
+      title: Dam Square 2
+      credit: Dam Square 2, Adam Wojtanek, CC BY 2.5, via the Internet Archive
+      holder: Adam Wojtanek
+      article: https://en.wikipedia.org/wiki/Dam_Square
+      license: https://creativecommons.org/licenses/by/2.5/
+      licenseName: CC BY 2.5
+      source: https://archive.org/details/DamSquare2
+      sourceName: Internet Archive
+    # The original upload, used whole: Windows Media Video 9 with WMA 2 audio.
+    clip:
+      file: sample_wmv_480p.wmv
+      seconds: 24.2
+      codec: wmv3
+      audioCodec: wmav2
+      audioChannels: 2
+      keepAcrossBuilds: true
+      download: "https://archive.org/download/DamSquare2/DamSquare2.wmv"
+      sha256: 6031b1b6ef150b856fd2b310cfd84263e2fa074eb62c11f69e3b8ab062d947c6
   - <<: *testVideo
     key: pattern
     name: Test video, H.264
@@ -564,10 +666,10 @@ suites:
   - key: legacy
     name: Legacy formats
     description: Transcodes legacy, low-quality inputs to H.264.
-    videos: [sports-576i, theora-240p, xvid-240p]
+    videos: [sports-576i, theora-240p, xvid-240p, flv-280p, 3gp-cif, realvideo-240p, wmv-480p]
     outputs: [decode, h264-4mbps]
     steps:
-      - { label: "MPEG-2 576i, Theora, and Xvid AVI" }
+      - { label: "MPEG-2 576i, Theora, Xvid AVI, Flash video, 3GP, RealVideo, and WMV" }
   - key: tonemap
     name: Tone mapping
     description: Encodes HDR video to H.264 with tone mapping on and off.

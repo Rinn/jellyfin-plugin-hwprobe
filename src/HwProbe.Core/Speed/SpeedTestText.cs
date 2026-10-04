@@ -102,6 +102,12 @@ public static class SpeedTestText
         "mpeg2video" => "MPEG-2",
         "mpeg4" => "MPEG-4",
         "vc1" => "VC-1",
+        "theora" => "Theora",
+        "flv1" => "Sorenson Spark",
+        "h263" => "H.263",
+        "rv30" => "RealVideo 3",
+        "rv40" => "RealVideo 4",
+        "wmv3" => "WMV 9",
         _ => codec.ToUpperInvariant(),
     };
 }
