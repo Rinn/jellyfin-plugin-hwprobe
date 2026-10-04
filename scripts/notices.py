@@ -58,7 +58,8 @@ def nuspec(name, version):
     else:
         license_name = "Licence"
         license_url = fields["licenseUrl"].text.strip()
-    url = fields["projectUrl"].text.strip() if "projectUrl" in fields else fields["repository"].get("url")
+    # The source repository rather than projectUrl, which some packages point at a wiki or marketing page.
+    url = fields["repository"].get("url") if "repository" in fields and fields["repository"].get("url") else fields["projectUrl"].text.strip()
     return license_name, license_url, url
 
 
