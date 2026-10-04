@@ -196,7 +196,7 @@
                 let speedMethod = null;
                 let speedRepeats = 1;
                 let speedReuse = true;
-                let speedWhenTranscoding = 'Pause';
+                let speedWhenTranscoding = null;
                 let speedTimeLimit = null;
                 // Null measures with the server's own thread count.
                 // Run options chosen on the page, by catalog key; one left out keeps the server's setting.
@@ -222,6 +222,8 @@
                 let repeatOptions = [];
                 let runOptions = [];
                 let timeLimitOptions = [];
+                let whenTranscodingOptions = [];
+                let defaultMethod = null;
                 let names = {};
                 let order = [];
                 let platforms = {};
@@ -251,6 +253,9 @@
                     speedOutputs = c.Outputs;
                     speedCodecs = c.Codecs;
                     speedQualities = c.Qualities;
+                    whenTranscodingOptions = c.WhenTranscoding.map(o => [o.Key, o.Label]);
+                    speedWhenTranscoding = speedWhenTranscoding || c.DefaultWhenTranscoding;
+                    defaultMethod = c.DefaultMethod;
                     speedMethod = speedMethod || c.DefaultMethod;
                 }
 
@@ -1009,16 +1014,18 @@
                     } else {
                         const entry = shown && shown.backends.find(isConfigured);
                         const device = type === 'vaapi' ? encoding.VaapiDevice : (type === 'qsv' ? encoding.QsvDevice : '');
-                        title.appendChild(document.createTextNode('Hardware acceleration: ' + (names[type] || type) + (device ? ' ' + device : '') + '  '));
+                        const backend = (names[type] || type) + (device ? ' ' + device : '');
+                        title.appendChild(document.createTextNode('Hardware acceleration: '));
+                        if (entry) {
+                            title.appendChild(el('span', entry.verdict === 'Viable' ? '\u2705 ' : '\u274c ', 'hwprobe-emoji'));
+                        }
+                        title.appendChild(document.createTextNode(backend));
                         if (entry && entry.verdict === 'Viable') {
-                            title.appendChild(el('span', '\u2705', 'hwprobe-emoji'));
-                            title.appendChild(document.createTextNode(' works  '));
-                            title.appendChild(el('span', tiers[entry.tier] || '', 'secondaryText'));
+                            title.appendChild(el('span', ' - ' + (tiers[entry.tier] || ''), 'secondaryText'));
                         } else if (entry) {
-                            title.appendChild(el('span', '\u274c', 'hwprobe-emoji'));
-                            title.appendChild(document.createTextNode(' ' + (verdicts[entry.verdict] || entry.verdict)));
+                            title.appendChild(document.createTextNode(' - ' + (verdicts[entry.verdict] || entry.verdict)));
                         } else if (shown) {
-                            title.appendChild(el('span', 'not tested', 'secondaryText'));
+                            title.appendChild(el('span', ' - not tested', 'secondaryText'));
                         }
                     }
                     box.appendChild(title);
@@ -1450,7 +1457,7 @@
                         const videos = allVideos().filter(v => chosenVideos.has(v.Key)).length;
                         const outputs = selectedOutputs().length;
                         const runs = speedRuns(viable);
-                        const per = methodSeconds[speedMethod] || [20, 60];
+                        const per = methodSeconds[speedMethod] || methodSeconds[defaultMethod];
                         const minutes = n => Math.max(1, Math.round(n / 60));
                         const cap = n => speedTimeLimit ? Math.min(n, speedTimeLimit) : n;
                         const low = minutes(runs * cap(per[0] * speedRepeats));
@@ -1555,7 +1562,7 @@
                     options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });
                     options('Repeats', repeatOptions, speedRepeats, v => { speedRepeats = Number(v); });
                     options('Earlier results', [['true', 'Reuse when the settings match'], ['false', 'Measure everything again']], String(speedReuse), v => { speedReuse = v === 'true'; }, 'Reuses a measurement from an earlier run with the same input, output, backend, accuracy, repeats, and ffmpeg, and the same values for the settings that affect it, so a repeated comparison completes faster.');
-                    options('When the server starts transcoding', [['Pause', 'Pause, then repeat the interrupted measurement'], ['Continue', 'Keep measuring'], ['Cancel', 'Cancel the test']], speedWhenTranscoding, v => { speedWhenTranscoding = v; });
+                    options('When the server starts transcoding', whenTranscodingOptions, speedWhenTranscoding, v => { speedWhenTranscoding = v; });
                     options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); }, 'A measurement that reaches the limit stops and reports what it measured.');
 
                     update();
@@ -1872,7 +1879,7 @@
                     if (done > 0 && s.MeasuringSeconds) {
                         seconds = s.MeasuringSeconds / done * remaining;
                     } else {
-                        const per = methodSeconds[speedLive ? speedLive.method : speedMethod] || [20, 60];
+                        const per = methodSeconds[speedLive ? speedLive.method : speedMethod] || methodSeconds[defaultMethod];
                         seconds = remaining * (per[0] + per[1]) / 2 * (speedLive && speedLive.repeats ? speedLive.repeats : 1);
                     }
                     const minutes = Math.round(seconds / 60);

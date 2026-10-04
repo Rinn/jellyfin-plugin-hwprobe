@@ -1,4 +1,4 @@
-namespace Jellyfin.Plugin.HwProbe.Probing;
+namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 
 /// <summary>What a performance test does when the server starts transcoding for a player.</summary>
 public enum TranscodeAction

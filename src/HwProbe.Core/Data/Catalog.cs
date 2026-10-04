@@ -37,6 +37,12 @@ public sealed partial class Catalog
     /// <summary>Gets the time limits per measurement offered, in seconds.</summary>
     public required IReadOnlyList<CatalogOption> TimeLimits { get; init; }
 
+    /// <summary>Gets what a run can do when the server starts transcoding.</summary>
+    public required IReadOnlyList<CatalogTranscodeAction> WhenTranscoding { get; init; }
+
+    /// <summary>Gets what a run does when the server starts transcoding and the request doesn't say.</summary>
+    public required TranscodeAction DefaultWhenTranscoding { get; init; }
+
     /// <summary>Gets the backends, in the order of Jellyfin's dropdown.</summary>
     public required IReadOnlyList<CatalogBackend> Backends { get; init; }
 
@@ -185,6 +191,7 @@ public sealed partial class Catalog
     private void Check()
     {
         RequireAll("methods", Methods.Select(m => m.Key));
+        RequireAll("whenTranscoding", WhenTranscoding.Select(w => w.Key));
         RequireAll("backends", Backends.Select(b => b.Type), HwType.none);
         RequireAll("tiers", Tiers.Keys, PipelineTier.Unknown);
         RequireAll("verdicts", Verdicts.Keys, BackendVerdict.Viable, BackendVerdict.NotBuilt);
@@ -207,6 +214,11 @@ public sealed partial class Catalog
             if (kinds != 1 || SpeedSettingsOptions.Apply(new SpeedSettings(), option.Key, sample) is null)
             {
                 throw new InvalidDataException($"catalog.yaml: option {option.Key} requires one of switch, range, or choices, and a key SpeedSettingsOptions applies.");
+            }
+
+            if ((option.QualityOrder?.Any(v => !option.Takes(v)) ?? false) || (option.LowerIsBetter && option.Range is null))
+            {
+                throw new InvalidDataException($"catalog.yaml: option {option.Key}'s qualityOrder lists values it doesn't take, or lowerIsBetter is set without a range.");
             }
         }
 

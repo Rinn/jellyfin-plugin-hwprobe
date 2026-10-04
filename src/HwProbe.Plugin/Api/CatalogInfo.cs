@@ -14,6 +14,8 @@ namespace Jellyfin.Plugin.HwProbe.Api;
 /// <param name="Repeats">The repeat counts offered.</param>
 /// <param name="Options">The settings a run can be given, in the order of Jellyfin's Transcoding page.</param>
 /// <param name="TimeLimits">The time limits per measurement offered, in seconds.</param>
+/// <param name="WhenTranscoding">What a run can do when the server starts transcoding.</param>
+/// <param name="DefaultWhenTranscoding">What a run does by default when the server starts transcoding.</param>
 /// <param name="Backends">The backends, in the order of Jellyfin's dropdown.</param>
 /// <param name="Tiers">The pipeline tiers' descriptions.</param>
 /// <param name="Verdicts">The descriptions of backends that don't work.</param>
@@ -29,6 +31,8 @@ public sealed record CatalogInfo(
     IReadOnlyList<CatalogOption> Repeats,
     IReadOnlyList<CatalogSetting> Options,
     IReadOnlyList<CatalogOption> TimeLimits,
+    IReadOnlyList<CatalogTranscodeAction> WhenTranscoding,
+    TranscodeAction DefaultWhenTranscoding,
     IReadOnlyList<CatalogBackend> Backends,
     IReadOnlyDictionary<PipelineTier, string> Tiers,
     IReadOnlyDictionary<BackendVerdict, string> Verdicts,
@@ -51,6 +55,8 @@ public sealed record CatalogInfo(
             catalog.Repeats,
             catalog.Options,
             catalog.TimeLimits,
+            catalog.WhenTranscoding,
+            catalog.DefaultWhenTranscoding,
             catalog.Backends,
             catalog.Tiers,
             catalog.Verdicts,

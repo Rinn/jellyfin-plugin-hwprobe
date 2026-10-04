@@ -325,8 +325,9 @@ options:
       - { key: veryfast, label: veryfast }
       - { key: superfast, label: superfast }
       - { key: ultrafast, label: ultrafast }
-  - { key: H265Crf, label: H.265 encoding CRF, server: H265Crf, range: [0, 51] }
-  - { key: H264Crf, label: H.264 encoding CRF, server: H264Crf, range: [0, 51], help: CRF only applies to software encoders. }
+    qualityOrder: [veryslow, slower, slow, medium, fast, faster, veryfast, superfast, ultrafast]
+  - { key: H265Crf, label: H.265 encoding CRF, server: H265Crf, range: [0, 51], lowerIsBetter: true }
+  - { key: H264Crf, label: H.264 encoding CRF, server: H264Crf, range: [0, 51], lowerIsBetter: true, help: CRF only applies to software encoders. }
   - key: DeinterlaceMethod
     label: Deinterlacing method
     server: DeinterlaceMethod
@@ -334,7 +335,8 @@ options:
     choices:
       - { key: yadif, label: Yet Another DeInterlacing Filter (YADIF) }
       - { key: bwdif, label: Bob Weaver DeInterlacing Filter (BWDIF) }
-  - { key: DoubleRate, label: Double the frame rate when deinterlacing, server: DeinterlaceDoubleRate, switch: true }
+    qualityOrder: [bwdif, yadif]
+  - { key: DoubleRate, label: Double the frame rate when deinterlacing, server: DeinterlaceDoubleRate, switch: true, qualityOrder: ["true", "false"] }
   - key: Audio
     label: Audio
     help: Copying passes the source's audio through, as for a client that plays it, so only the video is transcoded.
@@ -348,6 +350,14 @@ options:
       - { key: none, label: None }
       - { key: text, label: Text (ASS) }
       - { key: image, label: Image (PGS) }
+
+# What a run does when the server starts transcoding for a player; keyed by TranscodeAction.
+whenTranscoding:
+  - { key: Pause, label: "Pause, then repeat the interrupted measurement" }
+  - { key: Continue, label: Keep measuring }
+  - { key: Cancel, label: Cancel the test }
+
+defaultWhenTranscoding: Pause
 
 # Seconds per measurement; no value for no limit.
 timeLimits:

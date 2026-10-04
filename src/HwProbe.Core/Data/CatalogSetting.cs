@@ -35,6 +35,27 @@ public sealed class CatalogSetting
     /// <summary>Gets its keyed values, or null.</summary>
     public IReadOnlyList<CatalogLabel>? Choices { get; init; }
 
+    /// <summary>Gets its values from best picture to fastest, for a choice or switch that trades speed for quality, or null.</summary>
+    public IReadOnlyList<string>? QualityOrder { get; init; }
+
+    /// <summary>Gets a value indicating whether a lower number in its range gives a better picture.</summary>
+    public bool LowerIsBetter { get; init; }
+
+    /// <summary>Returns whether one value gives a better picture than another.</summary>
+    /// <param name="value">The value.</param>
+    /// <param name="other">The other value.</param>
+    /// <returns>True when the setting trades speed for quality and the value is the better-quality one.</returns>
+    public bool IsBetterQuality(string value, string other)
+    {
+        if (LowerIsBetter)
+        {
+            return Takes(value) && Takes(other) && int.Parse(value, CultureInfo.InvariantCulture) < int.Parse(other, CultureInfo.InvariantCulture);
+        }
+
+        var order = QualityOrder?.ToList() ?? [];
+        return order.IndexOf(value) is var mine and >= 0 && order.IndexOf(other) is var theirs and >= 0 && mine < theirs;
+    }
+
     /// <summary>Returns whether a value is one it takes.</summary>
     /// <param name="value">The value.</param>
     /// <returns>Whether it's valid.</returns>

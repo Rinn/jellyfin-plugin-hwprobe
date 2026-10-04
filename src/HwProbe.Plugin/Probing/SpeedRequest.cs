@@ -1,3 +1,6 @@
+using Jellyfin.Plugin.HwProbe.Core.Data;
+using Jellyfin.Plugin.HwProbe.Core.Speed;
+
 namespace Jellyfin.Plugin.HwProbe.Probing;
 
 /// <summary>A speed run as the plugin page asks for it: every chosen output from every chosen video.</summary>
@@ -22,7 +25,7 @@ public sealed record SpeedRequest(string Method, IReadOnlyList<string> Videos, I
     public Guid? ItemId { get; init; }
 
     /// <summary>Gets what the run does when the server transcodes; only <see cref="TranscodeAction.Pause"/> starts while one is running.</summary>
-    public TranscodeAction WhenTranscoding { get; init; } = TranscodeAction.Continue;
+    public TranscodeAction WhenTranscoding { get; init; } = Catalog.Default.DefaultWhenTranscoding;
 
     /// <summary>Gets a value indicating whether measurements an earlier run saved with exactly the same settings are reused.</summary>
     public bool ReuseResults { get; init; }
