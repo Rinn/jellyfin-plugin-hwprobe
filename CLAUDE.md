@@ -101,8 +101,8 @@ The page should look and behave like a native Jellyfin dashboard page, stay calm
 
 ## To do
 
-- **Resource stats, next steps**: power where readable without root (NVML, AMD hwmon, RAPL). CPU, memory, and GPU engine time are measured already (`src/HwProbe.Core/Resources`); Intel and AMD GPU figures on Linux 5.19+ are unverified, as no such host is available.
+- **Power draw** (researched 2026-10-04): first NVML total energy (`nvmlDeviceGetTotalEnergyConsumption`, Linux and Windows, no admin) and Windows' `\Energy Meter(RAPL_Package0_PKG)\Energy` counter; Linux RAPL is root-only and masked in containers, Intel iGPUs have no unprivileged source, macOS IOReport is private. All whole-device, so report watts above an idle reading taken before each measurement, and feed it to `ResourceComparison`. Intel and AMD GPU usage on Linux 5.19+ is unverified, as no such host is available.
 
 Queued by the user on 2026-10-03, in no particular order:
 
-- Trickplay generation as a Performance Tests output (deferred 2026-10-03). `MediaEncoder.ExtractVideoImagesOnIntervalAccelerated` takes its input, filter, and encoder from EncodingHelper but assembles the command itself (skip_frame, setpts, qscale per encoder, image2), so it needs either a pinned copy of that assembly or a direct call limited to the configured backend.
+- Trickplay generation as a Performance Tests output (researched 2026-10-04). Input, filter, and encoder come from public EncodingHelper methods; only `MediaEncoder.ExtractVideoImagesOnIntervalAccelerated`'s wrapper (skip_frame, setpts, quality per encoder, threads, image2) needs a pinned copy, guarded by drift tests and a log diff in `container-plugin.sh`. A direct call was rejected: configured backend only, no CLI, no stderr to confirm hardware, slow cancellation.
