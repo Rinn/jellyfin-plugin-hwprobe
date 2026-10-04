@@ -143,6 +143,19 @@ public sealed class SpeedAdvisorTests
         Assert.Equal("false", Assert.Single(advice, s => s.Setting == "DoubleRate" && s.Kind == SpeedSuggestionKind.FasterSetting).Value);
     }
 
+    /// <summary>Of several better-quality presets that keep up, only the best is suggested.</summary>
+    [Fact]
+    public void SuggestsOnlyTheBestQuality()
+    {
+        const string Film = "live-action|h264-8mbps";
+        var auto = Run(new SpeedSettings(), Result(HwType.none, Film, 1000) with { Command = "auto" });
+        var fast = Run(new SpeedSettings { EncoderPreset = "fast" }, Result(HwType.none, Film, 900) with { Command = "fast" });
+        var medium = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.none, Film, 800) with { Command = "medium" });
+
+        var quality = Assert.Single(SpeedAdvisor.Advise(auto, [auto, fast, medium], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.HigherQuality);
+        Assert.Equal("medium", quality.Value);
+    }
+
     /// <summary>Outputs below real time on the configured backend are flagged, and marked when only test videos showed it.</summary>
     [Fact]
     public void FlagsOutputsThatFallBehind()
@@ -160,7 +173,7 @@ public sealed class SpeedAdvisorTests
     public void ComparesRunsThatDifferInOneSetting()
     {
         const string Film = "live-action|h264-8mbps";
-        var medium = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.none, Film, 100), Result(HwType.none, "pattern|h264-8mbps", 300));
+        var medium = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.none, Film, 125), Result(HwType.none, "pattern|h264-8mbps", 375));
         var fast = Run(new SpeedSettings { EncoderPreset = "fast" }, Result(HwType.none, Film, 150), Result(HwType.none, "pattern|h264-8mbps", 450));
         var threads = Run(new SpeedSettings { EncoderPreset = "fast", EncodingThreadCount = 4 }, Result(HwType.none, Film, 150));
 
@@ -168,11 +181,11 @@ public sealed class SpeedAdvisorTests
         var onFast = SpeedAdvisor.Advise(fast, [medium, fast, threads], HwType.none, string.Empty, new SpeedSettings { EncoderPreset = "fast" });
 
         var faster = Assert.Single(onMedium, s => s.Kind == SpeedSuggestionKind.FasterSetting);
-        Assert.Equal(("EncoderPreset", "fast", "medium", 0.5, false), (faster.Setting, faster.Value, Assert.Single(faster.Others), faster.Gain!.Value, faster.TestVideosOnly));
+        Assert.Equal(("EncoderPreset", "fast", "medium", 0.2, false), (faster.Setting, faster.Value, Assert.Single(faster.Others), Math.Round(faster.Gain!.Value, 2), faster.TestVideosOnly));
 
         // Headroom comes from the film alone: the test video's 12x overstates it.
         var quality = Assert.Single(onFast, s => s.Kind == SpeedSuggestionKind.HigherQuality);
-        Assert.Equal(("medium", 4.0), (quality.Value, quality.Speed!.Value));
+        Assert.Equal(("medium", 5.0), (quality.Value, quality.Speed!.Value));
         Assert.Equal([Film], quality.Outputs);
         Assert.Equal(SpeedSuggestionKind.NoChange, Assert.Single(onFast, s => s.Setting == "EncodingThreadCount").Kind);
     }

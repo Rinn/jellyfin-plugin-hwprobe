@@ -116,7 +116,7 @@ public static class SpeedAdvisor
         bool Compared(SpeedResult r) => Configured(r) || BackendPreference.StandsInFor(r, type, device);
 
         // Comparisons against several other values, or from several runs, that suggest the same value become one suggestion.
-        suggestions.AddRange(CompareSettings(runs, Compared, server)
+        var merged = CompareSettings(runs, Compared, server)
             .GroupBy(s => (s.Kind, s.Setting, s.Value))
             .Select(g => g.First() with
             {
@@ -125,7 +125,13 @@ public static class SpeedAdvisor
                 Gain = g.Min(s => s.Gain),
                 Speed = g.Min(s => s.Speed),
                 TestVideosOnly = g.All(s => s.TestVideosOnly),
-            }));
+            })
+            .ToList();
+
+        // Of several better-quality values that all keep up, only the best is worth suggesting; the others are steps on the way.
+        merged.RemoveAll(s => s.Kind == SpeedSuggestionKind.HigherQuality && !s.Current
+            && merged.Any(o => o.Kind == SpeedSuggestionKind.HigherQuality && !o.Current && o.Setting == s.Setting && IsBetterQuality(o.Setting!, o.Value!, s.Value!)));
+        suggestions.AddRange(merged);
         return suggestions;
     }
 
@@ -137,7 +143,7 @@ public static class SpeedAdvisor
     private static IEnumerable<SpeedSuggestion> CompareSettings(IReadOnlyList<SpeedReport> runs, Func<SpeedResult, bool> configured, SpeedSettings server)
     {
         // Per setting and value: each output's speed, from every run that differs from another in that setting alone.
-        List<(string Key, string Value, string Other, string Test, string Label, double Gain, double Speed, bool Generated, IReadOnlyList<ResourceSaving> Savings, int? Streams, int? OtherStreams, bool ToneMaps)> seen = [];
+        List<(string Key, string Value, string Other, string Test, string Label, double Gain, double Speed, bool Generated, IReadOnlyList<ResourceSaving> Savings, int? Streams, int? OtherStreams, bool ToneMaps, bool Capped, double OtherSpeed)> seen = [];
         var withSettings = runs.Where(r => r.Settings is not null).ToList();
         for (var i = 0; i < withSettings.Count; i++)
         {
@@ -164,7 +170,7 @@ public static class SpeedAdvisor
                     if (b.Results.FirstOrDefault(r => r.Test == mine.Test && r.Type == mine.Type && r.Device == mine.Device && r.Input == mine.Input && r.Video == mine.Video && r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && !r.LowPowerDropped && configured(r)) is { } theirs
                         && (mine.Command is null || mine.Command != theirs.Command))
                     {
-                        seen.Add((key, _values[key](a.Settings!), _values[key](b.Settings!), mine.Test, Label(mine, a.Settings), Gain(mine, theirs), Speed(mine), IsGenerated(mine), ResourceComparison.Savings(mine, theirs), mine.Streams, theirs.Streams, a.Settings!.Tonemap || a.Settings.VppTonemap || a.Settings.VideoToolboxTonemap));
+                        seen.Add((key, _values[key](a.Settings!), _values[key](b.Settings!), mine.Test, Label(mine, a.Settings), Gain(mine, theirs), Speed(mine), IsGenerated(mine), ResourceComparison.Savings(mine, theirs), mine.Streams, theirs.Streams, a.Settings!.Tonemap || a.Settings.VppTonemap || a.Settings.VideoToolboxTonemap, mine.Capped || theirs.Capped, Speed(theirs)));
                     }
                 }
             }
@@ -220,7 +226,11 @@ public static class SpeedAdvisor
             // Headroom is judged on real video only: a test video's speed overstates it.
             // Better quality isn't worth losing many concurrent streams, so it's suggested only while most are kept.
             var real = group.Where(s => !s.Generated).ToList();
-            var keepsStreams = real.All(s => s.Streams is not { } mine || s.OtherStreams is not { } theirs || theirs == 0 || mine >= theirs * (1 - MaxStreamLoss));
+
+            // Where the stream count hit its cap (or a driver's session limit), it can't show the loss, so speed stands in for it.
+            var keepsStreams = real.All(s => s.Streams is { } mine && s.OtherStreams is { } theirs && !s.Capped && theirs > 0
+                ? mine >= theirs * (1 - MaxStreamLoss)
+                : s.Speed >= s.OtherSpeed * (1 - MaxStreamLoss));
             if (IsBetterQuality(key, value, other) && real.Count > 0 && real.Min(s => s.Speed) >= Headroom && keepsStreams)
             {
                 suggested.Add(key);
