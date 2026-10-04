@@ -1906,9 +1906,9 @@
                             if (s.Activity === 'Speed') {
                                 speedProgress = s;
                                 ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedProgress'), dataType: 'json' })
-                                    .then(r => { speedLive = r; }, () => {}).then(renderSpeedResults).then(() => { pollTimer = setTimeout(loadStatus, 250); });
+                                    .then(r => { speedLive = r; }, () => {}).then(renderSpeedResults).then(() => { clearTimeout(pollTimer); pollTimer = setTimeout(loadStatus, 250); });
                             } else {
-                                pollTimer = setTimeout(loadStatus, 250);
+                                clearTimeout(pollTimer); pollTimer = setTimeout(loadStatus, 250);
                             }
                             return;
                         }
