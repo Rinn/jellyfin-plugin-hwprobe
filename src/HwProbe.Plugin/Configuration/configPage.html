@@ -8,8 +8,9 @@
     <div id="HwProbeConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-button,emby-checkbox,emby-select,emby-input">
         <style>
             /* Layout only: colours, buttons, inputs, and panels come from jellyfin-web's theme classes. */
-            /* Headings, width, and help text as the dashboard's own pages have them (jellyfin-web src/themes/_base/theme.ts and MUI's defaults, v12.1). */
-            #HwProbeConfigPage .content-primary > * { max-width: 54em; }
+            /* Headings and help text as the dashboard's own pages have them (jellyfin-web src/themes/_base/theme.ts and MUI's defaults, v12.1). */
+            /* The page uses the window's full width, since result tables grow with backends; the dashboard's 54em is the least it takes, short of a narrower screen. */
+            #HwProbeConfigPage .content-primary > * { min-width: min(54em, 100%); }
             #HwProbeConfigPage h1 { font-size: 1.8rem; font-weight: 300; line-height: 1.167; margin: 0 0 0.5em; }
             #HwProbeConfigPage h2.sectionTitle { font-size: 1.5rem; font-weight: 300; line-height: 1.2; margin: 24px 0 8px; }
             #HwProbeConfigPage h3.sectionTitle { font-size: 1.17rem; font-weight: 400; line-height: 1.167; margin: 20px 0 8px; }
