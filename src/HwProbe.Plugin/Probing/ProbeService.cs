@@ -635,10 +635,12 @@ public sealed partial class ProbeService : IDisposable
     }
 
     /// <summary>Deletes everything probes and speed runs saved: the latest report and diagnostics, every speed run, saved measurements, the report cache, and the cached clips.</summary>
+    /// <param name="clearAlso">Clears what another service keeps, such as the settings history, once nothing here is running; false when it can't.</param>
     /// <param name="cancellationToken">Cancels waiting.</param>
-    /// <returns>False when a probe or speed run is running.</returns>
-    public async Task<bool> PurgeAllAsync(CancellationToken cancellationToken)
+    /// <returns>False, with nothing deleted, when a probe, speed run, or other delete is running or <paramref name="clearAlso"/> can't run; otherwise whether everything was deleted.</returns>
+    public async Task<bool> PurgeAllAsync(Func<CancellationToken, Task<bool>> clearAlso, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(clearAlso);
         if (!await _gate.WaitAsync(0, cancellationToken))
         {
             return false;
@@ -646,21 +648,28 @@ public sealed partial class ProbeService : IDisposable
 
         try
         {
+            if (!await clearAlso(cancellationToken))
+            {
+                return false;
+            }
+
+            // A file another request has open (such as a download on Windows) stays; the rest still goes.
+            var complete = true;
             foreach (var file in new[] { _latestPath, DiagnosticsPath, SpeedPath })
             {
-                File.Delete(file);
+                complete &= TryDelete(() => File.Delete(file));
             }
 
             foreach (var directory in new[] { SpeedHistoryDirectory, FixturesDirectory, SpeedResultsDirectory, ReportCacheDirectory })
             {
                 if (directory is not null && Directory.Exists(directory))
                 {
-                    Directory.Delete(directory, recursive: true);
+                    complete &= TryDelete(() => Directory.Delete(directory, recursive: true));
                 }
             }
 
             _status = new(ProbeState.Idle, null, null, null);
-            return true;
+            return complete;
         }
         finally
         {
@@ -680,6 +689,22 @@ public sealed partial class ProbeService : IDisposable
     /// <param name="info">The session's transcoding info, null when it plays directly.</param>
     /// <returns>False for direct play and a remux (both streams copied); true otherwise.</returns>
     internal static bool IsTranscoding(TranscodingInfo? info) => info is not null && (!info.IsVideoDirect || !info.IsAudioDirect);
+
+    /// <summary>Runs a delete, treating a file in use or not permitted as left in place.</summary>
+    /// <param name="delete">The delete.</param>
+    /// <returns>False when it failed.</returns>
+    private static bool TryDelete(Action delete)
+    {
+        try
+        {
+            delete();
+            return true;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
 
     /// <summary>Parses a request from the page.</summary>
     /// <param name="request">The request.</param>

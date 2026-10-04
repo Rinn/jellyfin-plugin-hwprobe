@@ -372,7 +372,7 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal(["b.mkv"], service.FixtureCacheContents().Select(e => e.File));
     }
 
-    /// <summary>Deleting all data removes the report, diagnostics, speed runs, saved measurements, report cache and clips, and clears the last status.</summary>
+    /// <summary>Deleting all data removes the report, diagnostics, speed runs, saved measurements, report cache and clips, and clears the last status; nothing goes when the settings history can't be cleared.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
     public async Task PurgeAllDeletesEverything()
@@ -395,7 +395,10 @@ public sealed class ProbeServiceTests : IDisposable
         await File.WriteAllTextAsync(service.DiagnosticsPath, "zip", ct);
         await File.WriteAllTextAsync(service.SpeedPath, "{}", ct);
 
-        Assert.True(await service.PurgeAllAsync(ct));
+        Assert.False(await service.PurgeAllAsync(_ => Task.FromResult(false), ct));
+        Assert.True(File.Exists(service.SpeedPath));
+
+        Assert.True(await service.PurgeAllAsync(_ => Task.FromResult(true), ct));
 
         Assert.Empty(Directory.EnumerateFileSystemEntries(_directory));
         Assert.Null(await service.LatestJsonAsync(ct));
