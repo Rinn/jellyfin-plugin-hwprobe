@@ -50,6 +50,9 @@ public sealed class ProbeEngine : IDisposable
     /// <summary>Gets the downloader for fixtures that can't be generated, such as the VC-1 sample.</summary>
     public IFixtureDownloader FixtureDownloader { get; init; } = new HttpFixtureDownloader();
 
+    /// <summary>Gets what receives each step and the tests done so far, or null.</summary>
+    public IProgress<ProbeProgress>? Progress { get; init; }
+
     /// <summary>Probes the host.</summary>
     /// <param name="options">What to probe.</param>
     /// <param name="cancellationToken">Cancels the run; in-flight ffmpeg trees are killed.</param>
@@ -60,6 +63,7 @@ public sealed class ProbeEngine : IDisposable
         ArgumentNullException.ThrowIfNull(options);
 
         var ffmpeg = options.Ffmpeg.Path;
+        Progress?.Report(new ProbeProgress("Checking ffmpeg", 0, 0));
         var caps = await new FfmpegCapabilityProbe(_runner, options.ProbeTimeout).ProbeAsync(ffmpeg, cancellationToken);
         if (caps.Validation != FfmpegValidation.Valid)
         {
@@ -72,8 +76,12 @@ public sealed class ProbeEngine : IDisposable
 
         if (options.StopAfter >= StopStage.Devices)
         {
+            Progress?.Report(new ProbeProgress("Opening devices", 0, 0));
             await OpenDevicesAsync(run, cancellationToken);
         }
+
+        // Each opened device runs its smoke test, then its matrix; a device that fails smoke skips the rest.
+        run.Total = run.Opened.Sum(o => 1 + (options.StopAfter == StopStage.Matrix ? MatrixCatalog.For(o.Candidate.Type).Count : 0));
 
         var fingerprint = ComputeFingerprint(run, ToolBuild(_arguments));
         var store = new ReportStore(options.ReportCacheDirectory);
@@ -90,13 +98,18 @@ public sealed class ProbeEngine : IDisposable
         {
             var key = Fingerprint.Compute(new FingerprintInputs(ffmpeg, caps.VersionLine, null, null, null, null, null, null));
             FixtureCacheContents.Prune(options.FixturesDirectory, key);
-            var fixtures = await new FixtureBuilder(_runner, ffmpeg, options.FixturesDirectory, options.FixtureTimeout, FixtureDownloader)
+            Progress?.Report(new ProbeProgress("Generating test clips", 0, run.Total));
+            var steps = Progress is { } progress ? new Progress<FixtureStep>(step => progress.Report(new ProbeProgress((step.Action == FixtureAction.Generating ? "Generating " : "Downloading ") + step.Spec.FileName, 0, run.Total))) : null;
+            var fixtures = await new FixtureBuilder(_runner, ffmpeg, options.FixturesDirectory, options.FixtureTimeout, FixtureDownloader) { Progress = steps }
                 .BuildAsync(key, caps.Encoders, cancellationToken);
             run.Fixtures = fixtures.ToDictionary(f => f.Spec.FileName, StringComparer.Ordinal);
 
             foreach (var (candidate, open) in run.Opened)
             {
+                // Tests a backend skips (after a failed smoke test, or tone mapping without a 10-bit decode) still count as done.
+                var planned = run.Done + 1 + (options.StopAfter == StopStage.Matrix ? MatrixCatalog.For(candidate.Type).Count : 0);
                 await ProbeBackendAsync(run, candidate, open, cancellationToken);
+                run.Done = planned;
             }
         }
 
@@ -589,6 +602,36 @@ public sealed class ProbeEngine : IDisposable
     /// <returns>The recorded probe.</returns>
     private async Task<ProbeResult> RunCellAsync(Run run, DeviceCandidate candidate, IArgumentSource source, MatrixCell cell, ProbeStage stage, CancellationToken cancellationToken)
     {
+        var what = stage == ProbeStage.Smoke ? "smoke test" : cell.Group switch
+        {
+            MatrixGroup.Decode => "decode " + cell.Key,
+            MatrixGroup.Encode => "encode " + cell.Key,
+            MatrixGroup.Tonemap => "tone mapping " + cell.Key,
+            MatrixGroup.Deinterlace => "deinterlacing " + cell.Key,
+            MatrixGroup.Subtitles => "subtitle burn-in " + cell.Key,
+            _ => cell.Key,
+        };
+        Progress?.Report(new ProbeProgress($"Testing {candidate.Type}: {what}", run.Done, run.Total));
+        try
+        {
+            return await RunCellCountedAsync(run, candidate, source, cell, stage, cancellationToken);
+        }
+        finally
+        {
+            run.Done++;
+        }
+    }
+
+    /// <summary>Runs one cell: builds its arguments, runs them under the probe gate, and records the result.</summary>
+    /// <param name="run">Run state.</param>
+    /// <param name="candidate">The device.</param>
+    /// <param name="source">The device's argument source.</param>
+    /// <param name="cell">The cell.</param>
+    /// <param name="stage">Smoke or Matrix.</param>
+    /// <param name="cancellationToken">Cancels the probe.</param>
+    /// <returns>The recorded probe.</returns>
+    private async Task<ProbeResult> RunCellCountedAsync(Run run, DeviceCandidate candidate, IArgumentSource source, MatrixCell cell, ProbeStage stage, CancellationToken cancellationToken)
+    {
         var inContainer = run.Host.Container is not null;
 
         // A burn-in cell needs its subtitle file's path before arguments can be generated.
@@ -717,5 +760,11 @@ public sealed class ProbeEngine : IDisposable
 
         /// <summary>Gets report-level findings.</summary>
         public List<Finding> Findings { get; } = [];
+
+        /// <summary>Gets or sets the tests finished, for progress.</summary>
+        public int Done { get; set; }
+
+        /// <summary>Gets or sets the tests planned, for progress.</summary>
+        public int Total { get; set; }
     }
 }

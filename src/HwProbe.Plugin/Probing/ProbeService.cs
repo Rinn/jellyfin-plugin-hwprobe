@@ -28,7 +28,7 @@ public sealed partial class ProbeService : IDisposable
     /// <summary>The most speed runs kept in the history.</summary>
     internal const int SpeedHistoryLimit = 50;
 
-    private readonly Func<CancellationToken, Task<CapabilityReport>> _probe;
+    private readonly Func<IProgress<ProbeProgress>, CancellationToken, Task<CapabilityReport>> _probe;
     private readonly Func<bool> _isTranscoding;
     private readonly string _latestPath;
     private readonly TimeProvider _time;
@@ -36,6 +36,10 @@ public sealed partial class ProbeService : IDisposable
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly List<SpeedResult> _speedSoFar = [];
+
+    // The latest step of a running probe; written by the probe, read by Status.
+    private volatile ProbeProgress? _probeProgress;
+
     private SpeedOptions? _speedRunning;
     private CancellationTokenSource? _speedCancel;
     private SpeedPause? _speedPause;
@@ -54,7 +58,7 @@ public sealed partial class ProbeService : IDisposable
     /// <param name="logger">Logger.</param>
     public ProbeService(IArgumentSourceFactory arguments, IMediaEncoder mediaEncoder, IApplicationPaths paths, ISessionManager sessions, ServerEnvironmentBaseline baseline, IServerConfigurationManager config, LibraryFiles files, ILogger<ProbeService> logger)
         : this(
-            ct => RunEngineAsync(arguments, mediaEncoder, paths, baseline, logger, ct),
+            (progress, ct) => RunEngineAsync(arguments, mediaEncoder, paths, baseline, logger, progress, ct),
             TranscodingCheck(sessions),
             LatestPath(paths),
             TimeProvider.System,
@@ -81,6 +85,18 @@ public sealed partial class ProbeService : IDisposable
     /// <param name="settle">How long to wait before checking for a transcode a second time.</param>
     /// <param name="logger">Logger.</param>
     internal ProbeService(Func<CancellationToken, Task<CapabilityReport>> probe, Func<bool> isTranscoding, string latestPath, TimeProvider time, TimeSpan settle, ILogger logger)
+        : this((_, ct) => probe(ct), isTranscoding, latestPath, time, settle, logger)
+    {
+    }
+
+    /// <summary>Initializes a new instance of the <see cref="ProbeService"/> class with a probe that reports its progress.</summary>
+    /// <param name="probe">Runs one probe, reporting each step.</param>
+    /// <param name="isTranscoding">Reports whether any session is transcoding.</param>
+    /// <param name="latestPath">Where the latest report is saved.</param>
+    /// <param name="time">Clock for status timestamps.</param>
+    /// <param name="settle">How long to wait before checking for a transcode a second time.</param>
+    /// <param name="logger">Logger.</param>
+    internal ProbeService(Func<IProgress<ProbeProgress>, CancellationToken, Task<CapabilityReport>> probe, Func<bool> isTranscoding, string latestPath, TimeProvider time, TimeSpan settle, ILogger logger)
     {
         _probe = probe;
         _isTranscoding = isTranscoding;
@@ -99,7 +115,9 @@ public sealed partial class ProbeService : IDisposable
             {
                 if (_speedRunning is null || _speedPause is not { } pause)
                 {
-                    return _status;
+                    return _status.State == ProbeState.Running && _status.Activity == ProbeActivity.Probe && _probeProgress is { } p
+                        ? _status with { Done = p.Done, Total = p.Total == 0 ? null : p.Total, Step = p.Step }
+                        : _status;
                 }
 
                 var phase = _speedCancel?.IsCancellationRequested == true ? SpeedPhase.Cancelling
@@ -661,15 +679,16 @@ public sealed partial class ProbeService : IDisposable
     /// <param name="paths">Server paths.</param>
     /// <param name="baseline">Environment values captured when the plugin loaded.</param>
     /// <param name="logger">Logs a zip that couldn't be saved.</param>
+    /// <param name="progress">Receives each step.</param>
     /// <param name="cancellationToken">Cancels the probe.</param>
     /// <returns>The report.</returns>
-    private static async Task<CapabilityReport> RunEngineAsync(IArgumentSourceFactory arguments, IMediaEncoder mediaEncoder, IApplicationPaths paths, ServerEnvironmentBaseline baseline, ILogger logger, CancellationToken cancellationToken)
+    private static async Task<CapabilityReport> RunEngineAsync(IArgumentSourceFactory arguments, IMediaEncoder mediaEncoder, IApplicationPaths paths, ServerEnvironmentBaseline baseline, ILogger logger, IProgress<ProbeProgress> progress, CancellationToken cancellationToken)
     {
         var options = ServerEngineOptions(mediaEncoder, paths);
         var environment = EnvironmentRules.InServer(baseline.Values, new Dictionary<string, string>());
         var recorder = new RecordingFfmpegRunner(new FfmpegRunner());
         CapabilityReport report;
-        using (var engine = new ProbeEngine(recorder, arguments, new HostPlatform(), TimeProvider.System, environment))
+        using (var engine = new ProbeEngine(recorder, arguments, new HostPlatform(), TimeProvider.System, environment) { Progress = progress })
         {
             report = await engine.RunAsync(options, cancellationToken);
         }
@@ -771,7 +790,7 @@ public sealed partial class ProbeService : IDisposable
         _status = _status with { State = ProbeState.Running, Activity = ProbeActivity.Probe, LastStartedUtc = _time.GetUtcNow(), LastError = null };
         try
         {
-            var report = await _probe(cancellationToken);
+            var report = await _probe(new SynchronousProgress<ProbeProgress>(p => _probeProgress = p), cancellationToken);
             await ReportStore.WriteAsync(report, _latestPath, cancellationToken);
             var viable = report.Backends.Count(b => b.Verdict == BackendVerdict.Viable);
             Log.Completed(_logger, viable);
@@ -786,6 +805,7 @@ public sealed partial class ProbeService : IDisposable
         }
         finally
         {
+            _probeProgress = null;
             _status = _status with { State = ProbeState.Idle, LastCompletedUtc = _time.GetUtcNow() };
             _gate.Release();
         }
@@ -825,7 +845,7 @@ public sealed partial class ProbeService : IDisposable
                 _speedRunning = speed;
             }
 
-            var progress = new DirectProgress(p =>
+            var progress = new SynchronousProgress<SpeedProgress>(p =>
             {
                 lock (_speedSoFar)
                 {
@@ -900,14 +920,5 @@ public sealed partial class ProbeService : IDisposable
             _status = _status with { State = ProbeState.Idle, LastCompletedUtc = _time.GetUtcNow(), Done = null, Total = null, Preparing = null };
             _gate.Release();
         }
-    }
-
-    /// <summary>Reports progress on the caller's thread, in order.</summary>
-    /// <param name="report">Applies one report.</param>
-    /// <remarks><see cref="Progress{T}"/> posts to the thread pool, so a late report could mark a finished run as running again.</remarks>
-    private sealed class DirectProgress(Action<SpeedProgress> report) : IProgress<SpeedProgress>
-    {
-        /// <inheritdoc/>
-        public void Report(SpeedProgress value) => report(value);
     }
 }

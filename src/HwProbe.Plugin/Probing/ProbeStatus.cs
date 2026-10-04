@@ -27,6 +27,9 @@ public sealed record ProbeStatus(ProbeState State, DateTimeOffset? LastStartedUt
     /// <summary>Gets the test video being made or downloaded, e.g. <c>Downloading Animation: 5 of 14 MB</c>, while preparing.</summary>
     public string? Preparing { get; init; }
 
+    /// <summary>Gets what a running probe is doing, e.g. <c>Testing vaapi: hevc-10bit</c>.</summary>
+    public string? Step { get; init; }
+
     /// <summary>Gets the seconds a speed run has spent measuring, leaving out pauses; the page estimates the time left from it.</summary>
     public int? MeasuringSeconds { get; init; }
 }
