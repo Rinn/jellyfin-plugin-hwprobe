@@ -26,7 +26,7 @@ namespace Jellyfin.Plugin.HwProbe.Probing;
 public sealed partial class ProbeService : IDisposable
 {
     /// <summary>The most speed runs kept in the history.</summary>
-    internal const int SpeedHistoryLimit = 50;
+    internal const int SpeedHistoryLimit = 250;
 
     /// <summary>The accuracy suites measure at: it counts concurrent streams, which the step comparisons use, without Thorough's length.</summary>
     private const SpeedMethod SuiteMethod = SpeedMethod.Confirm;
