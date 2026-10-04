@@ -78,6 +78,18 @@ public sealed class SpeedAdvisorTests
         Assert.Equal(["Cpu", "Memory"], efficient.Savings.Select(x => x.Resource));
     }
 
+    /// <summary>VBR audio is suggested as the better-quality value when it still keeps up.</summary>
+    [Fact]
+    public void SuggestsVbrAudio()
+    {
+        const string Film = "live-action|h264-8mbps";
+        var off = Run(new SpeedSettings(), Result(HwType.none, Film, 430) with { Command = "cbr" });
+        var on = Run(new SpeedSettings { AudioVbr = true }, Result(HwType.none, Film, 425) with { Command = "vbr" });
+
+        var quality = Assert.Single(SpeedAdvisor.Advise(on, [off, on], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.HigherQuality);
+        Assert.Equal(("AudioVbr", "true"), (quality.Setting, quality.Value));
+    }
+
     /// <summary>Outputs below real time on the configured backend are flagged, and marked when only test videos showed it.</summary>
     [Fact]
     public void FlagsOutputsThatFallBehind()

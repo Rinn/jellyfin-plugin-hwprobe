@@ -1487,6 +1487,9 @@
                             text.appendChild(el('div', title));
                             text.appendChild(el('div', reason, 'secondaryText'));
                             text.appendChild(el('div', s.Outputs.join('; '), 'secondaryText hwprobe-small'));
+                            if (option && option.Caveat) {
+                                text.appendChild(el('div', option.Caveat, 'secondaryText hwprobe-small'));
+                            }
                             if (s.TestVideosOnly) {
                                 text.appendChild(el('div', 'Measured on test videos only, which encode faster than real video; measure a film sample or library video to confirm.', 'secondaryText hwprobe-small'));
                             }

@@ -448,7 +448,8 @@ options:
       - { key: "15", label: "15" }
       - { key: "16", label: "16" }
       - { key: "0", label: Max }
-  - { key: AudioVbr, label: Enable VBR audio encoding, server: EnableAudioVbr, switch: true }
+  # caveat: jellyfin-web's own warning (LabelEnableAudioVbrHelp), shown with any suggestion to change it.
+  - { key: AudioVbr, label: Enable VBR audio encoding, server: EnableAudioVbr, switch: true, qualityOrder: ["true", "false"], caveat: "In some rare cases VBR may cause buffering and compatibility issues." }
   # Downmixing only changes transcoded 5.1 audio.
   - key: DownmixBoost
     label: Audio boost when downmixing
