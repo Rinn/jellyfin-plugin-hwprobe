@@ -91,7 +91,8 @@
             #HwProbeConfigPage .hwprobe-emoji { font-size: 1em; line-height: 1; }
             #HwProbeConfigPage .selectContainer .hwprobe-notes { margin: 0 14px; padding-left: 1.4em; }
             #HwProbeConfigPage .hwprobe-progress { position: relative; width: 16em; }
-            #HwProbeConfigPage .hwprobe-progress.hwprobe-progress-wide { width: auto; margin: 0.4em 0 0.2em; }
+            #hwprobeCard { position: relative; }
+            #HwProbeConfigPage .hwprobe-progress.hwprobe-progress-wide { position: absolute; left: 1em; right: 1em; bottom: 0.3em; width: auto; margin: 0; }
             #HwProbeConfigPage .hwprobe-inline { margin: 0 0 0 0.5em; padding: 0.2em 0.8em; }
             /* jellyfin-web's legacy buttons look the same when disabled; this follows the dashboard's MUI buttons. */
             #HwProbeConfigPage .emby-button:disabled { color: var(--jf-palette-action-disabled, rgba(255, 255, 255, 0.3)); background: var(--jf-palette-action-disabledBackground, rgba(255, 255, 255, 0.12)); cursor: default; }
@@ -142,8 +143,11 @@
                 // Buttons that start work or change settings, which the server refuses while a probe or performance test runs.
                 let idleButtons = [];
                 const runButton = idleAction('Run probe', () => {
+                    statusText.textContent = 'Probing\u2026';
+                    probeProgress = {};
+                    renderCard();
                     ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Run') })
-                        .then(loadStatus, () => { setMessage('Could not start: a probe is running or a session is transcoding.'); runButton.disabled = false; });
+                        .then(loadStatus, () => { setMessage('Could not start: a probe is running or a session is transcoding.'); runButton.disabled = false; probeProgress = null; renderCard(); loadStatus(); });
                 }, 'raised button-submit');
 
                 // The banner is a themed panel, so it's hidden while empty.
