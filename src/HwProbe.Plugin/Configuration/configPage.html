@@ -1641,27 +1641,32 @@
                         .sort((a, b) => b[1] - a[1]);
                 }
 
-                // A results cell in the Resource Usage view: CPU cores in use and peak memory, then the busiest GPU engine.
-                function resourceCell(cell, r) {
-                    if (!r) {
-                        cell.textContent = '\u2013';
-                        cell.dataset.sort = '';
-                        return;
+                // A result's three cells in the Resource Usage view: CPU cores in use, peak memory, and the busiest GPU engine; each tooltip lists every figure.
+                function resourceCells(x, measuring) {
+                    const cells = [el('td', null, 'hwprobe-num'), el('td', null, 'hwprobe-num'), el('td', null, 'hwprobe-num')];
+                    if (!x) {
+                        return cells;
                     }
-                    const cores = r.cpuSeconds === null || r.cpuSeconds === undefined ? null : r.cpuSeconds / r.seconds;
-                    cell.dataset.sort = cores === null ? '' : String(cores);
-                    const parts = [];
-                    if (cores !== null) {
-                        parts.push(cores.toFixed(1) + ' cores');
+                    if (x.pending) {
+                        cells[0].textContent = measuring ? 'Measuring\u2026' : '\u2026';
+                        cells[0].classList.add('secondaryText');
+                        return cells;
                     }
-                    if (r.peakMemoryBytes) {
-                        parts.push(sizeText(r.peakMemoryBytes));
-                    }
-                    cell.appendChild(document.createTextNode(parts.join(' \u00b7 ') || '\u2013'));
-                    const busiest = gpuShares(r)[0];
-                    if (busiest) {
-                        cell.appendChild(el('div', 'GPU ' + busiest[0] + ' ' + Math.round(Math.min(1, busiest[1]) * 100) + '%', 'hwprobe-small secondaryText'));
-                    }
+                    const r = x.resources;
+                    const cores = r && r.cpuSeconds !== null && r.cpuSeconds !== undefined ? r.cpuSeconds / r.seconds : null;
+                    const busiest = r ? gpuShares(r)[0] : null;
+                    const values = [
+                        [cores, cores === null ? '\u2013' : cores.toFixed(1) + ' cores'],
+                        [r && r.peakMemoryBytes ? r.peakMemoryBytes : null, r && r.peakMemoryBytes ? sizeText(r.peakMemoryBytes) : '\u2013'],
+                        [busiest ? busiest[1] : null, busiest ? busiest[0] + ' ' + Math.round(Math.min(1, busiest[1]) * 100) + '%' : '\u2013'],
+                    ];
+                    const title = resourceFacts(r).join('\n');
+                    cells.forEach((cell, i) => {
+                        cell.textContent = values[i][1];
+                        cell.dataset.sort = values[i][0] === null ? '' : String(values[i][0]);
+                        cell.title = title;
+                    });
+                    return cells;
                 }
 
                 // The Resource Usage view's tooltip lines: CPU, memory, and every GPU engine that did work.
@@ -1729,14 +1734,18 @@
                     // Results run in their planned order, so the first pending one is being measured.
                     const current = speedProgress && (speedProgress.Phase === 'Measuring' || speedProgress.Phase === 'Pausing') ? r.results.find(x => x.pending) : null;
                     const values = speedView === 'values';
-                    const per = values && counted ? 2 : 1;
+                    const resources = speedView === 'resources';
+                    const per = resources ? 3 : values && counted ? 2 : 1;
                     // Per backend: concurrent streams kept up with (Values view, when counted), and one transcode's speed as a value, a bar or a share of the row's fastest.
                     const cellsFor = (x, best, baseline, fastest) => {
-                        // The highlight marks the fastest; the Resource Usage view isn't about speed.
-                        const tint = x && x === best && backends.length > 1 && speedView !== 'resources' ? ' hwprobe-best' : '';
+                        const tint = x && x === best && backends.length > 1 ? ' hwprobe-best' : '';
                         const streams = el('td', null, 'hwprobe-num' + tint);
                         const speedCell = el('td', null, 'hwprobe-num' + tint);
                         const cells = per === 2 ? [streams, speedCell] : [speedCell];
+                        if (resources) {
+                            return resourceCells(x, x === current);
+                        }
+
                         if (!x) {
                             return cells;
                         }
@@ -1749,9 +1758,7 @@
                         const speedText = speed ? speed.toFixed(1) + '\u00d7' : '\u2013';
                         speedCell.dataset.sort = speed ? String(speed) : '';
                         streams.dataset.sort = x.streams === null || x.streams === undefined ? '' : String(x.streams);
-                        if (speedView === 'resources') {
-                            resourceCell(speedCell, x.resources);
-                        } else if (!speed) {
+                        if (!speed) {
                             speedCell.textContent = speedText;
                         } else if (speedView === 'relative') {
                             speedCell.textContent = Math.round(Math.min(1, speed / fastest) * 100) + '%';
@@ -1766,7 +1773,7 @@
                             streams.textContent = streamsText(x);
                             speedCell.textContent = speedText;
                         }
-                        if (baseline && speed && speedView !== 'resources') {
+                        if (baseline && speed) {
                             speedCell.appendChild(el('span', ' ' + speedChange(x.fps, baseline.fps), 'hwprobe-small secondaryText'));
                         }
                         const n = footnote(x.note);
@@ -1793,10 +1800,7 @@
                         if (x.reusedFromUtc) {
                             facts.push('Measured ' + new Date(x.reusedFromUtc).toLocaleString());
                         }
-                        if (speedView === 'resources') {
-                            facts.push(...resourceFacts(x.resources));
-                        }
-                        speedCell.title = facts.join('. ');
+                        speedCell.title = facts.join('\n');
                         return cells;
                     };
                     // Values ranks by concurrent streams, then speed; the other views show speed alone, so they rank by it.
@@ -1812,7 +1816,7 @@
 
                     const table = el('table', null, 'hwprobe-matrix hwprobe-full');
                     const columns = backends.length * per + 3;
-                    if (per === 2) {
+                    if (per > 1) {
                         const top = el('tr');
                         top.appendChild(el('th'));
                         top.appendChild(el('th'));
@@ -1823,7 +1827,8 @@
                             top.appendChild(th);
                         }
                         table.appendChild(top);
-                        row(table, [el('th', 'Input'), el('th', 'Output'), el('th', 'Size')].concat(backends.flatMap(() => [el('th', 'Concurrent streams', 'hwprobe-num secondaryText'), el('th', 'Speed', 'hwprobe-num secondaryText')])));
+                        const parts = resources ? ['CPU', 'Memory', 'GPU'] : ['Concurrent streams', 'Speed'];
+                        row(table, [el('th', 'Input'), el('th', 'Output'), el('th', 'Size')].concat(backends.flatMap(() => parts.map(part => el('th', part, 'hwprobe-num secondaryText')))));
                     } else {
                         row(table, [el('th', 'Input'), el('th', 'Output'), el('th', 'Size')].concat(backends.map(b => el('th', columnName(b), 'hwprobe-num'))));
                     }
