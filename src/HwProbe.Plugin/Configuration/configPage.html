@@ -62,9 +62,6 @@
             #HwProbeConfigPage .infoBanner.hwprobe-warning { background: var(--jf-palette-Alert-warningStandardBg, rgb(25, 18, 7)); color: var(--jf-palette-Alert-warningColor, rgb(255, 226, 183)); }
             #HwProbeConfigPage .infoBanner.hwprobe-warning::before { background: var(--jf-palette-Alert-warningIconColor, #ffa726); -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 5.99 19.53 19H4.47zM12 2 1 21h22zm1 14h-2v2h2zm0-6h-2v4h2z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 5.99 19.53 19H4.47zM12 2 1 21h22zm1 14h-2v2h2zm0-6h-2v4h2z'/%3E%3C/svg%3E"); }
             #HwProbeConfigPage .hwprobe-card .infoBanner { margin: 0.5em 0; }
-            #HwProbeConfigPage .hwprobe-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em 1em; margin: 1.5em 0 0.3em; }
-            #HwProbeConfigPage .hwprobe-heading h2 { margin: 0; }
-            #HwProbeConfigPage .hwprobe-heading .selectContainer { margin: 0; flex: 1 1 16em; max-width: 28em; }
             #HwProbeConfigPage .hwprobe-views { font-size: 0.85em; margin: 0.3em 0 0.6em; }
             #HwProbeConfigPage .hwprobe-views label { display: inline-flex; align-items: center; gap: 0.3em; cursor: pointer; }
             #HwProbeConfigPage .hwprobe-views input { accent-color: var(--jf-palette-primary-main, #00a4dc); margin: 0; }
@@ -277,13 +274,6 @@
                     }
                     table.appendChild(tr);
                     return tr;
-                }
-
-                function heading(container, title) {
-                    const div = el('div', null, 'hwprobe-heading');
-                    div.appendChild(el('h2', title, 'sectionTitle'));
-                    container.appendChild(div);
-                    return div;
                 }
 
                 // Which sections were opened or closed, by key, kept across redraws.
@@ -1141,7 +1131,7 @@
                             ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('HwProbe/Cache') })
                                 .then(render, () => { setMessage('Could not delete: a probe or performance test is using the cache.'); render(); });
                         }, 'raised button-delete'));
-                        const table = el('table');
+                        const table = el('table', null, 'hwprobe-full');
                         row(table, [el('th', 'Contents'), el('th', 'File'), el('th', 'Size', 'hwprobe-num'), el('th', 'Written')]);
                         let folder = null;
                         for (const e of entries) {
@@ -1334,8 +1324,8 @@
                         if (!list.length) {
                             return;
                         }
-                        heading(div, 'Suggestions');
-                        const table = el('table');
+                        const section = fold(div, 'Suggestions', true);
+                        const table = el('table', null, 'hwprobe-full');
                         const configured = encoding && encoding.HardwareAccelerationType;
                         for (const s of list) {
                             const text = el('td');
@@ -1376,8 +1366,8 @@
                             }
                             row(table, [text, cell]);
                         }
-                        div.appendChild(table);
-                        div.appendChild(el('div', 'Settings are compared between saved runs that differ in that setting alone. Software is never suggested over a working hardware backend.', 'fieldDescription'));
+                        section.appendChild(table);
+                        section.appendChild(el('div', 'Settings are compared between saved runs that differ in that setting alone. Software is never suggested over a working hardware backend.', 'fieldDescription'));
                     }, () => {});
                     return div;
                 }
