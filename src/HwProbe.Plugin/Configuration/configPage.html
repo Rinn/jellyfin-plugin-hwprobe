@@ -1495,7 +1495,11 @@
                         const low = minutes(runs * cap(per[0] * speedRepeats));
                         const high = minutes(runs * cap(per[1] * speedRepeats));
                         const span = low === high ? 'about ' + low : 'about ' + low + ' to ' + high;
-                        estimate.textContent = videos + ' input' + (videos === 1 ? '' : 's') + ' \u00d7 ' + outputs + ' output' + (outputs === 1 ? '' : 's') + ' on ' + speedBackends(viable) + ' backend' + (speedBackends(viable) === 1 ? '' : 's') + ': ' + runs + ' measurement' + (runs === 1 ? '' : 's') + ', ' + span + ' minute' + (high === 1 ? '' : 's');
+                        const missing = [[videos, 'an input'], [outputs, 'an output'], [speedBackends(viable), 'a backend']].filter(([n]) => !n).map(([, what]) => what);
+                        estimate.textContent = missing.length
+                            ? 'Requires ' + (missing.length > 2 ? missing.slice(0, -1).join(', ') + ', and ' + missing[missing.length - 1] : missing.join(' and ')) + '.'
+                            : !runs ? 'Nothing to measure with these choices.'
+                            : videos + ' input' + (videos === 1 ? '' : 's') + ' \u00d7 ' + outputs + ' output' + (outputs === 1 ? '' : 's') + ' on ' + speedBackends(viable) + ' backend' + (speedBackends(viable) === 1 ? '' : 's') + ': ' + runs + ' measurement' + (runs === 1 ? '' : 's') + ', ' + span + ' minute' + (high === 1 ? '' : 's');
                         button.disabled = runs === 0 || running;
                     };
                     button = action('Measure performance', () => {
