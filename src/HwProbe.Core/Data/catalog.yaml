@@ -442,6 +442,8 @@ options:
 
 # Links the page, the CLI, and the advice point to.
 links:
+  # The project's home, given as the contact in the User-Agent of downloads, as Wikimedia asks.
+  repository: https://github.com/Rinn/jellyfin-plugin-hwprobe
   issueForm: https://github.com/Rinn/jellyfin-plugin-hwprobe/issues/new?template=hardware-report.yml
   notices: https://github.com/Rinn/jellyfin-plugin-hwprobe/blob/main/THIRD-PARTY-NOTICES.md
   # Jellyfin's hardware acceleration guides; vendor pages and anchors are added to it (checked against jellyfin.org on 2026-10-01).

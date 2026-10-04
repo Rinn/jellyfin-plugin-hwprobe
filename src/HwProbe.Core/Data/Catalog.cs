@@ -46,7 +46,7 @@ public sealed partial class Catalog
     /// <summary>Gets the backends, in the order of Jellyfin's dropdown.</summary>
     public required IReadOnlyList<CatalogBackend> Backends { get; init; }
 
-    /// <summary>Gets the links the page, the CLI, and the advice point to, by name: <c>issueForm</c>, <c>notices</c>, <c>jellyfinGuides</c>, <c>intelLowPowerGuide</c>, <c>fateSuite</c>.</summary>
+    /// <summary>Gets the links the page, the CLI, and the advice point to, by name: <c>repository</c>, <c>issueForm</c>, <c>notices</c>, <c>jellyfinGuides</c>, <c>intelLowPowerGuide</c>, <c>fateSuite</c>.</summary>
     public required IReadOnlyDictionary<string, string> Links { get; init; }
 
     /// <summary>Gets what the page calls each GPU engine, by the name the platform gives it.</summary>
@@ -198,7 +198,7 @@ public sealed partial class Catalog
     {
         RequireAll("methods", Methods.Select(m => m.Key));
         RequireAll("whenTranscoding", WhenTranscoding.Select(w => w.Key));
-        string[] links = ["issueForm", "notices", "jellyfinGuides", "intelLowPowerGuide", "fateSuite"];
+        string[] links = ["repository", "issueForm", "notices", "jellyfinGuides", "intelLowPowerGuide", "fateSuite"];
         if (links.Any(l => !Links.TryGetValue(l, out var url) || !Uri.TryCreate(url, UriKind.Absolute, out _)))
         {
             throw new InvalidDataException($"catalog.yaml: links requires an absolute URL for each of {string.Join(", ", links)}.");
