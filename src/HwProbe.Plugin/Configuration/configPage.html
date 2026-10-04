@@ -1412,8 +1412,9 @@
                         return a;
                     };
                     td.appendChild(external(v.Title, v.ArticleUrl));
-                    td.appendChild(document.createTextNode(', ' + v.Origin + ' from '));
-                    td.appendChild(external('Wikimedia Commons', v.SourceUrl));
+                    const origin = el('div', v.Origin + ' from ', 'hwprobe-small');
+                    origin.appendChild(external('Wikimedia Commons', v.SourceUrl));
+                    td.appendChild(origin);
                     const credit = el('div', null, 'hwprobe-small');
                     credit.appendChild(v.HolderUrl ? external(v.CreditHolder, v.HolderUrl) : document.createTextNode(v.CreditHolder));
                     credit.appendChild(document.createTextNode(', '));
