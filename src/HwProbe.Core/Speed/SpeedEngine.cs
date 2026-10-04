@@ -395,7 +395,7 @@ public sealed class SpeedEngine : IDisposable
     /// <summary>Generates one variant's arguments and measures them, inside the probe lock.</summary>
     /// <param name="options">The ffmpeg.</param>
     /// <param name="method">How streams are counted.</param>
-    /// <param name="measureResources">Whether the single copy is measured for CPU, memory, and GPU use.</param>
+    /// <param name="measureResources">Whether the single copy is measured for CPU, memory, and GPU usage.</param>
     /// <param name="source">The device's argument source.</param>
     /// <param name="type">The backend.</param>
     /// <param name="device">The device.</param>

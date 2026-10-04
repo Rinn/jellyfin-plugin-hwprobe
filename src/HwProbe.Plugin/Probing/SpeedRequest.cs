@@ -30,6 +30,6 @@ public sealed record SpeedRequest(string Method, IReadOnlyList<string> Videos, I
     /// <summary>Gets a value indicating whether measurements an earlier run saved with exactly the same settings are reused.</summary>
     public bool ReuseResults { get; init; }
 
-    /// <summary>Gets a value indicating whether each measurement's single copy is measured for CPU, memory, and GPU use.</summary>
+    /// <summary>Gets a value indicating whether each measurement's single copy is measured for CPU, memory, and GPU usage.</summary>
     public bool MeasureResources { get; init; }
 }
