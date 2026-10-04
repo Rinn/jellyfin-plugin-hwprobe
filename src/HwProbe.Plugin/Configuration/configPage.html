@@ -40,6 +40,8 @@
             /* jellyfin-web has no striped tables of its own. */
             #HwProbeConfigPage tr:nth-child(even):not(.hwprobe-group) > td { background: var(--jf-palette-action-hover, rgba(255, 255, 255, 0.08)); }
             #HwProbeConfigPage tr:nth-child(n):hover > td { background: var(--jf-palette-action-selected, rgba(255, 255, 255, 0.16)); }
+            #HwProbeConfigPage table.hwprobe-plain tr:nth-child(even) > td { background: none; }
+            #HwProbeConfigPage table.hwprobe-plain tr:not(.hwprobe-group):nth-child(n):hover > td { background: var(--jf-palette-action-selected, rgba(255, 255, 255, 0.16)); }
             #HwProbeConfigPage table tr:hover > td.hwprobe-best:nth-child(n) { background: color-mix(in srgb, var(--jf-palette-primary-main, #00a4dc) 30%, transparent); }
             #HwProbeConfigPage .hwprobe-scroll { overflow-x: auto; }
             #HwProbeConfigPage table.hwprobe-full { width: 100%; }
@@ -857,7 +859,7 @@
                     }
 
                     const settings = selected.settings || [];
-                    const table = el('table');
+                    const table = el('table', null, 'hwprobe-plain');
                     const everything = configured ? settings.filter(differs) : [];
                     const header = el('th');
                     if (everything.length > 1) {
