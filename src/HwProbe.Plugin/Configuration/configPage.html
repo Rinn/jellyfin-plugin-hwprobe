@@ -36,9 +36,8 @@
             #HwProbeConfigPage .selectContainer select.emby-select option { color: var(--jf-palette-text-primary, #fff); background: var(--jf-palette-background-paper, #202020); }
             #HwProbeConfigPage table { border-collapse: collapse; margin: 0.25em 0 1em; }
             #HwProbeConfigPage td, #HwProbeConfigPage th { padding: 0.35em 1.2em 0.35em 0.4em; text-align: left; vertical-align: middle; height: 1.8em; border-bottom: 1px solid var(--jf-palette-divider, rgba(255, 255, 255, 0.12)); }
-            /* Header rows stand apart from the striped rows: the paper colour, heavier text and a stronger rule below. */
             #HwProbeConfigPage th { font-weight: 600; background: var(--jf-palette-background-paper, #202020); border-bottom: 2px solid var(--jf-palette-divider, rgba(255, 255, 255, 0.12)); }
-            /* jellyfin-web has no striped tables of its own (none in its stylesheets or MUI's defaults), so rows alternate with the theme's hover shade, and a hovered row takes its selected shade. */
+            /* jellyfin-web has no striped tables of its own. */
             #HwProbeConfigPage tr:nth-child(even):not(.hwprobe-group) > td { background: var(--jf-palette-action-hover, rgba(255, 255, 255, 0.08)); }
             #HwProbeConfigPage tr:hover > td { background: var(--jf-palette-action-selected, rgba(255, 255, 255, 0.16)); }
             #HwProbeConfigPage table tr:hover > td.hwprobe-best:nth-child(n) { background: color-mix(in srgb, var(--jf-palette-primary-main, #00a4dc) 30%, transparent); }
@@ -183,7 +182,6 @@
                 // While a speed run goes, its results so far; shown in place of the saved run.
                 let speedLive = null;
                 let speedProgress = null;
-                // A running probe's status, for the card's progress bar.
                 let probeProgress = null;
                 let speedMethod = null;
                 let speedRepeats = 1;
@@ -435,11 +433,8 @@
                 }
 
                 // Working and not, in one layout: backend, device, status. Green works, red failed, grey doesn't apply here.
-                // Which column each sortable table is sorted by, kept across redraws: name -> [column, ascending].
                 const sortState = {};
 
-                // Clicking a header sorts the rows below it by that column, and again reverses it. A cell's data-sort, when set, is its value;
-                // numbers sort as numbers, and empty cells go last either way.
                 function sortable(table, name) {
                     const header = [...table.rows].filter(r => r.querySelector('th')).pop();
                     if (!header) {
@@ -559,7 +554,6 @@
                     return td;
                 }
 
-                // A coloured mark: the emoji is hidden from screen readers, which read the word.
                 function emojiMark(emoji, word) {
                     const td = el('td', null, 'hwprobe-mark');
                     const glyph = el('span', emoji, 'hwprobe-emoji');
@@ -822,7 +816,6 @@
                     container.replaceChildren();
                     title.replaceChildren(el('h2', 'Settings', 'sectionTitle'));
                     if (viable.length > 1) {
-                        // A full-width field, like the Performance Tests ones, rather than squeezed into the heading.
                         const pick = themedSelect(container, 'Backend');
                         viable.forEach((b, i) => {
                             const option = el('option', (names[b.type] || b.type) + (viable.filter(o => o.type === b.type).length > 1 ? ' ' + b.device : ''));
@@ -920,7 +913,6 @@
                     card.replaceChildren();
                     const top = el('div', null, 'hwprobe-row');
                     if (probeProgress) {
-                        // As the performance tests show theirs: a bar of tests done, then the step.
                         const line = el('div', null, 'hwprobe-row hwprobe-start hwprobe-grow');
                         const bar = jf('<div class="itemProgressBar hwprobe-progress"><div class="itemProgressBarForeground"></div></div>');
                         bar.firstElementChild.style.width = (probeProgress.Total ? Math.round(100 * (probeProgress.Done || 0) / probeProgress.Total) : 0) + '%';
