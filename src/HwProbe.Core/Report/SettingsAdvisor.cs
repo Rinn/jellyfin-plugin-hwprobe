@@ -128,7 +128,7 @@ public static class SettingsAdvisor
             const string NotUsedByDriver = "Not used with this driver";
 
             // Jellyfin's Intel guide: on Linux, low-power mode needs the HuC firmware, and Gen 9 has low-power H.264 only.
-            var huc = context.Os == HostOs.Linux ? new Uri(LowPowerAdvice.GuideUrl) : null;
+            var huc = context.Os == HostOs.Linux ? LowPowerAdvice.Guide : null;
             advice.Add(WithHucFix(
                 Advise(EncodingSection, "EnableIntelLowPowerH264HwEncoder", "Enable Intel Low-Power H.264 hardware encoder", Cell(backend.Encode, "h264_lowpower"), NotUsedByDriver),
                 huc is null || context.IntelLowPower == LowPowerSupport.None ? null : new Fix("Gen 9+: Enable HuC firmware", huc)));

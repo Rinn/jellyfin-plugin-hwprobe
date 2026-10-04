@@ -440,6 +440,16 @@ options:
       - { key: text, label: Text (ASS) }
       - { key: image, label: Image (PGS) }
 
+# Links the page, the CLI, and the advice point to.
+links:
+  issueForm: https://github.com/Rinn/jellyfin-plugin-hwprobe/issues/new?template=hardware-report.yml
+  notices: https://github.com/Rinn/jellyfin-plugin-hwprobe/blob/main/THIRD-PARTY-NOTICES.md
+  # Jellyfin's hardware acceleration guides; vendor pages and anchors are added to it (checked against jellyfin.org on 2026-10-01).
+  jellyfinGuides: https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/
+  intelLowPowerGuide: https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/intel/#configure-and-verify-lp-mode-on-linux
+  # FFmpeg's FATE sample suite, where clips that can't be made are downloaded from.
+  fateSuite: https://fate-suite.ffmpeg.org/
+
 # What a run does when the server starts transcoding for a player; keyed by TranscodeAction.
 whenTranscoding:
   - { key: Pause, label: "Pause, then repeat the interrupted measurement" }

@@ -224,6 +224,7 @@
                 let whenTranscodingOptions = [];
                 let defaultMethod = null;
                 let gpuEngines = {};
+                let links = {};
                 let names = {};
                 let order = [];
                 let platforms = {};
@@ -250,6 +251,7 @@
                     notes = c.Findings;
                     settingLabels = c.Settings;
                     gpuEngines = c.GpuEngines;
+                    links = c.Links;
                     speedVideos = c.Videos;
                     speedOutputs = c.Outputs;
                     speedCodecs = c.Codecs;
@@ -1248,7 +1250,7 @@
                         }
                         div.appendChild(sortable(table, 'libraries'));
                         const more = el('div', 'The command-line tool\u2019s libraries are listed in ', 'fieldDescription');
-                        more.appendChild(externalLink('THIRD-PARTY-NOTICES.md', 'https://github.com/Rinn/jellyfin-plugin-hwprobe/blob/main/THIRD-PARTY-NOTICES.md'));
+                        more.appendChild(externalLink('THIRD-PARTY-NOTICES.md', links.notices));
                         more.appendChild(document.createTextNode('.'));
                         div.appendChild(more);
                     }, () => div.appendChild(el('div', 'The library list didn\u2019t load.', 'secondaryText')));
@@ -2064,7 +2066,7 @@
                     buttons.appendChild(download);
                     buttons.appendChild(document.createTextNode(' '));
                     const issue = el('a', 'Report on GitHub', 'emby-button button-flat hwprobe-inline');
-                    issue.href = 'https://github.com/Rinn/jellyfin-plugin-hwprobe/issues/new?template=hardware-report.yml';
+                    issue.href = links.issueForm;
                     // The form opens with the server's details filled in from the latest probe.
                     ApiClient.getPublicSystemInfo().then(info => ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/IssueLink', { jellyfin: info.Version }), dataType: 'json' })).then(link => { issue.href = link; }, () => {});
                     issue.target = '_blank';

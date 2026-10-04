@@ -7,11 +7,11 @@ public static class FixtureCatalog
     // J3455 with jellyfin-ffmpeg 8.1.3, and only the C code worked.
     private const string Av1PortableCode = "-svtav1-params asm=c";
 
+    private const string Source = "-hide_banner -loglevel error -y -f lavfi -i testsrc2=size=640x360:rate=25 -frames:v 25";
+
     // Pinned FFmpeg FATE samples, downloaded only when a clip can't be generated. Each was checked with
     // ffprobe for codec, profile, pixel format, and at least MatrixCatalog.Frames frames.
-    private const string FateSuite = "https://fate-suite.ffmpeg.org/";
-
-    private const string Source = "-hide_banner -loglevel error -y -f lavfi -i testsrc2=size=640x360:rate=25 -frames:v 25";
+    private static readonly string _fateSuite = Data.Catalog.Default.Links["fateSuite"];
 
     /// <summary>Gets the 8-bit H.264 clip, the smoke-probe source.</summary>
     public static FixtureSpec H264 { get; } = new("h264_8bit.mp4", "h264", 8, false, "libx264", $"{Source} -c:v libx264 -pix_fmt yuv420p", null)
@@ -179,5 +179,5 @@ public static class FixtureCatalog
     /// <summary>Returns the URL of a FATE sample.</summary>
     /// <param name="path">The sample's path in the suite.</param>
     /// <returns>The URL.</returns>
-    private static Uri Fate(string path) => new(FateSuite + path);
+    private static Uri Fate(string path) => new(_fateSuite + path);
 }

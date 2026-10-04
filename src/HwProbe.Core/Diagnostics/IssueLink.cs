@@ -6,8 +6,8 @@ namespace Jellyfin.Plugin.HwProbe.Core.Diagnostics;
 /// <remarks>GitHub issue forms fill a field from a query parameter named after the field's id (.github/ISSUE_TEMPLATE/hardware-report.yml).</remarks>
 public static class IssueLink
 {
-    /// <summary>The issue form, empty.</summary>
-    public const string Form = "https://github.com/Rinn/jellyfin-plugin-hwprobe/issues/new?template=hardware-report.yml";
+    /// <summary>Gets the issue form, empty.</summary>
+    public static string Form => Data.Catalog.Default.Links["issueForm"];
 
     /// <summary>Returns the issue form's link with the host, versions, and results filled in.</summary>
     /// <param name="report">The probe's report.</param>
