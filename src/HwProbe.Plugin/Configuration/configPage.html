@@ -839,7 +839,7 @@
 
                 function renderSettings(container, viable, title) {
                     container.replaceChildren();
-                    title.replaceChildren(el('h2', 'Settings', 'sectionTitle'));
+                    title.textContent = 'Settings';
                     if (viable.length > 1) {
                         const pick = themedSelect(container, 'Backend');
                         viable.forEach((b, i) => {
@@ -850,7 +850,7 @@
                         });
                         pick.addEventListener('change', () => { selected = viable[Number(pick.value)]; renderSettings(container, viable, title); });
                     } else {
-                        title.firstElementChild.textContent = 'Settings for ' + (names[selected.type] || selected.type);
+                        title.textContent = 'Settings for ' + (names[selected.type] || selected.type);
                     }
 
                     const configured = isConfigured(selected);
@@ -1022,10 +1022,12 @@
                         if (!selected || viable.indexOf(selected) === -1) {
                             selected = viable.find(isConfigured) || viable[0];
                         }
-                        const title = heading(settingsTab, 'Settings');
-                        const container = el('div');
-                        settingsTab.appendChild(container);
-                        renderSettings(container, viable, title);
+                        const container = fold(settingsTab, 'Settings', settingsOpen);
+                        container.addEventListener('toggle', () => { settingsOpen = container.open; });
+                        const title = container.firstElementChild.lastElementChild;
+                        const body = el('div');
+                        container.appendChild(body);
+                        renderSettings(body, viable, title);
                     } else {
                         settingsTab.appendChild(el('p', 'No backend works on this server, so there are no hardware settings to advise.', 'secondaryText'));
                     }
@@ -1365,6 +1367,9 @@
 
                 // Whether the performance test's settings are shown, kept across redraws.
                 let speedSetupOpen = true;
+
+                // Whether the recommended settings are shown, kept across redraws.
+                let settingsOpen = true;
 
                 function renderSpeedSetup(container, viable) {
                     chooseSpeedDefaults();
