@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.18.1.0",
+        "changelog": "Help tab: delete one cached file (trash can column) or all HwProbe data (reports, performance results, settings history, and cache). The diagnostics zip includes HwProbe's lines from Jellyfin's log. Progress bars count only clips that aren't cached. Test suites reuse earlier measurements, with the same Earlier results choice as single runs. Shutting the server down cancels a running probe or performance test without waiting.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.18.1/hwprobe-plugin_0.18.1.0.zip",
+        "checksum": "458bea450606d6934d82d55668013cca",
+        "timestamp": "2026-10-04T23:42:33Z"
+      },
+      {
         "version": "0.18.0.0",
         "changelog": "Recommended Settings advise software (None), first in the list and alone when no hardware works: HEVC and AV1 encoding off, BWDIF deinterlacing and key-frame trickplay from new software tests, and Allow subtitle extraction on the fly on, which is now advised for every backend so text subtitles aren't burned in (#55). Test suites copy the audio so only video is measured, except the VBR audio suite (#56).",
         "targetAbi": "12.1.0.0",
