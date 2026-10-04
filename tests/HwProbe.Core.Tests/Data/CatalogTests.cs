@@ -39,7 +39,7 @@ public sealed class CatalogTests
     [InlineData("  - { key: H265Crf, label: H.265 encoding CRF, server: H265Crf, range: [0, 51] }", "  - { key: H265Crf, label: x, range: [0, 51], switch: true }")]
     [InlineData("  - { type: amf,", "  - { type: amd,")]
     [InlineData("  FullCuda: Full GPU pipeline (CUDA)\n", "")]
-    [InlineData("defaultVideos: [pattern]", "defaultVideos: [pattern-8k]")]
+    [InlineData("defaultVideos: [live-action]", "defaultVideos: [live-action-8k]")]
     [InlineData("{testSource} -c:v libx264", "{testSourc} -c:v libx264")]
     [InlineData("    name: Test video, H.264", "    nmae: Test video, H.264")]
     [InlineData("sha256: 0da88a6b", "sha256: 0DA88A6B")]

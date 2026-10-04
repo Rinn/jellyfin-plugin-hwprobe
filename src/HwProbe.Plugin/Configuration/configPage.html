@@ -1538,7 +1538,9 @@
 
                     form.appendChild(el('h3', 'Input', 'sectionTitle'));
                     const sources = el('div', null, 'hwprobe-sources');
-                    multiSelect(form, 'Input', speedVideos.map(v => ({ key: v.Key, text: v.Name, secondary: v.Input })).concat([{ key: 'library', text: 'Library video', secondary: libraryVideo ? libraryVideo.Name : 'A movie or episode' }]), chosenVideos, () => { sourceLines(sources, update); update(); })
+                    // Real video first, then the test videos.
+                    const input = v => ({ key: v.Key, text: v.Name, secondary: v.Input });
+                    multiSelect(form, 'Input', speedVideos.filter(v => v.SourceUrl).map(input).concat([{ key: 'library', text: 'Library video', secondary: libraryVideo ? libraryVideo.Name : 'A movie or episode' }], speedVideos.filter(v => !v.SourceUrl).map(input)), chosenVideos, () => { sourceLines(sources, update); update(); })
                         .appendChild(sources);
                     sourceLines(sources, update);
                     form.appendChild(el('h3', 'Output', 'sectionTitle'));
