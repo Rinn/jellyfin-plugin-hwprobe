@@ -562,7 +562,7 @@ suites:
       - { label: "H.264, HEVC, HEVC 10-bit, VP9, AV1, and 4K HDR HEVC" }
   - key: legacy
     name: Old formats
-    description: Decodes and encodes to H.264 the old, low-quality inputs.
+    description: Decodes old, low-quality inputs and encodes them to H.264.
     videos: [sports-576i, theora-240p, xvid-240p]
     outputs: [decode, h264-4mbps]
     steps:
