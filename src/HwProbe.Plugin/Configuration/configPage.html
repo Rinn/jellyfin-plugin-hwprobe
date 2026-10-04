@@ -1523,7 +1523,7 @@
                             row(table, [text, cell]);
                         }
                         section.appendChild(table);
-                        section.appendChild(el('div', 'Settings are compared between saved runs that differ in that setting alone. Software is never suggested over a working hardware backend.', 'fieldDescription'));
+                        section.appendChild(el('div', 'Settings are compared between saved runs that differ in that setting alone. Software is never suggested over a working hardware backend. Better quality is suggested only while it keeps ' + advice.Headroom + '\u00d7 real time on real video and at least ' + Math.round((1 - advice.MaxStreamLoss) * 100) + '% of the concurrent streams.', 'fieldDescription'));
                     }, () => {});
                     return div;
                 }
