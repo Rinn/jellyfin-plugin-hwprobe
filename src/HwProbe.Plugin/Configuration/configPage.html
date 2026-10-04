@@ -753,7 +753,7 @@
                     toggle.appendChild(document.createTextNode('Last change: ' + new Date(last.TimeUtc).toLocaleString()));
                     line.appendChild(toggle);
                     // With every setting changed since, Revert would change nothing; it only clears the entry.
-                    line.appendChild(idleAction(nothing ? 'Dismiss' : 'Revert', () => post('HwProbe/Revert')));
+                    line.appendChild(idleAction(nothing ? 'Dismiss' : 'Revert', () => post('HwProbe/Revert'), 'raised'));
                     changeText.appendChild(line);
 
                     const list = el('div', null, 'hwprobe-change-list');
@@ -964,11 +964,11 @@
                         const device = type === 'vaapi' ? encoding.VaapiDevice : (type === 'qsv' ? encoding.QsvDevice : '');
                         title.appendChild(document.createTextNode('Hardware acceleration: ' + (names[type] || type) + (device ? ' ' + device : '') + '  '));
                         if (entry && entry.verdict === 'Viable') {
-                            title.appendChild(icon('check'));
+                            title.appendChild(el('span', '\u2705', 'hwprobe-emoji'));
                             title.appendChild(document.createTextNode(' works  '));
                             title.appendChild(el('span', tiers[entry.tier] || '', 'secondaryText'));
                         } else if (entry) {
-                            title.appendChild(icon('close'));
+                            title.appendChild(el('span', '\u274c', 'hwprobe-emoji'));
                             title.appendChild(document.createTextNode(' ' + (verdicts[entry.verdict] || entry.verdict)));
                         } else if (report) {
                             title.appendChild(el('span', 'not tested', 'secondaryText'));
