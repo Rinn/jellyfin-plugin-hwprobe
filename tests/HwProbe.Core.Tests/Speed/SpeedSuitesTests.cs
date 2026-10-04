@@ -25,6 +25,19 @@ public sealed class SpeedSuitesTests
         Assert.Equal("-1", steps[0].Options["EncodingThreadCount"]);
     }
 
+    /// <summary>The server's value is added as a last step when a one-setting suite lacks it, so suggestions have it to compare against.</summary>
+    [Fact]
+    public void AddsTheServersValue()
+    {
+        var presets = SpeedSuites.Steps(Suite("presets"), 8, new SpeedSettings { EncoderPreset = "veryfast" });
+        var threads = SpeedSuites.Steps(Suite("threads"), 8, new SpeedSettings { EncodingThreadCount = 6 });
+
+        Assert.Equal(("veryfast (server setting)", "veryfast"), (presets[^1].Label, presets[^1].Options["EncoderPreset"]));
+        Assert.Equal("6", threads[^1].Options["EncodingThreadCount"]);
+        Assert.Equal(5, SpeedSuites.Steps(Suite("presets"), 8, new SpeedSettings { EncoderPreset = "medium" }).Count);
+        Assert.Equal(2, SpeedSuites.Steps(Suite("lowpower"), 8, new SpeedSettings()).Count);
+    }
+
     /// <summary>A step's own videos replace the suite's; the rest keep the suite's.</summary>
     [Fact]
     public void StepsCanNameTheirOwnVideos()
