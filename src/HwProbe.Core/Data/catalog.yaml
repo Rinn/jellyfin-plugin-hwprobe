@@ -460,7 +460,7 @@ links:
 suites:
   - key: presets
     name: Encoder presets
-    description: Speed at each encoder preset.
+    description: Encodes H.264 and HEVC at each encoder preset.
     videos: [drama]
     outputs: [h264-8mbps, hevc-8mbps]
     steps:
@@ -471,14 +471,14 @@ suites:
       - { label: slow, options: { EncoderPreset: slow } }
   - key: quality
     name: Quality ladder
-    description: Streams kept at real time at each player quality.
+    description: Encodes H.264 and HEVC at each player quality.
     videos: [drama]
     outputs: [h264-40mbps, h264-20mbps, h264-8mbps, h264-4mbps, h264-1.5mbps, hevc-40mbps, hevc-20mbps, hevc-8mbps, hevc-4mbps, hevc-1.5mbps]
     steps:
       - { label: "40, 20, 8, 4, and 1.5 Mbps" }
   - key: tonemap
     name: Tone mapping
-    description: What tone mapping HDR to SDR costs.
+    description: Encodes HDR video to H.264 with tone mapping on and off.
     videos: [pattern-4k-hdr, digital-animation-4k]
     outputs: [h264-8mbps]
     steps:
@@ -486,14 +486,14 @@ suites:
       - { label: Tone mapping off, options: { Tonemap: "false" } }
   - key: threads
     name: Thread count
-    description: Software encoding at each thread limit.
+    description: Encodes H.264 and HEVC in software at each thread limit.
     videos: [drama]
     outputs: [h264-8mbps, hevc-8mbps]
     backends: software
     threadSteps: true
   - key: lowpower
     name: Intel low power
-    description: QSV low-power encoders on and off.
+    description: Encodes H.264 and HEVC on QSV with low power on and off.
     videos: [drama]
     outputs: [h264-8mbps, hevc-8mbps]
     backends: configured
@@ -503,7 +503,7 @@ suites:
       - { label: Low power on, options: { QsvLowPowerH264: "true", QsvLowPowerHevc: "true" } }
   - key: extras
     name: Extras
-    description: What subtitle burn-in, deinterlacing, and VBR audio cost.
+    description: Encodes H.264 with and without subtitle burn-in, deinterlacing, and VBR audio.
     videos: [drama]
     outputs: [h264-8mbps]
     steps:
