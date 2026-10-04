@@ -1619,9 +1619,9 @@
                     options('Resource Usage', [['false', 'Don\u2019t measure'], ['true', 'Measure CPU, memory, and GPU usage']], String(speedResources), v => { speedResources = v === 'true'; });
                     // What this server's platform can measure, and whose usage it is.
                     const coverage = {
-                        windows: 'CPU, memory, GPU, and GPU memory are the transcode\u2019s own.',
-                        linux: 'CPU and memory are the transcode\u2019s own. Intel and AMD GPU usage and GPU memory are the transcode\u2019s own and require kernel 5.19 or newer (6.8 for Intel\u2019s xe driver). NVIDIA GPU usage and GPU memory cover the whole GPU, including anything else running on it.',
-                        macos: 'CPU and memory are the transcode\u2019s own. GPU usage isn\u2019t available on macOS: VideoToolbox runs on the media engine, which macOS only reports to root.',
+                        windows: 'CPU, memory, GPU, and GPU memory usage are measured per transcode.',
+                        linux: 'CPU and memory usage are measured per transcode. Intel and AMD GPU usage is measured per transcode on kernel 5.19 or newer (6.8 for Intel\u2019s xe driver). NVIDIA GPU usage covers the whole GPU, including any other work on it.',
+                        macos: 'CPU and memory usage are measured per transcode. GPU usage can\u2019t be measured on macOS.',
                     }[report && report.host ? report.host.os : ''];
                     if (coverage) {
                         form.lastElementChild.appendChild(el('div', coverage, 'infoBanner'));
