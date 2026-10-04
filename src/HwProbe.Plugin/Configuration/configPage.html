@@ -37,15 +37,15 @@
             #HwProbeConfigPage table { border-collapse: collapse; margin: 0.25em 0 1em; }
             #HwProbeConfigPage td, #HwProbeConfigPage th { padding: 0.35em 1.2em 0.35em 0.4em; text-align: left; vertical-align: middle; height: 1.8em; border-bottom: 1px solid var(--jf-palette-divider, rgba(255, 255, 255, 0.12)); }
             #HwProbeConfigPage th { font-weight: 600; background: var(--jf-palette-background-paper, #202020); border-bottom: 2px solid var(--jf-palette-divider, rgba(255, 255, 255, 0.12)); }
-            #HwProbeConfigPage tr:nth-child(n):hover > td { background: var(--jf-palette-action-hover, rgba(255, 255, 255, 0.08)); }
-            #HwProbeConfigPage table tr:hover > td.hwprobe-best:nth-child(n) { background: color-mix(in srgb, var(--jf-palette-primary-main, #00a4dc) 30%, transparent); }
+            #HwProbeConfigPage tr:hover > td { background: var(--jf-palette-action-hover, rgba(255, 255, 255, 0.08)); }
+            #HwProbeConfigPage tr:hover > td.hwprobe-best { background: color-mix(in srgb, var(--jf-palette-primary-main, #00a4dc) 30%, transparent); }
             #HwProbeConfigPage .hwprobe-scroll { overflow-x: auto; }
             #HwProbeConfigPage table.hwprobe-full { width: 100%; }
             #HwProbeConfigPage .hwprobe-matrix td:first-child { white-space: nowrap; }
             #HwProbeConfigPage .hwprobe-backends td:nth-child(2), #HwProbeConfigPage .hwprobe-backends th:nth-child(2) { width: 18em; }
             #HwProbeConfigPage .hwprobe-backends td:nth-child(3), #HwProbeConfigPage .hwprobe-backends th:nth-child(3) { width: 12em; }
             #HwProbeConfigPage .hwprobe-group td { padding-top: 1em; font-weight: 600; color: var(--jf-palette-primary-main, #00a4dc); border-bottom: 2px solid var(--jf-palette-divider, rgba(255, 255, 255, 0.12)); }
-            #HwProbeConfigPage tr.hwprobe-group:nth-child(n):hover > td, #HwProbeConfigPage tr:nth-child(n):has(> th):hover > td { background: none; }
+            #HwProbeConfigPage tr.hwprobe-group:hover > td, #HwProbeConfigPage tr:has(> th):hover > td { background: none; }
             #HwProbeConfigPage .hwprobe-mark { width: 1.5em; }
             #HwProbeConfigPage .hwprobe-mark .material-icons, #HwProbeConfigPage .hwprobe-card .material-icons { font-size: 1.2em; vertical-align: middle; }
             #HwProbeConfigPage .hwprobe-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
@@ -78,7 +78,7 @@
             #HwProbeConfigPage .hwprobe-fold > summary .sectionTitle { margin-top: 0.5em; margin-bottom: 0.5em; }
             #HwProbeConfigPage .hwprobe-fold[open] > summary .material-icons { transform: rotate(90deg); }
             #HwProbeConfigPage .hwprobe-num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-            #HwProbeConfigPage table tr > td.hwprobe-best:nth-child(n) { background: color-mix(in srgb, var(--jf-palette-primary-main, #00a4dc) 22%, transparent); }
+            #HwProbeConfigPage .hwprobe-best { background: color-mix(in srgb, var(--jf-palette-primary-main, #00a4dc) 22%, transparent); }
             #HwProbeConfigPage .hwprobe-bar { display: inline-block; width: 6em; height: 0.6em; margin-right: 0.5em; border-radius: 2px; background: var(--jf-palette-action-hover, rgba(255, 255, 255, 0.08)); vertical-align: middle; }
             #HwProbeConfigPage .hwprobe-bar > span { display: block; height: 100%; border-radius: 2px; background: var(--jf-palette-primary-main, #00a4dc); }
             #HwProbeConfigPage .hwprobe-variant td:first-child { padding-left: 1.2em; }
