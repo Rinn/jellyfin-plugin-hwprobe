@@ -119,7 +119,7 @@ public sealed partial class ProbeService : IDisposable
                 if (_speedRunning is null || _speedPause is not { } pause)
                 {
                     return _status.State == ProbeState.Running && _status.Activity == ProbeActivity.Probe && _probeProgress is { } p
-                        ? _status with { Done = p.Done, Total = p.Total == 0 ? null : p.Total, Step = p.Step }
+                        ? _status with { Done = p.Done, Total = p.Total == 0 ? null : p.Total, Step = p.Step, ElapsedSeconds = _status.LastStartedUtc is { } probeStarted ? (int)(_time.GetUtcNow() - probeStarted).TotalSeconds : null }
                         : _status;
                 }
 
