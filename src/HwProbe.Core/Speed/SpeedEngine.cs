@@ -363,7 +363,7 @@ public sealed class SpeedEngine : IDisposable
         // Only a full measurement is worth reusing: a failure may be fixed by the next run, and a run cut off by a timeout or the time limit is short of what a full one measures.
         if (key is not null && result.Fps is not null && !result.Interrupted)
         {
-            await cache.SaveAsync(key, new SpeedCacheEntry(_time.GetUtcNow(), CapabilityReport.CurrentHwProbeVersion, ffmpegVersion, result), cancellationToken);
+            await cache.SaveAsync(key, new SpeedCacheEntry(_time.GetUtcNow(), SpeedResultCache.MeasurementVersion, ffmpegVersion, result), cancellationToken);
         }
 
         return result;

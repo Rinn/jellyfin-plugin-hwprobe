@@ -3,7 +3,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Jellyfin.Plugin.HwProbe.Core.Model;
-using Jellyfin.Plugin.HwProbe.Core.Report;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 
@@ -11,6 +10,9 @@ namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 /// <param name="directory">Where the measurements are kept.</param>
 public sealed class SpeedResultCache(string directory)
 {
+    /// <summary>The way measurements are taken; bump it when SpeedMeter or the command wrapper changes what a measurement reports, so earlier ones aren't reused. Other plugin changes don't matter: the command is keyed.</summary>
+    public const int MeasurementVersion = 1;
+
     /// <summary>Gets where the measurements are kept.</summary>
     public string Directory { get; } = directory;
 
@@ -31,7 +33,7 @@ public sealed class SpeedResultCache(string directory)
         // One component per line, as Fingerprint does.
         var text = new StringBuilder();
         void Append(string label, string? value) => text.Append(label).Append('=').Append(value ?? "-").Append('\n');
-        Append("hwprobe.version", CapabilityReport.CurrentHwProbeVersion);
+        Append("measurement", MeasurementVersion.ToString(CultureInfo.InvariantCulture));
         Append("ffmpeg.path", ffmpegPath);
         Append("ffmpeg.version", ffmpegVersion);
         Append("backend", type.ToString());
@@ -82,7 +84,7 @@ public sealed class SpeedResultCache(string directory)
         File.Move(temp, path, overwrite: true);
     }
 
-    /// <summary>Deletes measurements another version or ffmpeg made, which no key can match any more.</summary>
+    /// <summary>Deletes measurements another way of measuring or another ffmpeg made, which no key can match any more.</summary>
     /// <param name="ffmpegVersion">The current ffmpeg version line.</param>
     /// <returns>How many were deleted.</returns>
     public int Prune(string ffmpegVersion)
@@ -98,7 +100,7 @@ public sealed class SpeedResultCache(string directory)
             try
             {
                 var entry = file.EndsWith(".json", StringComparison.Ordinal) ? JsonSerializer.Deserialize(File.ReadAllText(file), SpeedJsonContext.Default.SpeedCacheEntry) : null;
-                if (entry is null || entry.HwProbeVersion != CapabilityReport.CurrentHwProbeVersion || entry.FfmpegVersion != ffmpegVersion)
+                if (entry is null || entry.Method != MeasurementVersion || entry.FfmpegVersion != ffmpegVersion)
                 {
                     File.Delete(file);
                     deleted++;

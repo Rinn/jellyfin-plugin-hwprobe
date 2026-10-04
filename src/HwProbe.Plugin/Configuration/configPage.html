@@ -39,7 +39,7 @@
             #HwProbeConfigPage th { font-weight: 600; background: var(--jf-palette-background-paper, #202020); border-bottom: 2px solid var(--jf-palette-divider, rgba(255, 255, 255, 0.12)); }
             /* jellyfin-web has no striped tables of its own. */
             #HwProbeConfigPage tr:nth-child(even):not(.hwprobe-group) > td { background: var(--jf-palette-action-hover, rgba(255, 255, 255, 0.08)); }
-            #HwProbeConfigPage tr:hover > td { background: var(--jf-palette-action-selected, rgba(255, 255, 255, 0.16)); }
+            #HwProbeConfigPage tr:nth-child(n):hover > td { background: var(--jf-palette-action-selected, rgba(255, 255, 255, 0.16)); }
             #HwProbeConfigPage table tr:hover > td.hwprobe-best:nth-child(n) { background: color-mix(in srgb, var(--jf-palette-primary-main, #00a4dc) 30%, transparent); }
             #HwProbeConfigPage .hwprobe-scroll { overflow-x: auto; }
             #HwProbeConfigPage table.hwprobe-full { width: 100%; }
@@ -47,7 +47,7 @@
             #HwProbeConfigPage .hwprobe-backends td:nth-child(2), #HwProbeConfigPage .hwprobe-backends th:nth-child(2) { width: 18em; }
             #HwProbeConfigPage .hwprobe-backends td:nth-child(3), #HwProbeConfigPage .hwprobe-backends th:nth-child(3) { width: 12em; }
             #HwProbeConfigPage .hwprobe-group td { padding-top: 1em; font-weight: 500; }
-            #HwProbeConfigPage tr.hwprobe-group:hover > td, #HwProbeConfigPage tr:has(> th):hover > td { background: none; }
+            #HwProbeConfigPage tr.hwprobe-group:nth-child(n):hover > td, #HwProbeConfigPage tr:nth-child(n):has(> th):hover > td { background: none; }
             #HwProbeConfigPage .hwprobe-mark { width: 1.5em; }
             #HwProbeConfigPage .hwprobe-mark .material-icons, #HwProbeConfigPage .hwprobe-card .material-icons { font-size: 1.2em; vertical-align: middle; }
             #HwProbeConfigPage .hwprobe-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
@@ -1440,8 +1440,8 @@
                     container.appendChild(el('h3', 'Accuracy and time', 'sectionTitle'));
                     options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });
                     options('Repeats', repeatOptions, speedRepeats, v => { speedRepeats = Number(v); });
-                    options('Earlier results', [['false', 'Measure everything again'], ['true', 'Reuse when the settings match']], String(speedReuse), v => { speedReuse = v === 'true'; }, 'Reuses a measurement from an earlier run with the same input, output, backend, accuracy, repeats, ffmpeg and plugin version, and the same values for the settings that affect it, so a repeated comparison runs faster.');
-                    options('When the server starts transcoding', [['true', 'Pause, then repeat the interrupted measurement'], ['false', 'Keep measuring']], String(speedDefer), v => { speedDefer = v === 'true'; }, 'Pausing stops the measurement running so the transcode has the hardware to itself, waits until nothing is transcoding, then measures it again. Keeping on measures alongside it, which slows both.');
+                    options('Earlier results', [['false', 'Measure everything again'], ['true', 'Reuse when the settings match']], String(speedReuse), v => { speedReuse = v === 'true'; }, 'Reuses a measurement from an earlier run with the same input, output, backend, accuracy, repeats and ffmpeg, and the same values for the settings that affect it, so a repeated comparison completes faster.');
+                    options('When the server starts transcoding', [['true', 'Pause, then repeat the interrupted measurement'], ['false', 'Keep measuring']], String(speedDefer), v => { speedDefer = v === 'true'; });
                     options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); }, 'A measurement that reaches the limit stops and reports what it measured.');
 
                     button = action('Measure performance', () => {
