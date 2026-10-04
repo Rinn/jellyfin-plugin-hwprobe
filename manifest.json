@@ -3,14 +3,6 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
-        "version": "0.17.3.0",
-        "changelog": "Recommended Settings advise software (None), first in the list and alone when no hardware works: HEVC and AV1 encoding off, BWDIF deinterlacing and key-frame trickplay from new software tests, and Allow subtitle extraction on the fly on, which is now advised for every backend so text subtitles aren't burned in (#55). Test suites copy the audio so only video is measured, except the VBR audio suite (#56).",
-        "targetAbi": "12.1.0.0",
-        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.17.3/hwprobe-plugin_0.17.3.0.zip",
-        "checksum": "487400714aadb25551b8a5bd86f664d6",
-        "timestamp": "2026-10-04T22:44:50Z"
-      },
-      {
         "version": "0.18.0.0",
         "changelog": "Recommended Settings advise software (None), first in the list and alone when no hardware works: HEVC and AV1 encoding off, BWDIF deinterlacing and key-frame trickplay from new software tests, and Allow subtitle extraction on the fly on, which is now advised for every backend so text subtitles aren't burned in (#55). Test suites copy the audio so only video is measured, except the VBR audio suite (#56).",
         "targetAbi": "12.1.0.0",
