@@ -89,9 +89,10 @@
             #HwProbeConfigPage .hwprobe-notes { margin: 0; padding-left: 1.4em; }
             #HwProbeConfigPage .selectContainer .hwprobe-notes { margin: 0 14px; padding-left: 1.4em; }
             #HwProbeConfigPage .hwprobe-progress { position: relative; width: 16em; }
-            #HwProbeConfigPage .hwprobe-meter { margin-top: 0.6em; }
-            #HwProbeConfigPage .hwprobe-meter .itemProgressBar { position: relative; flex: 1; margin: 0; }
-            #HwProbeConfigPage .hwprobe-meter > span { white-space: nowrap; }
+            #HwProbeConfigPage .hwprobe-loadbar { position: relative; flex: 1; min-width: 0; height: 2.2em; border-radius: 0.25em; overflow: hidden; background: var(--jf-palette-action-hover, rgba(255, 255, 255, 0.08)); }
+            #HwProbeConfigPage .hwprobe-loadbar > div { position: absolute; left: 0; top: 0; bottom: 0; background: var(--jf-palette-primary-main, #00a4dc); transition: width 0.25s linear; }
+            #HwProbeConfigPage .hwprobe-loadbar > span { position: relative; display: flex; gap: 1em; line-height: 2.2em; padding: 0 0.8em; font-size: 0.9em; color: var(--jf-palette-text-primary, #fff); white-space: nowrap; }
+            #HwProbeConfigPage .hwprobe-loadbar > span > span:nth-child(2) { flex: 1; min-width: 0; text-align: center; overflow: hidden; text-overflow: ellipsis; }
             #hwprobeCard, #HwProbeConfigPage .hwprobe-progress-card { position: relative; }
             #HwProbeConfigPage .hwprobe-progress.hwprobe-progress-wide { position: absolute; left: 1em; right: 1em; bottom: 0.3em; width: auto; margin: 0; }
             #HwProbeConfigPage .hwprobe-inline { margin: 0 0 0 0.5em; padding: 0.2em 0.8em; }
@@ -1299,8 +1300,9 @@
                     syncRunPicker();
                     const drawn = JSON.stringify([speedLive && speedLive.results, speedReport && speedReport.generatedUtc, speedProgress && speedProgress.Phase, speedProgress && speedProgress.Done]);
                     if (poll === true && drawn === speedDrawn && speedProgress && speedProgressParts) {
-                        speedProgressParts.text.textContent = speedStatusText(speedProgress);
                         speedProgressParts.count.textContent = speedCountText(speedProgress);
+                        speedProgressParts.text.textContent = speedStatusText(speedProgress);
+                        speedProgressParts.eta.textContent = speedEtaText(speedProgress);
                         speedProgressParts.fill.style.width = progressWidth(speedProgress);
                         return;
                     }
@@ -1310,8 +1312,19 @@
                     if (speedProgress) {
                         const box = el('div', null, 'paperList hwprobe-card hwprobe-progress-card');
                         const line = el('div', null, 'hwprobe-row');
-                        const text = el('span', speedStatusText(speedProgress), 'secondaryText');
-                        line.appendChild(text);
+
+                        // A loading bar: measurements done on the left, what's running in the middle, and the time left on the right.
+                        const bar = el('div', null, 'hwprobe-loadbar');
+                        const fill = el('div');
+                        fill.style.width = progressWidth(speedProgress);
+                        bar.appendChild(fill);
+                        const label = el('span');
+                        const count = el('span', speedCountText(speedProgress));
+                        const text = el('span', speedStatusText(speedProgress));
+                        const eta = el('span', speedEtaText(speedProgress));
+                        label.append(count, text, eta);
+                        bar.appendChild(label);
+                        line.appendChild(bar);
                         const buttons = el('div', null, 'hwprobe-row hwprobe-end');
                         const cancel = action('Cancel', () => {
                             cancel.disabled = true;
@@ -1329,15 +1342,8 @@
                         buttons.appendChild(cancel);
                         line.appendChild(buttons);
                         box.appendChild(line);
-                        const meter = el('div', null, 'hwprobe-row hwprobe-meter');
-                        const bar = jf('<div class="itemProgressBar"><div class="itemProgressBarForeground"></div></div>');
-                        bar.firstElementChild.style.width = progressWidth(speedProgress);
-                        meter.appendChild(bar);
-                        const count = el('span', speedCountText(speedProgress), 'secondaryText');
-                        meter.appendChild(count);
-                        box.appendChild(meter);
                         speedResults.appendChild(box);
-                        speedProgressParts = { text, count, fill: bar.firstElementChild };
+                        speedProgressParts = { count, text, eta, fill };
                     }
                     const shown = speedLive || speedReport;
                     if (shown && shown.suiteStartedUtc && !speedProgress) {
@@ -2127,15 +2133,15 @@
                     ].map(([key, value]) => [settingLabels[key] || key, value]);
                 }
 
-                // What a running speed run is doing; in a suite, which step.
+                // In a suite, which step; and anything other than measuring: preparing, pausing, waiting, or cancelling.
                 function speedStatusText(s) {
                     const what = s.Phase === 'Cancelling' ? 'Cancelling\u2026'
                         : s.Phase === 'Deferring' ? 'Waiting: the server is transcoding; the interrupted measurement runs again when it ends.'
                         : s.Phase === 'Paused' ? 'Paused'
                         : s.Phase === 'Pausing' ? 'Pausing when this measurement finishes\u2026'
                         : s.Phase === 'Preparing' || !s.Total ? (s.Preparing || 'Preparing test videos') + '\u2026'
-                        : 'Measuring\u2026';
-                    return (s.Suite ? s.Suite + ' \u00b7 ' : '') + what;
+                        : '';
+                    return [s.Suite, what].filter(t => t).join(' \u00b7 ');
                 }
 
                 // Measurements done and planned: across the whole suite in a suite, else the run's.
@@ -2143,44 +2149,41 @@
                     return s.SuiteTotal ? { done: (s.SuiteDone || 0) + (s.Done || 0), total: s.SuiteTotal } : { done: s.Done || 0, total: s.Total || 0 };
                 }
 
-                // The count beside the progress bar, with the time left.
+                // Measurements done and planned, e.g. "12 / 20".
                 function speedCountText(s) {
                     const c = speedCounts(s);
-                    if (!c.total) {
-                        return '';
-                    }
-                    const left = timeLeft(s);
-                    return c.done + ' of ' + c.total + (left ? ' \u00b7 ' + left : '');
+                    return c.total ? c.done + ' / ' + c.total : '';
                 }
 
-                // One line for the status bar elsewhere on the page.
+                // The time left, e.g. "~8m30s" or "~1h20m"; empty before it can be estimated.
+                function speedEtaText(s) {
+                    const seconds = secondsLeft(s);
+                    if (seconds === null) {
+                        return '';
+                    }
+                    const total = Math.max(1, Math.round(seconds));
+                    const [h, m, sec] = [Math.floor(total / 3600), Math.floor(total / 60) % 60, total % 60];
+                    return '~' + (h ? h + 'h' + (m ? m + 'm' : '') : m ? m + 'm' + (sec ? String(sec).padStart(2, '0') + 's' : '') : sec + 's');
+                }
+
+                // One line for the status text elsewhere on the page.
                 function speedProgressText(s) {
-                    const count = speedCountText(s);
-                    return speedStatusText(s) + (count ? ' ' + count : '');
+                    return [speedStatusText(s), speedCountText(s), speedEtaText(s)].filter(t => t).join(' \u00b7 ');
                 }
 
                 // From the run's measurements so far; before the first, from the accuracy's typical time per measurement.
-                function timeLeft(s) {
+                function secondsLeft(s) {
                     const c = speedCounts(s);
                     const remaining = c.total - c.done;
                     if (remaining <= 0) {
-                        return '';
+                        return null;
                     }
-                    let seconds;
                     if (s.Done > 0 && s.MeasuringSeconds) {
-                        seconds = s.MeasuringSeconds / s.Done * remaining;
-                    } else {
-                        const per = methodSeconds[speedLive ? speedLive.method : speedMethod] || methodSeconds[defaultMethod];
-                        // A page opened mid-run polls before the catalog loads.
-                        if (!per) {
-                            return '';
-                        }
-                        seconds = remaining * (per[0] + per[1]) / 2 * (speedLive && speedLive.repeats ? speedLive.repeats : 1);
+                        return s.MeasuringSeconds / s.Done * remaining;
                     }
-                    const minutes = Math.round(seconds / 60);
-                    return seconds < 60 ? 'under a minute remains'
-                        : minutes < 90 ? 'about ' + minutes + (minutes === 1 ? ' minute remains' : ' minutes remain')
-                        : 'about ' + Math.round(minutes / 60) + ' hours remain';
+                    const per = methodSeconds[speedLive ? speedLive.method : speedMethod] || methodSeconds[defaultMethod];
+                    // A page opened mid-run polls before the catalog loads.
+                    return per ? remaining * (per[0] + per[1]) / 2 * (speedLive && speedLive.repeats ? speedLive.repeats : 1) : null;
                 }
 
                 function streamsText(x) {
