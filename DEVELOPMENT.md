@@ -46,7 +46,7 @@ hwprobe                    # probe every backend
 hwprobe --speed confirm    # and measure speed
 hwprobe --speed confirm --speed-videos pattern,live-action --speed-outputs h264-8mbps,decode \
   --speed-backends vaapi,none --speed-option EncoderPreset=fast --speed-json speed.json
-hwprobe --suite presets    # run a test suite and compare its steps
+hwprobe --suite presets    # run a test suite, compare its steps, and print what it suggests
 ```
 
 The first stop signal (Ctrl+C, `docker stop`) stops a speed test, stopping the measurement in progress and printing the ones it finished and why it stopped; a second ends the process at once. Throwaway containers of the official image that run `hwprobe` rather than Jellyfin need `--no-healthcheck`, or a watchdog such as autoheal restarts them as unhealthy.

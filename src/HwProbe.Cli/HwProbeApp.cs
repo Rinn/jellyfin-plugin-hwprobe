@@ -167,7 +167,9 @@ internal static class HwProbeApp
 
                 var started = DateTimeOffset.UtcNow;
                 var backends = SpeedSuites.Backends(suite, type);
-                var steps = SpeedSuites.Steps(suite, Environment.ProcessorCount, hardware: type);
+
+                // Without a server, Jellyfin's defaults (and any --speed-option) stand for its settings.
+                var steps = SpeedSuites.Steps(suite, Environment.ProcessorCount, speed.Settings, type);
                 List<SpeedReport> reports = [];
 
                 // A stop between steps ends the suite there; what finished is still printed, so these writes aren't cancelled with it.
@@ -197,6 +199,11 @@ internal static class HwProbeApp
                     }
 
                     await stdout.WriteAsync(SuiteRenderer.Render(suite.Name, reports).AsMemory(), CancellationToken.None);
+                    var device = candidates.FirstOrDefault(c => c.Type == type).Device ?? string.Empty;
+                    if (reports.Count > 0)
+                    {
+                        await stdout.WriteAsync(SuggestionRenderer.Render(SpeedAdvisor.Advise(reports[^1], reports, type, device, speed.Settings)).AsMemory(), CancellationToken.None);
+                    }
                 }
 
                 if (options.SpeedJsonPath is { } suiteJson)

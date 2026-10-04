@@ -735,6 +735,9 @@ resourceNames: { Cpu: CPU, Memory: memory, Gpu: GPU, GpuMemory: GPU memory }
 
 # Server settings suggestions change that aren't run options; labels and caveats are jellyfin-web's (en-us.json).
 labels:
+  # The server's own value: as a run option's first choice, and after a suite step or suggestion's value.
+  ServerSetting: Server setting
+  ServerSettingAfter: server setting
   RemoteClientBitrateLimit: Internet streaming bitrate limit
   RemoteClientBitrateLimitCaveat: Applies to devices outside the network only, lowering their picture quality; Jellyfin notes it can raise the server's load by transcoding streams that could otherwise play directly.
 

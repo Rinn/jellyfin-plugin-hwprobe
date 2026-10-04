@@ -294,9 +294,9 @@ public sealed partial class Catalog
         }
 
         string[] resources = ["Cpu", "Memory", "Gpu", "GpuMemory"];
-        if (ResourceNames is null || resources.Any(r => !ResourceNames.ContainsKey(r)) || Labels is null || !Labels.ContainsKey(Speed.SpeedAdvisor.BitrateLimitKey) || CodecNames is null || SoftwareName is null)
+        if (ResourceNames is null || resources.Any(r => !ResourceNames.ContainsKey(r)) || Labels is null || !Labels.ContainsKey(Speed.SpeedAdvisor.BitrateLimitKey) || !Labels.ContainsKey("ServerSetting") || !Labels.ContainsKey("ServerSettingAfter") || CodecNames is null || SoftwareName is null)
         {
-            throw new InvalidDataException($"catalog.yaml: resourceNames requires {string.Join(", ", resources)}, labels requires {Speed.SpeedAdvisor.BitrateLimitKey}, and codecNames and softwareName are required.");
+            throw new InvalidDataException($"catalog.yaml: resourceNames requires {string.Join(", ", resources)}, labels requires {Speed.SpeedAdvisor.BitrateLimitKey} ServerSetting, and ServerSettingAfter, and codecNames and softwareName are required.");
         }
     }
 

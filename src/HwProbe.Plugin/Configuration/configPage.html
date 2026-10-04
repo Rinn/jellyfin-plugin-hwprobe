@@ -1520,7 +1520,7 @@
                             }
                             // The server's own value: it confirms the setting, with nothing to apply.
                             if (s.Current) {
-                                title += ' (server setting)';
+                                title += ' (' + serverLabels.ServerSettingAfter + ')';
                                 actionButton = null;
                             }
                             text.appendChild(el('div', title));
@@ -1800,7 +1800,7 @@
                         if (o.Server) {
                             const value = encoding ? encoding[o.Server] : null;
                             const found = choices.find(([key]) => value !== null && value !== undefined && key === String(value));
-                            choices = [['', 'Server setting' + (found ? ' (' + found[1] + ')' : '')]].concat(choices);
+                            choices = [['', serverLabels.ServerSetting + (found ? ' (' + found[1] + ')' : '')]].concat(choices);
                         }
                         options(o.Label, choices, o.Key in speedSettings ? speedSettings[o.Key] : choices[0][0], v => {
                             if (v === '') {

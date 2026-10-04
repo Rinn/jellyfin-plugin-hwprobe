@@ -1,0 +1,57 @@
+using System.Globalization;
+using System.Text;
+using Jellyfin.Plugin.HwProbe.Core.Data;
+using Jellyfin.Plugin.HwProbe.Core.Speed;
+
+namespace Jellyfin.Plugin.HwProbe.Cli;
+
+/// <summary>Renders what a suite's runs suggest, one line each, as the page's Suggestions list them.</summary>
+internal static class SuggestionRenderer
+{
+    /// <summary>Renders the suggestions.</summary>
+    /// <param name="suggestions">The suggestions.</param>
+    /// <returns>The text, newline-terminated, or empty when there are none.</returns>
+    public static string Render(IReadOnlyList<SpeedSuggestion> suggestions)
+    {
+        ArgumentNullException.ThrowIfNull(suggestions);
+        if (suggestions.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var text = new StringBuilder("\nsuggest\n");
+        foreach (var s in suggestions)
+        {
+            var label = s.Setting is null ? null : Catalog.Default.Options.FirstOrDefault(o => o.Key == s.Setting)?.Label ?? Catalog.Default.Labels.GetValueOrDefault(s.Setting) ?? s.Setting;
+            var current = s.Current ? $" ({Catalog.Default.Labels["ServerSettingAfter"]})" : string.Empty;
+            var others = string.Join(" or ", s.Others.Select(o => Value(s.Setting, o)));
+            var value = Value(s.Setting, s.Value);
+            var savings = string.Join(", ", s.Savings.Select(x => string.Create(CultureInfo.InvariantCulture, $"{x.Fraction:0%} less {Catalog.Default.ResourceNames.GetValueOrDefault(x.Resource, x.Resource)}")));
+            var line = s.Kind switch
+            {
+                SpeedSuggestionKind.FastestBackend => $"hardware acceleration: {SpeedRenderer.Name(s.Type!.Value)}{(s.Savings.Count > 0 ? $", as fast with {savings}" : string.Empty)}",
+                SpeedSuggestionKind.FallsBehind => $"{SpeedRenderer.Name(s.Type!.Value)} falls behind real time",
+                SpeedSuggestionKind.FasterSetting => string.Create(CultureInfo.InvariantCulture, $"{label}: {value}{current}, {Math.Abs(s.Gain ?? 0):0%} faster than {others}{(s.LowerQuality ? ", at lower quality" : string.Empty)}"),
+                SpeedSuggestionKind.EfficientSetting => $"{label}: {value}{current}, as fast as {others} with {savings}{(s.LowerQuality ? ", at lower quality" : string.Empty)}",
+                SpeedSuggestionKind.HigherQuality => string.Create(CultureInfo.InvariantCulture, $"{label}: {value}{current}, better quality than {others}, still {s.Speed:0.0}x real time"),
+                SpeedSuggestionKind.BitrateLimit => string.Create(CultureInfo.InvariantCulture, $"{label}: {int.Parse(s.Value!, CultureInfo.InvariantCulture) / 1e6:0.#} Mbps, the highest H.264 quality that keeps real time"),
+                SpeedSuggestionKind.NoChange => $"{label}: {value}{current}, nothing compared is worth changing to ({others})",
+                _ => s.Kind.ToString(),
+            };
+            var streams = s.Streams is { } mine && s.OtherStreams is { } theirs && mine != theirs ? string.Create(CultureInfo.InvariantCulture, $"; streams {theirs} -> {mine}") : string.Empty;
+            text.Append("  ").Append(line).Append(streams).Append('\n');
+        }
+
+        return text.ToString();
+    }
+
+    /// <summary>Names a setting's value as the page does: a choice's label, or On and Off for a switch.</summary>
+    /// <param name="setting">The catalog option key, or null.</param>
+    /// <param name="value">The value as the catalog keys it.</param>
+    /// <returns>The name.</returns>
+    private static string Value(string? setting, string? value)
+    {
+        var option = Catalog.Default.Options.FirstOrDefault(o => o.Key == setting);
+        return option?.Choices?.FirstOrDefault(c => c.Key == value)?.Label ?? (option?.Switch == true ? (value == "true" ? "On" : "Off") : value ?? string.Empty);
+    }
+}
