@@ -862,7 +862,7 @@
                         return;
                     }
                     const warning = el('div', null, 'infoBanner hwprobe-warning');
-                    warning.appendChild(document.createTextNode('Didn\u2019t work in the last probe; transcodes that use it can fail. '));
+                    warning.appendChild(document.createTextNode('Unsuccessful in last probe; transcodes may fail. '));
                     warning.appendChild(idleAction('Switch to None', () => post('HwProbe/UseBackend', { Type: 'none', Device: '' })));
                     container.appendChild(warning);
                 }
