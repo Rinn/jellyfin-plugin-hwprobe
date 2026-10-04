@@ -1,4 +1,5 @@
 using System.Globalization;
+using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Devices;
 using Jellyfin.Plugin.HwProbe.Core.Diagnostics;
 using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
@@ -149,23 +150,78 @@ internal static class HwProbeApp
                 stderr.Write(Console.IsErrorRedirected ? status + Environment.NewLine : "\r" + status);
             });
 
-            var measured = await engine.RunAsync(engineOptions, speed with { LowPowerUnsupported = SpeedOptions.MissingLowPower(report) }, viable, progress, cancellationToken);
-
-            // A cancelled run still returns what it finished, so its output isn't cancelled with it.
-            await stderr.WriteLineAsync(string.Empty.AsMemory(), CancellationToken.None);
-            if (measured.Cancelled)
+            var lowPower = SpeedOptions.MissingLowPower(report);
+            if (options.Suite is { } key)
             {
-                await stderr.WriteLineAsync(string.Create(CultureInfo.InvariantCulture, $"hwprobe: speed test stopped after {measured.Results.Count} measurements: {StopReason.Describe()}").AsMemory(), CancellationToken.None);
+                var suite = Catalog.Default.Suites.First(s => s.Key == key);
+
+                // The hardware backend comes from --speed-backends, or else the first working one in Jellyfin's dropdown order, QSV in place of VAAPI on the same GPU.
+                var order = Catalog.Default.Backends.Select(b => b.Type).ToList();
+                var candidates = viable.Where(v => v.Type != HwType.none && (speed.Backends is null || speed.Backends.Contains(v.Type))).OrderBy(v => order.IndexOf(v.Type)).ToList();
+                var type = candidates.Count == 0 ? HwType.none : BackendPreference.Prefer(candidates[0], candidates).Type;
+                if (!SpeedSuites.Offered(suite, report, type))
+                {
+                    await stderr.WriteLineAsync($"hwprobe: the {suite.Name} suite can't run with the backends that work here.".AsMemory(), cancellationToken);
+                    return (int)HwProbeExitCode.UsageError;
+                }
+
+                var started = DateTimeOffset.UtcNow;
+                var backends = SpeedSuites.Backends(suite, type);
+                var steps = SpeedSuites.Steps(suite, Environment.ProcessorCount);
+                List<SpeedReport> reports = [];
+                foreach (var step in steps)
+                {
+                    var settings = step.Options.Aggregate(speed.Settings, (current, option) => SpeedSettingsOptions.Apply(current, option.Key, option.Value) ?? current);
+                    await stderr.WriteLineAsync(string.Create(CultureInfo.InvariantCulture, $"hwprobe: {suite.Name}: {step.Label}, {reports.Count + 1} of {steps.Count}").AsMemory(), cancellationToken);
+                    var stepReport = await engine.RunAsync(engineOptions, speed with { Videos = step.Videos, Outputs = step.Outputs, Settings = settings, Backends = backends, LowPowerUnsupported = lowPower }, viable, progress, cancellationToken);
+                    reports.Add(stepReport with { Suite = suite.Name, SuiteStep = step.Label, SuiteStartedUtc = started });
+                    if (stepReport.Cancelled)
+                    {
+                        break;
+                    }
+                }
+
+                await stderr.WriteLineAsync(string.Empty.AsMemory(), CancellationToken.None);
+                if (reports[^1].Cancelled)
+                {
+                    await stderr.WriteLineAsync(string.Create(CultureInfo.InvariantCulture, $"hwprobe: {suite.Name} stopped during step {reports.Count} of {steps.Count}: {StopReason.Describe()}").AsMemory(), CancellationToken.None);
+                }
+
+                if (options.Format != OutputFormat.Json)
+                {
+                    foreach (var stepReport in reports)
+                    {
+                        await stdout.WriteAsync($"\nstep    {stepReport.SuiteStep}\n{SpeedRenderer.Render(stepReport)}".AsMemory(), CancellationToken.None);
+                    }
+
+                    await stdout.WriteAsync(SuiteRenderer.Render(suite.Name, reports).AsMemory(), CancellationToken.None);
+                }
+
+                if (options.SpeedJsonPath is { } suiteJson)
+                {
+                    await File.WriteAllTextAsync(suiteJson, "[" + string.Join(",", reports.Select(SpeedReportStore.Serialize)) + "]\n", CancellationToken.None);
+                }
             }
-
-            if (options.Format != OutputFormat.Json)
+            else
             {
-                await stdout.WriteAsync(SpeedRenderer.Render(measured).AsMemory(), CancellationToken.None);
-            }
+                var measured = await engine.RunAsync(engineOptions, speed with { LowPowerUnsupported = lowPower }, viable, progress, cancellationToken);
 
-            if (options.SpeedJsonPath is not null)
-            {
-                await SpeedReportStore.WriteAsync(measured, options.SpeedJsonPath, CancellationToken.None);
+                // A cancelled run still returns what it finished, so its output isn't cancelled with it.
+                await stderr.WriteLineAsync(string.Empty.AsMemory(), CancellationToken.None);
+                if (measured.Cancelled)
+                {
+                    await stderr.WriteLineAsync(string.Create(CultureInfo.InvariantCulture, $"hwprobe: speed test stopped after {measured.Results.Count} measurements: {StopReason.Describe()}").AsMemory(), CancellationToken.None);
+                }
+
+                if (options.Format != OutputFormat.Json)
+                {
+                    await stdout.WriteAsync(SpeedRenderer.Render(measured).AsMemory(), CancellationToken.None);
+                }
+
+                if (options.SpeedJsonPath is not null)
+                {
+                    await SpeedReportStore.WriteAsync(measured, options.SpeedJsonPath, CancellationToken.None);
+                }
             }
         }
 

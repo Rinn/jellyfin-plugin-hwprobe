@@ -196,6 +196,8 @@
                 let speedReuse = true;
                 let speedResources = false;
                 let speedWhenTranscoding = null;
+                let suiteResources = false;
+                let suiteWhenTranscoding = null;
                 let speedTimeLimit = null;
                 // Null measures with the server's own thread count.
                 // Run options chosen on the page, by catalog key; one left out keeps the server's setting.
@@ -258,6 +260,7 @@
                     speedQualities = c.Qualities;
                     whenTranscodingOptions = c.WhenTranscoding.map(o => [o.Key, o.Label]);
                     speedWhenTranscoding = speedWhenTranscoding || c.DefaultWhenTranscoding;
+                    suiteWhenTranscoding = suiteWhenTranscoding || c.DefaultWhenTranscoding;
                     defaultMethod = c.DefaultMethod;
                     speedMethod = speedMethod || c.DefaultMethod;
                 }
@@ -1327,7 +1330,7 @@
                     if (shown && shown.results.length) {
                         speedResults.appendChild(speedMatrix(shown));
                     } else if (!speedProgress) {
-                        speedResults.appendChild(el('p', 'No performance tests yet.', 'secondaryText'));
+                        speedResults.appendChild(el('p', 'No performance tests available.', 'secondaryText'));
                     }
                     if (shown && !speedProgress) {
                         speedResults.appendChild(renderSuggestions());
@@ -1569,7 +1572,7 @@
                     const body = el('div');
                     container.appendChild(body);
                     ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Suites'), dataType: 'json' }).then(suites => {
-                        body.appendChild(el('p', 'Each step is saved as its own run in Test Results. Resource Usage and When the server starts transcoding are taken from Settings below.', 'secondaryText'));
+                        body.appendChild(el('p', 'Each step is saved as its own run in Test Results.', 'secondaryText'));
                         const table = el('table', null, 'hwprobe-full');
                         row(table, [el('th', 'Suite'), el('th', 'Steps'), el('th', 'Backend'), el('th', '')]);
                         for (const suite of suites) {
@@ -1581,7 +1584,7 @@
                             const run = el('td', null, 'hwprobe-num');
                             if (suite.Offered) {
                                 const button = idleAction('Run', () => {
-                                    ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Suite'), data: JSON.stringify({ Key: suite.Key, MeasureResources: speedResources, WhenTranscoding: speedWhenTranscoding }), contentType: 'application/json' })
+                                    ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Suite'), data: JSON.stringify({ Key: suite.Key, MeasureResources: suiteResources, WhenTranscoding: suiteWhenTranscoding }), contentType: 'application/json' })
                                         .then(() => {
                                             showTab(tabs[3][0]);
                                             return loadStatus();
@@ -1639,17 +1642,18 @@
                                 button.disabled = false;
                             }));
                     }, 'raised button-submit');
-                    renderSuites(fold(container, 'Test Suites', false));
+                    const idle = 'For more accurate results, measure while the server is idle.';
+                    const suites = fold(container, 'Test Suites', false);
+                    const form = fold(container, 'Performance Test', true, null, 'performance');
                     const go = el('div', null, 'hwprobe-row hwprobe-start');
                     go.appendChild(button);
                     go.appendChild(estimate);
-                    container.appendChild(go);
-                    container.appendChild(el('div', 'For more accurate results, measure while the server is idle.', 'infoBanner'));
-                    const form = fold(container, 'Settings', true, null, 'performance');
+                    form.appendChild(go);
+                    form.appendChild(el('div', idle, 'infoBanner'));
 
                     // Help goes under its field, before the gap to the next one, as the dashboard's helper text does.
-                    const options = (label, values, current, onChange, help) => {
-                        const select = themedSelect(form, label);
+                    const options = (label, values, current, onChange, help, target) => {
+                        const select = themedSelect(target || form, label);
                         if (help) {
                             select.parentNode.appendChild(el('div', help, 'fieldDescription'));
                         }
@@ -1723,17 +1727,24 @@
                     options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });
                     options('Repeats', repeatOptions, speedRepeats, v => { speedRepeats = Number(v); });
                     options('Earlier results', [['true', 'Reuse when the settings match'], ['false', 'Measure everything again']], String(speedReuse), v => { speedReuse = v === 'true'; }, 'Reuses a measurement from an earlier run with the same input, output, backend, accuracy, repeats, and ffmpeg, and the same values for the settings that affect it, so a repeated comparison completes faster.');
-                    options('Resource Usage', [['false', 'Don\u2019t measure'], ['true', 'Measure CPU, memory, and GPU usage']], String(speedResources), v => { speedResources = v === 'true'; });
                     // What this server's platform can measure, and whose usage it is.
                     const coverage = {
                         windows: 'CPU, memory, GPU, and GPU memory usage are measured per transcode.',
                         linux: 'CPU and memory usage are measured per transcode. Intel and AMD GPU usage is measured per transcode on kernel 5.19 or newer (6.8 for Intel\u2019s xe driver). NVIDIA GPU usage covers the whole GPU, including any other work on it.',
                         macos: 'CPU and memory usage are measured per transcode. GPU usage can\u2019t be measured on macOS.',
                     }[report && report.host ? report.host.os : ''];
-                    if (coverage) {
-                        form.lastElementChild.appendChild(el('div', coverage, 'infoBanner'));
-                    }
-                    options('When the server starts transcoding', whenTranscodingOptions, speedWhenTranscoding, v => { speedWhenTranscoding = v; });
+                    // Test suites have their own Resource Usage and transcoding choices.
+                    const shared = (target, resources, setResources, whenTranscoding, setWhenTranscoding) => {
+                        options('Resource Usage', [['false', 'Don\u2019t measure'], ['true', 'Measure CPU, memory, and GPU usage']], String(resources), v => setResources(v === 'true'), null, target);
+                        if (coverage) {
+                            target.lastElementChild.appendChild(el('div', coverage, 'infoBanner'));
+                        }
+                        options('When the server starts transcoding', whenTranscodingOptions, whenTranscoding, setWhenTranscoding, null, target);
+                    };
+                    suites.appendChild(el('div', idle, 'infoBanner'));
+                    shared(suites, suiteResources, v => { suiteResources = v; }, suiteWhenTranscoding, v => { suiteWhenTranscoding = v; });
+                    renderSuites(suites);
+                    shared(form, speedResources, v => { speedResources = v; }, speedWhenTranscoding, v => { speedWhenTranscoding = v; });
                     options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); }, 'A measurement that reaches the limit stops and reports what it measured.');
 
                     update();

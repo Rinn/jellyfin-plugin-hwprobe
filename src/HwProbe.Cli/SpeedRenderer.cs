@@ -65,6 +65,17 @@ internal static class SpeedRenderer
         return text.ToString();
     }
 
+    /// <summary>Names a backend.</summary>
+    /// <param name="type">The backend.</param>
+    /// <returns>Its name, or <c>software</c>.</returns>
+    internal static string Name(HwType type) => type == HwType.none ? "software" : type.ToString();
+
+    /// <summary>Formats a stream count.</summary>
+    /// <param name="result">The result.</param>
+    /// <returns><c>≈N</c>, <c>N+</c> at the cap, or <c>-</c>.</returns>
+    internal static string Streams(SpeedResult result) =>
+        result.Streams is not { } streams ? "-" : result.Capped ? string.Create(CultureInfo.InvariantCulture, $"{streams}+") : string.Create(CultureInfo.InvariantCulture, $"~{streams}");
+
     /// <summary>Formats one result.</summary>
     /// <param name="result">The result.</param>
     /// <param name="baseFps">The base settings' fps for a comparison row, or null for a base row.</param>
@@ -107,17 +118,6 @@ internal static class SpeedRenderer
             $"enhanced NVDEC {OnOff(settings.EnhancedNvdec)}",
         });
     }
-
-    /// <summary>Names a backend.</summary>
-    /// <param name="type">The backend.</param>
-    /// <returns>Its name, or <c>software</c>.</returns>
-    private static string Name(HwType type) => type == HwType.none ? "software" : type.ToString();
-
-    /// <summary>Formats a stream count.</summary>
-    /// <param name="result">The result.</param>
-    /// <returns><c>≈N</c>, <c>N+</c> at the cap, or <c>-</c>.</returns>
-    private static string Streams(SpeedResult result) =>
-        result.Streams is not { } streams ? "-" : result.Capped ? string.Create(CultureInfo.InvariantCulture, $"{streams}+") : string.Create(CultureInfo.InvariantCulture, $"~{streams}");
 
     /// <summary>Formats a comparison's change in speed.</summary>
     /// <param name="fps">The comparison's fps.</param>

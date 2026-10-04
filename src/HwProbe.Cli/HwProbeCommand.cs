@@ -50,6 +50,12 @@ internal sealed class HwProbeCommand
         Description = "Backends to measure, comma-separated, with none for software. Default: every working backend and software.",
     };
 
+    private readonly Option<string?> _suite = new("--suite")
+    {
+        Description = $"After the probe, run a test suite: its steps one after another, then one table comparing them. Uses --speed's accuracy (default confirm) and --speed-option settings; --speed-backends picks the hardware backend. Suites: {string.Join(", ", Catalog.Default.Suites.Select(s => s.Key))}.",
+        CustomParser = r => Catalog.Default.Suites.Any(s => s.Key == r.Tokens[0].Value) ? r.Tokens[0].Value : Error<string?>(r, $"Unknown suite '{r.Tokens[0].Value}'. Expected: {string.Join(", ", Catalog.Default.Suites.Select(s => s.Key))}."),
+    };
+
     private readonly Option<string?> _speedFile = new("--speed-file") { Description = "A video file to measure with --speed, as the library video." };
     private readonly Option<string[]> _speedOption = new("--speed-option")
     {
@@ -116,7 +122,7 @@ internal sealed class HwProbeCommand
 
         Root = new RootCommand("Device-verified hardware transcode detection for Jellyfin.")
         {
-            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _speed, _speedVideos, _speedOutputs, _speedBackends, _speedFile, _speedRepeats, _speedOption, _speedTimeLimit, _speedResources, _speedJson, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
+            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _speed, _suite, _speedVideos, _speedOutputs, _speedBackends, _speedFile, _speedRepeats, _speedOption, _speedTimeLimit, _speedResources, _speedJson, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
         };
     }
 
@@ -145,7 +151,8 @@ internal sealed class HwProbeCommand
             result.GetValue(_verbose))
         {
             DiagnosticsPath = result.GetValue(_diagnostics),
-            Speed = result.GetValue(_speed) is { } method ? SpeedFrom(result, method) : null,
+            Speed = result.GetValue(_speed) is { } method ? SpeedFrom(result, method) : result.GetValue(_suite) is not null ? SpeedFrom(result, SpeedMethod.Confirm) : null,
+            Suite = result.GetValue(_suite),
             SpeedJsonPath = result.GetValue(_speedJson),
             SpeedFilePath = result.GetValue(_speedFile) is { } file ? Path.GetFullPath(file) : null,
         };

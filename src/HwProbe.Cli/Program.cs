@@ -1,3 +1,5 @@
+using System.CommandLine;
+
 namespace Jellyfin.Plugin.HwProbe.Cli;
 
 /// <summary>The hwprobe command-line entry point.</summary>
@@ -25,7 +27,8 @@ internal static class Program
 
         try
         {
-            return await parse.InvokeAsync(cancellationToken: CancellationToken.None);
+            var code = await parse.InvokeAsync(new InvocationConfiguration { ProcessTerminationTimeout = null }, StopReason.Token);
+            return StopReason.ExitCode ?? code;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

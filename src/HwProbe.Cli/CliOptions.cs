@@ -42,4 +42,7 @@ internal sealed record CliOptions(
 
     /// <summary>Gets where to write the speed report as JSON, or null.</summary>
     public string? SpeedJsonPath { get; init; }
+
+    /// <summary>Gets the test suite to run after the probe, by catalog key, or null.</summary>
+    public string? Suite { get; init; }
 }

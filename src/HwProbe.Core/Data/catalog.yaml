@@ -6,7 +6,8 @@ vars:
   # The test videos copy one 5.1 AAC track, made once.
   audio: "-i {clip:speed_audio_51.mka}"
   audioOut: -map 0:v -map 1:a -c:a copy
-  hdr10: -color_primaries bt2020 -color_trc smpte2084 -colorspace bt2020nc
+  # Tagged on the frames: jellyfin-ffmpeg 8.1 drops -color_primaries and -color_trc given as output options, which leaves the clip SDR to decoders and tone mapping.
+  hdr10: -vf setparams=color_primaries=bt2020:color_trc=smpte2084:colorspace=bt2020nc
   testSource: "{quiet} -f lavfi -i testsrc2=size=1920x1080:rate=24 {audio} -t 10"
   x265: -c:v libx265 -preset medium -x265-params log-level=error
 
