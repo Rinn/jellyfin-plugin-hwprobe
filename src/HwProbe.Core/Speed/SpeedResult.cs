@@ -42,6 +42,10 @@ public sealed record SpeedResult(HwType Type, string Device, string Test, string
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Resources.ResourceUsage? Resources { get; init; }
 
+    /// <summary>Gets a value indicating whether the encoder dropped the low-power mode asked for and ran in normal mode, so the result doesn't speak for low power.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool LowPowerDropped { get; init; }
+
     /// <summary>Gets a hash of the ffmpeg command measured, or null when nothing ran; equal hashes mean a setting didn't change the command.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Command { get; init; }

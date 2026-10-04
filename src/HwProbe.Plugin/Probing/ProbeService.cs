@@ -249,7 +249,7 @@ public sealed partial class ProbeService : IDisposable
             settings = SpeedSettingsOptions.Apply(settings, key, value) ?? settings;
         }
 
-        _background = Task.Run(() => RunSpeedHeldAsync(measure, speed with { Settings = settings, Pause = _speedPause }, backends, _speedCancel.Token), CancellationToken.None);
+        _background = Task.Run(() => RunSpeedHeldAsync(measure, speed with { Settings = settings, Pause = _speedPause, LowPowerUnsupported = SpeedOptions.MissingLowPower(report) }, backends, _speedCancel.Token), CancellationToken.None);
         return ProbeRunResult.Started;
     }
 

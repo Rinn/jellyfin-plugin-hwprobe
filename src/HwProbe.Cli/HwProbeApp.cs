@@ -149,7 +149,7 @@ internal static class HwProbeApp
                 stderr.Write(Console.IsErrorRedirected ? status + Environment.NewLine : "\r" + status);
             });
 
-            var measured = await engine.RunAsync(engineOptions, speed, viable, progress, cancellationToken);
+            var measured = await engine.RunAsync(engineOptions, speed with { LowPowerUnsupported = SpeedOptions.MissingLowPower(report) }, viable, progress, cancellationToken);
 
             // A cancelled run still returns what it finished, so its output isn't cancelled with it.
             await stderr.WriteLineAsync(string.Empty.AsMemory(), CancellationToken.None);
