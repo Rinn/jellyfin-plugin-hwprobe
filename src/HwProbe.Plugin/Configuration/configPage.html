@@ -822,7 +822,8 @@
                     container.replaceChildren();
                     title.replaceChildren(el('h2', 'Settings', 'sectionTitle'));
                     if (viable.length > 1) {
-                        const pick = themedSelect(title, 'Backend');
+                        // A full-width field, like the Performance Tests ones, rather than squeezed into the heading.
+                        const pick = themedSelect(container, 'Backend');
                         viable.forEach((b, i) => {
                             const option = el('option', (names[b.type] || b.type) + (viable.filter(o => o.type === b.type).length > 1 ? ' ' + b.device : ''));
                             option.value = String(i);
@@ -836,8 +837,10 @@
 
                     const configured = isConfigured(selected);
                     if (!configured) {
-                        title.appendChild(el('span', 'Not the configured backend', 'secondaryText'));
-                        title.appendChild(idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: selected.type, Device: selected.device })));
+                        const line = el('div', null, 'hwprobe-row hwprobe-start');
+                        line.appendChild(el('span', 'Not the configured backend', 'secondaryText'));
+                        line.appendChild(idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: selected.type, Device: selected.device })));
+                        container.appendChild(line);
                     }
 
                     const settings = selected.settings || [];
