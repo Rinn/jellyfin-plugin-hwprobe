@@ -2150,10 +2150,10 @@
                     return s.SuiteTotal ? { done: (s.SuiteDone || 0) + (s.Done || 0), total: s.SuiteTotal } : { done: s.Done || 0, total: s.Total || 0 };
                 }
 
-                // Measurements done and planned, e.g. "12 / 20".
+                // Measurements done and planned, e.g. " 2 / 20": the count is padded with figure spaces to the total's width, so the text doesn't shift.
                 function speedCountText(s) {
                     const c = speedCounts(s);
-                    return c.total ? c.done + ' / ' + c.total : '';
+                    return c.total ? String(c.done).padStart(String(c.total).length, '\u2007') + ' / ' + c.total : '';
                 }
 
                 // How long the run or suite has been going, as mm:ss, or hh:mm:ss from an hour.
