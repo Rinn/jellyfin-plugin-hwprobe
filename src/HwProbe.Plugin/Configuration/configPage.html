@@ -90,7 +90,9 @@
             #HwProbeConfigPage .selectContainer .hwprobe-notes { margin: 0 14px; padding-left: 1.4em; }
             #HwProbeConfigPage .hwprobe-progress { position: relative; width: 16em; }
             #HwProbeConfigPage .hwprobe-loadbar { position: relative; flex: 1; min-width: 0; height: 2.2em; border-radius: 0.25em; overflow: hidden; background: var(--jf-palette-action-hover, rgba(255, 255, 255, 0.08)); }
-            #HwProbeConfigPage .hwprobe-loadbar > div { position: absolute; left: 0; top: 0; bottom: 0; background: var(--jf-palette-primary-main, #00a4dc); transition: width 0.25s linear; }
+            #HwProbeConfigPage .hwprobe-loadbar > div { position: absolute; left: 0; top: 0; bottom: 0; background: var(--jf-palette-primary-main, #00a4dc); transition: width 0.25s linear, left 0.25s linear; }
+            #HwProbeConfigPage .hwprobe-loadbar > div.hwprobe-current { background: var(--jf-palette-warning-main, #ffa726); animation: hwprobe-flash 1.2s ease-in-out infinite; }
+            @keyframes hwprobe-flash { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.8; } }
             #HwProbeConfigPage .hwprobe-loadbar > span { position: relative; display: flex; gap: 1em; line-height: 2.2em; padding: 0 0.8em; font-size: 0.9em; color: var(--jf-palette-text-primary, #fff); white-space: nowrap; }
             #HwProbeConfigPage .hwprobe-loadbar > span > span:not(:nth-child(2)) { font-variant-numeric: tabular-nums; }
             #HwProbeConfigPage .hwprobe-loadbar > span > span:nth-child(2) { flex: 1; min-width: 0; text-align: center; overflow: hidden; text-overflow: ellipsis; }
@@ -1292,9 +1294,20 @@
                 let speedProgressParts = null;
 
                 // A poll redraws only the progress text and bar unless the results or the run's phase changed.
+                // Hidden while paused, cancelling, or before the count is known.
+                function placeCurrent(node, s) {
+                    const c = speedCounts(s);
+                    const working = c.total && c.done < c.total && s.Phase !== 'Paused' && s.Phase !== 'Cancelling';
+                    node.style.display = working ? '' : 'none';
+                    if (working) {
+                        node.style.left = (100 * c.done / c.total) + '%';
+                        node.style.width = (100 / c.total) + '%';
+                    }
+                }
+
                 function progressWidth(s) {
                     const c = speedCounts(s);
-                    return (c.total ? Math.round(100 * c.done / c.total) : 0) + '%';
+                    return (c.total ? 100 * c.done / c.total : 0) + '%';
                 }
 
                 function renderSpeedResults(poll) {
@@ -1305,6 +1318,7 @@
                         speedProgressParts.text.textContent = speedStatusText(speedProgress);
                         speedProgressParts.eta.textContent = speedElapsedText(speedProgress);
                         speedProgressParts.fill.style.width = progressWidth(speedProgress);
+                        placeCurrent(speedProgressParts.current, speedProgress);
                         return;
                     }
                     speedDrawn = drawn;
@@ -1319,6 +1333,10 @@
                         const fill = el('div');
                         fill.style.width = progressWidth(speedProgress);
                         bar.appendChild(fill);
+                        // The measurement in progress flashes after the finished ones.
+                        const current = el('div', null, 'hwprobe-current');
+                        placeCurrent(current, speedProgress);
+                        bar.appendChild(current);
                         const label = el('span');
                         const count = el('span', speedCountText(speedProgress));
                         const text = el('span', speedStatusText(speedProgress));
@@ -1344,7 +1362,7 @@
                         line.appendChild(buttons);
                         box.appendChild(line);
                         speedResults.appendChild(box);
-                        speedProgressParts = { count, text, eta, fill };
+                        speedProgressParts = { count, text, eta, fill, current };
                     }
                     const shown = speedLive || speedReport;
                     if (shown && shown.suiteStartedUtc && !speedProgress) {
