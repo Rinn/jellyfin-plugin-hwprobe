@@ -336,6 +336,97 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal(new CacheSize(0, 0), service.FixtureCacheSize());
     }
 
+    /// <summary>One cached file can be deleted, but not while a probe runs, and not one the cache doesn't list.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task CacheFileIsDeleted()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var fixtures = Path.Combine(_directory, "fixtures");
+        Directory.CreateDirectory(Path.Combine(fixtures, "samples"));
+        await File.WriteAllBytesAsync(Path.Combine(fixtures, "samples", "a.mkv"), new byte[10], ct);
+        await File.WriteAllBytesAsync(Path.Combine(fixtures, "samples", "b.mkv"), new byte[10], ct);
+        using var release = new SemaphoreSlim(0);
+        using var service = new ProbeService(
+            async c =>
+            {
+                await release.WaitAsync(c);
+                return Reports.Sample();
+            },
+            () => false,
+            Path.Combine(_directory, "latest.json"),
+            TimeProvider.System,
+            TimeSpan.Zero,
+            NullLogger.Instance)
+        {
+            FixturesDirectory = fixtures,
+        };
+
+        var probe = service.RunAsync(ct);
+        Assert.Equal(DeleteOutcome.Busy, await service.DeleteCacheFileAsync("samples", "a.mkv", ct));
+        release.Release();
+        await probe;
+
+        Assert.Equal(DeleteOutcome.NotFound, await service.DeleteCacheFileAsync("samples", "c.mkv", ct));
+        Assert.Equal(DeleteOutcome.Deleted, await service.DeleteCacheFileAsync("samples", "a.mkv", ct));
+        Assert.Equal(["b.mkv"], service.FixtureCacheContents().Select(e => e.File));
+    }
+
+    /// <summary>Deleting all data removes the report, diagnostics, speed runs, saved measurements, report cache and clips, and clears the last status.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task PurgeAllDeletesEverything()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        string[] directories = [Path.Combine(_directory, "fixtures", "samples"), Path.Combine(_directory, "results"), Path.Combine(_directory, "reports"), Path.Combine(_directory, "speed-history")];
+        using var service = new ProbeService(_ => Task.FromResult(Reports.Sample()), () => false, Path.Combine(_directory, "latest.json"), TimeProvider.System, TimeSpan.Zero, NullLogger.Instance)
+        {
+            FixturesDirectory = Path.Combine(_directory, "fixtures"),
+            SpeedResultsDirectory = directories[1],
+            ReportCacheDirectory = directories[2],
+        };
+        Assert.Equal(ProbeRunResult.Completed, await service.RunAsync(ct));
+        foreach (var directory in directories)
+        {
+            Directory.CreateDirectory(directory);
+            await File.WriteAllTextAsync(Path.Combine(directory, "x.json"), "{}", ct);
+        }
+
+        await File.WriteAllTextAsync(service.DiagnosticsPath, "zip", ct);
+        await File.WriteAllTextAsync(service.SpeedPath, "{}", ct);
+
+        Assert.True(await service.PurgeAllAsync(ct));
+
+        Assert.Empty(Directory.EnumerateFileSystemEntries(_directory));
+        Assert.Null(await service.LatestJsonAsync(ct));
+        Assert.Null(service.Status.LastCompletedUtc);
+    }
+
+    /// <summary>Disposing, as the server does when it shuts down, doesn't wait for a running probe; the probe is cancelled and finishes on its own.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task DisposeCancelsARunningProbeWithoutWaiting()
+    {
+        var started = new TaskCompletionSource();
+        var service = Create(
+            async ct =>
+            {
+                started.SetResult();
+                await Task.Delay(Timeout.Infinite, ct);
+                return Reports.Sample();
+            },
+            transcoding: false);
+
+        Assert.Equal(ProbeRunResult.Started, await service.StartAsync(TestContext.Current.CancellationToken));
+        await started.Task;
+        Assert.Equal(ProbeState.Running, service.Status.State);
+        service.Dispose();
+
+        await service.Background;
+        Assert.Equal(ProbeState.Idle, service.Status.State);
+        Assert.Null(service.Status.LastError);
+    }
+
     /// <summary>Nothing runs while a session is transcoding.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

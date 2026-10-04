@@ -253,6 +253,27 @@ public sealed class SettingsService : IDisposable
     /// <inheritdoc/>
     public void Dispose() => _gate.Dispose();
 
+    /// <summary>Deletes the change history, which leaves nothing to revert.</summary>
+    /// <param name="cancellationToken">Cancels waiting.</param>
+    /// <returns>False while another change is being written.</returns>
+    public async Task<bool> ClearHistoryAsync(CancellationToken cancellationToken)
+    {
+        if (!await _gate.WaitAsync(0, cancellationToken))
+        {
+            return false;
+        }
+
+        try
+        {
+            File.Delete(_historyPath);
+            return true;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     /// <summary>Returns where the history is kept.</summary>
     /// <param name="paths">Server paths.</param>
     /// <returns>The file path.</returns>

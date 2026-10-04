@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Jellyfin.Plugin.HwProbe.Configuration;
@@ -34,7 +35,12 @@ public sealed partial class ProbeService : IDisposable
     private readonly TimeProvider _time;
     private readonly TimeSpan _settle;
     private readonly ILogger _logger;
+    [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "A run still in progress releases it after Dispose; it holds no unmanaged handle.")]
     private readonly SemaphoreSlim _gate = new(1, 1);
+
+    // Cancelled when the server shuts down, so a background probe or speed run kills its ffmpeg instead of outliving it.
+    [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "Runs still in progress read its token after Dispose cancels it; it has no timer or wait handle to free.")]
+    private readonly CancellationTokenSource _shutdown = new();
     private readonly List<SpeedResult> _speedSoFar = [];
 
     // The latest step of a running probe; written by the probe, read by Status.
@@ -44,6 +50,7 @@ public sealed partial class ProbeService : IDisposable
     private volatile bool _cancelledForTranscode;
 
     private SpeedOptions? _speedRunning;
+    [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "The speed run that owns it disposes it when it ends.")]
     private CancellationTokenSource? _speedCancel;
     private SpeedPause? _speedPause;
     private DateTimeOffset? _measuringSince;
@@ -78,6 +85,7 @@ public sealed partial class ProbeService : IDisposable
         FindFile = files.Find;
         FixturesDirectory = ServerEngineOptions(mediaEncoder, paths).FixturesDirectory;
         SpeedResultsDirectory = SpeedEngine.ResultCacheFor(ServerEngineOptions(mediaEncoder, paths)).Directory;
+        ReportCacheDirectory = ServerEngineOptions(mediaEncoder, paths).ReportCacheDirectory;
     }
 
     /// <summary>Initializes a new instance of the <see cref="ProbeService"/> class with injected behaviour.</summary>
@@ -156,6 +164,9 @@ public sealed partial class ProbeService : IDisposable
     /// <summary>Gets where measurements are saved for reuse, or null when unset.</summary>
     internal string? SpeedResultsDirectory { get; init; }
 
+    /// <summary>Gets where probe reports are cached by fingerprint, or null when this service doesn't probe the server.</summary>
+    internal string? ReportCacheDirectory { get; init; }
+
     /// <summary>Gets the lookup from a library item to its file.</summary>
     internal Func<Guid, SpeedFile?> FindFile { get; init; } = _ => null;
 
@@ -191,7 +202,7 @@ public sealed partial class ProbeService : IDisposable
     }
 
     /// <summary>Starts a probe in the background if one can run now.</summary>
-    /// <param name="cancellationToken">Cancels the busy check; the probe itself runs to completion.</param>
+    /// <param name="cancellationToken">Cancels the busy check; the probe itself runs to completion, or until the server shuts down.</param>
     /// <returns><see cref="ProbeRunResult.Started"/>, or why it can't start.</returns>
     public async Task<ProbeRunResult> StartAsync(CancellationToken cancellationToken)
     {
@@ -206,7 +217,7 @@ public sealed partial class ProbeService : IDisposable
             return ProbeRunResult.AlreadyRunning;
         }
 
-        _background = Task.Run(() => RunHeldAsync(CancellationToken.None), CancellationToken.None);
+        _background = Task.Run(() => RunHeldAsync(_shutdown.Token), CancellationToken.None);
         return ProbeRunResult.Started;
     }
 
@@ -590,14 +601,69 @@ public sealed partial class ProbeService : IDisposable
         }
     }
 
-    /// <inheritdoc/>
-    public void Dispose()
+    /// <summary>Deletes one cached clip, sample or download; the next probe or speed run makes or downloads it again.</summary>
+    /// <param name="folder">The entry's folder, as <see cref="FixtureCacheContents"/> lists it.</param>
+    /// <param name="file">The entry's file name.</param>
+    /// <param name="cancellationToken">Cancels waiting.</param>
+    /// <returns>The outcome; NotFound for a file the cache doesn't list.</returns>
+    public async Task<DeleteOutcome> DeleteCacheFileAsync(string folder, string file, CancellationToken cancellationToken)
     {
-        // Stops a running speed run's ffmpeg, which would otherwise outlive the server.
-        _speedCancel?.Cancel();
-        _gate.Dispose();
-        _speedCancel?.Dispose();
+        if (!await _gate.WaitAsync(0, cancellationToken))
+        {
+            return DeleteOutcome.Busy;
+        }
+
+        try
+        {
+            return Core.Fixtures.FixtureCacheContents.Delete(FixturesDirectory, folder, file) ? DeleteOutcome.Deleted : DeleteOutcome.NotFound;
+        }
+        finally
+        {
+            _gate.Release();
+        }
     }
+
+    /// <summary>Deletes everything probes and speed runs saved: the latest report and diagnostics, every speed run, saved measurements, the report cache, and the cached clips.</summary>
+    /// <param name="cancellationToken">Cancels waiting.</param>
+    /// <returns>False when a probe or speed run is running.</returns>
+    public async Task<bool> PurgeAllAsync(CancellationToken cancellationToken)
+    {
+        if (!await _gate.WaitAsync(0, cancellationToken))
+        {
+            return false;
+        }
+
+        try
+        {
+            foreach (var file in new[] { _latestPath, DiagnosticsPath, SpeedPath })
+            {
+                File.Delete(file);
+            }
+
+            foreach (var directory in new[] { SpeedHistoryDirectory, FixturesDirectory, SpeedResultsDirectory, ReportCacheDirectory })
+            {
+                if (directory is not null && Directory.Exists(directory))
+                {
+                    Directory.Delete(directory, recursive: true);
+                }
+            }
+
+            _status = new(ProbeState.Idle, null, null, null);
+            return true;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Doesn't wait: a running probe or speed run sees the cancellation, kills its ffmpeg tree and releases the gate on
+    /// its own. The gate and the speed run's token source are left to it, as disposing them here would make that release
+    /// throw; neither holds an unmanaged handle.
+    /// </remarks>
+    public void Dispose() => _shutdown.Cancel();
 
     /// <summary>Reports whether a session's stream re-encodes video or audio.</summary>
     /// <param name="info">The session's transcoding info, null when it plays directly.</param>
@@ -837,6 +903,10 @@ public sealed partial class ProbeService : IDisposable
             Log.Completed(_logger, viable);
             return ProbeRunResult.Completed;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return ProbeRunResult.Failed;
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // A failed probe must not take the server down; the reason goes to the status and the log.
@@ -940,7 +1010,7 @@ public sealed partial class ProbeService : IDisposable
         }
 
         List<(HwType, string)> backends = [.. report.Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device))];
-        _speedCancel = new CancellationTokenSource();
+        _speedCancel = CancellationTokenSource.CreateLinkedTokenSource(_shutdown.Token);
         _speedPause = new SpeedPause(_time) { Busy = whenTranscoding == TranscodeAction.Pause ? _isTranscoding : null };
         _cancelledForTranscode = false;
         if (whenTranscoding == TranscodeAction.Cancel)

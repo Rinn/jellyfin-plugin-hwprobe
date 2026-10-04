@@ -81,7 +81,8 @@
             #HwProbeConfigPage .hwprobe-variant td:first-child { padding-left: 1.2em; }
             #HwProbeConfigPage .hwprobe-small { font-size: 0.85em; }
             #HwProbeConfigPage .hwprobe-file { word-break: break-all; }
-            #HwProbeConfigPage .emby-button.hwprobe-danger:not(:disabled) { color: var(--jf-palette-error-main, #c62828); }
+            #HwProbeConfigPage .emby-button.hwprobe-danger:not(:disabled), #HwProbeConfigPage .paper-icon-button-light.hwprobe-danger:not(:disabled) { color: var(--jf-palette-error-main, #c62828); }
+            #HwProbeConfigPage td.hwprobe-end-cell { text-align: right; padding: 0; }
             #HwProbeConfigPage th.hwprobe-sortable { cursor: pointer; user-select: none; }
             #HwProbeConfigPage th.hwprobe-sortable[aria-sort="ascending"]::after { content: " \25B2"; font-size: 0.7em; }
             #HwProbeConfigPage th.hwprobe-sortable[aria-sort="descending"]::after { content: " \25BC"; font-size: 0.7em; }
@@ -679,6 +680,22 @@
                     return button;
                 }
 
+                // A theme icon button, such as the trash can on a row; disabled while a probe or test runs, as the server refuses then.
+                function iconAction(name, label, onClick) {
+                    const button = jf('<button is="paper-icon-button-light" type="button" class="paper-icon-button-light hwprobe-danger"></button>');
+                    button.appendChild(icon(name));
+                    button.title = label;
+                    button.setAttribute('aria-label', label);
+                    button.addEventListener('click', () => {
+                        button.disabled = true;
+                        onClick();
+                    });
+                    button.disabled = running;
+                    idleButtons = idleButtons.filter(b => b.isConnected || b === runButton);
+                    idleButtons.push(button);
+                    return button;
+                }
+
                 // Can't be undone, so the first press only asks; a click anywhere else takes the question back.
                 function confirmAction(text, question, onConfirm, kind) {
                     let sure = false;
@@ -1179,21 +1196,30 @@
                         const line = el('div', null, 'hwprobe-row');
                         line.appendChild(el('span', sizeText(bytes) + ' in ' + entries.length + ' file' + (entries.length === 1 ? '' : 's'), 'secondaryText'));
                         div.appendChild(line);
+                        const buttons = el('div', null, 'hwprobe-row hwprobe-end');
+                        line.appendChild(buttons);
+                        if (entries.length) {
+                            buttons.appendChild(confirmAction('Delete cache', 'Delete all ' + entries.length + ' files', () => {
+                                ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('HwProbe/Cache') })
+                                    .then(render, () => { setMessage('Could not delete: a probe or performance test is using the cache.'); render(); });
+                            }, 'raised button-delete'));
+                        }
+                        // Reports, performance test results, and the settings history go too, so everything reloads.
+                        buttons.appendChild(confirmAction('Delete all data', 'Delete all reports, results, history, and cache', () => {
+                            ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('HwProbe/Data') })
+                                .then(() => loadStatus(), () => { setMessage('Could not delete: a probe, performance test, or settings change is running.'); loadStatus(); });
+                        }, 'raised button-delete'));
                         if (!entries.length) {
                             return;
                         }
-                        line.appendChild(confirmAction('Delete all', 'Delete all ' + entries.length + ' files', () => {
-                            ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('HwProbe/Cache') })
-                                .then(render, () => { setMessage('Could not delete: a probe or performance test is using the cache.'); render(); });
-                        }, 'raised button-delete'));
                         const table = el('table', null, 'hwprobe-full');
-                        row(table, [el('th', 'Contents'), el('th', 'File'), el('th', 'Size', 'hwprobe-num'), el('th', 'Written')]);
+                        row(table, [el('th', 'Contents'), el('th', 'File'), el('th', 'Size', 'hwprobe-num'), el('th', 'Written'), el('th')]);
                         let folder = null;
                         for (const e of entries) {
                             if (e.Folder !== folder) {
                                 folder = e.Folder;
                                 const name = el('td', cacheFolderName(folder));
-                                name.colSpan = 4;
+                                name.colSpan = 5;
                                 const tr = el('tr', null, 'hwprobe-group');
                                 tr.appendChild(name);
                                 table.appendChild(tr);
@@ -1206,7 +1232,12 @@
                             const file = el('td', e.File.replace(/^([0-9a-f]{12})[0-9a-f]{52}/, '$1\u2026'), 'secondaryText hwprobe-small hwprobe-file');
                             file.title = e.File;
                             file.dataset.sort = e.File;
-                            row(table, [el('td', e.Description || 'Not used by this version', e.Description ? '' : 'secondaryText'), file, size, written]);
+                            const remove = el('td', null, 'hwprobe-end-cell');
+                            remove.appendChild(iconAction('delete', 'Delete', () => {
+                                ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('HwProbe/Cache/File', { folder: e.Folder, file: e.File }) })
+                                    .then(render, () => { setMessage('Could not delete: a probe or performance test is using the cache.'); render(); });
+                            }));
+                            row(table, [el('td', e.Description || 'Not used by this version', e.Description ? '' : 'secondaryText'), file, size, written, remove]);
                         }
                         const scroll = el('div', null, 'hwprobe-scroll');
                         scroll.appendChild(sortable(table, 'cache'));
