@@ -928,7 +928,7 @@
                     const details = fold(results, 'Detailed results');
 
                     const table = el('table', null, 'hwprobe-full');
-                    row(table, [el('th', 'Backend'), el('th', 'Device'), el('th', 'Column'), el('th', 'Test'), el('th', 'Result'), el('th', 'Time', 'hwprobe-num')]);
+                    row(table, [el('th', 'Backend'), el('th', 'Device'), el('th', 'Column'), el('th', 'Test'), el('th', 'Result'), el('th', 'Duration', 'hwprobe-num')]);
                     for (const b of r.backends) {
                         for (const column of columns) {
                             for (const [key, outcome] of Object.entries(b[column] || {})) {
