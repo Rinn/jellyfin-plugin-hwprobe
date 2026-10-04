@@ -861,7 +861,7 @@
                     if (everything.length > 1) {
                         header.appendChild(idleAction('Apply all', () => apply(everything)));
                     }
-                    row(table, [el('th'), el('th', 'Option'), el('th', 'Result'), header]);
+                    row(table, [el('th'), el('th', 'Setting'), el('th', 'Result'), header]);
                     let group = null;
                     for (const a of settings.filter(x => !x.hidden || differs(x))) {
                         if (a.section !== group) {
@@ -1081,7 +1081,7 @@
                         line.appendChild(idleAction('Delete', () => {
                             ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('HwProbe/Cache') })
                                 .then(render, () => { setMessage('Could not delete: a probe or performance test is using the cache.'); render(); });
-                        }, 'button-flat hwprobe-danger'));
+                        }, 'raised button-delete'));
                         const table = el('table');
                         row(table, [el('th', 'Contents'), el('th', 'File'), el('th', 'Size', 'hwprobe-num'), el('th', 'Written')]);
                         let folder = null;
