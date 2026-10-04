@@ -205,6 +205,8 @@
                 let speedWhenTranscoding = null;
                 let suiteResources = null;
                 let chosenSuite = null;
+                // The suites as last listed, for their notes beside a suite's results.
+                let suiteList = [];
                 let suiteWhenTranscoding = null;
                 let speedTimeLimit = null;
                 // Null measures with the server's own thread count.
@@ -1392,6 +1394,10 @@
                         : ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedHistory/' + h.Id), dataType: 'json' }).then(r => { savedRuns.set(h.Id, r); return r; });
                     Promise.all(steps.map(load)).then(reports => {
                         const section = fold(div, shown.suite, true, null, 'suite');
+                        const listed = suiteList.find(x => x.Name === shown.suite);
+                        if (listed && listed.Note) {
+                            section.appendChild(el('div', listed.Note, 'infoBanner'));
+                        }
                         const keyOf = x => [x.type, x.device, x.test, x.variant || ''].join('|');
                         const rows = [];
                         for (const x of reports.flatMap(r => r.results)) {
@@ -1653,6 +1659,7 @@
                     const body = el('div');
                     container.appendChild(body);
                     ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Suites'), dataType: 'json' }).then(suites => {
+                        suiteList = suites;
                         if (!suites.some(x => x.Key === chosenSuite)) {
                             chosenSuite = (suites.find(x => x.Offered) || suites[0] || {}).Key;
                         }
@@ -1686,6 +1693,9 @@
                             const suite = suites.find(x => x.Key === chosenSuite);
                             details.replaceChildren();
                             details.appendChild(el('div', suite.Description, 'fieldDescription'));
+                            if (suite.Note) {
+                                details.appendChild(el('div', suite.Note, 'infoBanner'));
+                            }
                             const list = el('ul', null, 'fieldDescription hwprobe-notes');
                             list.appendChild(el('li', 'Steps: ' + suite.Steps.join(', ')));
                             if (suite.Offered) {

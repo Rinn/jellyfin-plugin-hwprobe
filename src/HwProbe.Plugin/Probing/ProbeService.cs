@@ -278,7 +278,8 @@ public sealed partial class ProbeService : IDisposable
                 backends,
                 report is not null && SpeedSuites.Offered(s, report, configured),
                 steps.Sum(step => step.Videos.Count * step.Outputs.Count * backends.Count),
-                SuiteMethod);
+                SuiteMethod,
+                s.Note);
         })];
     }
 

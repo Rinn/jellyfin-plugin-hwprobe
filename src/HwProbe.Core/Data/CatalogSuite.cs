@@ -21,6 +21,9 @@ public sealed class CatalogSuite
     /// <summary>Gets which backends it runs on: <c>configuredAndSoftware</c>, <c>configured</c>, or <c>software</c>.</summary>
     public string Backends { get; init; } = "configuredAndSoftware";
 
+    /// <summary>Gets advice shown with the suite and its results, for what no setting comparison can suggest, or null.</summary>
+    public string? Note { get; init; }
+
     /// <summary>Gets what the server needs for the suite to be offered, e.g. <c>lowPower</c>, or null.</summary>
     public string? Requires { get; init; }
 
