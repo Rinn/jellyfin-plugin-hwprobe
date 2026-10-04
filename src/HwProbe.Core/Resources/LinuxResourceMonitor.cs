@@ -11,6 +11,8 @@ internal sealed class LinuxResourceMonitor : SampledResourceMonitor
     private readonly Dictionary<(string Client, string Engine), long> _nanoseconds = [];
     private readonly Dictionary<(string Client, string Engine), (long Busy, long Total, double At)> _cycles = [];
     private readonly Dictionary<string, double> _cycleSeconds = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, double> _nvmlSeconds = new(StringComparer.Ordinal);
+    private double? _lastNvml;
     private long? _ticks;
     private long? _peak;
 
@@ -35,7 +37,14 @@ internal sealed class LinuxResourceMonitor : SampledResourceMonitor
             gpu[engine] = gpu.GetValueOrDefault(engine) + (ns / 1e9);
         }
 
-        return new ResourceUsage(seconds, _ticks is { } ticks ? (double)ticks / _ticksPerSecond : null, _peak) { GpuSeconds = gpu.Count > 0 ? gpu : null };
+        // NVIDIA has no fdinfo engine stats; NVML's whole-GPU figures stand in when no client reported any.
+        var whole = gpu.Count == 0 && _nvmlSeconds.Values.Any(v => v > 0);
+        if (whole)
+        {
+            gpu = _nvmlSeconds.Where(e => e.Value > 0).ToDictionary(StringComparer.Ordinal);
+        }
+
+        return new ResourceUsage(seconds, _ticks is { } ticks ? (double)ticks / _ticksPerSecond : null, _peak) { GpuSeconds = gpu.Count > 0 ? gpu : null, GpuWholeDevice = whole };
     }
 
     /// <inheritdoc/>
@@ -46,6 +55,7 @@ internal sealed class LinuxResourceMonitor : SampledResourceMonitor
             _ticks = ProcFiles.CpuTicks(File.ReadAllText(Path.Combine(_root, "stat"))) ?? _ticks;
             _peak = ProcFiles.PeakBytes(File.ReadAllText(Path.Combine(_root, "status"))) ?? _peak;
             SampleGpu();
+            SampleNvml();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -92,5 +102,25 @@ internal sealed class LinuxResourceMonitor : SampledResourceMonitor
                 _cycles[key] = (busy, total, now);
             }
         }
+    }
+
+    /// <summary>Adds NVIDIA GPU 0's engine use since the last sample, weighted by the time between samples.</summary>
+    private void SampleNvml()
+    {
+        if (!Nvml.Available || Nvml.Read() is not { } use)
+        {
+            return;
+        }
+
+        var now = _clock.Elapsed.TotalSeconds;
+        if (_lastNvml is { } last)
+        {
+            foreach (var (engine, share) in use)
+            {
+                _nvmlSeconds[engine] = _nvmlSeconds.GetValueOrDefault(engine) + (share * (now - last));
+            }
+        }
+
+        _lastNvml = now;
     }
 }

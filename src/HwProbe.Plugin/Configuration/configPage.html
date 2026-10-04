@@ -1677,6 +1677,9 @@
                     for (const [name, share] of gpuShares(r)) {
                         facts.push('GPU ' + name + ' busy ' + Math.round(Math.min(1, share) * 100) + '% of the time');
                     }
+                    if (r.gpuWholeDevice) {
+                        facts.push('GPU figures cover the whole GPU, not this transcode alone');
+                    }
                     return facts;
                 }
 

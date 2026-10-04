@@ -8,4 +8,7 @@ public sealed record ResourceUsage(double Seconds, double? CpuSeconds, long? Pea
 {
     /// <summary>Gets the seconds each GPU engine was busy, by the engine's name as the platform gives it (e.g. <c>VideoDecode</c>, <c>video</c>); null when unavailable.</summary>
     public IReadOnlyDictionary<string, double>? GpuSeconds { get; init; }
+
+    /// <summary>Gets a value indicating whether <see cref="GpuSeconds"/> covers the whole GPU rather than this process alone (NVIDIA on Linux).</summary>
+    public bool GpuWholeDevice { get; init; }
 }
