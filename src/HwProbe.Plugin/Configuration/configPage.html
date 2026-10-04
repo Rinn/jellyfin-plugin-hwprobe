@@ -1363,6 +1363,9 @@
                     }
                 }
 
+                // Whether the performance test's settings are shown, kept across redraws.
+                let speedSetupOpen = true;
+
                 function renderSpeedSetup(container, viable) {
                     chooseSpeedDefaults();
                     let button = null;
@@ -1385,11 +1388,28 @@
                         estimate.textContent = videos + ' input' + (videos === 1 ? '' : 's') + ' \u00d7 ' + outputs + ' output' + (outputs === 1 ? '' : 's') + ' on ' + speedBackends(viable) + ' backend' + (speedBackends(viable) === 1 ? '' : 's') + ': ' + runs + ' measurement' + (runs === 1 ? '' : 's') + ', ' + span + ' minute' + (high === 1 ? '' : 's');
                         button.disabled = runs === 0 || running;
                     };
-
+                    button = action('Measure performance', () => {
+                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, ReuseResults: speedReuse, WhenTranscoding: speedWhenTranscoding, Options: speedSettings, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Backends: [...chosenBackends], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
+                        ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed'), data: JSON.stringify(body), contentType: 'application/json' })
+                            .then(() => {
+                                showTab(tabs[3][0]);
+                                return loadStatus();
+                            }, response => (response && response.text ? response.text() : Promise.resolve('')).then(text => {
+                                setMessage('Could not start: ' + (text.replace(/^"|"$/g, '') || 'a probe is running or a session is transcoding.'));
+                                button.disabled = false;
+                            }));
+                    }, 'raised button-submit');
+                    const go = el('div', null, 'hwprobe-row hwprobe-start');
+                    go.appendChild(button);
+                    go.appendChild(estimate);
+                    container.appendChild(go);
+                    container.appendChild(el('div', 'For more accurate results, measure while the server is idle.', 'infoBanner'));
+                    const form = fold(container, 'Settings', speedSetupOpen);
+                    form.addEventListener('toggle', () => { speedSetupOpen = form.open; });
 
                     // Help goes under its field, before the gap to the next one, as the dashboard's helper text does.
                     const options = (label, values, current, onChange, help) => {
-                        const select = themedSelect(container, label);
+                        const select = themedSelect(form, label);
                         if (help) {
                             select.parentNode.appendChild(el('div', help, 'fieldDescription'));
                         }
@@ -1424,7 +1444,7 @@
                             const types = viable.map(b => b.type).filter((t, i, all) => all.indexOf(t) === i).concat(['none']);
                             const notes = types.map(t => o.BackendNotes[t]).filter(n => n);
                             if (notes.length) {
-                                const box = container.lastElementChild;
+                                const box = form.lastElementChild;
                                 box.appendChild(el('div', 'Auto:', 'fieldDescription'));
                                 const list = el('ul', null, 'fieldDescription hwprobe-notes');
                                 for (const n of notes) {
@@ -1437,52 +1457,36 @@
                     if (!chosenBackends) {
                         chosenBackends = new Set(viable.map(b => b.type).concat(['none']));
                     }
-                    container.appendChild(el('h3', 'Backends', 'sectionTitle'));
+                    form.appendChild(el('h3', 'Backends', 'sectionTitle'));
                     const sameType = b => viable.filter(o => o.type === b.type).length > 1;
-                    multiSelect(container, 'Backends', viable.filter((b, i) => viable.findIndex(o => o.type === b.type) === i)
+                    multiSelect(form, 'Backends', viable.filter((b, i) => viable.findIndex(o => o.type === b.type) === i)
                         .map(b => ({ key: b.type, text: (names[b.type] || b.type) + (sameType(b) ? ' ' + b.device : '') }))
                         .concat([{ key: 'none', text: 'Software' }]), chosenBackends, () => update());
                     // Settings for one backend, shown when it works and its probe found the option supported.
                     const supported = o => viable.some(b => b.type === o.Backend && (b.settings || []).some(x => x.setting === o.Report && (x.state === 'TurnOn' || x.state === 'Optional')));
                     runOptions.filter(o => o.Backend && supported(o)).forEach(runOption);
 
-                    container.appendChild(el('h3', 'Input', 'sectionTitle'));
+                    form.appendChild(el('h3', 'Input', 'sectionTitle'));
                     const sources = el('div', null, 'hwprobe-sources');
-                    multiSelect(container, 'Input', speedVideos.map(v => ({ key: v.Key, text: v.Name, secondary: v.Input })).concat([{ key: 'library', text: 'Library video', secondary: libraryVideo ? libraryVideo.Name : 'A movie or episode' }]), chosenVideos, () => { sourceLines(sources, update); update(); })
+                    multiSelect(form, 'Input', speedVideos.map(v => ({ key: v.Key, text: v.Name, secondary: v.Input })).concat([{ key: 'library', text: 'Library video', secondary: libraryVideo ? libraryVideo.Name : 'A movie or episode' }]), chosenVideos, () => { sourceLines(sources, update); update(); })
                         .appendChild(sources);
                     sourceLines(sources, update);
                     sources.parentNode.appendChild(el('div', 'Test videos encode faster than real video.', 'fieldDescription'));
-                    container.appendChild(el('h3', 'Output', 'sectionTitle'));
-                    multiSelect(container, 'Codec', speedCodecs.map(c => ({ key: c.Key, text: c.Name })).concat(speedOutputs.filter(o => o.DecodeOnly).map(o => ({ key: o.Key, text: o.Label }))), chosenCodecs, () => update())
+                    form.appendChild(el('h3', 'Output', 'sectionTitle'));
+                    multiSelect(form, 'Codec', speedCodecs.map(c => ({ key: c.Key, text: c.Name })).concat(speedOutputs.filter(o => o.DecodeOnly).map(o => ({ key: o.Key, text: o.Label }))), chosenCodecs, () => update())
                         .appendChild(el('div', 'Every selected codec at every selected quality is made from every selected input, as a player asks for it.', 'fieldDescription'));
-                    multiSelect(container, 'Quality', speedQualities.map(q => ({ key: q.Key, text: q.Name })), chosenQualities, () => update())
+                    multiSelect(form, 'Quality', speedQualities.map(q => ({ key: q.Key, text: q.Name })), chosenQualities, () => update())
                         .appendChild(el('div', 'The player\u2019s quality choices. Jellyfin picks the output size from the quality and codec; the results show it.', 'fieldDescription'));
 
-                    container.appendChild(el('h3', 'Transcoding Settings', 'sectionTitle'));
+                    form.appendChild(el('h3', 'Transcoding Settings', 'sectionTitle'));
                     runOptions.filter(o => !o.Backend).forEach(runOption);
-                    container.appendChild(el('h3', 'Accuracy and time', 'sectionTitle'));
+                    form.appendChild(el('h3', 'Accuracy and time', 'sectionTitle'));
                     options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });
                     options('Repeats', repeatOptions, speedRepeats, v => { speedRepeats = Number(v); });
-                    options('Earlier results', [['true', 'Reuse when the settings match'], ['false', 'Measure everything again']], String(speedReuse), v => { speedReuse = v === 'true'; }, 'Reuses a measurement from an earlier run with the same input, output, backend, accuracy, repeats and ffmpeg, and the same values for the settings that affect it, so a repeated comparison completes faster.');
+                    options('Earlier results', [['true', 'Reuse when the settings match'], ['false', 'Measure everything again']], String(speedReuse), v => { speedReuse = v === 'true'; }, 'Reuses a measurement from an earlier run with the same input, output, backend, accuracy, repeats, and ffmpeg, and the same values for the settings that affect it, so a repeated comparison completes faster.');
                     options('When the server starts transcoding', [['Pause', 'Pause, then repeat the interrupted measurement'], ['Continue', 'Keep measuring'], ['Cancel', 'Cancel the test']], speedWhenTranscoding, v => { speedWhenTranscoding = v; });
                     options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); }, 'A measurement that reaches the limit stops and reports what it measured.');
 
-                    button = action('Measure performance', () => {
-                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, ReuseResults: speedReuse, WhenTranscoding: speedWhenTranscoding, Options: speedSettings, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Backends: [...chosenBackends], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
-                        ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed'), data: JSON.stringify(body), contentType: 'application/json' })
-                            .then(() => {
-                                showTab(tabs[3][0]);
-                                return loadStatus();
-                            }, response => (response && response.text ? response.text() : Promise.resolve('')).then(text => {
-                                setMessage('Could not start: ' + (text.replace(/^"|"$/g, '') || 'a probe is running or a session is transcoding.'));
-                                button.disabled = false;
-                            }));
-                    }, 'raised button-submit');
-                    const go = el('div', null, 'hwprobe-row hwprobe-start');
-                    go.appendChild(button);
-                    go.appendChild(estimate);
-                    container.appendChild(go);
-                    container.appendChild(el('div', 'For more accurate results, measure while the server is idle.', 'infoBanner'));
                     update();
                     speedUpdate = update;
                 }
@@ -1894,7 +1898,7 @@
                                 renderCard();
                             }
                             speedUpdate();
-                            pollTimer = setTimeout(loadStatus, 3000);
+                            pollTimer = setTimeout(loadStatus, s.Activity === 'Speed' ? 3000 : 1000);
                             // A page opened mid-run still needs its first render.
                             if (!loaded) {
                                 loaded = true;
