@@ -486,7 +486,7 @@ suites:
   - key: tonemap
     name: Tone mapping
     description: Encodes HDR video to H.264 with tone mapping on and off.
-    videos: [pattern-4k-hdr, digital-animation-4k]
+    videos: [digital-animation-4k]
     outputs: [h264-8mbps]
     steps:
       - { label: Tone mapping on, options: { Tonemap: "true" } }
