@@ -1417,6 +1417,13 @@
                     return a;
                 }
 
+                // The catalog's videos in its order, with the library video before the first test video.
+                function inputOrder() {
+                    const tests = speedVideos.findIndex(v => !v.SourceUrl);
+                    const at = tests === -1 ? speedVideos.length : tests;
+                    return [...speedVideos.slice(0, at), 'library', ...speedVideos.slice(at)];
+                }
+
                 // Where each chosen input comes from, under the Input field.
                 function sourceLines(target, update) {
                     target.replaceChildren();
@@ -1447,8 +1454,9 @@
                         }
                         list.appendChild(line);
                     };
-                    // In the Input menu's order: samples, the library video, then test videos.
-                    speedVideos.filter(v => v.SourceUrl && chosenVideos.has(v.Key)).forEach(videoLine);
+                    for (const v of inputOrder().filter(v => v !== 'library' && chosenVideos.has(v.Key))) {
+                        videoLine(v);
+                    }
                     if (chosenVideos.has('library') && libraryVideo) {
                         const line = el('li');
                         const name = el('span', 'Library video: ');
@@ -1458,7 +1466,6 @@
                         line.appendChild(entry(name, libraryVideo.Input));
                         list.appendChild(line);
                     }
-                    speedVideos.filter(v => !v.SourceUrl && chosenVideos.has(v.Key)).forEach(videoLine);
                     if (list.childElementCount) {
                         target.appendChild(list);
                     }
@@ -1568,9 +1575,7 @@
 
                     form.appendChild(el('h3', 'Input', 'sectionTitle'));
                     const sources = el('div', null, 'hwprobe-sources');
-                    // Real video first, then the test videos.
-                    const input = v => ({ key: v.Key, text: v.Name, secondary: v.Input });
-                    multiSelect(form, 'Input', speedVideos.filter(v => v.SourceUrl).map(input).concat([{ key: 'library', text: 'Library video', secondary: libraryVideo ? libraryVideo.Name : 'A movie or episode from a library' }], speedVideos.filter(v => !v.SourceUrl).map(input)), chosenVideos, () => { sourceLines(sources, update); update(); })
+                    multiSelect(form, 'Input', inputOrder().map(v => v === 'library' ? { key: 'library', text: 'Library video', secondary: 'A movie or episode from a library' } : { key: v.Key, text: v.Title ? v.Name + ': ' + v.Title : v.Name, secondary: v.Input }), chosenVideos, () => { sourceLines(sources, update); update(); })
                         .appendChild(sources);
                     sourceLines(sources, update);
                     form.appendChild(el('h3', 'Output', 'sectionTitle'));

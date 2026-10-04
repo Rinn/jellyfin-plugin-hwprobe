@@ -37,39 +37,6 @@ testAudio: { file: speed_audio_51.mka, codec: aac, encoder: aac, arguments: "{qu
 
 # Every video, in the order the page lists them; the library video is added from a chosen file.
 videos:
-  - <<: *testVideo
-    key: pattern
-    name: Test video, H.264
-    clip: { file: speed_1080p_h264.mkv, seconds: 10, codec: h264, bitDepth: 8, encoder: libx264, arguments: "{testSource} -c:v libx264 -preset medium -pix_fmt yuv420p {audioOut}", generateMinutes: 10 }
-  - <<: *testVideo
-    key: pattern-hevc
-    name: Test video, HEVC
-    clip: { file: speed_1080p_hevc.mkv, seconds: 10, codec: hevc, bitDepth: 8, encoder: libx265, arguments: "{testSource} {x265} -pix_fmt yuv420p {audioOut}", generateMinutes: 10 }
-  - <<: *testVideo
-    key: pattern-hevc10
-    name: Test video, HEVC 10-bit
-    clip: { file: speed_1080p_hevc10.mkv, seconds: 10, codec: hevc, bitDepth: 10, encoder: libx265, arguments: "{testSource} {x265} -pix_fmt yuv420p10le {audioOut}", generateMinutes: 10 }
-  - <<: *testVideo
-    key: pattern-vp9
-    name: Test video, VP9
-    clip: { file: speed_1080p_vp9.mkv, seconds: 10, codec: vp9, bitDepth: 8, encoder: libvpx-vp9, arguments: "{testSource} -c:v libvpx-vp9 -deadline good -cpu-used 4 -row-mt 1 -b:v 4M -pix_fmt yuv420p {audioOut}", generateMinutes: 10 }
-  - <<: *testVideo
-    key: pattern-av1
-    name: Test video, AV1
-    # SVT-AV1 runs its C code, as the matrix clips do.
-    clip: { file: speed_1080p_av1.mkv, seconds: 10, codec: av1, bitDepth: 8, encoder: libsvtav1, arguments: "{testSource} -c:v libsvtav1 -preset 8 -svtav1-params asm=c -pix_fmt yuv420p {audioOut}", generateMinutes: 10 }
-  - <<: *testVideo
-    key: pattern-1080i
-    name: Test video, interlaced
-    frameRate: 25
-    # Top field first.
-    clip: { file: speed_1080i_h264.mkv, seconds: 10, codec: h264, bitDepth: 8, encoder: libx264, interlaced: true, arguments: "{quiet} -f lavfi -i testsrc2=size=1920x1080:rate=25 {audio} -t 10 -vf setfield=tff -c:v libx264 -preset medium -flags +ildct+ilme -x264-params tff=1 -pix_fmt yuv420p {audioOut}", generateMinutes: 10 }
-  - <<: *testVideo
-    key: pattern-4k-hdr
-    name: Test video, 4K HDR
-    width: 3840
-    height: 2160
-    clip: { file: speed_2160p_hdr10.mkv, seconds: 10, codec: hevc, bitDepth: 10, hdr10: true, encoder: libx265, arguments: "{quiet} -f lavfi -i testsrc2=size=3840x2160:rate=24 {audio} -t 10 {x265} -pix_fmt yuv420p10le {hdr10} {audioOut}", generateMinutes: 10 }
   - <<: *sampleVideo
     key: drama
     name: Live action
@@ -171,6 +138,39 @@ videos:
       audioChannels: 2
       piece: { url: "https://upload.wikimedia.org/wikipedia/commons/4/44/Sol_Levante.webm", headerLength: 1022, start: 563867512, length: 21230224, sha256: d1d4c263e3ab895dad850c4110e9161f563414ca5c4609ae095434d4911ac8ae }
       keepAcrossBuilds: true
+  - <<: *testVideo
+    key: pattern
+    name: Test video, H.264
+    clip: { file: speed_1080p_h264.mkv, seconds: 10, codec: h264, bitDepth: 8, encoder: libx264, arguments: "{testSource} -c:v libx264 -preset medium -pix_fmt yuv420p {audioOut}", generateMinutes: 10 }
+  - <<: *testVideo
+    key: pattern-hevc
+    name: Test video, HEVC
+    clip: { file: speed_1080p_hevc.mkv, seconds: 10, codec: hevc, bitDepth: 8, encoder: libx265, arguments: "{testSource} {x265} -pix_fmt yuv420p {audioOut}", generateMinutes: 10 }
+  - <<: *testVideo
+    key: pattern-hevc10
+    name: Test video, HEVC 10-bit
+    clip: { file: speed_1080p_hevc10.mkv, seconds: 10, codec: hevc, bitDepth: 10, encoder: libx265, arguments: "{testSource} {x265} -pix_fmt yuv420p10le {audioOut}", generateMinutes: 10 }
+  - <<: *testVideo
+    key: pattern-vp9
+    name: Test video, VP9
+    clip: { file: speed_1080p_vp9.mkv, seconds: 10, codec: vp9, bitDepth: 8, encoder: libvpx-vp9, arguments: "{testSource} -c:v libvpx-vp9 -deadline good -cpu-used 4 -row-mt 1 -b:v 4M -pix_fmt yuv420p {audioOut}", generateMinutes: 10 }
+  - <<: *testVideo
+    key: pattern-av1
+    name: Test video, AV1
+    # SVT-AV1 runs its C code, as the matrix clips do.
+    clip: { file: speed_1080p_av1.mkv, seconds: 10, codec: av1, bitDepth: 8, encoder: libsvtav1, arguments: "{testSource} -c:v libsvtav1 -preset 8 -svtav1-params asm=c -pix_fmt yuv420p {audioOut}", generateMinutes: 10 }
+  - <<: *testVideo
+    key: pattern-1080i
+    name: Test video, interlaced
+    frameRate: 25
+    # Top field first.
+    clip: { file: speed_1080i_h264.mkv, seconds: 10, codec: h264, bitDepth: 8, encoder: libx264, interlaced: true, arguments: "{quiet} -f lavfi -i testsrc2=size=1920x1080:rate=25 {audio} -t 10 -vf setfield=tff -c:v libx264 -preset medium -flags +ildct+ilme -x264-params tff=1 -pix_fmt yuv420p {audioOut}", generateMinutes: 10 }
+  - <<: *testVideo
+    key: pattern-4k-hdr
+    name: Test video, 4K HDR
+    width: 3840
+    height: 2160
+    clip: { file: speed_2160p_hdr10.mkv, seconds: 10, codec: hevc, bitDepth: 10, hdr10: true, encoder: libx265, arguments: "{quiet} -f lavfi -i testsrc2=size=3840x2160:rate=24 {audio} -t 10 {x265} -pix_fmt yuv420p10le {hdr10} {audioOut}", generateMinutes: 10 }
 
 defaultVideos: [drama]
 
