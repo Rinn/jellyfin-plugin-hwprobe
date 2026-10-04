@@ -1,5 +1,6 @@
 using Jellyfin.Plugin.HwProbe.Core.Devices;
 using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
+using Jellyfin.Plugin.HwProbe.Core.Fixtures;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
 using Jellyfin.Plugin.HwProbe.Core.Report;
@@ -61,6 +62,21 @@ public sealed class ProbeEngineIntelTests : IDisposable
         Assert.Contains(report.Findings, f => f.Code == "lowpower-unavailable-hevc");
     }
 
+    /// <summary>Progress counts the test clips, then the tests, never going back, and ends at its total.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task ProgressCountsClipsAndTests()
+    {
+        var seen = new CollectingProgress<ProbeProgress>();
+        await RunAsync(openclStarts: true, progress: seen);
+
+        var counted = seen.Reports.Where(p => p.Total > 0).ToList();
+        Assert.True(counted.Count > 2);
+        Assert.All(counted.Zip(counted.Skip(1)), pair => Assert.True(pair.Second.Done >= pair.First.Done, $"{pair.First.Step} {pair.First.Done} then {pair.Second.Step} {pair.Second.Done}"));
+        Assert.Contains(counted, p => p.Step.StartsWith("Generating", StringComparison.Ordinal) && p.Done > 0);
+        Assert.True(counted[^1].Total > FixtureCatalog.All.Count);
+    }
+
     /// <summary>A failed open of a node this user can't access is PermissionDenied with the render-group fix, not NotPresent.</summary>
     /// <param name="denied">Whether the OS refuses to open the node.</param>
     /// <param name="verdict">The expected verdict.</param>
@@ -85,8 +101,9 @@ public sealed class ProbeEngineIntelTests : IDisposable
     /// <param name="lowPowerDropped">An output codec whose encoder drops low-power mode, or null.</param>
     /// <param name="nodeDenied">Whether the OS refuses to open the render node.</param>
     /// <param name="openFails">Whether the device open fails.</param>
+    /// <param name="progress">Receives the probe's progress, or null.</param>
     /// <returns>The report.</returns>
-    private async Task<CapabilityReport> RunAsync(bool openclStarts, string? lowPowerDropped = null, bool nodeDenied = false, bool openFails = false)
+    private async Task<CapabilityReport> RunAsync(bool openclStarts, string? lowPowerDropped = null, bool nodeDenied = false, bool openFails = false, IProgress<ProbeProgress>? progress = null)
     {
         _runner.Probe = invocation => invocation.Arguments switch
         {
@@ -121,7 +138,7 @@ public sealed class ProbeEngineIntelTests : IDisposable
             Path.Combine(_root, "reports"),
             Refresh: true);
 
-        using var engine = new ProbeEngine(_runner, new FakeArgumentSource(), host, TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
+        using var engine = new ProbeEngine(_runner, new FakeArgumentSource(), host, TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline, Progress = progress };
         return await engine.RunAsync(options, TestContext.Current.CancellationToken);
     }
 }
