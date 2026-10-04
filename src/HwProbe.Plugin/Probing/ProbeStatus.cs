@@ -33,6 +33,12 @@ public sealed record ProbeStatus(ProbeState State, DateTimeOffset? LastStartedUt
     /// <summary>Gets the test suite step running, e.g. <c>Encoder presets: medium, 4 of 5</c>, or null.</summary>
     public string? Suite { get; init; }
 
+    /// <summary>Gets the test videos the running speed run has made or found so far.</summary>
+    public int? ClipsDone { get; init; }
+
+    /// <summary>Gets the test videos the running speed run needs, which count toward its progress before the measurements.</summary>
+    public int? ClipsTotal { get; init; }
+
     /// <summary>Gets the measurements a running test suite's earlier steps made, or null outside a suite.</summary>
     public int? SuiteDone { get; init; }
 

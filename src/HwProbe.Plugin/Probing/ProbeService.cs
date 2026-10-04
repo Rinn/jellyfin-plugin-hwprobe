@@ -976,7 +976,7 @@ public sealed partial class ProbeService : IDisposable
         CancellationToken cancellationToken)
     {
         var started = _time.GetUtcNow();
-        _status = _status with { State = ProbeState.Running, Activity = ProbeActivity.Speed, LastStartedUtc = started, LastError = null, Done = 0, Total = null, Preparing = null, Suite = null, SuiteDone = null, SuiteTotal = null };
+        _status = _status with { State = ProbeState.Running, Activity = ProbeActivity.Speed, LastStartedUtc = started, LastError = null, Done = 0, Total = null, Preparing = null, Suite = null, SuiteDone = null, SuiteTotal = null, ClipsDone = null, ClipsTotal = null };
 
         // Each step's planned count replaces its estimate once the engine plans it.
         var totals = runs.Select(r => r.Estimate).ToList();
@@ -1033,7 +1033,7 @@ public sealed partial class ProbeService : IDisposable
                         totals[index] = stepTotal;
                     }
 
-                    _status = _status with { Done = p.Done, Total = p.Total, Preparing = p.Preparing, SuiteTotal = suite is null ? null : totals.Sum() };
+                    _status = _status with { Done = p.Done, Total = p.Total, Preparing = p.Preparing, SuiteTotal = suite is null ? null : totals.Sum(), ClipsDone = p.ClipsDone, ClipsTotal = p.ClipsTotal };
                 });
                 var report = await measure(speed, backends, progress, cancellationToken);
                 report = report with { CancelledForTranscode = report.Cancelled && _cancelledForTranscode, Suite = suite, SuiteStep = step, SuiteStartedUtc = suite is null ? null : started };
@@ -1081,7 +1081,7 @@ public sealed partial class ProbeService : IDisposable
                 _measuringSince = null;
             }
 
-            _status = _status with { State = ProbeState.Idle, LastCompletedUtc = _time.GetUtcNow(), Done = null, Total = null, Preparing = null, Suite = null, SuiteDone = null, SuiteTotal = null };
+            _status = _status with { State = ProbeState.Idle, LastCompletedUtc = _time.GetUtcNow(), Done = null, Total = null, Preparing = null, Suite = null, SuiteDone = null, SuiteTotal = null, ClipsDone = null, ClipsTotal = null };
             _gate.Release();
         }
     }

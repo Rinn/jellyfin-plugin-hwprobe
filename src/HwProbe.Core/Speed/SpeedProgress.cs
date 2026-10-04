@@ -11,4 +11,10 @@ public sealed record SpeedProgress(int Done, int Total, SpeedResult? Result)
 
     /// <summary>Gets what's being prepared, e.g. <c>Downloading Animation: 5 of 14 MB</c>, or null once measuring starts.</summary>
     public string? Preparing { get; init; }
+
+    /// <summary>Gets the test videos made or found so far; all of them once measuring starts.</summary>
+    public int ClipsDone { get; init; }
+
+    /// <summary>Gets the test videos the run needs, which count toward its progress before the measurements.</summary>
+    public int ClipsTotal { get; init; }
 }

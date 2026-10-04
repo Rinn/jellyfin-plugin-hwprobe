@@ -81,8 +81,10 @@ public sealed class ProbeEngine : IDisposable
             await OpenDevicesAsync(run, cancellationToken);
         }
 
-        // Each opened device runs its smoke test, then its matrix; a device that fails smoke skips the rest.
-        run.Total = run.Opened.Sum(o => 1 + (options.StopAfter == StopStage.Matrix ? MatrixCatalog.For(o.Candidate.Type).Count : 0));
+        // Each opened device runs its smoke test, then its matrix; a device that fails smoke skips the rest. The test clips come
+        // first and count too, as making them can take most of a first probe.
+        var clips = run.Opened.Count > 0 ? FixtureCatalog.All.Count : 0;
+        run.Total = clips + run.Opened.Sum(o => 1 + (options.StopAfter == StopStage.Matrix ? MatrixCatalog.For(o.Candidate.Type).Count : 0));
 
         var fingerprint = ComputeFingerprint(run, ToolBuild(_arguments));
         var store = new ReportStore(options.ReportCacheDirectory);
@@ -100,10 +102,18 @@ public sealed class ProbeEngine : IDisposable
             var key = Fingerprint.Compute(new FingerprintInputs(ffmpeg, caps.VersionLine, null, null, null, null, null, null));
             FixtureCacheContents.Prune(options.FixturesDirectory, key);
             Progress?.Report(new ProbeProgress("Generating test clips", 0, run.Total));
-            var steps = Progress is { } progress ? new Progress<FixtureStep>(step => progress.Report(new ProbeProgress(step.Describe(step.Spec.FileName), 0, run.Total))) : null;
+
+            // Each new clip's first step means the one before it is done; cached clips report nothing and count once all are ready.
+            HashSet<string> begun = new(StringComparer.Ordinal);
+            var steps = Progress is { } progress ? new FixtureStepProgress(step =>
+            {
+                begun.Add(step.Spec.FileName);
+                progress.Report(new ProbeProgress(step.Describe(step.Spec.FileName), begun.Count - 1, run.Total));
+            }) : null;
             var fixtures = await new FixtureBuilder(_runner, ffmpeg, options.FixturesDirectory, options.FixtureTimeout, FixtureDownloader) { Progress = steps }
                 .BuildAsync(key, caps.Encoders, cancellationToken);
             run.Fixtures = fixtures.ToDictionary(f => f.Spec.FileName, StringComparer.Ordinal);
+            run.Done = clips;
 
             foreach (var (candidate, open) in run.Opened)
             {
