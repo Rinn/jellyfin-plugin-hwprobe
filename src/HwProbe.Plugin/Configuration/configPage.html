@@ -1529,9 +1529,9 @@
                     }
                     form.appendChild(el('h3', 'Backend', 'sectionTitle'));
                     const sameType = b => viable.filter(o => o.type === b.type).length > 1;
-                    multiSelect(form, 'Backend', viable.filter((b, i) => viable.findIndex(o => o.type === b.type) === i)
-                        .map(b => ({ key: b.type, text: (names[b.type] || b.type) + (sameType(b) ? ' ' + b.device : '') }))
-                        .concat([{ key: 'none', text: 'Software' }]), chosenBackends, () => update());
+                    // In the order of Jellyfin's Hardware acceleration dropdown, which lists None first.
+                    multiSelect(form, 'Backend', [{ key: 'none', text: 'None (software)' }].concat(viable.filter((b, i) => viable.findIndex(o => o.type === b.type) === i)
+                        .map(b => ({ key: b.type, text: (names[b.type] || b.type) + (sameType(b) ? ' ' + b.device : '') }))), chosenBackends, () => update());
                     // Settings for one backend, shown when it works and its probe found the option supported.
                     const supported = o => viable.some(b => b.type === o.Backend && (b.settings || []).some(x => x.setting === o.Report && (x.state === 'TurnOn' || x.state === 'Optional')));
                     runOptions.filter(o => o.Backend && supported(o)).forEach(runOption);
