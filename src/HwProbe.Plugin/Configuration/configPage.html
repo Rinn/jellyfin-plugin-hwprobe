@@ -1527,9 +1527,9 @@
                     if (!chosenBackends) {
                         chosenBackends = new Set(viable.map(b => b.type).concat(['none']));
                     }
-                    form.appendChild(el('h3', 'Backends', 'sectionTitle'));
+                    form.appendChild(el('h3', 'Backend', 'sectionTitle'));
                     const sameType = b => viable.filter(o => o.type === b.type).length > 1;
-                    multiSelect(form, 'Backends', viable.filter((b, i) => viable.findIndex(o => o.type === b.type) === i)
+                    multiSelect(form, 'Backend', viable.filter((b, i) => viable.findIndex(o => o.type === b.type) === i)
                         .map(b => ({ key: b.type, text: (names[b.type] || b.type) + (sameType(b) ? ' ' + b.device : '') }))
                         .concat([{ key: 'none', text: 'Software' }]), chosenBackends, () => update());
                     // Settings for one backend, shown when it works and its probe found the option supported.
