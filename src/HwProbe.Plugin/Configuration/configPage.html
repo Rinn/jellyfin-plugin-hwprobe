@@ -1426,14 +1426,19 @@
                 // Where each chosen input comes from, under the Input field.
                 function sourceLines(target, update) {
                     target.replaceChildren();
-                    for (const v of allVideos().filter(x => chosenVideos.has(x.Key) && x.Key !== 'library')) {
-                        const line = el('div', null, 'fieldDescription');
-                        line.appendChild(document.createTextNode(v.Name + ': '));
-                        const source = sourceCell(v);
-                        while (source.firstChild) {
-                            line.appendChild(source.firstChild);
+                    const chosen = allVideos().filter(x => chosenVideos.has(x.Key) && x.Key !== 'library');
+                    if (chosen.length) {
+                        const list = el('ul', null, 'fieldDescription hwprobe-notes');
+                        for (const v of chosen) {
+                            const line = el('li');
+                            line.appendChild(document.createTextNode(v.Name + ': '));
+                            const source = sourceCell(v);
+                            while (source.firstChild) {
+                                line.appendChild(source.firstChild);
+                            }
+                            list.appendChild(line);
                         }
-                        target.appendChild(line);
+                        target.appendChild(list);
                     }
                     if (speedVideos.some(v => chosenVideos.has(v.Key) && !v.SourceUrl)) {
                         target.appendChild(el('div', 'Test video results may not be representative compared to actual videos.', 'infoBanner'));
