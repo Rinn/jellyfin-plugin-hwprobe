@@ -232,7 +232,7 @@ public sealed partial class ProbeService : IDisposable
             return ProbeRunResult.NoReport;
         }
 
-        var configured = ServerBackend().Type;
+        var configured = PreferredBackend(report);
         if (!SpeedSuites.Offered(suite, report, configured))
         {
             return ProbeRunResult.Invalid;
@@ -257,7 +257,7 @@ public sealed partial class ProbeService : IDisposable
     public async Task<IReadOnlyList<SuiteInfo>> SuitesAsync(CancellationToken cancellationToken)
     {
         var report = await LatestJsonAsync(cancellationToken) is { } json ? ReportStore.Deserialize(json) : null;
-        var configured = ServerBackend().Type;
+        var configured = report is null ? ServerBackend().Type : PreferredBackend(report);
         return [.. Catalog.Default.Suites.Select(s => new SuiteInfo(
             s.Key,
             s.Name,
@@ -875,6 +875,12 @@ public sealed partial class ProbeService : IDisposable
             File.Delete(old);
         }
     }
+
+    /// <summary>Returns the hardware backend suites run on: the configured one, or QSV in place of VAAPI when it works on the same GPU.</summary>
+    /// <param name="report">The latest probe.</param>
+    /// <returns>The backend type; <see cref="HwType.none"/> for software.</returns>
+    private HwType PreferredBackend(CapabilityReport report) =>
+        BackendPreference.Prefer(ServerBackend(), report.Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device))).Type;
 
     /// <summary>Checks speed runs and starts them one after another in the background.</summary>
     /// <param name="requests">The runs, with the suite and step each belongs to.</param>

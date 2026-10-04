@@ -75,11 +75,19 @@ public static class SpeedAdvisor
             var best = winners.GroupBy(r => (r.Type, r.Device)).OrderByDescending(g => g.Count()).First();
 
             // On software, any working hardware backend is suggested, however it compares: it draws less power for the same work.
-            // On hardware, only outputs where the configured backend was measured too, and lost by more than noise.
-            List<SpeedResult> beaten = type == HwType.none ? [.. best] : [.. best.Where(w => measured.FirstOrDefault(r => r.Test == w.Test && Configured(r)) is { } mine && Gain(w, mine) > Noise)];
+            // On hardware, only outputs where the configured backend was measured too, and lost by more than noise; QSV over VAAPI also where they measured alike.
+            SpeedResult? Mine(SpeedResult w) => measured.FirstOrDefault(r => r.Test == w.Test && Configured(r));
+            bool Beats(SpeedResult w, SpeedResult mine) => Gain(w, mine) > Noise || (BackendPreference.IsPreferredOver(w, mine) && Gain(w, mine) >= -Noise && (w.Streams ?? -1) >= (mine.Streams ?? -1));
+            List<SpeedResult> beaten = type == HwType.none ? [.. best] : [.. best.Where(w => Mine(w) is { } mine && Beats(w, mine))];
             if ((best.Key.Type != type || (!string.IsNullOrEmpty(device) && best.Key.Device != device)) && beaten.Count > 0)
             {
-                suggestions.Add(new SpeedSuggestion(SpeedSuggestionKind.FastestBackend, [.. beaten.Select(r => Label(r, shown.Settings))]) { Type = best.Key.Type, Device = best.Key.Device, TestVideosOnly = beaten.All(IsGenerated) });
+                suggestions.Add(new SpeedSuggestion(SpeedSuggestionKind.FastestBackend, [.. beaten.Select(r => Label(r, shown.Settings))])
+                {
+                    Type = best.Key.Type,
+                    Device = best.Key.Device,
+                    TestVideosOnly = beaten.All(IsGenerated),
+                    Preferred = type != HwType.none && beaten.All(w => Gain(w, Mine(w)!) <= Noise),
+                });
             }
         }
 
@@ -90,8 +98,11 @@ public static class SpeedAdvisor
             suggestions.Add(new SpeedSuggestion(SpeedSuggestionKind.FallsBehind, [.. behind.Select(r => Label(r, shown.Settings))]) { Type = type, Device = device, TestVideosOnly = behind.All(IsGenerated) });
         }
 
+        // Suites run on QSV in place of a configured VAAPI on the same GPU, so their comparisons count for it.
+        bool Compared(SpeedResult r) => Configured(r) || BackendPreference.StandsInFor(r, type, device);
+
         // Comparisons against several other values, or from several runs, that suggest the same value become one suggestion.
-        suggestions.AddRange(CompareSettings(runs, Configured, server)
+        suggestions.AddRange(CompareSettings(runs, Compared, server)
             .GroupBy(s => (s.Kind, s.Setting, s.Value))
             .Select(g => g.First() with
             {
@@ -136,7 +147,7 @@ public static class SpeedAdvisor
                 {
                     // The same command means the setting doesn't reach this output (CRF on a hardware encoder, presets VideoToolbox maps alike).
                     // A library test keeps the same key whatever file it read, so the input must match as well.
-                    if (b.Results.FirstOrDefault(r => r.Test == mine.Test && r.Input == mine.Input && r.Video == mine.Video && r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && !r.LowPowerDropped && configured(r)) is { } theirs
+                    if (b.Results.FirstOrDefault(r => r.Test == mine.Test && r.Type == mine.Type && r.Device == mine.Device && r.Input == mine.Input && r.Video == mine.Video && r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && !r.LowPowerDropped && configured(r)) is { } theirs
                         && (mine.Command is null || mine.Command != theirs.Command))
                     {
                         seen.Add((key, _values[key](a.Settings!), _values[key](b.Settings!), mine.Test, Label(mine, a.Settings), Gain(mine, theirs), Speed(mine), IsGenerated(mine)));
@@ -191,12 +202,28 @@ public static class SpeedAdvisor
         return Catalog.Default.Options.FirstOrDefault(o => o.Key == key) is { } option && option.IsBetterQuality(Preset(value), Preset(other));
     }
 
-    /// <summary>Returns the better of two results for one output: more streams kept up, then faster.</summary>
+    /// <summary>Returns the better of two results for one output: more streams kept up, then faster; QSV over VAAPI on the same GPU when they measure alike.</summary>
     /// <param name="a">One result.</param>
     /// <param name="b">The other.</param>
     /// <returns>The better one.</returns>
-    private static SpeedResult Better(SpeedResult a, SpeedResult b) =>
-        (b.Streams ?? -1) > (a.Streams ?? -1) || ((b.Streams ?? -1) == (a.Streams ?? -1) && b.Fps > a.Fps) ? b : a;
+    private static SpeedResult Better(SpeedResult a, SpeedResult b)
+    {
+        var (streamsA, streamsB) = (a.Streams ?? -1, b.Streams ?? -1);
+        if (streamsA == streamsB && Math.Abs(Gain(b, a)) <= Noise)
+        {
+            if (BackendPreference.IsPreferredOver(b, a))
+            {
+                return b;
+            }
+
+            if (BackendPreference.IsPreferredOver(a, b))
+            {
+                return a;
+            }
+        }
+
+        return streamsB > streamsA || (streamsB == streamsA && b.Fps > a.Fps) ? b : a;
+    }
 
     /// <summary>Reports whether a result is from a generated test video rather than a film sample or library file.</summary>
     /// <param name="r">The result.</param>

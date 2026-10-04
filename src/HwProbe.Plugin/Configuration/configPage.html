@@ -872,6 +872,19 @@
                     container.appendChild(line);
                 }
 
+                // Jellyfin's Intel guide prefers QSV to VA-API on GPUs QSV supports, so a working QSV on the configured VAAPI device is offered.
+                function renderPreferredBackend(container, viable) {
+                    const type = encoding && encoding.HardwareAccelerationType;
+                    const qsv = type === 'vaapi' && viable.some(isConfigured) ? viable.find(b => b.type === 'qsv' && (!b.device || !encoding.VaapiDevice || b.device === encoding.VaapiDevice)) : null;
+                    if (!qsv) {
+                        return;
+                    }
+                    container.appendChild(el('div', names.qsv + ' also works on this GPU. Jellyfin prefers it to VA-API on mainstream Intel GPUs, for better performance.', 'infoBanner'));
+                    const line = el('div', null, 'hwprobe-row hwprobe-end');
+                    line.appendChild(idleAction('Use ' + names.qsv, () => post('HwProbe/UseBackend', { Type: 'qsv', Device: qsv.device }), 'raised'));
+                    container.appendChild(line);
+                }
+
                 function renderSettings(container, viable, title) {
                     container.replaceChildren();
                     title.textContent = 'Settings';
@@ -1027,6 +1040,7 @@
                     box.appendChild(title);
                     if (shown) {
                         renderBrokenBackend(box, viable);
+                        renderPreferredBackend(box, viable);
                     }
                     if (restartRequired) {
                         box.appendChild(restartPrompt());
@@ -1396,6 +1410,7 @@
                                 title = 'Hardware acceleration: ' + backendName(s.Type);
                                 reason = !configured || configured === 'none'
                                     ? 'Works on this server; a hardware backend draws less power than software for the same work.'
+                                    : s.Preferred ? 'As fast as ' + backendName(configured) + ' here, and Jellyfin prefers it on mainstream Intel GPUs.'
                                     : 'The fastest hardware backend measured.';
                                 actionButton = idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: s.Type, Device: s.Device }));
                             } else if (s.Kind === 'FallsBehind') {

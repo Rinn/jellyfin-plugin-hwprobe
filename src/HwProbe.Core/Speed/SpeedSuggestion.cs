@@ -29,6 +29,9 @@ public sealed record SpeedSuggestion(SpeedSuggestionKind Kind, IReadOnlyList<str
     /// <summary>Gets a value indicating whether the faster value gives a worse picture, e.g. a faster preset.</summary>
     public bool LowerQuality { get; init; }
 
+    /// <summary>Gets a value indicating whether a suggested backend measured alike with the configured one and is suggested as the one Jellyfin prefers, QSV over VAAPI.</summary>
+    public bool Preferred { get; init; }
+
     /// <summary>Gets a value indicating whether it rests on generated test videos alone, which encode faster than real video.</summary>
     public bool TestVideosOnly { get; init; }
 }
