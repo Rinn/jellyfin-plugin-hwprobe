@@ -7,7 +7,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Fixtures;
 public sealed class HttpFixtureDownloader : IFixtureDownloader
 {
     // Wikimedia asks for a descriptive User-Agent with a contact (meta.wikimedia.org/wiki/User-Agent_policy).
-    private static readonly HttpClient _client = new() { DefaultRequestHeaders = { { "User-Agent", "HwProbe (https://github.com/Rinn/jellyfin-plugin-hwprobe)" } } };
+    private static readonly HttpClient _client = new() { DefaultRequestHeaders = { { "User-Agent", $"HwProbe ({Data.Catalog.Default.Links["repository"]})" } } };
 
     /// <summary>Gets a value indicating whether downloads are turned off with <c>HWPROBE_NO_DOWNLOADS=1</c>, as tests and CI run.</summary>
     private static bool Disabled => Environment.GetEnvironmentVariable("HWPROBE_NO_DOWNLOADS") == "1";

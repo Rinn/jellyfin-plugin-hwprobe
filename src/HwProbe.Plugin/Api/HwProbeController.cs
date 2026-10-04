@@ -1,4 +1,6 @@
+using Jellyfin.Plugin.HwProbe.Core.Diagnostics;
 using Jellyfin.Plugin.HwProbe.Core.Fixtures;
+using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Core.Speed;
 using Jellyfin.Plugin.HwProbe.Probing;
 using Jellyfin.Plugin.HwProbe.Settings;
@@ -106,6 +108,17 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     [HttpGet("Catalog")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public ActionResult<CatalogInfo> Catalog() => Ok(CatalogInfo.From(Core.Data.Catalog.Default));
+
+    /// <summary>Returns the link that opens a hardware report on GitHub with the latest probe's host, versions, and results filled in.</summary>
+    /// <param name="jellyfin">The server's Jellyfin version, as the page knows it.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The link; the empty form when no probe has completed.</returns>
+    [HttpGet("IssueLink")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<string>> IssueLinkAsync([FromQuery] string? jellyfin, CancellationToken cancellationToken) =>
+        await service.LatestJsonAsync(cancellationToken) is { } json && ReportStore.Deserialize(json) is { } report
+            ? IssueLink.For(report, jellyfin)
+            : IssueLink.Form;
 
     /// <summary>Returns the third-party libraries the plugin ships, with their licences, as <c>scripts/notices.py</c> lists them.</summary>
     /// <returns>The list, as JSON.</returns>

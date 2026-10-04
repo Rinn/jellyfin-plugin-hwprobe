@@ -13,11 +13,11 @@ namespace Jellyfin.Plugin.HwProbe.Core.Verdict;
 /// </remarks>
 public static class LowPowerAdvice
 {
-    /// <summary>Jellyfin's guide to setting up low-power mode on Linux.</summary>
-    public const string GuideUrl = "https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/intel/#configure-and-verify-lp-mode-on-linux";
-
     /// <summary>Path of the i915 driver's GuC/HuC loading parameter; readable without root.</summary>
     public const string EnableGucPath = "/sys/module/i915/parameters/enable_guc";
+
+    /// <summary>Jellyfin's guide to setting up low-power mode on Linux (<c>intelLowPowerGuide</c> in catalog.yaml).</summary>
+    public static readonly Uri Guide = new(Data.Catalog.Default.Links["intelLowPowerGuide"]);
 
     /// <summary>Returns the remedy for a codec whose low-power encode fails.</summary>
     /// <param name="codec">The output codec, e.g. <c>hevc</c>.</param>
@@ -50,13 +50,13 @@ public static class LowPowerAdvice
 
         if (enableGuc is null)
         {
-            return $"Low-power encoding failed, and the i915 driver isn't loaded (the xe driver requires no firmware option). Check the Intel firmware package is installed. Guide: {GuideUrl}";
+            return $"Low-power encoding failed, and the i915 driver isn't loaded (the xe driver requires no firmware option). Check the Intel firmware package is installed. Guide: {Guide}";
         }
 
         var where = inContainer ? "On the host (not in the container), install" : "Install";
         return $"Low-power encoding on Linux requires Intel's HuC firmware. {where} the firmware package (firmware-intel-graphics on Debian, "
             + "linux-firmware on Ubuntu and Arch). Except on DG1, 12th-gen and newer, or Arc A-series GPUs, which already default to enable_guc=3, "
-            + $"add 'options i915 enable_guc=2' to /etc/modprobe.d/i915.conf, update the initramfs, and reboot. enable_guc is currently {enableGuc}. Guide: {GuideUrl}";
+            + $"add 'options i915 enable_guc=2' to /etc/modprobe.d/i915.conf, update the initramfs, and reboot. enable_guc is currently {enableGuc}. Guide: {Guide}";
     }
 
     /// <summary>Returns findings for the low-power encoder options of one Intel device.</summary>

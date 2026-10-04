@@ -58,7 +58,7 @@ public sealed class LowPowerAdviceTests
         Assert.Contains("HuC firmware", remedy, StringComparison.Ordinal);
         Assert.Contains("enable_guc=2", remedy, StringComparison.Ordinal);
         Assert.Contains("enable_guc is currently -1", remedy, StringComparison.Ordinal);
-        Assert.Contains(LowPowerAdvice.GuideUrl, remedy, StringComparison.Ordinal);
+        Assert.Contains(LowPowerAdvice.Guide.ToString(), remedy, StringComparison.Ordinal);
     }
 
     /// <summary>In a container the remedy points at the host; without i915 and off Linux it doesn't mention enable_guc.</summary>
