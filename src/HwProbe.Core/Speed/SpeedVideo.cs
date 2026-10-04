@@ -23,10 +23,10 @@ public sealed record SpeedVideo(string Key, string Name, FixtureSpec? Fixture, f
     /// <summary>Gets the credit a sample's licence requires, or null.</summary>
     public string? Credit { get; init; }
 
-    /// <summary>Gets who holds the sample's rights, with the licence, or null.</summary>
+    /// <summary>Gets who holds the sample's rights, or null.</summary>
     public string? CreditHolder { get; init; }
 
-    /// <summary>Gets the rights holder's site, named by its host in <see cref="CreditHolder"/>, or null.</summary>
+    /// <summary>Gets the rights holder's site, or null.</summary>
     public Uri? HolderUrl { get; init; }
 
     /// <summary>Gets the sample's title, e.g. <c>Tears of Steel</c>, or null.</summary>
@@ -40,4 +40,7 @@ public sealed record SpeedVideo(string Key, string Name, FixtureSpec? Fixture, f
 
     /// <summary>Gets the sample's licence, or null.</summary>
     public Uri? LicenseUrl { get; init; }
+
+    /// <summary>Gets the licence's short name, e.g. <c>CC BY 3.0</c>, or null.</summary>
+    public string? LicenseName { get; init; }
 }

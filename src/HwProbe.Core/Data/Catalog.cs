@@ -222,9 +222,9 @@ public sealed partial class Catalog
             }
         }
 
-        if (Videos.Select(v => v.Sample).FirstOrDefault(s => s?.HolderUrl is { } site && (!Uri.TryCreate(site, UriKind.Absolute, out var uri) || !s.Holder.Contains(uri.Host, StringComparison.Ordinal))) is { } unlinked)
+        if (Videos.Select(v => v.Sample).FirstOrDefault(s => s?.HolderUrl is { } site && !Uri.TryCreate(site, UriKind.Absolute, out _)) is { } unlinked)
         {
-            throw new InvalidDataException($"catalog.yaml: {unlinked.Title}'s holderUrl requires an absolute URL whose host the holder names.");
+            throw new InvalidDataException($"catalog.yaml: {unlinked.Title}'s holderUrl requires an absolute URL.");
         }
 
         if (Subtitles is null || TestAudio is null)

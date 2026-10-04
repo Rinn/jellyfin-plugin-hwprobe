@@ -123,6 +123,7 @@ public static class SpeedCatalog
             HolderUrl = video.Sample?.HolderUrl is { } site ? new Uri(site) : null,
             Title = video.Sample?.Title,
             LicenseUrl = video.Sample is null ? null : new Uri(video.Sample.License),
+            LicenseName = video.Sample?.LicenseName,
             SourceUrl = video.Sample is null ? null : new Uri(video.Sample.Source),
             ArticleUrl = video.Sample is null ? null : new Uri(video.Sample.Article),
         };
