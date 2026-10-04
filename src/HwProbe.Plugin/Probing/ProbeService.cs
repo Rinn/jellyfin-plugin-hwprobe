@@ -40,6 +40,9 @@ public sealed partial class ProbeService : IDisposable
     // The latest step of a running probe; written by the probe, read by Status.
     private volatile ProbeProgress? _probeProgress;
 
+    // Set when a run that cancels for transcodes did so, for its report.
+    private volatile bool _cancelledForTranscode;
+
     private SpeedOptions? _speedRunning;
     private CancellationTokenSource? _speedCancel;
     private SpeedPause? _speedPause;
@@ -221,7 +224,7 @@ public sealed partial class ProbeService : IDisposable
         }
 
         // A run that defers to transcodes starts anyway and waits for the transcode to end.
-        if (!request.DeferToTranscodes && await IsBusyAsync(cancellationToken))
+        if (request.WhenTranscoding != TranscodeAction.Pause && await IsBusyAsync(cancellationToken))
         {
             return ProbeRunResult.ServerBusy;
         }
@@ -233,7 +236,13 @@ public sealed partial class ProbeService : IDisposable
 
         List<(HwType, string)> backends = [.. report.Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device))];
         _speedCancel = new CancellationTokenSource();
-        _speedPause = new SpeedPause(_time) { Busy = request.DeferToTranscodes ? _isTranscoding : null };
+        _speedPause = new SpeedPause(_time) { Busy = request.WhenTranscoding == TranscodeAction.Pause ? _isTranscoding : null };
+        _cancelledForTranscode = false;
+        if (request.WhenTranscoding == TranscodeAction.Cancel)
+        {
+            _ = WatchForTranscodeAsync(_speedCancel);
+        }
+
         var settings = ServerSpeedSettings();
         foreach (var (key, value) in request.Options ?? new Dictionary<string, string>())
         {
@@ -811,6 +820,34 @@ public sealed partial class ProbeService : IDisposable
         }
     }
 
+    /// <summary>Cancels the speed run when the server starts transcoding, until the run ends.</summary>
+    /// <param name="run">The run's cancellation source.</param>
+    /// <returns>A task that ends with the run.</returns>
+    private async Task WatchForTranscodeAsync(CancellationTokenSource run)
+    {
+        var token = run.Token;
+        try
+        {
+            while (!token.IsCancellationRequested)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(1), _time, token);
+                if (_isTranscoding())
+                {
+                    _cancelledForTranscode = true;
+                    await run.CancelAsync();
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The run ended or was cancelled.
+        }
+        catch (ObjectDisposedException)
+        {
+            // The run ended and its source was disposed.
+        }
+    }
+
     /// <summary>Keeps a speed run in the history, dropping the oldest beyond <see cref="SpeedHistoryLimit"/>.</summary>
     /// <param name="report">The run.</param>
     /// <returns>A task that completes when it's saved.</returns>
@@ -876,6 +913,7 @@ public sealed partial class ProbeService : IDisposable
                 _status = _status with { Done = p.Done, Total = p.Total, Preparing = p.Preparing };
             });
             var report = await measure(speed, backends, progress, cancellationToken);
+            report = report with { CancelledForTranscode = report.Cancelled && _cancelledForTranscode };
             if (report.Cancelled)
             {
                 Log.SpeedCancelled(_logger, report.Results.Count);

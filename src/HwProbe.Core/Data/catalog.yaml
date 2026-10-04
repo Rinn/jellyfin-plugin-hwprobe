@@ -325,8 +325,8 @@ options:
       - { key: veryfast, label: veryfast }
       - { key: superfast, label: superfast }
       - { key: ultrafast, label: ultrafast }
-  - { key: H265Crf, label: H.265 encoding CRF, server: H265Crf, range: [0, 51], help: CRF only reaches the software encoders; hardware encoders follow the bitrate. }
-  - { key: H264Crf, label: H.264 encoding CRF, server: H264Crf, range: [0, 51] }
+  - { key: H265Crf, label: H.265 encoding CRF, server: H265Crf, range: [0, 51] }
+  - { key: H264Crf, label: H.264 encoding CRF, server: H264Crf, range: [0, 51], help: CRF only applies to software encoders. }
   - key: DeinterlaceMethod
     label: Deinterlacing method
     server: DeinterlaceMethod

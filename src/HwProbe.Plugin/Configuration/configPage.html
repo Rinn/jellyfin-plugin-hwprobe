@@ -189,7 +189,7 @@
                 let speedMethod = null;
                 let speedRepeats = 1;
                 let speedReuse = true;
-                let speedDefer = true;
+                let speedWhenTranscoding = 'Pause';
                 let speedTimeLimit = null;
                 // Null measures with the server's own thread count.
                 // Run options chosen on the page, by catalog key; one left out keeps the server's setting.
@@ -1441,11 +1441,11 @@
                     options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });
                     options('Repeats', repeatOptions, speedRepeats, v => { speedRepeats = Number(v); });
                     options('Earlier results', [['true', 'Reuse when the settings match'], ['false', 'Measure everything again']], String(speedReuse), v => { speedReuse = v === 'true'; }, 'Reuses a measurement from an earlier run with the same input, output, backend, accuracy, repeats and ffmpeg, and the same values for the settings that affect it, so a repeated comparison completes faster.');
-                    options('When the server starts transcoding', [['true', 'Pause, then repeat the interrupted measurement'], ['false', 'Keep measuring']], String(speedDefer), v => { speedDefer = v === 'true'; });
+                    options('When the server starts transcoding', [['Pause', 'Pause, then repeat the interrupted measurement'], ['Continue', 'Keep measuring'], ['Cancel', 'Cancel the test']], speedWhenTranscoding, v => { speedWhenTranscoding = v; });
                     options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); }, 'A measurement that reaches the limit stops and reports what it measured.');
 
                     button = action('Measure performance', () => {
-                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, ReuseResults: speedReuse, DeferToTranscodes: speedDefer, Options: speedSettings, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Backends: [...chosenBackends], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
+                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, ReuseResults: speedReuse, WhenTranscoding: speedWhenTranscoding, Options: speedSettings, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Backends: [...chosenBackends], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
                         ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed'), data: JSON.stringify(body), contentType: 'application/json' })
                             .then(() => {
                                 showTab(tabs[3][0]);
@@ -1490,7 +1490,7 @@
                         div.appendChild(el('p', 'Measured ' + new Date(r.generatedUtc).toLocaleString() + ', ' + methodName(r.method).toLowerCase() + ' accuracy', 'secondaryText'));
                     }
                     if (r.cancelled) {
-                        div.appendChild(el('div', 'Cancelled: these are the measurements finished before then.', 'infoBanner'));
+                        div.appendChild(el('div', (r.cancelledForTranscode ? 'Cancelled when the server started transcoding' : 'Cancelled') + ': these are the measurements finished before then.', 'infoBanner'));
                     }
 
                     // A note shared by cells becomes one numbered footnote.

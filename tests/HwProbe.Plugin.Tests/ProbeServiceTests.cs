@@ -157,6 +157,44 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal(DeleteOutcome.Deleted, await service.DeleteSpeedHistoryAsync(null, ct));
     }
 
+    /// <summary>A run set to cancel for transcodes refuses to start during one, and stops when one begins, keeping what it measured.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task SpeedRunCancelsWhenTheServerTranscodes()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var transcoding = true;
+        var done = new SpeedResult(HwType.none, string.Empty, "pattern|h264-8mbps", string.Empty, 300, 12, false, null);
+        using var service = new ProbeService(_ => Task.FromResult(Reports.Sample()), () => transcoding, Path.Combine(_directory, "latest.json"), TimeProvider.System, TimeSpan.Zero, NullLogger.Instance)
+        {
+            MeasureSpeed = async (speed, backends, progress, token) =>
+            {
+                transcoding = true;
+                try
+                {
+                    await Task.Delay(Timeout.Infinite, token);
+                }
+                catch (OperationCanceledException)
+                {
+                }
+
+                return new SpeedReport(DateTimeOffset.UnixEpoch, Reports.Sample().Ffmpeg, speed.Method, [done]) { Cancelled = true };
+            },
+            ServerSpeedSettings = () => new SpeedSettings(),
+        };
+        transcoding = false;
+        await service.RunAsync(ct);
+        var request = new SpeedRequest("quick", [], []) { WhenTranscoding = TranscodeAction.Cancel };
+
+        transcoding = true;
+        Assert.Equal(ProbeRunResult.ServerBusy, await service.StartSpeedAsync(request, ct));
+        transcoding = false;
+        Assert.Equal(ProbeRunResult.Started, await service.StartSpeedAsync(request, ct));
+        await service.Background;
+
+        Assert.True(SpeedReportStore.Deserialize((await service.LatestSpeedJsonAsync(ct))!)!.CancelledForTranscode);
+    }
+
     /// <summary>A running speed run shows its plan as it fills in, pauses after the current measurement, and keeps what's finished when cancelled.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

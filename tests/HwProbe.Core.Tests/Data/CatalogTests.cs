@@ -36,7 +36,7 @@ public sealed class CatalogTests
     [Theory]
     [InlineData("  - { key: QsvLowPowerH264,", "  - { key: QsvLowPower264,")]
     [InlineData("  - { key: DoubleRate, label: Double the frame rate when deinterlacing, server: DeinterlaceDoubleRate, switch: true }", "  - { key: DoubleRate2, label: x, switch: true }")]
-    [InlineData("  - { key: H264Crf, label: H.264 encoding CRF, server: H264Crf, range: [0, 51] }", "  - { key: H264Crf, label: x, range: [0, 51], switch: true }")]
+    [InlineData("  - { key: H265Crf, label: H.265 encoding CRF, server: H265Crf, range: [0, 51] }", "  - { key: H265Crf, label: x, range: [0, 51], switch: true }")]
     [InlineData("  - { type: amf,", "  - { type: amd,")]
     [InlineData("  FullCuda: Full GPU pipeline (CUDA)\n", "")]
     [InlineData("defaultVideos: [pattern]", "defaultVideos: [pattern-8k]")]

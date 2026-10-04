@@ -15,7 +15,7 @@ Open **HwProbe** in the dashboard sidebar.
 
 - **Hardware Probe**: press **Run probe** to test each hardware acceleration option.
 - **Recommended Settings**: each option on the Transcoding and Trickplay pages, with whether it works. **Apply** changes it and **Revert** undoes the last change.
-- **Performance Tests**: pick what to measure and press **Measure performance**. Measurements already made with the same settings can be reused, so a repeated comparison completes faster. By default a test pauses while the server transcodes for a player and repeats the measurement that was interrupted.
+- **Performance Tests**: pick what to measure and press **Measure performance**. Measurements already made with the same settings can be reused, so a repeated comparison completes faster. By default a test pauses while the server transcodes for a player and repeats the measurement that was interrupted; it can instead keep measuring or cancel.
 - **Test Results**: the measurements, as bars, values or a share of the fastest. Earlier runs can be viewed or deleted. Suggestions from the results (a faster hardware backend, outputs that fall behind, settings worth changing) can be applied and reverted.
 - **Help**: download a zip to attach to a [hardware report](../../issues/new?template=hardware-report.yml) (it includes file paths and host names), and see or delete the cached test clips. Clips the current version no longer uses, such as those made by an earlier ffmpeg, are deleted automatically.
 
