@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.13.1.0",
+        "changelog": "Third-party notices: the Help tab lists the plugin's libraries with links to their licences, and every download carries LICENSE and THIRD-PARTY-NOTICES.md.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.13.1/hwprobe-plugin_0.13.1.0.zip",
+        "checksum": "99fb2ea7dd5faa232d8fd498d3925bca",
+        "timestamp": "2026-10-04T10:11:55Z"
+      },
+      {
         "version": "0.13.0.0",
         "changelog": "Page polish: status icons, sortable full-width tables, collapsible sections, progress with time remaining, results hidden while a probe runs. Performance tests: live action samples at 1080p, 4K, and 8K; 3D animation 4K HDR (AV1 10-bit); per-test durations; concurrent streams must hold real time from the first frame. Same results whatever the server's or host's language.",
         "targetAbi": "12.1.0.0",
