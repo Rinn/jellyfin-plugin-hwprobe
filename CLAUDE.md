@@ -101,7 +101,7 @@ The page should look and behave like a native Jellyfin dashboard page, stay calm
 
 ## To do
 
-- **Power draw** (researched 2026-10-04): first NVML total energy (`nvmlDeviceGetTotalEnergyConsumption`, Linux and Windows, no admin) and Windows' `\Energy Meter(RAPL_Package0_PKG)\Energy` counter; Linux RAPL is root-only and masked in containers, Intel iGPUs have no unprivileged source, macOS IOReport is private. All whole-device, so report watts above an idle reading taken before each measurement, and feed it to `ResourceComparison`. Intel and AMD GPU usage on Linux 5.19+ is unverified, as no such host is available.
+- **Power draw, next steps**: AMD GPU power (amdgpu hwmon `power1_average`, watts only, to integrate over samples) and macOS (IOReport is a private API whose CPU channels read 0 on macOS 27). Intel and AMD GPU usage on Linux 5.19+ is unverified, as no such host is available.
 
 Queued by the user on 2026-10-03, in no particular order:
 
