@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.17.0.0",
+        "changelog": "Power draw: NVIDIA and CPU package energy where readable, shown as watts above idle, and counted in efficiency suggestions. Intel low power is tested at the bitrate Jellyfin uses, and reported as having no effect where the GPU drops it. Performance tests decode in software where the probe found decoding fails. Only the best better-quality setting is suggested, and NVENC's session limit shows as a capped stream count. The Resource Usage view shows only what was measured.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.17.0/hwprobe-plugin_0.17.0.0.zip",
+        "checksum": "cd7d4cab4ea6a37e2fa8784976b71755",
+        "timestamp": "2026-10-04T20:50:20Z"
+      },
+      {
         "version": "0.16.0.0",
         "changelog": "More test suites on real video: decoding, subtitle burn-in, deinterlacing (real 576i), VBR audio, legacy formats, and tone mapping by method. Legacy inputs: MPEG-2, Theora, Xvid AVI, Flash video, RealVideo, and WMV. Suggestions weigh CPU, memory, and GPU use, report the server's setting when it wins, guard concurrent streams, and can set an Internet streaming bitrate limit. Progress shows a bar with elapsed time. Fixes: HDR10 test clips are tagged correctly, and double-rate deinterlacing is measured against the field rate.",
         "targetAbi": "12.1.0.0",
