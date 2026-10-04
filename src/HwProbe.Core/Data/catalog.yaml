@@ -43,7 +43,7 @@ videos:
     # Films are wider than 16:9.
     height: 804
     audio: stereo Opus
-    sample:
+    sample: &manBehindTheMachine
       title: The Man Behind the Machine
       credit: The Man Behind the Machine, Dalano’s Films, CC BY 3.0, via Wikimedia Commons
       holder: Dalano’s Films
@@ -59,6 +59,19 @@ videos:
       file: sample_live_action_only.webm
       seconds: 10.9
       piece: { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/9/9d/The_Man_Behind_the_Machine_%28sci-fi_thriller_short_film%29.webm/The_Man_Behind_the_Machine_%28sci-fi_thriller_short_film%29.webm.1080p.vp9.webm", headerLength: 860, start: 53023790, length: 3697127, sha256: a90475735cc01e67c6ee27e96f40a1595acaa78a8e457dbfbc05da07584f3aff }
+  - <<: *sampleVideo
+    key: drama-4k
+    name: Live action 4K
+    width: 3840
+    height: 1608
+    audio: stereo Opus
+    sample: *manBehindTheMachine
+    # The same scene from Commons' original 4K VP9 file: 3:08.7 to 3:17.3, ending on the cluster before the 1080p piece's.
+    clip:
+      <<: *sampleClip
+      file: sample_live_action_4k.webm
+      seconds: 8.6
+      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/9/9d/The_Man_Behind_the_Machine_%28sci-fi_thriller_short_film%29.webm", headerLength: 632, start: 110647202, length: 6719911, sha256: 487d78ebf149d52f0e65dd1ac764d7aa78e17ec23c3091b44ba5648d60f63449 }
   - <<: *sampleVideo
     key: live-action
     name: Live-action + CGI
@@ -101,6 +114,31 @@ videos:
       seconds: 11.9
       audioChannels: 6
       piece: { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/f/f1/Sintel_movie_4K.webm/Sintel_movie_4K.webm.1080p.vp9.webm", headerLength: 559, start: 96184958, length: 5440342, sha256: b9b721186ca9cb06bb1b1d961566b56e9f355a7b55df4ba37ab4c55529901902 }
+  - <<: *sampleVideo
+    key: digital-animation-4k
+    name: 3D animation 4K HDR
+    width: 3840
+    height: 1608
+    audio: stereo Opus
+    sample:
+      title: SINGULARITY
+      credit: SINGULARITY, Blender Studio, CC BY 4.0, via Wikimedia Commons
+      holder: Blender Studio
+      holderUrl: https://studio.blender.org/
+      # No Wikipedia article; the film's own release page, as the Commons credit gives it.
+      article: https://www.youtube.com/watch?v=l5OZu-IrXpw
+      license: https://creativecommons.org/licenses/by/4.0/
+      licenseName: CC BY 4.0
+      source: https://commons.wikimedia.org/wiki/File:SINGULARITY_-_Blender_Open_Movie-full_movie.webm
+    # 2:15 to 2:22.5 of Commons' original: HDR10 AV1 Main 10-bit, which current GPUs decode.
+    clip:
+      <<: *sampleClip
+      file: sample_3d_animation_4k_hdr10.webm
+      seconds: 7.5
+      codec: av1
+      bitDepth: 10
+      hdr10: true
+      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/f/f2/SINGULARITY_-_Blender_Open_Movie-full_movie.webm", headerLength: 834, start: 254455210, length: 14293364, sha256: 7a9812153aae92b8b58d608c8d8a2fca5351c5bbdb6254646079307bd4480764 }
   - <<: *sampleVideo
     key: anime
     name: Animation
