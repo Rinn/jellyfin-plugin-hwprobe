@@ -1358,7 +1358,7 @@
                         target.appendChild(line);
                     }
                     if (speedVideos.some(v => chosenVideos.has(v.Key) && !v.SourceUrl)) {
-                        target.appendChild(el('div', 'Test videos encode faster than real video.', 'infoBanner'));
+                        target.appendChild(el('div', 'Test video results may not be representative compared to actual videos.', 'infoBanner'));
                     }
                     if (chosenVideos.has('library')) {
                         target.appendChild(libraryCell(update));
