@@ -1584,7 +1584,6 @@
                     const body = el('div');
                     container.appendChild(body);
                     ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Suites'), dataType: 'json' }).then(suites => {
-                        body.appendChild(el('p', 'Each step is saved as its own run in Test Results.', 'secondaryText'));
                         const table = el('table', null, 'hwprobe-full');
                         row(table, [el('th', 'Suite'), el('th', 'Steps'), el('th', 'Backend'), el('th', 'Duration'), el('th', '')]);
                         for (const suite of suites) {
