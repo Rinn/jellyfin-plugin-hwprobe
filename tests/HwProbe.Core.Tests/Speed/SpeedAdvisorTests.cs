@@ -29,6 +29,32 @@ public sealed class SpeedAdvisorTests
         Assert.DoesNotContain(SpeedAdvisor.Advise(run, [run], HwType.nvenc, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.FastestBackend);
     }
 
+    /// <summary>QSV is suggested over VAAPI on the same GPU when they measure alike, but not when VAAPI is faster by more than noise; VAAPI is never suggested over QSV that measures alike.</summary>
+    [Fact]
+    public void PrefersQsvOverVaapi()
+    {
+        var alike = Run(new SpeedSettings(), Result(HwType.vaapi, "a", 100), Result(HwType.qsv, "a", 97));
+        var vaapiFaster = Run(new SpeedSettings(), Result(HwType.vaapi, "a", 100), Result(HwType.qsv, "a", 80));
+
+        var preferred = Assert.Single(SpeedAdvisor.Advise(alike, [alike], HwType.vaapi, "/dev/dri/renderD128", new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.FastestBackend);
+        Assert.Equal((HwType.qsv, true), (preferred.Type, preferred.Preferred));
+        Assert.DoesNotContain(SpeedAdvisor.Advise(vaapiFaster, [vaapiFaster], HwType.vaapi, "/dev/dri/renderD128", new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.FastestBackend);
+        Assert.DoesNotContain(SpeedAdvisor.Advise(alike, [alike], HwType.qsv, "/dev/dri/renderD128", new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.FastestBackend);
+        Assert.Equal(HwType.qsv, Assert.Single(SpeedAdvisor.Advise(alike, [alike], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.FastestBackend).Type);
+    }
+
+    /// <summary>With VAAPI configured, settings compared on QSV runs (where suites run instead) are suggested.</summary>
+    [Fact]
+    public void ComparesQsvRunsForVaapi()
+    {
+        const string Film = "live-action|h264-8mbps";
+        var medium = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.qsv, Film, 100) with { Command = "medium" });
+        var fast = Run(new SpeedSettings { EncoderPreset = "fast" }, Result(HwType.qsv, Film, 150) with { Command = "fast" });
+
+        var faster = Assert.Single(SpeedAdvisor.Advise(fast, [medium, fast], HwType.vaapi, "/dev/dri/renderD128", new SpeedSettings { EncoderPreset = "medium" }), s => s.Kind == SpeedSuggestionKind.FasterSetting);
+        Assert.Equal(("EncoderPreset", "fast"), (faster.Setting, faster.Value));
+    }
+
     /// <summary>Outputs below real time on the configured backend are flagged, and marked when only test videos showed it.</summary>
     [Fact]
     public void FlagsOutputsThatFallBehind()

@@ -55,12 +55,13 @@ internal sealed class WindowsResourceMonitor : SampledResourceMonitor
             }
         }
 
-        // Running Time is in 100-nanosecond units and starts at zero with the process; an engine type can have several instances (one per adapter or engine).
+        // Running Time is in 100-nanosecond units and starts at zero with the process. An engine type can have several
+        // instances (an RTX 5080 has two NVDEC engines); the busiest stands for the type, so the share stays within 100%.
         var gpu = Failed ? [] : _engines
             .Where(e => GpuEngineCounters.Parse(e.Key) is not null)
             .GroupBy(e => GpuEngineCounters.Parse(e.Key)!.Value.Engine, StringComparer.Ordinal)
             .Where(g => g.Any(e => e.Value > 0))
-            .ToDictionary(g => g.Key, g => g.Sum(e => e.Value / 1e7), StringComparer.Ordinal);
+            .ToDictionary(g => g.Key, g => g.Max(e => e.Value / 1e7), StringComparer.Ordinal);
         return new ResourceUsage(seconds, cpu, peak) { GpuSeconds = gpu.Count > 0 ? gpu : null, PeakGpuMemoryBytes = Failed ? null : _gpuPeak };
     }
 

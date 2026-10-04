@@ -92,7 +92,7 @@ public static class SpeedTestText
     /// <summary>Names a codec as Jellyfin's settings do.</summary>
     /// <param name="codec">The codec as Jellyfin stores it.</param>
     /// <returns>e.g. <c>H.264</c>.</returns>
-    private static string CodecName(string codec) => codec switch
+    internal static string CodecName(string codec) => codec switch
     {
         "h264" => "H.264",
         "hevc" => "HEVC",

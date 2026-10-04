@@ -872,6 +872,19 @@
                     container.appendChild(line);
                 }
 
+                // Jellyfin's Intel guide prefers QSV to VA-API on GPUs QSV supports, so a working QSV on the configured VAAPI device is offered.
+                function renderPreferredBackend(container, viable) {
+                    const type = encoding && encoding.HardwareAccelerationType;
+                    const qsv = type === 'vaapi' && viable.some(isConfigured) ? viable.find(b => b.type === 'qsv' && (!b.device || !encoding.VaapiDevice || b.device === encoding.VaapiDevice)) : null;
+                    if (!qsv) {
+                        return;
+                    }
+                    container.appendChild(el('div', names.qsv + ' also works on this GPU. Jellyfin prefers it to VA-API on mainstream Intel GPUs, for better performance.', 'infoBanner'));
+                    const line = el('div', null, 'hwprobe-row hwprobe-end');
+                    line.appendChild(idleAction('Use ' + names.qsv, () => post('HwProbe/UseBackend', { Type: 'qsv', Device: qsv.device }), 'raised'));
+                    container.appendChild(line);
+                }
+
                 function renderSettings(container, viable, title) {
                     container.replaceChildren();
                     title.textContent = 'Settings';
@@ -1027,6 +1040,7 @@
                     box.appendChild(title);
                     if (shown) {
                         renderBrokenBackend(box, viable);
+                        renderPreferredBackend(box, viable);
                     }
                     if (restartRequired) {
                         box.appendChild(restartPrompt());
@@ -1210,7 +1224,7 @@
                         const runs = themedSelect(container, 'Run');
                         runPicker = runs;
                         for (const h of speedHistory) {
-                            const option = el('option', new Date(h.GeneratedUtc).toLocaleString() + ' \u00b7 ' + methodName(h.Method) + ' \u00b7 ' + h.Tests + ' test' + (h.Tests === 1 ? '' : 's') + (h.Current ? '' : ' (another version or ffmpeg)'));
+                            const option = el('option', new Date(h.GeneratedUtc).toLocaleString() + (h.Suite ? ' \u00b7 ' + h.Suite + ': ' + h.SuiteStep : '') + ' \u00b7 ' + methodName(h.Method) + ' \u00b7 ' + h.Tests + ' test' + (h.Tests === 1 ? '' : 's') + (h.Current ? '' : ' (another version or ffmpeg)'));
                             option.value = h.Id;
                             option.selected = speedViewing ? h.Id === speedViewing : h === speedHistory[0];
                             runs.appendChild(option);
@@ -1307,6 +1321,9 @@
                         speedProgressParts = { text };
                     }
                     const shown = speedLive || speedReport;
+                    if (shown && shown.suiteStartedUtc && !speedProgress) {
+                        speedResults.appendChild(renderSuiteComparison(shown));
+                    }
                     if (shown && shown.results.length) {
                         speedResults.appendChild(speedMatrix(shown));
                     } else if (!speedProgress) {
@@ -1315,6 +1332,53 @@
                     if (shown && !speedProgress) {
                         speedResults.appendChild(renderSuggestions());
                     }
+                }
+
+                // Saved runs by id, for the suite comparison; a saved run never changes.
+                const savedRuns = new Map();
+
+                // One row per backend, input, and output, with a column per step of the suite the shown run belongs to.
+                function renderSuiteComparison(shown) {
+                    const div = el('div');
+                    const steps = speedHistory.filter(h => h.SuiteStartedUtc && Date.parse(h.SuiteStartedUtc) === Date.parse(shown.suiteStartedUtc))
+                        .sort((a, b) => Date.parse(a.GeneratedUtc) - Date.parse(b.GeneratedUtc));
+                    const load = h => savedRuns.has(h.Id) ? Promise.resolve(savedRuns.get(h.Id))
+                        : ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedHistory/' + h.Id), dataType: 'json' }).then(r => { savedRuns.set(h.Id, r); return r; });
+                    Promise.all(steps.map(load)).then(reports => {
+                        const section = fold(div, shown.suite, true, null, 'suite');
+                        const keyOf = x => [x.type, x.device, x.test, x.variant || ''].join('|');
+                        const rows = [];
+                        for (const x of reports.flatMap(r => r.results)) {
+                            if (!x.pending && !rows.some(o => keyOf(o) === keyOf(x))) {
+                                rows.push(x);
+                            }
+                        }
+                        const sameType = t => rows.some(x => x.type === t && rows.some(o => o.type === t && o.device !== x.device));
+                        const backendName = x => x.type === 'none' ? 'Software' : (names[x.type] || x.type) + (sameType(x.type) ? ' ' + x.device : '');
+                        const counted = reports.every(r => r.method !== 'Quick');
+                        const table = el('table', null, 'hwprobe-full');
+                        row(table, [el('th', 'Backend'), el('th', 'Input'), el('th', 'Output')].concat(steps.map(h => el('th', h.SuiteStep, 'hwprobe-num'))));
+                        for (const key of rows) {
+                            const found = reports.map(r => r.results.find(x => keyOf(x) === keyOf(key)));
+                            const speeds = found.map(x => x && x.fps && x.frameRate ? x.fps / x.frameRate : null);
+                            const fastest = Math.max(0, ...speeds.filter(v => v));
+                            const cells = found.map((x, i) => {
+                                const td = el('td', null, 'hwprobe-num' + (speeds[i] && speeds[i] === fastest && steps.length > 1 ? ' hwprobe-best' : ''));
+                                td.dataset.sort = speeds[i] ? String(speeds[i]) : '';
+                                td.textContent = speeds[i] ? speeds[i].toFixed(1) + '\u00d7' : x ? '\u2013' : '';
+                                if (speeds[i] && counted) {
+                                    td.appendChild(el('span', ' ' + streamsText(x), 'hwprobe-small secondaryText'));
+                                }
+                                td.title = [speeds[i] ? speeds[i].toFixed(1) + '\u00d7 real time' : '', speeds[i] && counted ? streamsText(x) + ' concurrent streams' : '', x && x.note ? x.note : ''].filter(t => t).join('\n');
+                                return td;
+                            });
+                            row(table, [el('td', backendName(key)), el('td', key.video || key.label || key.test), el('td', (key.output || '') + (key.variant ? ' (' + key.variant + ')' : ''))].concat(cells));
+                        }
+                        const scroll = el('div', null, 'hwprobe-scroll');
+                        scroll.appendChild(sortable(table, 'suite'));
+                        section.appendChild(scroll);
+                    }, () => {});
+                    return div;
                 }
 
                 // A catalog option's value as its field shows it.
@@ -1346,6 +1410,7 @@
                                 title = 'Hardware acceleration: ' + backendName(s.Type);
                                 reason = !configured || configured === 'none'
                                     ? 'Works on this server; a hardware backend draws less power than software for the same work.'
+                                    : s.Preferred ? 'As fast as ' + backendName(configured) + ' here, and Jellyfin prefers it on mainstream Intel GPUs.'
                                     : 'The fastest hardware backend measured.';
                                 actionButton = idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: s.Type, Device: s.Device }));
                             } else if (s.Kind === 'FallsBehind') {
@@ -1499,6 +1564,44 @@
                     }
                 }
 
+                // Named sets of runs that differ in one setting, each started with one button; listed as this server would run them.
+                function renderSuites(container) {
+                    const body = el('div');
+                    container.appendChild(body);
+                    ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Suites'), dataType: 'json' }).then(suites => {
+                        body.appendChild(el('p', 'Each step is saved as its own run in Test Results. Resource Usage and When the server starts transcoding are taken from Settings below.', 'secondaryText'));
+                        const table = el('table', null, 'hwprobe-full');
+                        row(table, [el('th', 'Suite'), el('th', 'Steps'), el('th', 'Backend'), el('th', '')]);
+                        for (const suite of suites) {
+                            const name = el('td');
+                            name.appendChild(el('div', suite.Name));
+                            name.appendChild(el('div', suite.Description, 'secondaryText hwprobe-small'));
+                            const steps = el('td', suite.Steps.join(', '), 'secondaryText');
+                            const backends = el('td', !suite.Offered ? '-' : suite.Backends.map(b => b === 'none' ? 'Software' : names[b] || b).join(', ') || '-', 'secondaryText');
+                            const run = el('td', null, 'hwprobe-num');
+                            if (suite.Offered) {
+                                const button = idleAction('Run', () => {
+                                    ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Suite'), data: JSON.stringify({ Key: suite.Key, MeasureResources: speedResources, WhenTranscoding: speedWhenTranscoding }), contentType: 'application/json' })
+                                        .then(() => {
+                                            showTab(tabs[3][0]);
+                                            return loadStatus();
+                                        }, response => (response && response.text ? response.text() : Promise.resolve('')).then(text => {
+                                            setMessage('Could not start: ' + (text.replace(/^"|"$/g, '') || 'a probe is running or a session is transcoding.'));
+                                            button.disabled = running;
+                                        }));
+                                }, 'raised');
+                                run.appendChild(button);
+                            } else {
+                                run.appendChild(el('span', 'Not available', 'secondaryText'));
+                            }
+                            row(table, [name, steps, backends, run]);
+                        }
+                        const scroll = el('div', null, 'hwprobe-scroll');
+                        scroll.appendChild(table);
+                        body.appendChild(scroll);
+                    }, () => {});
+                }
+
                 function renderSpeedSetup(container, viable) {
                     chooseSpeedDefaults();
                     let button = null;
@@ -1536,6 +1639,7 @@
                                 button.disabled = false;
                             }));
                     }, 'raised button-submit');
+                    renderSuites(fold(container, 'Test Suites', false));
                     const go = el('div', null, 'hwprobe-row hwprobe-start');
                     go.appendChild(button);
                     go.appendChild(estimate);
@@ -2109,7 +2213,7 @@
                         setRunning(s.State === 'Running');
                         if (running) {
                             const text = s.Activity === 'Speed'
-                                ? speedProgressText(s)
+                                ? (s.Suite ? s.Suite + ' \u00b7 ' : '') + speedProgressText(s)
                                 : (s.Step || 'Probing') + (s.Total ? ' \u00b7 ' + (s.Done || 0) + ' of ' + s.Total + ' tests' : '\u2026');
                             statusText.textContent = text;
                             const wasProbing = !!probeProgress;

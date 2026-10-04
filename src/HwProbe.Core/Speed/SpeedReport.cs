@@ -26,4 +26,16 @@ public sealed record SpeedReport(DateTimeOffset GeneratedUtc, FfmpegSummary Ffmp
 
     /// <summary>Gets the version of HwProbe that measured it.</summary>
     public string HwProbeVersion { get; init; } = CapabilityReport.CurrentHwProbeVersion;
+
+    /// <summary>Gets the test suite the run belongs to, or null for a run started on its own.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? Suite { get; init; }
+
+    /// <summary>Gets the suite step the run was, e.g. <c>medium</c>, or null.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? SuiteStep { get; init; }
+
+    /// <summary>Gets when the suite this run belongs to started, shared by its steps' runs, or null.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public DateTimeOffset? SuiteStartedUtc { get; init; }
 }

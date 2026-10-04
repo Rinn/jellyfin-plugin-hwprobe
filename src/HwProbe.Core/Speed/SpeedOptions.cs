@@ -25,6 +25,9 @@ public sealed record SpeedOptions(SpeedMethod Method, IReadOnlyList<string> Vide
     /// <summary>Gets a value indicating whether each measurement's single copy is measured for CPU, memory, and GPU usage.</summary>
     public bool MeasureResources { get; init; }
 
+    /// <summary>Gets the backends and output codecs whose low-power encoder the probe found missing; a test asking for one isn't measured.</summary>
+    public IReadOnlySet<(Model.HwType Type, string Device, string Codec)> LowPowerUnsupported { get; init; } = new HashSet<(Model.HwType, string, string)>();
+
     /// <summary>Gets the library file the <c>library</c> video reads, or null.</summary>
     public SpeedFile? File { get; init; }
 
@@ -35,5 +38,17 @@ public sealed record SpeedOptions(SpeedMethod Method, IReadOnlyList<string> Vide
         var videos = Videos.Select(k => k == SpeedCatalog.LibraryKey ? (File is null ? null : SpeedCatalog.LibraryVideo(File)) : SpeedCatalog.FindVideo(k)).OfType<SpeedVideo>().ToList();
         var outputs = Outputs.Select(SpeedCatalog.FindOutput).OfType<SpeedOutput>().ToList();
         return [.. videos.SelectMany(v => outputs.Select(o => SpeedCatalog.Test(v, o)))];
+    }
+
+    /// <summary>Returns the low-power encoders a probe found missing, by backend, device, and output codec.</summary>
+    /// <param name="report">The probe's report.</param>
+    /// <returns>Every backend and codec whose <c>_lowpower</c> encode test didn't pass.</returns>
+    public static IReadOnlySet<(Model.HwType Type, string Device, string Codec)> MissingLowPower(Report.CapabilityReport report)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+        const string Suffix = "_lowpower";
+        return report.Backends
+            .SelectMany(b => b.Encode.Where(e => e.Key.EndsWith(Suffix, StringComparison.Ordinal) && e.Value != Model.ProbeOutcome.Pass).Select(e => (b.Type, b.Device, e.Key[..^Suffix.Length])))
+            .ToHashSet();
     }
 }

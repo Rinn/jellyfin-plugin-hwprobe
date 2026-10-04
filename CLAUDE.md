@@ -4,7 +4,7 @@ Operating manual for this repo: what it is, commands, conventions, the traps tha
 
 ## What this is
 
-A device-verified hardware-transcode detector for Jellyfin, shipped as a CLI (`src/HwProbe.Cli`) and a plugin (`src/HwProbe.Plugin`) over a shared engine (`src/HwProbe.Core`, with Jellyfin's own `EncodingHelper` wired in by `src/HwProbe.Jellyfin`). Jellyfin's hardware acceleration dropdown is a fixed list in jellyfin-web, so it offers backends that fail every job; HwProbe runs small real transcodes and reports what works, with a fix for each failure. The page has five tabs: Hardware Probe, Recommended Settings (Apply, history and Revert), Performance Tests and Test Results (transcode speed per backend, driven by `src/HwProbe.Core/Data/catalog.yaml`; "speed" in code, "performance" in user-facing text), and Help (diagnostics zip, cache contents).
+A device-verified hardware-transcode detector for Jellyfin, shipped as a CLI (`src/HwProbe.Cli`) and a plugin (`src/HwProbe.Plugin`) over a shared engine (`src/HwProbe.Core`, with Jellyfin's own `EncodingHelper` wired in by `src/HwProbe.Jellyfin`). Jellyfin's hardware acceleration dropdown is a fixed list in jellyfin-web, so it offers backends that fail every job; HwProbe runs small real transcodes and reports what works, with a fix for each failure. The page has five tabs: Hardware Probe, Recommended Settings (Apply, history and Revert), Performance Tests and Test Results (transcode speed per backend, single runs or test suites, driven by `src/HwProbe.Core/Data/catalog.yaml`; "speed" in code, "performance" in user-facing text), and Help (diagnostics zip, cache contents).
 
 Public at https://github.com/Rinn/jellyfin-plugin-hwprobe (`origin`).
 
@@ -101,10 +101,8 @@ The page should look and behave like a native Jellyfin dashboard page, stay calm
 
 ## To do
 
-- **Speed tier on real hardware**: run it on the RTX 5080 PC (NVENC, session limits) and the NAS (QSV/VAAPI, the QSV low-power settings). So far only macOS (VideoToolbox) and the software container.
 - **Resource stats, next steps**: power where readable without root (NVML, AMD hwmon, RAPL), and checking Intel and AMD GPU figures on a Linux 5.19+ host (the NAS runs 4.4, which has none). CPU, memory, and GPU engine time are measured already (`src/HwProbe.Core/Resources`).
 
 Queued by the user on 2026-10-03, in no particular order:
 
-- **Test suites** (queued 2026-10-03): named sets of performance tests run in sequence to draw suggestions from, e.g. one input at every encoding preset to see which presets cost no speed. Defined in YAML (like catalog.yaml), mostly on real video (film samples or a library file) rather than test videos. Recommend suites to the user before adding them.
 - Trickplay generation as a Performance Tests output (deferred 2026-10-03). `MediaEncoder.ExtractVideoImagesOnIntervalAccelerated` takes its input, filter, and encoder from EncodingHelper but assembles the command itself (skip_frame, setpts, qscale per encoder, image2), so it needs either a pinned copy of that assembly or a direct call limited to the configured backend.

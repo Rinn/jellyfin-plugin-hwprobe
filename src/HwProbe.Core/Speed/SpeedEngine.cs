@@ -7,6 +7,7 @@ using Jellyfin.Plugin.HwProbe.Core.Pipeline;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
 using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Core.Storage;
+using Jellyfin.Plugin.HwProbe.Core.Verdict;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 
@@ -130,9 +131,16 @@ public sealed class SpeedEngine : IDisposable
                     }
 
                     var missing = MissingClip(test, speed.Settings, clips);
+                    var cell = SpeedVariants.ForBackend(type, test, SpeedVariants.Base(test, speed.Settings, Paths(clips)), speed.Settings);
+
+                    // Jellyfin would ask for low power anyway and ffmpeg would drop it, so the run would only repeat normal mode.
+                    var noLowPower = cell.LowPower && test.OutputCodec is { } codec && speed.LowPowerUnsupported.Contains((type, device, codec))
+                        ? $"Not measured: this GPU has no low-power {SpeedTestText.CodecName(codec)} encoder, so ffmpeg would encode in normal mode."
+                        : null;
                     var result = source is null ? new SpeedResult(type, device, test.Key, string.Empty, null, null, false, "The device didn't open.")
                         : missing is not null ? new SpeedResult(type, device, test.Key, string.Empty, null, null, false, missing)
-                        : await MeasureOrReuseAsync(options, speed, caps.VersionLine, resultsCache, source, type, device, test, SpeedVariants.ForBackend(type, test, SpeedVariants.Base(test, speed.Settings, Paths(clips)), speed.Settings), cancellationToken);
+                        : noLowPower is not null ? new SpeedResult(type, device, test.Key, string.Empty, null, null, false, noLowPower)
+                        : await MeasureOrReuseAsync(options, speed, caps.VersionLine, resultsCache, source, type, device, test, cell, cancellationToken);
                     var described = Describe(test, result);
                     results.Add(described);
                     progress?.Report(new SpeedProgress(++done, total, described));
@@ -455,14 +463,19 @@ public sealed class SpeedEngine : IDisposable
 
                 string Command(TimeSpan content) => SpeedCommandLine.Build(args, content, test.DecodeOnly, test.StartAt);
 
+                // jellyfin-ffmpeg's qsvenc drops low-power mode it can't use and carries on (debian/patches/0071), so the run measures normal mode.
+                var lowPowerDropped = false;
                 async Task<IReadOnlyList<FfmpegRunResult>> LaunchAsync(int copies, TimeSpan content, CancellationToken token)
                 {
                     var invocation = new FfmpegInvocation(options.Ffmpeg.Path, Command(content), args.Environment, copies == 1 ? _singleTimeout : _copiesTimeout) { MeasureResources = measureResources && copies == 1 };
-                    return await Task.WhenAll(Enumerable.Range(0, copies).Select(_ => _runner.RunAsync(invocation, token)));
+                    var runs = await Task.WhenAll(Enumerable.Range(0, copies).Select(_ => _runner.RunAsync(invocation, token)));
+                    lowPowerDropped |= cell.LowPower && runs.Any(r => StderrMarkers.LowPowerDisabled.Any(m => r.Stderr.Contains(m, StringComparison.Ordinal)));
+                    return runs;
                 }
 
                 var measured = await SpeedMeter.MeasureAsync(LaunchAsync, method, test.FrameRate, !test.DecodeOnly, ct, timeUp);
-                return new SpeedResult(type, device, test.Key, string.Empty, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note) { OutputSize = size, Interrupted = measured.Interrupted, Command = CommandHash(Command(SpeedMeter.Content)), Resources = measured.Resources };
+                note = lowPowerDropped ? "Low-power mode isn't supported for this encoder here; ffmpeg used normal mode, so this is the normal-mode speed." : note;
+                return new SpeedResult(type, device, test.Key, string.Empty, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note) { OutputSize = size, Interrupted = measured.Interrupted, Command = CommandHash(Command(SpeedMeter.Content)), Resources = measured.Resources, LowPowerDropped = lowPowerDropped };
             },
             cancellationToken);
 

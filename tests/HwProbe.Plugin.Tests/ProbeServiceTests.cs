@@ -158,6 +158,43 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal(DeleteOutcome.Deleted, await service.DeleteSpeedHistoryAsync(null, ct));
     }
 
+    /// <summary>A suite runs each step with its settings on the suite's backends and labels each saved run; unknown and unavailable suites are refused.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task SuiteRunsEachStep()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        List<SpeedOptions> asked = [];
+        var time = DateTimeOffset.UnixEpoch;
+        using var service = new ProbeService(_ => Task.FromResult(Reports.Sample()), () => false, Path.Combine(_directory, "latest.json"), TimeProvider.System, TimeSpan.Zero, NullLogger.Instance)
+        {
+            MeasureSpeed = (speed, backends, progress, _) =>
+            {
+                asked.Add(speed);
+                time = time.AddMinutes(1);
+                return Task.FromResult(new SpeedReport(time, Reports.Sample().Ffmpeg, speed.Method, [new SpeedResult(HwType.none, string.Empty, "drama|h264-8mbps", string.Empty, 300, 12, false, null)]));
+            },
+            ServerBackend = () => (HwType.vaapi, "/dev/dri/renderD128"),
+        };
+
+        Assert.Equal(ProbeRunResult.NoReport, await service.StartSuiteAsync(new SuiteRequest("presets"), ct));
+        await service.RunAsync(ct);
+        Assert.Equal(ProbeRunResult.Invalid, await service.StartSuiteAsync(new SuiteRequest("nonsense"), ct));
+        Assert.Equal(ProbeRunResult.Invalid, await service.StartSuiteAsync(new SuiteRequest("lowpower"), ct));
+        Assert.Equal([("presets", true), ("lowpower", false)], (await service.SuitesAsync(ct)).Where(s => s.Key is "presets" or "lowpower").Select(s => (s.Key, s.Offered)));
+
+        Assert.Equal(ProbeRunResult.Started, await service.StartSuiteAsync(new SuiteRequest("presets") { MeasureResources = true }, ct));
+        await service.Background;
+
+        Assert.Equal([null, "faster", "fast", "medium", "slow"], asked.Select(a => a.Settings.EncoderPreset));
+        Assert.All(asked, a => Assert.Equal([HwType.vaapi, HwType.none], a.Backends));
+        Assert.All(asked, a => Assert.Equal((SpeedMethod.Confirm, true), (a.Method, a.MeasureResources)));
+        var history = await service.SpeedHistoryAsync(ct);
+        Assert.Equal(["slow", "medium", "fast", "faster", "Auto"], history.Select(h => h.SuiteStep));
+        Assert.All(history, h => Assert.Equal("Encoder presets", h.Suite));
+        Assert.Null(service.Status.Suite);
+    }
+
     /// <summary>A run set to cancel for transcodes refuses to start during one, and stops when one begins, keeping what it measured.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

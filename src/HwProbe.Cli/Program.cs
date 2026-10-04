@@ -8,6 +8,7 @@ internal static class Program
     /// <returns>A <see cref="HwProbeExitCode"/> value.</returns>
     private static async Task<int> Main(string[] args)
     {
+        StopReason.Watch();
         var command = new HwProbeCommand();
         command.Root.SetAction((parse, ct) => HwProbeApp.RunAsync(command.Bind(parse), ct));
 

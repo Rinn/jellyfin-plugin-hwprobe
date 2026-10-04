@@ -209,11 +209,20 @@ public sealed partial class ProbeService : IDisposable
     /// <param name="request">What to measure.</param>
     /// <param name="cancellationToken">Cancels the checks; the run itself goes to completion.</param>
     /// <returns><see cref="ProbeRunResult.Started"/>, or why it can't start.</returns>
-    public async Task<ProbeRunResult> StartSpeedAsync(SpeedRequest request, CancellationToken cancellationToken)
+    public Task<ProbeRunResult> StartSpeedAsync(SpeedRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var file = request.ItemId is { } item ? FindFile(item) : null;
-        if (MeasureSpeed is not { } measure || (request.ItemId is not null && file is null) || ParseSpeed(request, file) is not { } speed)
+        return StartRunsAsync([(null, null, request)], request.WhenTranscoding, cancellationToken);
+    }
+
+    /// <summary>Starts a test suite in the background: its steps run one after another on the backends it names.</summary>
+    /// <param name="request">The suite and how to run it.</param>
+    /// <param name="cancellationToken">Cancels the checks; the suite itself goes to completion.</param>
+    /// <returns><see cref="ProbeRunResult.Started"/>, or why it can't start.</returns>
+    public async Task<ProbeRunResult> StartSuiteAsync(SuiteRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (Catalog.Default.Suites.FirstOrDefault(s => s.Key == request.Key) is not { } suite)
         {
             return ProbeRunResult.Invalid;
         }
@@ -223,34 +232,39 @@ public sealed partial class ProbeService : IDisposable
             return ProbeRunResult.NoReport;
         }
 
-        // A run that defers to transcodes starts anyway and waits for the transcode to end.
-        if (request.WhenTranscoding != TranscodeAction.Pause && await IsBusyAsync(cancellationToken))
+        var configured = PreferredBackend(report);
+        if (!SpeedSuites.Offered(suite, report, configured))
         {
-            return ProbeRunResult.ServerBusy;
+            return ProbeRunResult.Invalid;
         }
 
-        if (!await _gate.WaitAsync(0, cancellationToken))
-        {
-            return ProbeRunResult.AlreadyRunning;
-        }
+        var backends = SpeedSuites.Backends(suite, configured).Select(b => b.ToString()).ToList();
+        var runs = SpeedSuites.Steps(suite, Environment.ProcessorCount)
+            .Select(step => ((string?)suite.Name, (string?)step.Label, new SpeedRequest("confirm", step.Videos, step.Outputs)
+            {
+                Backends = backends,
+                Options = step.Options,
+                MeasureResources = request.MeasureResources,
+                WhenTranscoding = request.WhenTranscoding,
+            }))
+            .ToList();
+        return await StartRunsAsync(runs, request.WhenTranscoding, cancellationToken);
+    }
 
-        List<(HwType, string)> backends = [.. report.Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device))];
-        _speedCancel = new CancellationTokenSource();
-        _speedPause = new SpeedPause(_time) { Busy = request.WhenTranscoding == TranscodeAction.Pause ? _isTranscoding : null };
-        _cancelledForTranscode = false;
-        if (request.WhenTranscoding == TranscodeAction.Cancel)
-        {
-            _ = WatchForTranscodeAsync(_speedCancel);
-        }
-
-        var settings = ServerSpeedSettings();
-        foreach (var (key, value) in request.Options ?? new Dictionary<string, string>())
-        {
-            settings = SpeedSettingsOptions.Apply(settings, key, value) ?? settings;
-        }
-
-        _background = Task.Run(() => RunSpeedHeldAsync(measure, speed with { Settings = settings, Pause = _speedPause }, backends, _speedCancel.Token), CancellationToken.None);
-        return ProbeRunResult.Started;
+    /// <summary>Lists the catalog's test suites as this server would run them.</summary>
+    /// <param name="cancellationToken">Cancels reading the latest report.</param>
+    /// <returns>Every suite, with its steps and whether it's offered.</returns>
+    public async Task<IReadOnlyList<SuiteInfo>> SuitesAsync(CancellationToken cancellationToken)
+    {
+        var report = await LatestJsonAsync(cancellationToken) is { } json ? ReportStore.Deserialize(json) : null;
+        var configured = report is null ? ServerBackend().Type : PreferredBackend(report);
+        return [.. Catalog.Default.Suites.Select(s => new SuiteInfo(
+            s.Key,
+            s.Name,
+            s.Description,
+            [.. SpeedSuites.Steps(s, Environment.ProcessorCount).Select(step => step.Label)],
+            SpeedSuites.Backends(s, configured),
+            report is not null && SpeedSuites.Offered(s, report, configured)))];
     }
 
     /// <summary>Pauses or resumes the running speed run; a pause takes effect when the current measurement finishes.</summary>
@@ -404,7 +418,7 @@ public sealed partial class ProbeService : IDisposable
             if (SpeedReportStore.Deserialize(json) is { } report)
             {
                 var current = report.HwProbeVersion == CapabilityReport.CurrentHwProbeVersion && IsCurrentFfmpeg(report.Ffmpeg);
-                entries.Add(new SpeedHistoryEntry(Path.GetFileNameWithoutExtension(file), report.GeneratedUtc, report.Method.ToString(), report.Results.Select(r => r.Test).Distinct(StringComparer.Ordinal).Count(), current));
+                entries.Add(new SpeedHistoryEntry(Path.GetFileNameWithoutExtension(file), report.GeneratedUtc, report.Method.ToString(), report.Results.Select(r => r.Test).Distinct(StringComparer.Ordinal).Count(), current) { Suite = report.Suite, SuiteStep = report.SuiteStep, SuiteStartedUtc = report.SuiteStartedUtc });
             }
         }
 
@@ -862,74 +876,153 @@ public sealed partial class ProbeService : IDisposable
         }
     }
 
-    /// <summary>Runs a speed measurement; the caller already holds the gate, which this releases.</summary>
+    /// <summary>Returns the hardware backend suites run on: the configured one, or QSV in place of VAAPI when it works on the same GPU.</summary>
+    /// <param name="report">The latest probe.</param>
+    /// <returns>The backend type; <see cref="HwType.none"/> for software.</returns>
+    private HwType PreferredBackend(CapabilityReport report) =>
+        BackendPreference.Prefer(ServerBackend(), report.Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device))).Type;
+
+    /// <summary>Checks speed runs and starts them one after another in the background.</summary>
+    /// <param name="requests">The runs, with the suite and step each belongs to.</param>
+    /// <param name="whenTranscoding">What the runs do when the server transcodes.</param>
+    /// <param name="cancellationToken">Cancels the checks.</param>
+    /// <returns><see cref="ProbeRunResult.Started"/>, or why they can't start.</returns>
+    private async Task<ProbeRunResult> StartRunsAsync(IReadOnlyList<(string? Suite, string? Step, SpeedRequest Request)> requests, TranscodeAction whenTranscoding, CancellationToken cancellationToken)
+    {
+        List<(string?, string?, SpeedOptions, SpeedRequest)> parsed = [];
+        foreach (var (suite, step, request) in requests)
+        {
+            var file = request.ItemId is { } item ? FindFile(item) : null;
+            if (MeasureSpeed is null || (request.ItemId is not null && file is null) || ParseSpeed(request, file) is not { } speed)
+            {
+                return ProbeRunResult.Invalid;
+            }
+
+            parsed.Add((suite, step, speed, request));
+        }
+
+        if (MeasureSpeed is not { } measure)
+        {
+            return ProbeRunResult.Invalid;
+        }
+
+        if (await LatestJsonAsync(cancellationToken) is not { } json || ReportStore.Deserialize(json) is not { } report)
+        {
+            return ProbeRunResult.NoReport;
+        }
+
+        // A run that defers to transcodes starts anyway and waits for the transcode to end.
+        if (whenTranscoding != TranscodeAction.Pause && await IsBusyAsync(cancellationToken))
+        {
+            return ProbeRunResult.ServerBusy;
+        }
+
+        if (!await _gate.WaitAsync(0, cancellationToken))
+        {
+            return ProbeRunResult.AlreadyRunning;
+        }
+
+        List<(HwType, string)> backends = [.. report.Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device))];
+        _speedCancel = new CancellationTokenSource();
+        _speedPause = new SpeedPause(_time) { Busy = whenTranscoding == TranscodeAction.Pause ? _isTranscoding : null };
+        _cancelledForTranscode = false;
+        if (whenTranscoding == TranscodeAction.Cancel)
+        {
+            _ = WatchForTranscodeAsync(_speedCancel);
+        }
+
+        var missingLowPower = SpeedOptions.MissingLowPower(report);
+        var runs = parsed.Select(p =>
+        {
+            var (suite, step, speed, request) = p;
+            var settings = ServerSpeedSettings();
+            foreach (var (key, value) in request.Options ?? new Dictionary<string, string>())
+            {
+                settings = SpeedSettingsOptions.Apply(settings, key, value) ?? settings;
+            }
+
+            return (suite, step, speed with { Settings = settings, Pause = _speedPause, LowPowerUnsupported = missingLowPower });
+        }).ToList();
+        _background = Task.Run(() => RunSpeedHeldAsync(measure, runs, backends, _speedCancel.Token), CancellationToken.None);
+        return ProbeRunResult.Started;
+    }
+
+    /// <summary>Runs speed measurements one after another, a test suite's steps or a single run; the caller already holds the gate, which this releases.</summary>
     /// <param name="measure">The speed run.</param>
-    /// <param name="speed">What to measure.</param>
+    /// <param name="runs">What to measure, with the suite and step each run belongs to (null for a run on its own).</param>
     /// <param name="backends">The working backends.</param>
-    /// <param name="cancellationToken">Cancels the run, from <see cref="CancelSpeed"/>.</param>
+    /// <param name="cancellationToken">Cancels the runs, from <see cref="CancelSpeed"/>.</param>
     /// <returns>The result.</returns>
     private async Task<ProbeRunResult> RunSpeedHeldAsync(
         Func<SpeedOptions, IReadOnlyCollection<(HwType Type, string Device)>, IProgress<SpeedProgress>, CancellationToken, Task<SpeedReport>> measure,
-        SpeedOptions speed,
+        List<(string? Suite, string? Step, SpeedOptions Speed)> runs,
         IReadOnlyCollection<(HwType Type, string Device)> backends,
         CancellationToken cancellationToken)
     {
-        _status = _status with { State = ProbeState.Running, Activity = ProbeActivity.Speed, LastStartedUtc = _time.GetUtcNow(), LastError = null, Done = 0, Total = null, Preparing = null };
+        var started = _time.GetUtcNow();
+        _status = _status with { State = ProbeState.Running, Activity = ProbeActivity.Speed, LastStartedUtc = started, LastError = null, Done = 0, Total = null, Preparing = null, Suite = null };
         try
         {
-            lock (_speedSoFar)
+            for (var i = 0; i < runs.Count && !cancellationToken.IsCancellationRequested; i++)
             {
-                _speedSoFar.Clear();
-                _speedRunning = speed;
-            }
-
-            var progress = new SynchronousProgress<SpeedProgress>(p =>
-            {
+                var (suite, step, speed) = runs[i];
+                _status = _status with { Suite = suite is null ? null : string.Create(CultureInfo.InvariantCulture, $"{suite}: {step}, {i + 1} of {runs.Count}") };
                 lock (_speedSoFar)
                 {
-                    if (p.Planned is { } planned)
-                    {
-                        _speedSoFar.Clear();
-                        _speedSoFar.AddRange(planned);
-                    }
-                    else if (p.Result is { } result)
-                    {
-                        // Results replace their planned row, so the table keeps its shape as it fills in.
-                        var index = _speedSoFar.FindIndex(x => x.Pending && x.Type == result.Type && x.Device == result.Device && x.Test == result.Test && x.Variant == result.Variant);
-                        if (index >= 0)
-                        {
-                            _speedSoFar[index] = result;
-                        }
-                        else
-                        {
-                            _speedSoFar.Add(result);
-                        }
-                    }
-                    else if (p.Preparing is null)
-                    {
-                        _measuringSince ??= _time.GetUtcNow();
-                    }
+                    _speedSoFar.Clear();
+                    _speedRunning = speed;
+                    _measuringSince = null;
                 }
 
-                _status = _status with { Done = p.Done, Total = p.Total, Preparing = p.Preparing };
-            });
-            var report = await measure(speed, backends, progress, cancellationToken);
-            report = report with { CancelledForTranscode = report.Cancelled && _cancelledForTranscode };
-            if (report.Cancelled)
-            {
-                Log.SpeedCancelled(_logger, report.Results.Count);
-                if (report.Results.Count == 0)
+                var progress = new SynchronousProgress<SpeedProgress>(p =>
                 {
-                    return ProbeRunResult.Completed;
+                    lock (_speedSoFar)
+                    {
+                        if (p.Planned is { } planned)
+                        {
+                            _speedSoFar.Clear();
+                            _speedSoFar.AddRange(planned);
+                        }
+                        else if (p.Result is { } result)
+                        {
+                            // Results replace their planned row, so the table keeps its shape as it fills in.
+                            var index = _speedSoFar.FindIndex(x => x.Pending && x.Type == result.Type && x.Device == result.Device && x.Test == result.Test && x.Variant == result.Variant);
+                            if (index >= 0)
+                            {
+                                _speedSoFar[index] = result;
+                            }
+                            else
+                            {
+                                _speedSoFar.Add(result);
+                            }
+                        }
+                        else if (p.Preparing is null)
+                        {
+                            _measuringSince ??= _time.GetUtcNow();
+                        }
+                    }
+
+                    _status = _status with { Done = p.Done, Total = p.Total, Preparing = p.Preparing };
+                });
+                var report = await measure(speed, backends, progress, cancellationToken);
+                report = report with { CancelledForTranscode = report.Cancelled && _cancelledForTranscode, Suite = suite, SuiteStep = step, SuiteStartedUtc = suite is null ? null : started };
+                if (report.Cancelled)
+                {
+                    Log.SpeedCancelled(_logger, report.Results.Count);
+                    if (report.Results.Count == 0)
+                    {
+                        return ProbeRunResult.Completed;
+                    }
                 }
-            }
-            else
-            {
-                Log.SpeedCompleted(_logger, report.Results.Count);
+                else
+                {
+                    Log.SpeedCompleted(_logger, report.Results.Count);
+                }
+
+                await SpeedReportStore.WriteAsync(report, SpeedPath, CancellationToken.None);
+                await SaveSpeedHistoryAsync(report);
             }
 
-            await SpeedReportStore.WriteAsync(report, SpeedPath, CancellationToken.None);
-            await SaveSpeedHistoryAsync(report);
             return ProbeRunResult.Completed;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -956,7 +1049,7 @@ public sealed partial class ProbeService : IDisposable
                 _measuringSince = null;
             }
 
-            _status = _status with { State = ProbeState.Idle, LastCompletedUtc = _time.GetUtcNow(), Done = null, Total = null, Preparing = null };
+            _status = _status with { State = ProbeState.Idle, LastCompletedUtc = _time.GetUtcNow(), Done = null, Total = null, Preparing = null, Suite = null };
             _gate.Release();
         }
     }
