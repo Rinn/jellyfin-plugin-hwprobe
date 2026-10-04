@@ -29,6 +29,9 @@ public sealed record CapabilityReport(
     /// <summary>Gets the version of HwProbe that wrote the report; <c>unknown</c> for reports from before it was recorded.</summary>
     public string HwProbeVersion { get; init; } = "unknown";
 
+    /// <summary>Gets how long the probe took in seconds; 0 for reports from before it was recorded.</summary>
+    public double Seconds { get; init; }
+
     /// <summary>Gets the version of this HwProbe build, as reports record it.</summary>
     public static string CurrentHwProbeVersion { get; } = typeof(CapabilityReport).Assembly.GetName().Version?.ToString() ?? "unknown";
 }

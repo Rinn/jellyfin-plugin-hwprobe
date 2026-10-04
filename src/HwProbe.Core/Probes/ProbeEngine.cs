@@ -62,6 +62,7 @@ public sealed class ProbeEngine : IDisposable
     {
         ArgumentNullException.ThrowIfNull(options);
 
+        var started = _time.GetTimestamp();
         var ffmpeg = options.Ffmpeg.Path;
         Progress?.Report(new ProbeProgress("Checking ffmpeg", 0, 0));
         var caps = await new FfmpegCapabilityProbe(_runner, options.ProbeTimeout).ProbeAsync(ffmpeg, cancellationToken);
@@ -130,6 +131,7 @@ public sealed class ProbeEngine : IDisposable
             run.Probes)
         {
             HwProbeVersion = CapabilityReport.CurrentHwProbeVersion,
+            Seconds = _time.GetElapsedTime(started).TotalSeconds,
         };
 
         if (options.StopAfter == StopStage.Matrix)

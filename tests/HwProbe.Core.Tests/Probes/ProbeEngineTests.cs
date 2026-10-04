@@ -46,7 +46,7 @@ public sealed class ProbeEngineTests : IDisposable
         Assert.Equal(CapabilityReport.CurrentSchemaVersion, report.SchemaVersion);
     }
 
-    /// <summary>Every reported cell that launched ffmpeg has its run time, under its column and key.</summary>
+    /// <summary>Every reported cell that launched ffmpeg has its run time, under its column and key, and the report has the whole probe's.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
     public async Task EveryLaunchedCellHasItsRunTime()
@@ -62,6 +62,7 @@ public sealed class ProbeEngineTests : IDisposable
             .ToList();
         Assert.Equal(cells.Where(c => c.Value == ProbeOutcome.Pass).Select(c => c.Item1).Order(StringComparer.Ordinal), backend.Seconds.Keys.Order(StringComparer.Ordinal));
         Assert.DoesNotContain("decode:vc1", backend.Seconds.Keys);
+        Assert.True(report.Seconds > 0);
         Assert.All(backend.Seconds.Values, s => Assert.True(s >= 0));
     }
 

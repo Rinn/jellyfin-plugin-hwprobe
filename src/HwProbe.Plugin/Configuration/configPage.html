@@ -952,6 +952,10 @@
                     const scroll = el('div', null, 'hwprobe-scroll');
                     scroll.appendChild(table);
                     details.appendChild(scroll);
+                    if (r.seconds) {
+                        const minutes = Math.floor(r.seconds / 60);
+                        details.appendChild(el('div', 'Total duration: ' + (minutes ? minutes + ' min ' + Math.round(r.seconds % 60) + ' s' : r.seconds.toFixed(1) + ' s'), 'secondaryText'));
+                    }
                 }
 
                 function renderNotes() {
