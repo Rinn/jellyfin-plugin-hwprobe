@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.13.0.0",
+        "changelog": "Page polish: status icons, sortable full-width tables, collapsible sections, progress with time remaining, results hidden while a probe runs. Performance tests: live action samples at 1080p, 4K, and 8K; 3D animation 4K HDR (AV1 10-bit); per-test durations; concurrent streams must hold real time from the first frame. Same results whatever the server's or host's language.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.13.0/hwprobe-plugin_0.13.0.0.zip",
+        "checksum": "b9cb053096c8be37c8e7852fe59a4f53",
+        "timestamp": "2026-10-04T09:57:10Z"
+      },
+      {
         "version": "0.12.1.0",
         "changelog": "The plugin is shown as HwProbe again. Performance Tests lists what Encoding preset Auto becomes for each backend that works on the server.",
         "targetAbi": "12.1.0.0",
@@ -180,8 +188,8 @@
       }
     ],
     "name": "HwProbe",
-    "description": "Runs short test transcodes for each hardware acceleration option on the Transcoding and Trickplay pages. Shows which ones work, how to fix the ones that don't, and measures the performance of each. Recommended settings can be applied to Jellyfin's settings and reverted, or downloaded as a diagnostics zip to attach to an issue.",
-    "overview": "Tests which hardware transcoding options work on a Jellyfin server, and how fast each one transcodes",
+    "description": "Runs short test transcodes for each hardware acceleration backend and setting on the Transcoding and Trickplay pages. Shows which ones work, how to fix the ones that don't, and measures the performance of each. Recommended settings can be applied to Jellyfin's settings and reverted, or downloaded as a diagnostics zip to attach to an issue.",
+    "overview": "Tests which hardware transcoding backends work on a Jellyfin server, and how fast each one transcodes",
     "owner": "Rinn",
     "category": "General",
     "imageUrl": "https://raw.githubusercontent.com/Rinn/jellyfin-plugin-hwprobe/main/assets/plugin.png"
