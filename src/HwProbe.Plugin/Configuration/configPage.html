@@ -1011,7 +1011,7 @@
                         // A NotPresent row per adapter would repeat the same line.
                         .filter((r, i, all) => all.findIndex(o => o[0] === r[0] && o[1] === r[1] && o[2] === r[2]) === i)
                         .sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
-                    fold(results, 'Backends', true).appendChild(backendTable(viable.map(b => [b.type, b.device, tiers[b.tier] || 'Works', null, 'works']).concat(unavailable)));
+                    fold(results, 'Hardware acceleration backends', true).appendChild(backendTable(viable.map(b => [b.type, b.device, tiers[b.tier] || 'Works', null, 'works']).concat(unavailable)));
                     renderNotes();
                     renderDetails(report);
 
