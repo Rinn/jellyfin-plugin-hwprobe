@@ -86,6 +86,7 @@
             #HwProbeConfigPage .hwprobe-variant td:first-child { padding-left: 1.2em; }
             #HwProbeConfigPage .hwprobe-small { font-size: 0.85em; }
             #HwProbeConfigPage .hwprobe-file { word-break: break-all; }
+            #HwProbeConfigPage .emby-button.hwprobe-danger:not(:disabled) { color: var(--jf-palette-error-main, #c62828); }
             #HwProbeConfigPage th.hwprobe-sortable { cursor: pointer; user-select: none; }
             #HwProbeConfigPage th.hwprobe-sortable[aria-sort="ascending"]::after { content: " \25B2"; font-size: 0.7em; }
             #HwProbeConfigPage th.hwprobe-sortable[aria-sort="descending"]::after { content: " \25BC"; font-size: 0.7em; }
@@ -1082,7 +1083,7 @@
                         line.appendChild(idleAction('Delete', () => {
                             ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('HwProbe/Cache') })
                                 .then(render, () => { setMessage('Could not delete: a probe or performance test is using the cache.'); render(); });
-                        }));
+                        }, 'button-flat hwprobe-danger'));
                         const table = el('table');
                         row(table, [el('th', 'Contents'), el('th', 'File'), el('th', 'Size', 'hwprobe-num'), el('th', 'Written')]);
                         let folder = null;
@@ -1145,7 +1146,7 @@
                             .then(loadReport, () => { setMessage('Could not delete: a probe or performance test is running.'); loadReport(); });
                         const actions = el('div', null, 'hwprobe-row hwprobe-start');
                         container.appendChild(actions);
-                        actions.appendChild(idleAction('Delete', () => remove('HwProbe/SpeedHistory/' + runs.value)));
+                        actions.appendChild(idleAction('Delete', () => remove('HwProbe/SpeedHistory/' + runs.value), 'button-flat hwprobe-danger'));
                         if (speedHistory.length > 1) {
                             // Can't be undone, so the first press only asks.
                             let sure = false;
