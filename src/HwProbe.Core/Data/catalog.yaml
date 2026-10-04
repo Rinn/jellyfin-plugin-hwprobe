@@ -71,6 +71,25 @@ videos:
     height: 2160
     clip: { file: speed_2160p_hdr10.mkv, seconds: 10, codec: hevc, bitDepth: 10, hdr10: true, encoder: libx265, arguments: "{quiet} -f lavfi -i testsrc2=size=3840x2160:rate=24 {audio} -t 10 {x265} -pix_fmt yuv420p10le {hdr10} {audioOut}", generateMinutes: 10 }
   - <<: *sampleVideo
+    key: drama
+    name: Live action
+    frameRate: 25
+    height: 1080
+    audio: stereo Opus
+    sample:
+      title: Допрос (Interrogation)
+      credit: Допрос (Interrogation), Пайза, CC BY 3.0, via Wikimedia Commons
+      holder: Пайза
+      license: https://creativecommons.org/licenses/by/3.0/
+      licenseName: CC BY 3.0
+      source: https://commons.wikimedia.org/wiki/File:%D0%9A%D0%BE%D1%80%D0%BE%D1%82%D0%BA%D0%BE%D0%BC%D0%B5%D1%82%D1%80%D0%B0%D0%B6%D0%BD%D1%8B%D0%B9_%D1%84%D0%B8%D0%BB%D1%8C%D0%BC_%22%D0%94%D0%BE%D0%BF%D1%80%D0%BE%D1%81%22_(Short_Film).webm
+    # 8:18 to 8:33 of Commons' 1080p VP9 transcode: close-ups, then a street. Starting at 8:23 instead, -stream_loop can't seek back to the start (Operation not permitted).
+    clip:
+      <<: *sampleClip
+      file: sample_drama.webm
+      seconds: 15.5
+      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/4/4a/%D0%9A%D0%BE%D1%80%D0%BE%D1%82%D0%BA%D0%BE%D0%BC%D0%B5%D1%82%D1%80%D0%B0%D0%B6%D0%BD%D1%8B%D0%B9_%D1%84%D0%B8%D0%BB%D1%8C%D0%BC_%22%D0%94%D0%BE%D0%BF%D1%80%D0%BE%D1%81%22_%28Short_Film%29.webm/%D0%9A%D0%BE%D1%80%D0%BE%D1%82%D0%BA%D0%BE%D0%BC%D0%B5%D1%82%D1%80%D0%B0%D0%B6%D0%BD%D1%8B%D0%B9_%D1%84%D0%B8%D0%BB%D1%8C%D0%BC_%22%D0%94%D0%BE%D0%BF%D1%80%D0%BE%D1%81%22_%28Short_Film%29.webm.1080p.vp9.webm", headerLength: 933, start: 134619432, length: 5769968, sha256: a7efbf1760e832f6d98e068e088e6fa4c890e615b92d1e51f35e29cc5b06f670 }
+  - <<: *sampleVideo
     key: live-action
     name: Live-action + CGI
     # Films are wider than 16:9.
@@ -91,25 +110,6 @@ videos:
       file: sample_live_action.webm
       seconds: 10.1
       piece: { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/1/10/Tears_of_Steel_in_4k_-_Official_Blender_Foundation_release.webm/Tears_of_Steel_in_4k_-_Official_Blender_Foundation_release.webm.1080p.vp9.webm", headerLength: 530, start: 131614236, length: 2131288, sha256: 0da88a6b1572b095bac20cb490485652feee5ab7fc45e82438174871ce657e96 }
-  - <<: *sampleVideo
-    key: drama
-    name: Live action
-    frameRate: 25
-    height: 1080
-    audio: stereo Opus
-    sample:
-      title: Допрос (Interrogation)
-      credit: Допрос (Interrogation), Пайза, CC BY 3.0, via Wikimedia Commons
-      holder: Пайза
-      license: https://creativecommons.org/licenses/by/3.0/
-      licenseName: CC BY 3.0
-      source: https://commons.wikimedia.org/wiki/File:%D0%9A%D0%BE%D1%80%D0%BE%D1%82%D0%BA%D0%BE%D0%BC%D0%B5%D1%82%D1%80%D0%B0%D0%B6%D0%BD%D1%8B%D0%B9_%D1%84%D0%B8%D0%BB%D1%8C%D0%BC_%22%D0%94%D0%BE%D0%BF%D1%80%D0%BE%D1%81%22_(Short_Film).webm
-    # 8:18 to 8:33 of Commons' 1080p VP9 transcode: close-ups, then a street. Starting at 8:23 instead, -stream_loop can't seek back to the start (Operation not permitted).
-    clip:
-      <<: *sampleClip
-      file: sample_drama.webm
-      seconds: 15.5
-      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/4/4a/%D0%9A%D0%BE%D1%80%D0%BE%D1%82%D0%BA%D0%BE%D0%BC%D0%B5%D1%82%D1%80%D0%B0%D0%B6%D0%BD%D1%8B%D0%B9_%D1%84%D0%B8%D0%BB%D1%8C%D0%BC_%22%D0%94%D0%BE%D0%BF%D1%80%D0%BE%D1%81%22_%28Short_Film%29.webm/%D0%9A%D0%BE%D1%80%D0%BE%D1%82%D0%BA%D0%BE%D0%BC%D0%B5%D1%82%D1%80%D0%B0%D0%B6%D0%BD%D1%8B%D0%B9_%D1%84%D0%B8%D0%BB%D1%8C%D0%BC_%22%D0%94%D0%BE%D0%BF%D1%80%D0%BE%D1%81%22_%28Short_Film%29.webm.1080p.vp9.webm", headerLength: 933, start: 134619432, length: 5769968, sha256: a7efbf1760e832f6d98e068e088e6fa4c890e615b92d1e51f35e29cc5b06f670 }
   - <<: *sampleVideo
     key: digital-animation
     name: 3D animation
