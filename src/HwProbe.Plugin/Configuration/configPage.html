@@ -88,6 +88,7 @@
             #HwProbeConfigPage th.hwprobe-sortable[aria-sort="ascending"]::after { content: " \25B2"; font-size: 0.7em; }
             #HwProbeConfigPage th.hwprobe-sortable[aria-sort="descending"]::after { content: " \25BC"; font-size: 0.7em; }
             #HwProbeConfigPage .hwprobe-emoji { font-size: 1em; line-height: 1; }
+            #HwProbeConfigPage .hwprobe-notes { margin: 0; padding-left: 1.4em; }
             #HwProbeConfigPage .selectContainer .hwprobe-notes { margin: 0 14px; padding-left: 1.4em; }
             #HwProbeConfigPage .hwprobe-progress { position: relative; width: 16em; }
             #hwprobeCard, #HwProbeConfigPage .hwprobe-progress-card { position: relative; }
@@ -1417,6 +1418,32 @@
                     return a;
                 }
 
+                // A line of an input's details: what it is on the left, a small note on the right.
+                function inputEntry(left, right) {
+                    const row = el('div', null, 'hwprobe-row');
+                    row.appendChild(left);
+                    row.appendChild(el('span', right, 'hwprobe-small secondaryText'));
+                    return row;
+                }
+
+                // A catalog video as a list item: its name and what it shows, its format, and for a sample its credit and download.
+                function videoItem(v) {
+                    const line = el('li');
+                    const name = el('span', v.Name + (v.SourceUrl || v.Description ? ': ' : ''));
+                    name.appendChild(v.SourceUrl ? externalLink(v.Title, v.ArticleUrl || v.SourceUrl) : document.createTextNode(v.Description || ''));
+                    line.appendChild(inputEntry(name, v.Input));
+                    if (v.SourceUrl) {
+                        const credit = el('span', null, 'hwprobe-small');
+                        credit.appendChild(v.HolderUrl ? externalLink(v.CreditHolder, v.HolderUrl) : document.createTextNode(v.CreditHolder));
+                        credit.appendChild(document.createTextNode(', '));
+                        credit.appendChild(externalLink(v.LicenseName, v.LicenseUrl));
+                        const download = inputEntry(credit, v.Origin + ', ');
+                        download.lastElementChild.appendChild(externalLink('Wikimedia Commons', v.SourceUrl));
+                        line.appendChild(download);
+                    }
+                    return line;
+                }
+
                 // The catalog's videos in its order, with the library video before the first test video.
                 function inputOrder() {
                     const tests = speedVideos.findIndex(v => !v.SourceUrl);
@@ -1431,31 +1458,8 @@
                         target.appendChild(libraryCell(update));
                     }
                     const list = el('ul', null, 'fieldDescription hwprobe-notes');
-                    // Each input: its name and what it shows on the left, its format on the right; a sample adds its credit and download.
-                    const entry = (left, right) => {
-                        const row = el('div', null, 'hwprobe-row');
-                        row.appendChild(left);
-                        row.appendChild(el('span', right, 'hwprobe-small secondaryText'));
-                        return row;
-                    };
-                    const videoLine = v => {
-                        const line = el('li');
-                        const name = el('span', v.Name + (v.SourceUrl || v.Description ? ': ' : ''));
-                        name.appendChild(v.SourceUrl ? externalLink(v.Title, v.ArticleUrl || v.SourceUrl) : document.createTextNode(v.Description || ''));
-                        line.appendChild(entry(name, v.Input));
-                        if (v.SourceUrl) {
-                            const credit = el('span', null, 'hwprobe-small');
-                            credit.appendChild(v.HolderUrl ? externalLink(v.CreditHolder, v.HolderUrl) : document.createTextNode(v.CreditHolder));
-                            credit.appendChild(document.createTextNode(', '));
-                            credit.appendChild(externalLink(v.LicenseName, v.LicenseUrl));
-                            const download = entry(credit, v.Origin + ', ');
-                            download.lastElementChild.appendChild(externalLink('Wikimedia Commons', v.SourceUrl));
-                            line.appendChild(download);
-                        }
-                        list.appendChild(line);
-                    };
                     for (const v of inputOrder().filter(v => v !== 'library' && chosenVideos.has(v.Key))) {
-                        videoLine(v);
+                        list.appendChild(videoItem(v));
                     }
                     if (chosenVideos.has('library') && libraryVideo) {
                         const line = el('li');
@@ -1463,7 +1467,7 @@
                         const link = el('a', speedItem.Name, 'button-link');
                         link.href = '#/details?id=' + speedItem.Id + '&serverId=' + ApiClient.serverId();
                         name.appendChild(link);
-                        line.appendChild(entry(name, libraryVideo.Input));
+                        line.appendChild(inputEntry(name, libraryVideo.Input));
                         list.appendChild(line);
                     }
                     if (list.childElementCount) {
@@ -1825,23 +1829,26 @@
                         div.appendChild(el('div', 'The highlighted cell keeps up with the most concurrent streams, then is the fastest, for the row.', 'fieldDescription'));
                     }
 
-                    const credits = new Map();
+                    // The samples a run used, listed as on Performance Tests; a sample no longer in the catalog keeps the credit it was saved with.
+                    const samples = el('ul', null, 'fieldDescription hwprobe-notes');
+                    const listed = new Set();
                     for (const x of r.results) {
-                        if (x.credit) {
-                            credits.set(x.credit, x.licenseUrl);
+                        const v = speedVideos.find(o => o.Key === x.test.split('|')[0]);
+                        const key = v ? v.Key : x.credit;
+                        if (!x.credit || listed.has(key)) {
+                            continue;
+                        }
+                        listed.add(key);
+                        if (v) {
+                            samples.appendChild(videoItem(v));
+                        } else {
+                            const line = el('li', x.credit + ', ');
+                            line.appendChild(externalLink('licence', x.licenseUrl));
+                            samples.appendChild(line);
                         }
                     }
-                    if (credits.size) {
-                        const line = el('div', 'Samples: ', 'fieldDescription');
-                        [...credits].forEach(([credit, url], i) => {
-                            line.appendChild(document.createTextNode((i ? '; ' : '') + credit + ' ('));
-                            const link = el('a', 'licence', 'button-link');
-                            link.href = url;
-                            link.target = '_blank';
-                            line.appendChild(link);
-                            line.appendChild(document.createTextNode(')'));
-                        });
-                        div.appendChild(line);
+                    if (samples.childElementCount) {
+                        fold(div, 'Samples', false, 'h3').appendChild(samples);
                     }
                     if (r.settings) {
                         const used = fold(div, 'Settings used', false, 'h3');
@@ -1914,6 +1921,10 @@
                         seconds = s.MeasuringSeconds / done * remaining;
                     } else {
                         const per = methodSeconds[speedLive ? speedLive.method : speedMethod] || methodSeconds[defaultMethod];
+                        // A page opened mid-run polls before the catalog loads.
+                        if (!per) {
+                            return '';
+                        }
                         seconds = remaining * (per[0] + per[1]) / 2 * (speedLive && speedLive.repeats ? speedLive.repeats : 1);
                     }
                     const minutes = Math.round(seconds / 60);
@@ -2021,9 +2032,9 @@
                             if (s.Activity === 'Speed') {
                                 speedProgress = s;
                                 ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedProgress'), dataType: 'json' })
-                                    .then(r => { speedLive = r; }, () => {}).then(() => renderSpeedResults(true)).then(() => { clearTimeout(pollTimer); pollTimer = setTimeout(loadStatus, 250); });
+                                    .then(r => { speedLive = r; }, () => {}).then(() => renderSpeedResults(true)).then(schedulePoll);
                             } else {
-                                clearTimeout(pollTimer); pollTimer = setTimeout(loadStatus, 250);
+                                schedulePoll();
                             }
                             return;
                         }
@@ -2037,8 +2048,17 @@
                     });
                 }
 
-                page.addEventListener('pageshow', loadStatus);
-                page.addEventListener('pagehide', () => { clearTimeout(pollTimer); closeMenu(); });
+                // A request in flight when the page is left would otherwise schedule the next poll.
+                let pageShown = false;
+                function schedulePoll() {
+                    clearTimeout(pollTimer);
+                    if (pageShown) {
+                        pollTimer = setTimeout(loadStatus, 250);
+                    }
+                }
+
+                page.addEventListener('pageshow', () => { pageShown = true; loadStatus(); });
+                page.addEventListener('pagehide', () => { pageShown = false; clearTimeout(pollTimer); closeMenu(); });
             })();
         </script>
     </div>
