@@ -1898,7 +1898,7 @@
                                 renderCard();
                             }
                             speedUpdate();
-                            pollTimer = setTimeout(loadStatus, s.Activity === 'Speed' ? 3000 : 1000);
+                            pollTimer = setTimeout(loadStatus, 1000);
                             // A page opened mid-run still needs its first render.
                             if (!loaded) {
                                 loaded = true;
