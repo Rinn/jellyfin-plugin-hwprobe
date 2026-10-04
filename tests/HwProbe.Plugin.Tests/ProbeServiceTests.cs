@@ -273,7 +273,7 @@ public sealed class ProbeServiceTests : IDisposable
         var running = SpeedReportStore.Deserialize(service.RunningSpeedJson()!)!;
         Assert.Equal([(false, 12), (true, (int?)null)], running.Results.Select(r => (r.Pending, r.Streams)));
         Assert.Equal(SpeedPhase.Measuring, service.Status.Phase);
-        Assert.NotNull(service.Status.MeasuringSeconds);
+        Assert.NotNull(service.Status.ElapsedSeconds);
 
         Assert.True(service.PauseSpeed(true));
         Assert.Equal(SpeedPhase.Pausing, service.Status.Phase);

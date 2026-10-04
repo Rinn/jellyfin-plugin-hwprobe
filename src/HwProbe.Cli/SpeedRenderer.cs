@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Speed;
 
@@ -8,9 +9,6 @@ namespace Jellyfin.Plugin.HwProbe.Cli;
 /// <summary>Renders a speed report as plain text: a summary per transcode, then a table.</summary>
 internal static class SpeedRenderer
 {
-    // Runs of the same command vary by a few percent, so smaller differences aren't shown as one.
-    private const double Noise = 0.05;
-
     private static readonly string[] _headers = ["TYPE", "DEVICE", "TEST", "COMPARED", "STREAMS", "SPEED", "FPS", "CHANGE", "NOTE"];
 
     /// <summary>Renders the report.</summary>
@@ -65,6 +63,17 @@ internal static class SpeedRenderer
         return text.ToString();
     }
 
+    /// <summary>Names a backend.</summary>
+    /// <param name="type">The backend.</param>
+    /// <returns>Its name, or <c>software</c>.</returns>
+    internal static string Name(HwType type) => type == HwType.none ? "software" : type.ToString();
+
+    /// <summary>Formats a stream count.</summary>
+    /// <param name="result">The result.</param>
+    /// <returns><c>≈N</c>, <c>N+</c> at the cap, or <c>-</c>.</returns>
+    internal static string Streams(SpeedResult result) =>
+        result.Streams is not { } streams ? "-" : result.Capped ? string.Create(CultureInfo.InvariantCulture, $"{streams}+") : string.Create(CultureInfo.InvariantCulture, $"~{streams}");
+
     /// <summary>Formats one result.</summary>
     /// <param name="result">The result.</param>
     /// <param name="baseFps">The base settings' fps for a comparison row, or null for a base row.</param>
@@ -108,17 +117,6 @@ internal static class SpeedRenderer
         });
     }
 
-    /// <summary>Names a backend.</summary>
-    /// <param name="type">The backend.</param>
-    /// <returns>Its name, or <c>software</c>.</returns>
-    private static string Name(HwType type) => type == HwType.none ? "software" : type.ToString();
-
-    /// <summary>Formats a stream count.</summary>
-    /// <param name="result">The result.</param>
-    /// <returns><c>≈N</c>, <c>N+</c> at the cap, or <c>-</c>.</returns>
-    private static string Streams(SpeedResult result) =>
-        result.Streams is not { } streams ? "-" : result.Capped ? string.Create(CultureInfo.InvariantCulture, $"{streams}+") : string.Create(CultureInfo.InvariantCulture, $"~{streams}");
-
     /// <summary>Formats a comparison's change in speed.</summary>
     /// <param name="fps">The comparison's fps.</param>
     /// <param name="baseFps">The base fps.</param>
@@ -131,6 +129,6 @@ internal static class SpeedRenderer
         }
 
         var change = (value / baseline) - 1;
-        return Math.Abs(change) < Noise ? "same" : change.ToString("+0%;-0%", CultureInfo.InvariantCulture);
+        return Math.Abs(change) < Catalog.Default.Advice.Noise ? "same" : change.ToString("+0%;-0%", CultureInfo.InvariantCulture);
     }
 }

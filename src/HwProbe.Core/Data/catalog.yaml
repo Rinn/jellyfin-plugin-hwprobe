@@ -6,7 +6,8 @@ vars:
   # The test videos copy one 5.1 AAC track, made once.
   audio: "-i {clip:speed_audio_51.mka}"
   audioOut: -map 0:v -map 1:a -c:a copy
-  hdr10: -color_primaries bt2020 -color_trc smpte2084 -colorspace bt2020nc
+  # Tagged on the frames: jellyfin-ffmpeg 8.1 drops -color_primaries and -color_trc given as output options, which leaves the clip SDR to decoders and tone mapping.
+  hdr10: -vf setparams=color_primaries=bt2020:color_trc=smpte2084:colorspace=bt2020nc
   testSource: "{quiet} -f lavfi -i testsrc2=size=1920x1080:rate=24 {audio} -t 10"
   x265: -c:v libx265 -preset medium -x265-params log-level=error
 
@@ -200,6 +201,159 @@ videos:
       audioChannels: 2
       piece: { url: "https://upload.wikimedia.org/wikipedia/commons/4/44/Sol_Levante.webm", headerLength: 1022, start: 563867512, length: 21230224, sha256: d1d4c263e3ab895dad850c4110e9161f563414ca5c4609ae095434d4911ac8ae }
       keepAcrossBuilds: true
+  - key: sports-576i
+    name: Sports, interlaced SD
+    legacy: true
+    frameRate: 25
+    width: 720
+    height: 576
+    audio: 5.1 AC-3
+    sample:
+      title: Bolshoy Ice Dome during XXII Winter Olympics
+      credit: Bolshoy Ice Dome during XXII Winter Olympics, Voltmetro, CC0, via Wikimedia Commons
+      holder: Voltmetro
+      holderUrl: https://commons.wikimedia.org/wiki/User:Voltmetro
+      article: https://en.wikipedia.org/wiki/Ice_hockey_at_the_2014_Winter_Olympics_%E2%80%93_Men%27s_tournament
+      license: https://creativecommons.org/publicdomain/zero/1.0/
+      licenseName: CC0 1.0
+      source: https://commons.wikimedia.org/wiki/File:2014-02-14_-_Bolshoy_Ice_Dome_during_XXII_Winter_Olympics.mpg
+    # Commons' original, used whole: a camcorder's MPEG-2 576i (top field first, 16:9 anamorphic) with 5.1 AC-3, as DVDs and SD TV recordings are.
+    clip:
+      file: sample_sports_576i.mpg
+      seconds: 9.6
+      codec: mpeg2video
+      interlaced: true
+      audioCodec: ac3
+      audioChannels: 6
+      keepAcrossBuilds: true
+      download: "https://upload.wikimedia.org/wikipedia/commons/b/bb/2014-02-14_-_Bolshoy_Ice_Dome_during_XXII_Winter_Olympics.mpg"
+      sha256: 137265646230688007039c8a9bfd46bd1452d217404b5fa119a9bbd5c2f87a98
+  - key: theora-240p
+    name: Compact camera, Theora
+    legacy: true
+    frameRate: 30
+    width: 320
+    height: 240
+    audio: mono Vorbis
+    sample:
+      title: Arrival St-Pancras International 01
+      credit: Arrival St-Pancras International 01, Clicsouris, CC BY-SA 3.0, via Wikimedia Commons
+      holder: Clicsouris
+      holderUrl: https://commons.wikimedia.org/wiki/User:Clicsouris
+      article: https://en.wikipedia.org/wiki/St_Pancras_railway_station
+      license: https://creativecommons.org/licenses/by-sa/3.0/
+      licenseName: CC BY-SA 3.0
+      source: https://commons.wikimedia.org/wiki/File:Arrival_St-Pancras_International_01.ogv
+    # 24.6 to 34.1 s of Commons' original: a compact camera's soft, blocky 320x240 Theora from a Eurostar window, which no GPU decodes.
+    clip:
+      file: sample_theora_240p.ogv
+      seconds: 9.7
+      codec: theora
+      audioCodec: vorbis
+      audioChannels: 1
+      keepAcrossBuilds: true
+      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/6/6d/Arrival_St-Pancras_International_01.ogv", headerLength: 6342, start: 2951044, length: 1159010, sha256: 0537755506ec11b585cc4020d16a89f5ca6f19159249d0f6371ea4b4e8b2aa7b }
+  - key: xvid-240p
+    name: Night street, Xvid AVI
+    legacy: true
+    frameRate: 29.97
+    width: 360
+    height: 240
+    audio: stereo MP3
+    sample:
+      title: 41th Sao Paulo Critical Mass - Carnival
+      credit: 41th Sao Paulo Critical Mass - Carnival, luddista, public domain, via the Internet Archive
+      holder: luddista
+      article: https://en.wikipedia.org/wiki/Critical_Mass_(cycling)
+      license: https://creativecommons.org/licenses/publicdomain/
+      licenseName: Public domain
+      source: https://archive.org/details/41th_Sao_Paulo_Critical_Mass-Carnival
+      sourceName: Internet Archive
+    # 96.6 to 106.6 s of the original upload: dark, noisy MPEG-4 ASP with packed B-frames in AVI, as old DivX and Xvid files are; the header runs to the movi list.
+    clip:
+      file: sample_xvid_240p.avi
+      seconds: 10
+      codec: mpeg4
+      audioCodec: mp3
+      audioChannels: 2
+      keepAcrossBuilds: true
+      piece: { url: "https://archive.org/download/41th_Sao_Paulo_Critical_Mass-Carnival/41th_Sao_Paulo_Critical_Mass-Carnival_xvid.avi", headerLength: 10252, start: 7926814, length: 919492, sha256: 2ae67f057fef607a47afcddc8b741a5e05dc382ed62fb808a369f683a50fd362 }
+  - key: flv-280p
+    name: Bar, Flash video
+    legacy: true
+    frameRate: 12
+    width: 394
+    height: 281
+    audio: mono MP3
+    sample:
+      title: malecon
+      credit: malecon, sin complejos, CC BY 2.5, via the Internet Archive
+      holder: sin complejos
+      license: https://creativecommons.org/licenses/by/2.5/
+      licenseName: CC BY 2.5
+      source: https://archive.org/details/sincomplejosmalecon
+      sourceName: Internet Archive
+    # The original upload, used whole: 2000s web video, Sorenson Spark (an H.263 variant) at 12 fps with 11 kHz MP3, which no GPU decodes.
+    clip:
+      file: sample_flv_280p.flv
+      seconds: 30.3
+      codec: flv1
+      audioCodec: mp3
+      audioChannels: 1
+      keepAcrossBuilds: true
+      download: "https://archive.org/download/sincomplejosmalecon/malecon.flv"
+      sha256: 633ad92483f0b9561e5c0682b41104704abad424189618b2c95486fce55b1201
+  - key: realvideo-240p
+    name: Public access TV, RealVideo
+    legacy: true
+    frameRate: 25
+    width: 320
+    height: 240
+    audio: mono Cook
+    sample:
+      title: "Forum der Nichtarbeit: kein Gespraech im OKB"
+      credit: "Forum der Nichtarbeit: kein Gespraech im OKB, Forum der Nichtarbeit, public domain, via the Internet Archive"
+      holder: Forum der Nichtarbeit
+      license: https://creativecommons.org/licenses/publicdomain/
+      licenseName: Public domain
+      source: https://archive.org/details/ForumderNichtarbeit_keinGespraech
+      sourceName: Internet Archive
+    # The original upload, used whole: RealVideo 3 with Cook audio in RealMedia, as old streaming archives are.
+    clip:
+      file: sample_realvideo_240p.rm
+      seconds: 81.7
+      codec: rv30
+      audioCodec: cook
+      audioChannels: 1
+      keepAcrossBuilds: true
+      download: "https://archive.org/download/ForumderNichtarbeit_keinGespraech/keinInterviewimOKB.rm"
+      sha256: a9fb0fbbe373bcbe3b167730f05d7caae60a568c46c4fa92c61c6cc90958edf6
+  - key: wmv-480p
+    name: City square, WMV
+    legacy: true
+    frameRate: 30
+    width: 640
+    height: 480
+    audio: stereo WMA
+    sample:
+      title: Dam Square 2
+      credit: Dam Square 2, Adam Wojtanek, CC BY 2.5, via the Internet Archive
+      holder: Adam Wojtanek
+      article: https://en.wikipedia.org/wiki/Dam_Square
+      license: https://creativecommons.org/licenses/by/2.5/
+      licenseName: CC BY 2.5
+      source: https://archive.org/details/DamSquare2
+      sourceName: Internet Archive
+    # The original upload, used whole: Windows Media Video 9 with WMA 2 audio.
+    clip:
+      file: sample_wmv_480p.wmv
+      seconds: 24.2
+      codec: wmv3
+      audioCodec: wmav2
+      audioChannels: 2
+      keepAcrossBuilds: true
+      download: "https://archive.org/download/DamSquare2/DamSquare2.wmv"
+      sha256: 6031b1b6ef150b856fd2b310cfd84263e2fa074eb62c11f69e3b8ab062d947c6
   - <<: *testVideo
     key: pattern
     name: Test video, H.264
@@ -370,7 +524,8 @@ options:
       - { key: "15", label: "15" }
       - { key: "16", label: "16" }
       - { key: "0", label: Max }
-  - { key: AudioVbr, label: Enable VBR audio encoding, server: EnableAudioVbr, switch: true }
+  # caveat: jellyfin-web's own warning (LabelEnableAudioVbrHelp), shown with any suggestion to change it.
+  - { key: AudioVbr, label: Enable VBR audio encoding, server: EnableAudioVbr, switch: true, qualityOrder: ["true", "false"], caveat: "In some rare cases VBR may cause buffering and compatibility issues." }
   # Downmixing only changes transcoded 5.1 audio.
   - key: DownmixBoost
     label: Audio boost when downmixing
@@ -459,7 +614,7 @@ links:
 suites:
   - key: presets
     name: Encoder presets
-    description: Jellyfin's default preset and four common ones, to find the slowest that still keeps real time with headroom.
+    description: Encodes H.264 and HEVC at each encoder preset.
     videos: [drama]
     outputs: [h264-8mbps, hevc-8mbps]
     steps:
@@ -470,29 +625,48 @@ suites:
       - { label: slow, options: { EncoderPreset: slow } }
   - key: quality
     name: Quality ladder
-    description: H.264 and HEVC at common player qualities, to show how many streams keep up at each.
+    description: Encodes H.264 and HEVC at each player quality.
     videos: [drama]
     outputs: [h264-40mbps, h264-20mbps, h264-8mbps, h264-4mbps, h264-1.5mbps, hevc-40mbps, hevc-20mbps, hevc-8mbps, hevc-4mbps, hevc-1.5mbps]
     steps:
-      - { label: Every quality }
+      - { label: "40, 20, 8, 4, and 1.5 Mbps" }
+  - key: decode
+    name: Decoding
+    description: Decodes every input codec on the configured backend and in software.
+    videos: [pattern, pattern-hevc, pattern-hevc10, pattern-vp9, pattern-av1, pattern-4k-hdr]
+    outputs: [decode]
+    steps:
+      - { label: "H.264, HEVC, HEVC 10-bit, VP9, AV1, and 4K HDR HEVC" }
+  - key: legacy
+    name: Legacy formats
+    description: Transcodes legacy, low-quality inputs to H.264.
+    videos: [sports-576i, theora-240p, xvid-240p, flv-280p, realvideo-240p, wmv-480p]
+    outputs: [decode, h264-4mbps]
+    steps:
+      - { label: "MPEG-2 576i, Theora, Xvid AVI, Flash video, RealVideo, and WMV" }
   - key: tonemap
     name: Tone mapping
-    description: HDR video to SDR with tone mapping on and off, to show what HDR costs.
-    videos: [pattern-4k-hdr, digital-animation-4k]
+    description: Encodes HDR video to H.264 with each tone-mapping method Jellyfin offers on this backend, and with tone mapping off.
+    videos: [digital-animation-4k]
     outputs: [h264-8mbps]
+    # Jellyfin uses VPP tone mapping on Intel and VideoToolbox tone mapping on Apple when they're on, else the general method (OpenCL, CUDA, Metal, Vulkan, or software); EncodingHelper, v12.1. Each method step leaves the general one on, so software still tone maps.
     steps:
-      - { label: Tone mapping on, options: { Tonemap: "true" } }
-      - { label: Tone mapping off, options: { Tonemap: "false" } }
+      - { label: Tone mapping, options: { Tonemap: "true", VppTonemap: "false", VideoToolboxTonemap: "false" } }
+      - { label: VPP tone mapping, backends: [qsv, vaapi], options: { Tonemap: "true", VppTonemap: "true", VideoToolboxTonemap: "false" } }
+      - { label: VideoToolbox tone mapping, backends: [videotoolbox], options: { Tonemap: "true", VppTonemap: "false", VideoToolboxTonemap: "true" } }
+      - { label: Tone mapping off, options: { Tonemap: "false", VppTonemap: "false", VideoToolboxTonemap: "false" } }
   - key: threads
     name: Thread count
-    description: Software encoding at each thread limit, to see whether fewer threads per transcode fit more streams.
+    description: Encodes H.264 and HEVC in software at each thread limit.
     videos: [drama]
     outputs: [h264-8mbps, hevc-8mbps]
     backends: software
     threadSteps: true
+    threadLabel: "{n} threads"
+    threadLabelOne: 1 thread
   - key: lowpower
     name: Intel low power
-    description: QSV's low-power encoders on and off.
+    description: Encodes H.264 and HEVC on QSV with low power on and off.
     videos: [drama]
     outputs: [h264-8mbps, hevc-8mbps]
     backends: configured
@@ -500,19 +674,34 @@ suites:
     steps:
       - { label: Low power off, options: { QsvLowPowerH264: "false", QsvLowPowerHevc: "false" } }
       - { label: Low power on, options: { QsvLowPowerH264: "true", QsvLowPowerHevc: "true" } }
-  - key: extras
-    name: Extras
-    description: What subtitle burn-in, deinterlacing, and VBR audio add to a transcode, each against a plain one.
+  - key: subtitles
+    name: Subtitle burn-in
+    description: Encodes H.264 with no subtitles, then text and PGS subtitles burned in.
+    # Burn-in is the client's choice, so no server setting is compared; the labels are jellyfin-web's (en-us.json).
+    note: "Burn-in costs speed, so avoid it where possible: keep Allow subtitle extraction on the fly on (Transcoding), and in clients set Burn subtitles to Auto, turn on Experimental PGS and VobSub subtitle rendering where offered, and leave Always burn in subtitle when transcoding off."
     videos: [drama]
     outputs: [h264-8mbps]
     steps:
-      - { label: Plain }
-      - { label: Text subtitles, options: { BurnIn: text } }
-      - { label: PGS subtitles, options: { BurnIn: image } }
-      - { label: VBR audio, options: { AudioVbr: "true" } }
-      - { label: YADIF, videos: [pattern-1080i], options: { DeinterlaceMethod: yadif } }
-      - { label: BWDIF, videos: [pattern-1080i], options: { DeinterlaceMethod: bwdif } }
-      - { label: BWDIF double rate, videos: [pattern-1080i], options: { DeinterlaceMethod: bwdif, DoubleRate: "true" } }
+      - { label: None, options: { BurnIn: none } }
+      - { label: Text, options: { BurnIn: text } }
+      - { label: PGS, options: { BurnIn: image } }
+  - key: deinterlace
+    name: Deinterlacing
+    description: Encodes interlaced video to H.264 with each deinterlacing method.
+    videos: [sports-576i]
+    outputs: [h264-8mbps]
+    steps:
+      - { label: YADIF, options: { DeinterlaceMethod: yadif } }
+      - { label: BWDIF, options: { DeinterlaceMethod: bwdif } }
+      - { label: BWDIF double rate, options: { DeinterlaceMethod: bwdif, DoubleRate: "true" } }
+  - key: audio
+    name: VBR audio
+    description: Encodes H.264 with stereo AAC audio, with VBR audio encoding off and on.
+    videos: [drama]
+    outputs: [h264-8mbps]
+    steps:
+      - { label: VBR off, options: { Audio: transcode, AudioVbr: "false" } }
+      - { label: VBR on, options: { Audio: transcode, AudioVbr: "true" } }
 
 # What a run does when the server starts transcoding for a player; keyed by TranscodeAction.
 whenTranscoding:
@@ -521,6 +710,36 @@ whenTranscoding:
   - { key: Cancel, label: Cancel the test }
 
 defaultWhenTranscoding: Pause
+
+# Whether runs measure resource usage when the page or CLI doesn't say. Only the single copy is sampled, every 200 ms.
+defaultMeasureResources: true
+
+# Thresholds the suggestions, the page, and the CLI judge measurements by.
+advice:
+  # Runs of the same command vary by a few percent, so smaller differences count as alike.
+  noise: 0.05
+  # A better-quality value is suggested only while it keeps this multiple of real time on real video,
+  headroom: 1.5
+  # and loses no more than this share of concurrent streams.
+  maxStreamLoss: 0.25
+  # A resource counts as saved, or as costing more, from this share's difference.
+  resourceMargin: 0.10
+
+# Test suites count concurrent streams, which their comparisons use, without Thorough's length.
+suiteMethod: Confirm
+
+softwareName: Software
+
+# Measured resources, as suggestions name them.
+resourceNames: { Cpu: CPU, Memory: memory, Gpu: GPU, GpuMemory: GPU memory }
+
+# Server settings suggestions change that aren't run options; labels and caveats are jellyfin-web's (en-us.json).
+labels:
+  RemoteClientBitrateLimit: Internet streaming bitrate limit
+  RemoteClientBitrateLimitCaveat: Applies to devices outside the network only, lowering their picture quality; Jellyfin notes it can raise the server's load by transcoding streams that could otherwise play directly.
+
+# Input codecs as the page and CLI name them, keyed by ffmpeg's codec name; others are shown upper-cased.
+codecNames: { h264: H.264, hevc: HEVC, av1: AV1, vp9: VP9, vp8: VP8, mpeg2video: MPEG-2, mpeg4: MPEG-4, vc1: VC-1, theora: Theora, flv1: Sorenson Spark, rv30: RealVideo 3, rv40: RealVideo 4, wmv3: WMV 9 }
 
 # Seconds per measurement; no value for no limit.
 timeLimits:

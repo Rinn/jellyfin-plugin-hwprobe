@@ -8,11 +8,8 @@ namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 /// <remarks>Software is never suggested over hardware: a GPU encoder draws less power for the same work.</remarks>
 public static class SpeedAdvisor
 {
-    /// <summary>Differences smaller than this are run-to-run noise, as the page treats them.</summary>
-    public const double Noise = 0.05;
-
-    /// <summary>A higher-quality value is suggested only when it keeps at least this multiple of real time, leaving room for a second stream or a busy server.</summary>
-    public const double Headroom = 1.5;
+    /// <summary>The setting a bitrate-limit suggestion names: Jellyfin's Internet streaming bitrate limit, in bits per second.</summary>
+    public const string BitrateLimitKey = "RemoteClientBitrateLimit";
 
     /// <summary>The settings a run records, by catalog option key, with the value it used; Audio and BurnIn describe the client, not the server, so they're left out.</summary>
     private static readonly Dictionary<string, Func<SpeedSettings, string>> _values = new(StringComparer.Ordinal)
@@ -40,6 +37,15 @@ public static class SpeedAdvisor
         ["DeinterlaceMethod"] = s => s.Bwdif ? "bwdif" : "yadif",
         ["DoubleRate"] = s => Flag(s.DoubleRate),
     };
+
+    /// <summary>Gets the share under which two speeds count as alike.</summary>
+    public static double Noise => Catalog.Default.Advice.Noise;
+
+    /// <summary>Gets the share of concurrent streams a better-quality value may cost and still be suggested.</summary>
+    public static double MaxStreamLoss => Catalog.Default.Advice.MaxStreamLoss;
+
+    /// <summary>Gets the multiple of real time a better-quality value must keep on real video.</summary>
+    public static double Headroom => Catalog.Default.Advice.Headroom;
 
     /// <summary>Gets the catalog option keys a suggestion can set.</summary>
     public static IReadOnlyCollection<string> Settings => _values.Keys;
@@ -75,20 +81,28 @@ public static class SpeedAdvisor
             var best = winners.GroupBy(r => (r.Type, r.Device)).OrderByDescending(g => g.Count()).First();
 
             // On software, any working hardware backend is suggested, however it compares: it draws less power for the same work.
-            // On hardware, only outputs where the configured backend was measured too, and lost by more than noise; QSV over VAAPI also where they measured alike.
+            // On hardware, only outputs where the configured backend was measured too, and lost by more than noise; where they measured alike, QSV over VAAPI and a backend that is more efficient.
             SpeedResult? Mine(SpeedResult w) => measured.FirstOrDefault(r => r.Test == w.Test && Configured(r));
-            bool Beats(SpeedResult w, SpeedResult mine) => Gain(w, mine) > Noise || (BackendPreference.IsPreferredOver(w, mine) && Gain(w, mine) >= -Noise && (w.Streams ?? -1) >= (mine.Streams ?? -1));
+            bool Alike(SpeedResult w, SpeedResult mine) => Gain(w, mine) >= -Noise && Gain(w, mine) <= Noise && (w.Streams ?? -1) >= (mine.Streams ?? -1);
+            bool Beats(SpeedResult w, SpeedResult mine) => Gain(w, mine) > Noise || (Alike(w, mine) && (BackendPreference.IsPreferredOver(w, mine) || ResourceComparison.Savings(w, mine).Count > 0));
             List<SpeedResult> beaten = type == HwType.none ? [.. best] : [.. best.Where(w => Mine(w) is { } mine && Beats(w, mine))];
             if ((best.Key.Type != type || (!string.IsNullOrEmpty(device) && best.Key.Device != device)) && beaten.Count > 0)
             {
+                var alike = type != HwType.none && beaten.All(w => Gain(w, Mine(w)!) <= Noise);
                 suggestions.Add(new SpeedSuggestion(SpeedSuggestionKind.FastestBackend, [.. beaten.Select(r => Label(r, shown.Settings))])
                 {
                     Type = best.Key.Type,
                     Device = best.Key.Device,
                     TestVideosOnly = beaten.All(IsGenerated),
-                    Preferred = type != HwType.none && beaten.All(w => Gain(w, Mine(w)!) <= Noise),
+                    Preferred = alike && beaten.All(w => BackendPreference.IsPreferredOver(w, Mine(w)!)),
+                    Savings = alike ? Common(beaten.Select(w => ResourceComparison.Savings(w, Mine(w)!))) : [],
                 });
             }
+        }
+
+        if (BitrateLimit([.. measured.Where(Configured)], shown.Settings) is { } limit)
+        {
+            suggestions.Add(limit with { Type = type, Device = device });
         }
 
         // A test video that falls behind means real video will too: test videos encode faster.
@@ -123,7 +137,7 @@ public static class SpeedAdvisor
     private static IEnumerable<SpeedSuggestion> CompareSettings(IReadOnlyList<SpeedReport> runs, Func<SpeedResult, bool> configured, SpeedSettings server)
     {
         // Per setting and value: each output's speed, from every run that differs from another in that setting alone.
-        List<(string Key, string Value, string Other, string Test, string Label, double Gain, double Speed, bool Generated)> seen = [];
+        List<(string Key, string Value, string Other, string Test, string Label, double Gain, double Speed, bool Generated, IReadOnlyList<ResourceSaving> Savings, int? Streams, int? OtherStreams, bool ToneMaps)> seen = [];
         var withSettings = runs.Where(r => r.Settings is not null).ToList();
         for (var i = 0; i < withSettings.Count; i++)
         {
@@ -150,44 +164,131 @@ public static class SpeedAdvisor
                     if (b.Results.FirstOrDefault(r => r.Test == mine.Test && r.Type == mine.Type && r.Device == mine.Device && r.Input == mine.Input && r.Video == mine.Video && r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && !r.LowPowerDropped && configured(r)) is { } theirs
                         && (mine.Command is null || mine.Command != theirs.Command))
                     {
-                        seen.Add((key, _values[key](a.Settings!), _values[key](b.Settings!), mine.Test, Label(mine, a.Settings), Gain(mine, theirs), Speed(mine), IsGenerated(mine)));
+                        seen.Add((key, _values[key](a.Settings!), _values[key](b.Settings!), mine.Test, Label(mine, a.Settings), Gain(mine, theirs), Speed(mine), IsGenerated(mine), ResourceComparison.Savings(mine, theirs), mine.Streams, theirs.Streams, a.Settings!.Tonemap || a.Settings.VppTonemap || a.Settings.VideoToolboxTonemap));
                     }
                 }
             }
         }
 
+        // Settings a comparison with the server's value covered, and those that produced a suggestion.
+        var compared = new HashSet<string>(StringComparer.Ordinal);
+        var suggested = new HashSet<string>(StringComparer.Ordinal);
         foreach (var group in seen.GroupBy(s => (s.Key, s.Value, s.Other)))
         {
-            // Only comparisons with the server's current value say what changing it would do.
+            // Only comparisons with the server's current value say what changing it would do; where the current value wins, that's said too.
             var (key, value, other) = group.Key;
-            if (value == _values[key](server) || other != _values[key](server))
+            var serverValue = _values[key](server);
+            var current = value == serverValue;
+            if (!current && other != serverValue)
             {
                 continue;
             }
+
+            compared.Add(key);
+            var streams = group.Where(s => s.Streams is not null && s.OtherStreams is not null).ToList();
+            var fewest = streams.Count > 0 ? streams.Min(s => s.Streams) : null;
+            var fewestOther = streams.Count > 0 ? streams.Min(s => s.OtherStreams) : null;
 
             var gains = group.Select(s => s.Gain).Order().ToList();
             var median = gains[gains.Count / 2];
             var outputs = group.Select(s => s.Label).Distinct(StringComparer.Ordinal).ToList();
             var generated = group.All(s => s.Generated);
+
+            // Turning tone mapping off altogether sends HDR colours to SDR players unconverted, which neither speed nor savings are worth; switching from one method to another is fine.
+            var tonemapOff = key is "Tonemap" or "VppTonemap" or "VideoToolboxTonemap" && value == "false" && group.Any(s => !s.ToneMaps);
             if (gains.All(g => g > Noise))
             {
-                // Turning tone mapping off sends HDR colours to SDR players unconverted, which no speed is worth.
-                if (key is "Tonemap" or "VppTonemap" or "VideoToolboxTonemap" && value == "false")
+                if (tonemapOff)
                 {
                     continue;
                 }
 
-                yield return new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, outputs) { Setting = key, Value = value, Others = [other], Gain = median, Speed = group.Min(s => s.Speed), TestVideosOnly = generated, LowerQuality = IsBetterQuality(key, other, value) };
+                suggested.Add(key);
+                yield return new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, outputs) { Setting = key, Value = value, Others = [other], Gain = median, Speed = group.Min(s => s.Speed), TestVideosOnly = generated, LowerQuality = IsBetterQuality(key, other, value), Current = current, Streams = fewest, OtherStreams = fewestOther };
+                continue;
+            }
+
+            // As fast, but using less on every output: worth it on a busy server, where the CPU, memory, or GPU goes to other transcodes.
+            var savings = Common(group.Select(s => s.Savings));
+            if (!tonemapOff && gains.All(g => g >= -Noise && g <= Noise) && savings.Count > 0)
+            {
+                suggested.Add(key);
+                yield return new SpeedSuggestion(SpeedSuggestionKind.EfficientSetting, outputs) { Setting = key, Value = value, Others = [other], Gain = median, Speed = group.Min(s => s.Speed), TestVideosOnly = generated, LowerQuality = IsBetterQuality(key, other, value), Savings = savings, Current = current, Streams = fewest, OtherStreams = fewestOther };
                 continue;
             }
 
             // Headroom is judged on real video only: a test video's speed overstates it.
+            // Better quality isn't worth losing many concurrent streams, so it's suggested only while most are kept.
             var real = group.Where(s => !s.Generated).ToList();
-            if (IsBetterQuality(key, value, other) && real.Count > 0 && real.Min(s => s.Speed) >= Headroom)
+            var keepsStreams = real.All(s => s.Streams is not { } mine || s.OtherStreams is not { } theirs || theirs == 0 || mine >= theirs * (1 - MaxStreamLoss));
+            if (IsBetterQuality(key, value, other) && real.Count > 0 && real.Min(s => s.Speed) >= Headroom && keepsStreams)
             {
-                yield return new SpeedSuggestion(SpeedSuggestionKind.HigherQuality, [.. real.Select(s => s.Label).Distinct(StringComparer.Ordinal)]) { Setting = key, Value = value, Others = [other], Gain = median, Speed = real.Min(s => s.Speed) };
+                suggested.Add(key);
+                var realStreams = real.Where(s => s.Streams is not null && s.OtherStreams is not null).ToList();
+                yield return new SpeedSuggestion(SpeedSuggestionKind.HigherQuality, [.. real.Select(s => s.Label).Distinct(StringComparer.Ordinal)])
+                {
+                    Setting = key,
+                    Value = value,
+                    Others = [other],
+                    Gain = median,
+                    Speed = real.Min(s => s.Speed),
+                    Current = current,
+                    Streams = realStreams.Count > 0 ? realStreams.Min(s => s.Streams) : null,
+                    OtherStreams = realStreams.Count > 0 ? realStreams.Min(s => s.OtherStreams) : null,
+                };
             }
         }
+
+        // A setting compared with the server's value, where no other value is worth suggesting, says the current one is kept, so a suite always ends in a result.
+        foreach (var key in compared.Except(suggested, StringComparer.Ordinal))
+        {
+            var serverValue = _values[key](server);
+            var against = seen.Where(s => s.Key == key && s.Other == serverValue).ToList();
+            yield return new SpeedSuggestion(SpeedSuggestionKind.NoChange, [.. against.Select(s => s.Label).Distinct(StringComparer.Ordinal)])
+            {
+                Setting = key,
+                Value = serverValue,
+                Others = [.. against.Select(s => s.Value).Distinct(StringComparer.Ordinal)],
+                Current = true,
+                TestVideosOnly = against.All(s => s.Generated),
+            };
+        }
+    }
+
+    /// <summary>Finds the highest quality the configured backend keeps at real time when higher ones of the same codec fall behind, as an Internet streaming bitrate limit.</summary>
+    /// <param name="configured">The configured backend's measured results.</param>
+    /// <param name="settings">The run's settings, for the outputs' labels.</param>
+    /// <returns>The suggestion, or null when every quality keeps up or fewer than two were measured.</returns>
+    /// <remarks>H.264 decides, as the codec Jellyfin encodes to unless HEVC encoding is allowed (EncodingOptions.AllowHevcEncoding, off by default, v12.1).</remarks>
+    private static SpeedSuggestion? BitrateLimit(List<SpeedResult> configured, SpeedSettings? settings)
+    {
+        var ladder = configured
+            .Select(r => (Result: r, Output: SpeedCatalog.Find(r.Test)))
+            .Where(x => x.Output is { DecodeOnly: false, OutputCodec: "h264" })
+            .OrderByDescending(x => x.Output!.Bitrate)
+            .ToList();
+        if (ladder.Select(x => x.Output!.Bitrate).Distinct().Count() < 2)
+        {
+            return null;
+        }
+
+        static bool KeepsUp(SpeedResult r) => Speed(r) >= 1 && r.Streams is not 0;
+        var behind = ladder.Where(x => !KeepsUp(x.Result)).ToList();
+        var keeping = ladder.Where(x => KeepsUp(x.Result) && behind.All(b => x.Output!.Bitrate < b.Output!.Bitrate)).ToList();
+        if (behind.Count == 0 || keeping.Count == 0)
+        {
+            return null;
+        }
+
+        var best = keeping[0];
+        return new SpeedSuggestion(SpeedSuggestionKind.BitrateLimit, [.. behind.Select(x => Label(x.Result, settings)).Distinct(StringComparer.Ordinal)])
+        {
+            Setting = BitrateLimitKey,
+            Value = best.Output!.Bitrate.ToString(CultureInfo.InvariantCulture),
+            Speed = Speed(best.Result),
+            Streams = best.Result.Streams,
+            TestVideosOnly = behind.All(x => IsGenerated(x.Result)),
+        };
     }
 
     /// <summary>Reports whether a value gives a better picture than another.</summary>
@@ -202,7 +303,7 @@ public static class SpeedAdvisor
         return Catalog.Default.Options.FirstOrDefault(o => o.Key == key) is { } option && option.IsBetterQuality(Preset(value), Preset(other));
     }
 
-    /// <summary>Returns the better of two results for one output: more streams kept up, then faster; QSV over VAAPI on the same GPU when they measure alike.</summary>
+    /// <summary>Returns the better of two results for one output: more streams kept up, then faster; when they measure alike, QSV over VAAPI on the same GPU, then the more efficient one.</summary>
     /// <param name="a">One result.</param>
     /// <param name="b">The other.</param>
     /// <returns>The better one.</returns>
@@ -220,9 +321,32 @@ public static class SpeedAdvisor
             {
                 return a;
             }
+
+            if (ResourceComparison.Savings(b, a).Count > 0)
+            {
+                return b;
+            }
+
+            if (ResourceComparison.Savings(a, b).Count > 0)
+            {
+                return a;
+            }
         }
 
         return streamsB > streamsA || (streamsB == streamsA && b.Fps > a.Fps) ? b : a;
+    }
+
+    /// <summary>Returns the savings every comparison shares, each at its smallest.</summary>
+    /// <param name="comparisons">Each comparison's savings.</param>
+    /// <returns>The resources saved in all of them, largest first; empty when there are none.</returns>
+    private static IReadOnlyList<ResourceSaving> Common(IEnumerable<IReadOnlyList<ResourceSaving>> comparisons)
+    {
+        var all = comparisons.ToList();
+        return all.Count == 0 ? [] : [.. all[0]
+            .Select(s => s.Resource)
+            .Where(resource => all.All(c => c.Any(s => s.Resource == resource)))
+            .Select(resource => new ResourceSaving(resource, all.Min(c => c.First(s => s.Resource == resource).Fraction)))
+            .OrderByDescending(s => s.Fraction)];
     }
 
     /// <summary>Reports whether a result is from a generated test video rather than a film sample or library file.</summary>
@@ -235,7 +359,7 @@ public static class SpeedAdvisor
     /// <param name="a">The result.</param>
     /// <param name="b">The one it's compared with.</param>
     /// <returns>For example 0.2 for 20% faster.</returns>
-    private static double Gain(SpeedResult a, SpeedResult b) => (a.Fps!.Value / b.Fps!.Value) - 1;
+    private static double Gain(SpeedResult a, SpeedResult b) => (Speed(a) / Speed(b)) - 1;
 
     /// <summary>Returns a result's speed as a multiple of real time.</summary>
     /// <param name="r">The result.</param>

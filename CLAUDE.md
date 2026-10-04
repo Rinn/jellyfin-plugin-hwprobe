@@ -72,7 +72,7 @@ The page should look and behave like a native Jellyfin dashboard page, stay calm
 - **Look**: only jellyfin-web classes and `--jf-palette` variables; no `${` anywhere in `configPage.html`. When jellyfin-web's legacy styles differ from the dashboard's MUI components (disabled buttons and selects), match the MUI look. Status uses emoji icons placed before the item: ✅ works, ❌ failed, ⚠️ software fallback, ➖ not used, 🚫 unavailable, ❔ untested.
 - **Layout**: the page uses the window's full width, never narrower than the dashboard's 54em (short of a narrower screen). Tables full width and sortable, by value for numbers and naturally for text. Distinct header and group rows, no alternating stripes. Action buttons right-aligned. Destructive actions are red, and the bulk one asks first, the question going away on a click elsewhere. Main actions go at the top of a tab, and long settings sit in collapsible sections that keep their open state across redraws.
 - **Order and defaults**: follow Jellyfin's own order (the Hardware acceleration dropdown, the Transcoding page), with None (software) first. Real video comes before test video, and defaults favour real video.
-- **While work runs**: give feedback the moment a button is pressed. Show progress as text, a bar, and the time remaining, updated about every 250 ms, without changing the layout's size. Redraw only what changed, never rebuilding controls under the cursor. Disable whatever the server would refuse. Hide results that a running probe will replace instead of showing them as current.
+- **While work runs**: give feedback the moment a button is pressed. Show progress as a loading bar with the count done and the time elapsed, updated about every 250 ms, without changing the layout's size. Redraw only what changed, never rebuilding controls under the cursor. Disable whatever the server would refuse. Hide results that a running probe will replace instead of showing them as current.
 - **Data**: lists, labels, defaults, and orderings come from `catalog.yaml` through `HwProbe/Catalog`, not from copies in the page.
 
 ## Zero warnings
@@ -101,8 +101,8 @@ The page should look and behave like a native Jellyfin dashboard page, stay calm
 
 ## To do
 
-- **Resource stats, next steps**: power where readable without root (NVML, AMD hwmon, RAPL), and checking Intel and AMD GPU figures on a Linux 5.19+ host (the NAS runs 4.4, which has none). CPU, memory, and GPU engine time are measured already (`src/HwProbe.Core/Resources`).
+- **Power draw** (researched 2026-10-04): first NVML total energy (`nvmlDeviceGetTotalEnergyConsumption`, Linux and Windows, no admin) and Windows' `\Energy Meter(RAPL_Package0_PKG)\Energy` counter; Linux RAPL is root-only and masked in containers, Intel iGPUs have no unprivileged source, macOS IOReport is private. All whole-device, so report watts above an idle reading taken before each measurement, and feed it to `ResourceComparison`. Intel and AMD GPU usage on Linux 5.19+ is unverified, as no such host is available.
 
 Queued by the user on 2026-10-03, in no particular order:
 
-- Trickplay generation as a Performance Tests output (deferred 2026-10-03). `MediaEncoder.ExtractVideoImagesOnIntervalAccelerated` takes its input, filter, and encoder from EncodingHelper but assembles the command itself (skip_frame, setpts, qscale per encoder, image2), so it needs either a pinned copy of that assembly or a direct call limited to the configured backend.
+- Trickplay generation as a Performance Tests output (researched 2026-10-04). Input, filter, and encoder come from public EncodingHelper methods; only `MediaEncoder.ExtractVideoImagesOnIntervalAccelerated`'s wrapper (skip_frame, setpts, quality per encoder, threads, image2) needs a pinned copy, guarded by drift tests and a log diff in `container-plugin.sh`. A direct call was rejected: configured backend only, no CLI, no stderr to confirm hardware, slow cancellation.

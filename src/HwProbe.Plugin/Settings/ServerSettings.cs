@@ -2,15 +2,18 @@ using MediaBrowser.Model.Configuration;
 
 namespace Jellyfin.Plugin.HwProbe.Settings;
 
-/// <summary>Copies of the server's encoding and trickplay options, read and written by setting key.</summary>
+/// <summary>Copies of the server's encoding, trickplay, and streaming options, read and written by setting key.</summary>
 /// <param name="Encoding">The encoding options.</param>
 /// <param name="Trickplay">The trickplay options.</param>
 public sealed record ServerSettings(EncodingOptions Encoding, TrickplayOptions Trickplay)
 {
+    /// <summary>Gets the streaming options.</summary>
+    public StreamingOptions Streaming { get; init; } = new();
+
     /// <summary>Reports whether a key names a value HwProbe may change.</summary>
     /// <param name="key">The setting key.</param>
     /// <returns>True for a known key.</returns>
-    public static bool IsKnown(string key) => TrickplaySettings.IsKnown(key) || EncodingSettings.IsKnown(key);
+    public static bool IsKnown(string key) => TrickplaySettings.IsKnown(key) || StreamingSettings.IsKnown(key) || EncodingSettings.IsKnown(key);
 
     /// <summary>Reports whether a key names a trickplay option.</summary>
     /// <param name="key">The setting key.</param>
@@ -24,7 +27,9 @@ public sealed record ServerSettings(EncodingOptions Encoding, TrickplayOptions T
     /// <summary>Reads a value.</summary>
     /// <param name="key">A known setting key.</param>
     /// <returns>The value in the form history entries store it.</returns>
-    public string Read(string key) => IsTrickplay(key) ? TrickplaySettings.Read(Trickplay, key) : EncodingSettings.Read(Encoding, key);
+    public string Read(string key) => IsTrickplay(key) ? TrickplaySettings.Read(Trickplay, key)
+        : StreamingSettings.IsKnown(key) ? StreamingSettings.Read(Streaming, key)
+        : EncodingSettings.Read(Encoding, key);
 
     /// <summary>Writes a value.</summary>
     /// <param name="key">A known setting key.</param>
@@ -34,6 +39,10 @@ public sealed record ServerSettings(EncodingOptions Encoding, TrickplayOptions T
         if (IsTrickplay(key))
         {
             TrickplaySettings.Write(Trickplay, key, value);
+        }
+        else if (StreamingSettings.IsKnown(key))
+        {
+            StreamingSettings.Write(Streaming, key, value);
         }
         else
         {

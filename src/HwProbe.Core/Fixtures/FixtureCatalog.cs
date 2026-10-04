@@ -67,7 +67,7 @@ public static class FixtureCatalog
         10,
         true,
         "libx265",
-        $"{Source} -c:v libx265 -pix_fmt yuv420p10le -color_primaries {ColorMetadata.Hdr10.Primaries} -color_trc {ColorMetadata.Hdr10.Transfer} -colorspace {ColorMetadata.Hdr10.Space}",
+        $"{Source} -c:v libx265 -pix_fmt yuv420p10le -vf setparams=color_primaries={ColorMetadata.Hdr10.Primaries}:color_trc={ColorMetadata.Hdr10.Transfer}:colorspace={ColorMetadata.Hdr10.Space}",
         null);
 
     /// <summary>Gets the 8-bit VP9 clip.</summary>

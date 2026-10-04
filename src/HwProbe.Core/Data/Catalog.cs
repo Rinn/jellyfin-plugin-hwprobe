@@ -43,6 +43,27 @@ public sealed partial class Catalog
     /// <summary>Gets what a run does when the server starts transcoding and the request doesn't say.</summary>
     public required TranscodeAction DefaultWhenTranscoding { get; init; }
 
+    /// <summary>Gets a value indicating whether a run measures resource usage when the request doesn't say.</summary>
+    public bool DefaultMeasureResources { get; init; }
+
+    /// <summary>Gets the thresholds measurements are judged by.</summary>
+    public required CatalogAdvice Advice { get; init; }
+
+    /// <summary>Gets the accuracy test suites measure at.</summary>
+    public required SpeedMethod SuiteMethod { get; init; }
+
+    /// <summary>Gets what the page calls software encoding, the <c>none</c> backend.</summary>
+    public required string SoftwareName { get; init; }
+
+    /// <summary>Gets what the page calls each measured resource, keyed as <see cref="Speed.ResourceSaving.Resource"/> is, in sentence case.</summary>
+    public required IReadOnlyDictionary<string, string> ResourceNames { get; init; }
+
+    /// <summary>Gets labels for server settings suggestions change that aren't run options, keyed as suggestions name them, with any caveat under <c>{key}Caveat</c>.</summary>
+    public required IReadOnlyDictionary<string, string> Labels { get; init; }
+
+    /// <summary>Gets what inputs' codecs are called, keyed as ffmpeg names them.</summary>
+    public required IReadOnlyDictionary<string, string> CodecNames { get; init; }
+
     /// <summary>Gets the backends, in the order of Jellyfin's dropdown.</summary>
     public required IReadOnlyList<CatalogBackend> Backends { get; init; }
 
@@ -242,6 +263,7 @@ public sealed partial class Catalog
             throw new InvalidDataException($"catalog.yaml: {unlinked.Title}'s holderUrl requires an absolute URL.");
         }
 
+        CheckAdvice();
         CheckSuites();
 
         if (Subtitles is null || TestAudio is null)
@@ -263,6 +285,22 @@ public sealed partial class Catalog
 
     /// <summary>Checks each suite names videos, outputs, backends, and settings the catalog has.</summary>
     /// <exception cref="InvalidDataException">A suite names something that isn't there.</exception>
+    private void CheckAdvice()
+    {
+        // YamlDotNet doesn't enforce required members, so a missing block is caught here.
+        if (Advice is not { Noise: > 0 and < 1, Headroom: >= 1, MaxStreamLoss: > 0 and < 1, ResourceMargin: > 0 and < 1 })
+        {
+            throw new InvalidDataException("catalog.yaml: advice requires noise, maxStreamLoss, and resourceMargin between 0 and 1, and headroom of at least 1.");
+        }
+
+        string[] resources = ["Cpu", "Memory", "Gpu", "GpuMemory"];
+        if (ResourceNames is null || resources.Any(r => !ResourceNames.ContainsKey(r)) || Labels is null || !Labels.ContainsKey(Speed.SpeedAdvisor.BitrateLimitKey) || CodecNames is null || SoftwareName is null)
+        {
+            throw new InvalidDataException($"catalog.yaml: resourceNames requires {string.Join(", ", resources)}, labels requires {Speed.SpeedAdvisor.BitrateLimitKey}, and codecNames and softwareName are required.");
+        }
+    }
+
+    /// <summary>Checks each suite names videos, outputs, backends, and settings the catalog has.</summary>
     private void CheckSuites()
     {
         var videos = Videos.Select(v => v.Key).ToHashSet(StringComparer.Ordinal);
@@ -277,6 +315,8 @@ public sealed partial class Catalog
                 : suite.ThreadSteps == (steps.Count > 0) ? "steps (one of steps or threadSteps)"
                 : suite.Videos.Concat(steps.SelectMany(s => s.Videos ?? [])).FirstOrDefault(v => !videos.Contains(v)) is { } video ? $"video {video}"
                 : suite.Outputs.Concat(steps.SelectMany(s => s.Outputs ?? [])).FirstOrDefault(o => !outputs.Contains(o)) is { } output ? $"output {output}"
+                : steps.FirstOrDefault(s => s.Backends?.Contains(HwType.none) == true) is { } software ? $"backend none on step {software.Label} (steps are for hardware backends)"
+                : suite.ThreadSteps && !suite.ThreadLabel.Contains("{n}", StringComparison.Ordinal) ? "threadLabel (it requires {n})"
                 : steps.SelectMany(s => s.Options).FirstOrDefault(o => Options.FirstOrDefault(c => c.Key == o.Key) is not { } known || !known.Takes(o.Value) || SpeedSettingsOptions.Apply(new SpeedSettings(), o.Key, o.Value) is null) is { Key: not null } option ? $"option {option.Key}={option.Value}"
                 : null;
             if (wrong is not null)

@@ -16,6 +16,11 @@ namespace Jellyfin.Plugin.HwProbe.Api;
 /// <param name="TimeLimits">The time limits per measurement offered, in seconds.</param>
 /// <param name="WhenTranscoding">What a run can do when the server starts transcoding.</param>
 /// <param name="DefaultWhenTranscoding">What a run does by default when the server starts transcoding.</param>
+/// <param name="DefaultMeasureResources">Whether a run measures resource usage by default.</param>
+/// <param name="Advice">The thresholds measurements are judged by.</param>
+/// <param name="SoftwareName">What the page calls software encoding.</param>
+/// <param name="Labels">Labels and caveats for server settings suggestions change that aren't run options.</param>
+/// <param name="ResourceNames">What the page calls each measured resource, in sentence case.</param>
 /// <param name="Backends">The backends, in the order of Jellyfin's dropdown.</param>
 /// <param name="GpuEngines">What the page calls each GPU engine.</param>
 /// <param name="Links">The links the page points to, by name.</param>
@@ -35,6 +40,11 @@ public sealed record CatalogInfo(
     IReadOnlyList<CatalogOption> TimeLimits,
     IReadOnlyList<CatalogTranscodeAction> WhenTranscoding,
     TranscodeAction DefaultWhenTranscoding,
+    bool DefaultMeasureResources,
+    CatalogAdvice Advice,
+    string SoftwareName,
+    IReadOnlyDictionary<string, string> Labels,
+    IReadOnlyDictionary<string, string> ResourceNames,
     IReadOnlyList<CatalogBackend> Backends,
     IReadOnlyDictionary<string, string> GpuEngines,
     IReadOnlyDictionary<string, string> Links,
@@ -61,6 +71,11 @@ public sealed record CatalogInfo(
             catalog.TimeLimits,
             catalog.WhenTranscoding,
             catalog.DefaultWhenTranscoding,
+            catalog.DefaultMeasureResources,
+            catalog.Advice,
+            catalog.SoftwareName,
+            catalog.Labels,
+            catalog.ResourceNames,
             catalog.Backends,
             catalog.GpuEngines,
             catalog.Links,

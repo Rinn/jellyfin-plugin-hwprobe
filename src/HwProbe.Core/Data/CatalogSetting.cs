@@ -38,6 +38,9 @@ public sealed class CatalogSetting
     /// <summary>Gets its values from best picture to fastest, for a choice or switch that trades speed for quality, or null.</summary>
     public IReadOnlyList<string>? QualityOrder { get; init; }
 
+    /// <summary>Gets a known drawback, shown with any suggestion to change it, or null.</summary>
+    public string? Caveat { get; init; }
+
     /// <summary>Gets a value indicating whether a lower number in its range gives a better picture.</summary>
     public bool LowerIsBetter { get; init; }
 

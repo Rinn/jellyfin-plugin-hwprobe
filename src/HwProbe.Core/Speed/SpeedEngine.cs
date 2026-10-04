@@ -237,7 +237,7 @@ public sealed class SpeedEngine : IDisposable
     /// <param name="result">The result.</param>
     /// <returns>The described result.</returns>
     private static SpeedResult Describe(SpeedTest test, SpeedResult result) =>
-        result with { Label = test.Label, Video = test.Name, Output = test.OutputLabel, Input = SpeedTestText.Input(test), FrameRate = test.FrameRate, Credit = test.Credit, LicenseUrl = test.LicenseUrl };
+        result with { Label = test.Label, Video = test.Name, Output = test.OutputLabel, Input = SpeedTestText.Input(test), FrameRate = result.FrameRate ?? test.FrameRate, Credit = test.Credit, LicenseUrl = test.LicenseUrl };
 
     /// <summary>Returns the SHA-256 of an ffmpeg command line, so runs can tell whether a setting changed it.</summary>
     /// <param name="command">The command line.</param>
@@ -473,9 +473,11 @@ public sealed class SpeedEngine : IDisposable
                     return runs;
                 }
 
-                var measured = await SpeedMeter.MeasureAsync(LaunchAsync, method, test.FrameRate, !test.DecodeOnly, ct, timeUp);
+                // Double-rate deinterlacing makes a frame per field, so real time is twice the source rate (EncodingHelper.GetSwDeinterlaceFilter and the hardware deinterlace filters, v12.1: interlaced sources of 30 fps or less).
+                var outputRate = cell.DoubleRate && test.Interlaced && !test.DecodeOnly && test.FrameRate <= 30 ? test.FrameRate * 2 : test.FrameRate;
+                var measured = await SpeedMeter.MeasureAsync(LaunchAsync, method, outputRate, !test.DecodeOnly, ct, timeUp);
                 note = lowPowerDropped ? "Low-power mode isn't supported for this encoder here; ffmpeg used normal mode, so this is the normal-mode speed." : note;
-                return new SpeedResult(type, device, test.Key, string.Empty, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note) { OutputSize = size, Interrupted = measured.Interrupted, Command = CommandHash(Command(SpeedMeter.Content)), Resources = measured.Resources, LowPowerDropped = lowPowerDropped };
+                return new SpeedResult(type, device, test.Key, string.Empty, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note) { OutputSize = size, Interrupted = measured.Interrupted, Command = CommandHash(Command(SpeedMeter.Content)), Resources = measured.Resources, LowPowerDropped = lowPowerDropped, FrameRate = outputRate };
             },
             cancellationToken);
 

@@ -31,5 +31,5 @@ public sealed record SpeedRequest(string Method, IReadOnlyList<string> Videos, I
     public bool ReuseResults { get; init; }
 
     /// <summary>Gets a value indicating whether each measurement's single copy is measured for CPU, memory, and GPU usage.</summary>
-    public bool MeasureResources { get; init; }
+    public bool MeasureResources { get; init; } = Catalog.Default.DefaultMeasureResources;
 }

@@ -89,6 +89,13 @@
             #HwProbeConfigPage .hwprobe-notes { margin: 0; padding-left: 1.4em; }
             #HwProbeConfigPage .selectContainer .hwprobe-notes { margin: 0 14px; padding-left: 1.4em; }
             #HwProbeConfigPage .hwprobe-progress { position: relative; width: 16em; }
+            #HwProbeConfigPage .hwprobe-loadbar { position: relative; flex: 1; min-width: 0; height: 2.2em; border-radius: 0.25em; overflow: hidden; background: var(--jf-palette-action-hover, rgba(255, 255, 255, 0.08)); }
+            #HwProbeConfigPage .hwprobe-loadbar > div { position: absolute; left: 0; top: 0; bottom: 0; background: var(--jf-palette-primary-main, #00a4dc); transition: width 0.25s linear, left 0.25s linear; }
+            #HwProbeConfigPage .hwprobe-loadbar > div.hwprobe-current { background: var(--jf-palette-warning-main, #ffa726); animation: hwprobe-flash 1.2s ease-in-out infinite; }
+            @keyframes hwprobe-flash { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.8; } }
+            #HwProbeConfigPage .hwprobe-loadbar > span { position: relative; display: flex; gap: 1em; line-height: 2.2em; padding: 0 0.8em; font-size: 0.9em; color: var(--jf-palette-text-primary, #fff); white-space: nowrap; }
+            #HwProbeConfigPage .hwprobe-loadbar > span > span:not(:nth-child(2)) { font-variant-numeric: tabular-nums; }
+            #HwProbeConfigPage .hwprobe-loadbar > span > span:nth-child(2) { flex: 1; min-width: 0; text-align: center; overflow: hidden; text-overflow: ellipsis; }
             #hwprobeCard, #HwProbeConfigPage .hwprobe-progress-card { position: relative; }
             #HwProbeConfigPage .hwprobe-progress.hwprobe-progress-wide { position: absolute; left: 1em; right: 1em; bottom: 0.3em; width: auto; margin: 0; }
             #HwProbeConfigPage .hwprobe-inline { margin: 0 0 0 0.5em; padding: 0.2em 0.8em; }
@@ -194,8 +201,13 @@
                 let speedMethod = null;
                 let speedRepeats = 1;
                 let speedReuse = true;
-                let speedResources = false;
+                let speedResources = null;
                 let speedWhenTranscoding = null;
+                let suiteResources = null;
+                let chosenSuite = null;
+                // The suites as last listed, for their notes beside a suite's results.
+                let suiteList = [];
+                let suiteWhenTranscoding = null;
                 let speedTimeLimit = null;
                 // Null measures with the server's own thread count.
                 // Run options chosen on the page, by catalog key; one left out keeps the server's setting.
@@ -225,6 +237,13 @@
                 let defaultMethod = null;
                 let gpuEngines = {};
                 let links = {};
+                // The catalog's thresholds, once it has loaded.
+                let advice = { Noise: 0 };
+                let resourceNames = {};
+                // Labels and caveats for server settings suggestions change that aren't run options.
+                let serverLabels = {};
+                // The server's Internet streaming bitrate limit, to mark a suggested limit already set.
+                let remoteLimit = null;
                 let names = {};
                 let order = [];
                 let platforms = {};
@@ -242,7 +261,11 @@
                     repeatOptions = c.Repeats.map(o => [o.Value, o.Label]);
                     runOptions = c.Options;
                     timeLimitOptions = c.TimeLimits.map(o => [o.Value === undefined || o.Value === null ? '' : o.Value, o.Label]);
-                    names = Object.fromEntries(c.Backends.map(b => [b.Type, b.Name]));
+                    // Software is the none backend, named for results; the dropdown keeps its own "None (software)".
+                    names = Object.fromEntries([['none', c.SoftwareName]].concat(c.Backends.map(b => [b.Type, b.Name])));
+                    advice = c.Advice;
+                    resourceNames = c.ResourceNames;
+                    serverLabels = c.Labels;
                     order = c.Backends.map(b => b.Type);
                     platforms = Object.fromEntries(c.Backends.map(b => [b.Type, [b.Platforms, b.PlatformNote]]));
                     armOnly = Object.fromEntries(c.Backends.filter(b => b.ArmNote).map(b => [b.Type, b.ArmNote]));
@@ -258,6 +281,9 @@
                     speedQualities = c.Qualities;
                     whenTranscodingOptions = c.WhenTranscoding.map(o => [o.Key, o.Label]);
                     speedWhenTranscoding = speedWhenTranscoding || c.DefaultWhenTranscoding;
+                    suiteWhenTranscoding = suiteWhenTranscoding || c.DefaultWhenTranscoding;
+                    speedResources = speedResources === null ? c.DefaultMeasureResources : speedResources;
+                    suiteResources = suiteResources === null ? c.DefaultMeasureResources : suiteResources;
                     defaultMethod = c.DefaultMethod;
                     speedMethod = speedMethod || c.DefaultMethod;
                 }
@@ -676,8 +702,9 @@
                 function setRunning(on) {
                     running = on;
                     idleButtons = idleButtons.filter(b => b.isConnected || b === runButton);
+                    // A button for something this server can't do stays off when the run ends.
                     for (const b of idleButtons) {
-                        b.disabled = on;
+                        b.disabled = on || b.dataset.unavailable === 'true';
                     }
                 }
 
@@ -1282,11 +1309,31 @@
                 let speedProgressParts = null;
 
                 // A poll redraws only the progress text and bar unless the results or the run's phase changed.
+                // Hidden while paused, cancelling, or before the count is known.
+                function placeCurrent(node, s) {
+                    const c = speedCounts(s);
+                    const working = c.total && c.done < c.total && s.Phase !== 'Paused' && s.Phase !== 'Cancelling';
+                    node.style.display = working ? '' : 'none';
+                    if (working) {
+                        node.style.left = (100 * c.done / c.total) + '%';
+                        node.style.width = (100 / c.total) + '%';
+                    }
+                }
+
+                function progressWidth(s) {
+                    const c = speedCounts(s);
+                    return (c.total ? 100 * c.done / c.total : 0) + '%';
+                }
+
                 function renderSpeedResults(poll) {
                     syncRunPicker();
                     const drawn = JSON.stringify([speedLive && speedLive.results, speedReport && speedReport.generatedUtc, speedProgress && speedProgress.Phase, speedProgress && speedProgress.Done]);
                     if (poll === true && drawn === speedDrawn && speedProgress && speedProgressParts) {
-                        speedProgressParts.text.textContent = speedProgressText(speedProgress);
+                        speedProgressParts.count.textContent = speedCountText(speedProgress);
+                        speedProgressParts.text.textContent = speedStatusText(speedProgress);
+                        speedProgressParts.eta.textContent = speedElapsedText(speedProgress);
+                        speedProgressParts.fill.style.width = progressWidth(speedProgress);
+                        placeCurrent(speedProgressParts.current, speedProgress);
                         return;
                     }
                     speedDrawn = drawn;
@@ -1295,8 +1342,23 @@
                     if (speedProgress) {
                         const box = el('div', null, 'paperList hwprobe-card hwprobe-progress-card');
                         const line = el('div', null, 'hwprobe-row');
-                        const text = el('span', speedProgressText(speedProgress), 'secondaryText');
-                        line.appendChild(text);
+
+                        // A loading bar: measurements done on the left, what's running in the middle, and how long it has run on the right.
+                        const bar = el('div', null, 'hwprobe-loadbar');
+                        const fill = el('div');
+                        fill.style.width = progressWidth(speedProgress);
+                        bar.appendChild(fill);
+                        // The measurement in progress flashes after the finished ones.
+                        const current = el('div', null, 'hwprobe-current');
+                        placeCurrent(current, speedProgress);
+                        bar.appendChild(current);
+                        const label = el('span');
+                        const count = el('span', speedCountText(speedProgress));
+                        const text = el('span', speedStatusText(speedProgress));
+                        const eta = el('span', speedElapsedText(speedProgress));
+                        label.append(count, text, eta);
+                        bar.appendChild(label);
+                        line.appendChild(bar);
                         const buttons = el('div', null, 'hwprobe-row hwprobe-end');
                         const cancel = action('Cancel', () => {
                             cancel.disabled = true;
@@ -1314,11 +1376,8 @@
                         buttons.appendChild(cancel);
                         line.appendChild(buttons);
                         box.appendChild(line);
-                        const bar = jf('<div class="itemProgressBar hwprobe-progress hwprobe-progress-wide"><div class="itemProgressBarForeground"></div></div>');
-                        bar.firstElementChild.style.width = (speedProgress.Total ? Math.round(100 * (speedProgress.Done || 0) / speedProgress.Total) : 0) + '%';
-                        box.appendChild(bar);
                         speedResults.appendChild(box);
-                        speedProgressParts = { text };
+                        speedProgressParts = { count, text, eta, fill, current };
                     }
                     const shown = speedLive || speedReport;
                     if (shown && shown.suiteStartedUtc && !speedProgress) {
@@ -1327,7 +1386,7 @@
                     if (shown && shown.results.length) {
                         speedResults.appendChild(speedMatrix(shown));
                     } else if (!speedProgress) {
-                        speedResults.appendChild(el('p', 'No performance tests yet.', 'secondaryText'));
+                        speedResults.appendChild(el('p', 'No performance tests available.', 'secondaryText'));
                     }
                     if (shown && !speedProgress) {
                         speedResults.appendChild(renderSuggestions());
@@ -1346,6 +1405,10 @@
                         : ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedHistory/' + h.Id), dataType: 'json' }).then(r => { savedRuns.set(h.Id, r); return r; });
                     Promise.all(steps.map(load)).then(reports => {
                         const section = fold(div, shown.suite, true, null, 'suite');
+                        const listed = suiteList.find(x => x.Name === shown.suite);
+                        if (listed && listed.Note) {
+                            section.appendChild(el('div', listed.Note, 'infoBanner'));
+                        }
                         const keyOf = x => [x.type, x.device, x.test, x.variant || ''].join('|');
                         const rows = [];
                         for (const x of reports.flatMap(r => r.results)) {
@@ -1354,7 +1417,7 @@
                             }
                         }
                         const sameType = t => rows.some(x => x.type === t && rows.some(o => o.type === t && o.device !== x.device));
-                        const backendName = x => x.type === 'none' ? 'Software' : (names[x.type] || x.type) + (sameType(x.type) ? ' ' + x.device : '');
+                        const backendName = x => (names[x.type] || x.type) + (x.type !== 'none' && sameType(x.type) ? ' ' + x.device : '');
                         const counted = reports.every(r => r.method !== 'Quick');
                         const table = el('table', null, 'hwprobe-full');
                         row(table, [el('th', 'Backend'), el('th', 'Input'), el('th', 'Output')].concat(steps.map(h => el('th', h.SuiteStep, 'hwprobe-num'))));
@@ -1388,6 +1451,12 @@
                     return choice ? choice.Label : value === 'true' ? 'On' : value === 'false' ? 'Off' : value;
                 }
 
+                // How much more efficient a suggestion is, e.g. "30% less CPU and 20% less memory".
+                function savingsText(savings) {
+                    const parts = savings.map(x => Math.round(x.Fraction * 100) + '% less ' + (resourceNames[x.Resource] || x.Resource));
+                    return parts.length > 2 ? parts.slice(0, -1).join(', ') + ', and ' + parts[parts.length - 1] : parts.join(' and ');
+                }
+
                 function renderSuggestions() {
                     const div = el('div');
                     ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedSuggestions', speedViewing ? { id: speedViewing } : {}), dataType: 'json' }).then(list => {
@@ -1403,14 +1472,17 @@
                             const label = option ? option.Label : s.Setting;
                             const percent = s.Gain === null || s.Gain === undefined ? '' : Math.round(Math.abs(s.Gain) * 100) + '%';
                             let actionButton = null;
+                            let caveat = '';
                             let title = '';
                             let reason = '';
-                            const backendName = t => t === 'none' ? 'Software' : names[t] || t;
+                            const backendName = t => names[t] || t;
                             if (s.Kind === 'FastestBackend') {
                                 title = 'Hardware acceleration: ' + backendName(s.Type);
+                                // Measured alike, it's suggested when it is more efficient, or as Jellyfin's preferred Intel backend.
+                                const alike = [s.Savings.length ? 'with ' + savingsText(s.Savings) : '', s.Preferred ? 'Jellyfin prefers it on mainstream Intel GPUs' : ''].filter(t => t);
                                 reason = !configured || configured === 'none'
                                     ? 'Works on this server; a hardware backend draws less power than software for the same work.'
-                                    : s.Preferred ? 'As fast as ' + backendName(configured) + ' here, and Jellyfin prefers it on mainstream Intel GPUs.'
+                                    : alike.length ? 'As fast as ' + backendName(configured) + ' here, ' + alike.join('; ') + '.'
                                     : 'The fastest hardware backend measured.';
                                 actionButton = idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: s.Type, Device: s.Device }));
                             } else if (s.Kind === 'FallsBehind') {
@@ -1420,14 +1492,47 @@
                                 title = label + ': ' + optionValueText(s.Setting, s.Value);
                                 reason = percent + ' faster than ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + (s.LowerQuality ? ', at lower quality.' : '.');
                                 actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }), 'raised');
+                            } else if (s.Kind === 'EfficientSetting') {
+                                title = label + ': ' + optionValueText(s.Setting, s.Value);
+                                reason = 'As fast as ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + ', with ' + savingsText(s.Savings) + (s.LowerQuality ? ', at lower quality.' : '.');
+                                actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }), 'raised');
                             } else if (s.Kind === 'HigherQuality') {
                                 title = label + ': ' + optionValueText(s.Setting, s.Value);
                                 reason = 'Better quality than ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + '; at most ' + percent + ' slower, still ' + s.Speed.toFixed(1) + '\u00d7 real time.';
                                 actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }), 'raised');
+                            } else if (s.Kind === 'BitrateLimit') {
+                                const mbps = Number(s.Value) / 1e6;
+                                title = (serverLabels[s.Setting] || s.Setting) + ': ' + mbps + ' Mbps';
+                                reason = 'Higher qualities fall behind real time on ' + backendName(s.Type) + '; ' + mbps + ' Mbps keeps up at ' + s.Speed.toFixed(1) + '\u00d7.';
+                                // The server's own limit: the same one is current; a stricter one already keeps streams within it.
+                                s.Current = remoteLimit === Number(s.Value);
+                                if (remoteLimit > 0 && remoteLimit < Number(s.Value)) {
+                                    reason += ' A stricter limit of ' + remoteLimit / 1e6 + ' Mbps is already set.';
+                                } else {
+                                    actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }), 'raised');
+                                }
+                                if (serverLabels[s.Setting + 'Caveat']) {
+                                    caveat = serverLabels[s.Setting + 'Caveat'];
+                                }
+                            } else if (s.Kind === 'NoChange') {
+                                title = label + ': ' + optionValueText(s.Setting, s.Value);
+                                reason = 'No other value measured is worth changing to (' + s.Others.map(o => optionValueText(s.Setting, o)).join(', ') + ').';
+                            }
+                            // The server's own value: it confirms the setting, with nothing to apply.
+                            if (s.Current) {
+                                title += ' (server setting)';
+                                actionButton = null;
                             }
                             text.appendChild(el('div', title));
                             text.appendChild(el('div', reason, 'secondaryText'));
+                            // What a change does to concurrent streams, where they were counted.
+                            if (s.Streams !== null && s.Streams !== undefined && s.OtherStreams !== null && s.OtherStreams !== undefined && s.Streams !== s.OtherStreams) {
+                                text.appendChild(el('div', 'Concurrent streams: ' + s.OtherStreams + ' with ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + ', ' + s.Streams + ' with ' + optionValueText(s.Setting, s.Value) + '.', 'secondaryText hwprobe-small'));
+                            }
                             text.appendChild(el('div', s.Outputs.join('; '), 'secondaryText hwprobe-small'));
+                            if (option && option.Caveat || caveat) {
+                                text.appendChild(el('div', caveat || option.Caveat, 'secondaryText hwprobe-small'));
+                            }
                             if (s.TestVideosOnly) {
                                 text.appendChild(el('div', 'Measured on test videos only, which encode faster than real video; measure a film sample or library video to confirm.', 'secondaryText hwprobe-small'));
                             }
@@ -1438,7 +1543,7 @@
                             row(table, [text, cell]);
                         }
                         section.appendChild(table);
-                        section.appendChild(el('div', 'Settings are compared between saved runs that differ in that setting alone. Software is never suggested over a working hardware backend.', 'fieldDescription'));
+                        section.appendChild(el('div', 'Settings are compared between saved runs that differ in that setting alone. Software is never suggested over a working hardware backend.' + (advice.Headroom ? ' Better quality is suggested only while it keeps ' + advice.Headroom + '\u00d7 real time on real video and at least ' + Math.round((1 - advice.MaxStreamLoss) * 100) + '% of the concurrent streams.' : ''), 'fieldDescription'));
                     }, () => {});
                     return div;
                 }
@@ -1522,15 +1627,15 @@
                         credit.appendChild(document.createTextNode(', '));
                         credit.appendChild(externalLink(v.LicenseName, v.LicenseUrl));
                         const download = inputEntry(credit, v.Origin + ', ');
-                        download.lastElementChild.appendChild(externalLink('Wikimedia Commons', v.SourceUrl));
+                        download.lastElementChild.appendChild(externalLink(v.SourceName, v.SourceUrl));
                         line.appendChild(download);
                     }
                     return line;
                 }
 
-                // The catalog's videos in its order, with the library video before the first test video.
+                // The catalog's videos in its order, with the library video after the current-format samples, before the legacy ones and the test videos.
                 function inputOrder() {
-                    const tests = speedVideos.findIndex(v => !v.SourceUrl);
+                    const tests = speedVideos.findIndex(v => v.Legacy || !v.SourceUrl);
                     const at = tests === -1 ? speedVideos.length : tests;
                     return [...speedVideos.slice(0, at), 'library', ...speedVideos.slice(at)];
                 }
@@ -1564,41 +1669,71 @@
                     }
                 }
 
+                // How many measurements, and roughly how long, from the accuracy's typical time per measurement.
+                function measurementsText(runs, method, repeats, limit) {
+                    const per = methodSeconds[method] || methodSeconds[defaultMethod];
+                    const minutes = n => Math.max(1, Math.round(n / 60));
+                    const cap = n => limit ? Math.min(n, limit) : n;
+                    const low = minutes(runs * cap(per[0] * repeats));
+                    const high = minutes(runs * cap(per[1] * repeats));
+                    return runs + ' measurement' + (runs === 1 ? '' : 's') + ', ' + (low === high ? 'about ' + low : 'about ' + low + ' to ' + high) + ' minute' + (high === 1 ? '' : 's');
+                }
+
                 // Named sets of runs that differ in one setting, each started with one button; listed as this server would run them.
-                function renderSuites(container) {
+                function renderSuites(container, idle) {
                     const body = el('div');
                     container.appendChild(body);
                     ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Suites'), dataType: 'json' }).then(suites => {
-                        body.appendChild(el('p', 'Each step is saved as its own run in Test Results. Resource Usage and When the server starts transcoding are taken from Settings below.', 'secondaryText'));
-                        const table = el('table', null, 'hwprobe-full');
-                        row(table, [el('th', 'Suite'), el('th', 'Steps'), el('th', 'Backend'), el('th', '')]);
-                        for (const suite of suites) {
-                            const name = el('td');
-                            name.appendChild(el('div', suite.Name));
-                            name.appendChild(el('div', suite.Description, 'secondaryText hwprobe-small'));
-                            const steps = el('td', suite.Steps.join(', '), 'secondaryText');
-                            const backends = el('td', !suite.Offered ? '-' : suite.Backends.map(b => b === 'none' ? 'Software' : names[b] || b).join(', ') || '-', 'secondaryText');
-                            const run = el('td', null, 'hwprobe-num');
-                            if (suite.Offered) {
-                                const button = idleAction('Run', () => {
-                                    ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Suite'), data: JSON.stringify({ Key: suite.Key, MeasureResources: speedResources, WhenTranscoding: speedWhenTranscoding }), contentType: 'application/json' })
-                                        .then(() => {
-                                            showTab(tabs[3][0]);
-                                            return loadStatus();
-                                        }, response => (response && response.text ? response.text() : Promise.resolve('')).then(text => {
-                                            setMessage('Could not start: ' + (text.replace(/^"|"$/g, '') || 'a probe is running or a session is transcoding.'));
-                                            button.disabled = running;
-                                        }));
-                                }, 'raised');
-                                run.appendChild(button);
-                            } else {
-                                run.appendChild(el('span', 'Not available', 'secondaryText'));
-                            }
-                            row(table, [name, steps, backends, run]);
+                        suiteList = suites;
+                        if (!suites.some(x => x.Key === chosenSuite)) {
+                            chosenSuite = (suites.find(x => x.Offered) || suites[0] || {}).Key;
                         }
-                        const scroll = el('div', null, 'hwprobe-scroll');
-                        scroll.appendChild(table);
-                        body.appendChild(scroll);
+                        const estimate = el('span', null, 'secondaryText');
+                        const button = idleAction('Run suite', () => {
+                            ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Suite'), data: JSON.stringify({ Key: chosenSuite, MeasureResources: suiteResources, WhenTranscoding: suiteWhenTranscoding }), contentType: 'application/json' })
+                                .then(() => {
+                                    showTab(tabs[3][0]);
+                                    return loadStatus();
+                                }, response => (response && response.text ? response.text() : Promise.resolve('')).then(text => {
+                                    setMessage('Could not start: ' + (text.replace(/^"|"$/g, '') || 'a probe is running or a session is transcoding.'));
+                                    button.disabled = running;
+                                }));
+                        }, 'raised button-submit');
+                        const go = el('div', null, 'hwprobe-row hwprobe-start');
+                        go.append(button, estimate);
+                        body.appendChild(go);
+                        body.appendChild(el('div', idle, 'infoBanner'));
+
+                        const select = themedSelect(body, 'Suite');
+                        for (const suite of suites) {
+                            const option = el('option', suite.Name);
+                            option.value = suite.Key;
+                            option.selected = suite.Key === chosenSuite;
+                            select.appendChild(option);
+                        }
+                        // What the chosen suite runs, under its field as an input's details are.
+                        const details = el('div');
+                        select.parentNode.appendChild(details);
+                        const show = () => {
+                            const suite = suites.find(x => x.Key === chosenSuite);
+                            details.replaceChildren();
+                            details.appendChild(el('div', suite.Description, 'fieldDescription'));
+                            if (suite.Note) {
+                                details.appendChild(el('div', suite.Note, 'infoBanner'));
+                            }
+                            const list = el('ul', null, 'fieldDescription hwprobe-notes');
+                            list.appendChild(el('li', 'Steps: ' + suite.Steps.join(', ')));
+                            if (suite.Offered) {
+                                list.appendChild(el('li', 'Backend: ' + suite.Backends.map(b => names[b] || b).join(', ')));
+                            }
+                            details.appendChild(list);
+                            // Suites measure once each, without a time limit.
+                            estimate.textContent = suite.Offered ? measurementsText(suite.Measurements, suite.Method, 1, null) : 'Not available on this server.';
+                            button.dataset.unavailable = String(!suite.Offered);
+                            button.disabled = running || !suite.Offered;
+                        };
+                        select.addEventListener('change', () => { chosenSuite = select.value; show(); });
+                        show();
                     }, () => {});
                 }
 
@@ -1615,17 +1750,11 @@
                         const videos = allVideos().filter(v => chosenVideos.has(v.Key)).length;
                         const outputs = selectedOutputs().length;
                         const runs = speedRuns(viable);
-                        const per = methodSeconds[speedMethod] || methodSeconds[defaultMethod];
-                        const minutes = n => Math.max(1, Math.round(n / 60));
-                        const cap = n => speedTimeLimit ? Math.min(n, speedTimeLimit) : n;
-                        const low = minutes(runs * cap(per[0] * speedRepeats));
-                        const high = minutes(runs * cap(per[1] * speedRepeats));
-                        const span = low === high ? 'about ' + low : 'about ' + low + ' to ' + high;
                         const missing = [[videos, 'an input'], [outputs, 'an output'], [speedBackends(viable), 'a backend']].filter(([n]) => !n).map(([, what]) => what);
                         estimate.textContent = missing.length
                             ? 'Requires ' + (missing.length > 2 ? missing.slice(0, -1).join(', ') + ', and ' + missing[missing.length - 1] : missing.join(' and ')) + '.'
                             : !runs ? 'Nothing to measure with these choices.'
-                            : videos + ' input' + (videos === 1 ? '' : 's') + ' \u00d7 ' + outputs + ' output' + (outputs === 1 ? '' : 's') + ' on ' + speedBackends(viable) + ' backend' + (speedBackends(viable) === 1 ? '' : 's') + ': ' + runs + ' measurement' + (runs === 1 ? '' : 's') + ', ' + span + ' minute' + (high === 1 ? '' : 's');
+                            : videos + ' input' + (videos === 1 ? '' : 's') + ' \u00d7 ' + outputs + ' output' + (outputs === 1 ? '' : 's') + ' on ' + speedBackends(viable) + ' backend' + (speedBackends(viable) === 1 ? '' : 's') + ': ' + measurementsText(runs, speedMethod, speedRepeats, speedTimeLimit);
                         button.disabled = runs === 0 || running;
                     };
                     button = action('Measure performance', () => {
@@ -1639,17 +1768,18 @@
                                 button.disabled = false;
                             }));
                     }, 'raised button-submit');
-                    renderSuites(fold(container, 'Test Suites', false));
+                    const idle = 'For more accurate results, measure while the server is idle.';
+                    const suites = fold(container, 'Test Suites', true);
+                    const form = fold(container, 'Custom Test', false, null, 'performance');
                     const go = el('div', null, 'hwprobe-row hwprobe-start');
                     go.appendChild(button);
                     go.appendChild(estimate);
-                    container.appendChild(go);
-                    container.appendChild(el('div', 'For more accurate results, measure while the server is idle.', 'infoBanner'));
-                    const form = fold(container, 'Settings', true, null, 'performance');
+                    form.appendChild(go);
+                    form.appendChild(el('div', idle, 'infoBanner'));
 
                     // Help goes under its field, before the gap to the next one, as the dashboard's helper text does.
-                    const options = (label, values, current, onChange, help) => {
-                        const select = themedSelect(form, label);
+                    const options = (label, values, current, onChange, help, target) => {
+                        const select = themedSelect(target || form, label);
                         if (help) {
                             select.parentNode.appendChild(el('div', help, 'fieldDescription'));
                         }
@@ -1723,17 +1853,23 @@
                     options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });
                     options('Repeats', repeatOptions, speedRepeats, v => { speedRepeats = Number(v); });
                     options('Earlier results', [['true', 'Reuse when the settings match'], ['false', 'Measure everything again']], String(speedReuse), v => { speedReuse = v === 'true'; }, 'Reuses a measurement from an earlier run with the same input, output, backend, accuracy, repeats, and ffmpeg, and the same values for the settings that affect it, so a repeated comparison completes faster.');
-                    options('Resource Usage', [['false', 'Don\u2019t measure'], ['true', 'Measure CPU, memory, and GPU usage']], String(speedResources), v => { speedResources = v === 'true'; });
                     // What this server's platform can measure, and whose usage it is.
                     const coverage = {
                         windows: 'CPU, memory, GPU, and GPU memory usage are measured per transcode.',
                         linux: 'CPU and memory usage are measured per transcode. Intel and AMD GPU usage is measured per transcode on kernel 5.19 or newer (6.8 for Intel\u2019s xe driver). NVIDIA GPU usage covers the whole GPU, including any other work on it.',
                         macos: 'CPU and memory usage are measured per transcode. GPU usage can\u2019t be measured on macOS.',
                     }[report && report.host ? report.host.os : ''];
-                    if (coverage) {
-                        form.lastElementChild.appendChild(el('div', coverage, 'infoBanner'));
-                    }
-                    options('When the server starts transcoding', whenTranscodingOptions, speedWhenTranscoding, v => { speedWhenTranscoding = v; });
+                    // Test suites have their own Resource Usage and transcoding choices.
+                    const shared = (target, resources, setResources, whenTranscoding, setWhenTranscoding) => {
+                        options('Resource Usage', [['false', 'Don\u2019t measure'], ['true', 'Measure CPU, memory, and GPU usage']], String(resources), v => setResources(v === 'true'), null, target);
+                        if (coverage) {
+                            target.lastElementChild.appendChild(el('div', coverage, 'infoBanner'));
+                        }
+                        options('When the server starts transcoding', whenTranscodingOptions, whenTranscoding, setWhenTranscoding, null, target);
+                    };
+                    renderSuites(suites, idle);
+                    shared(suites, suiteResources, v => { suiteResources = v; }, suiteWhenTranscoding, v => { suiteWhenTranscoding = v; });
+                    shared(form, speedResources, v => { speedResources = v; }, speedWhenTranscoding, v => { speedWhenTranscoding = v; });
                     options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); }, 'A measurement that reaches the limit stops and reports what it measured.');
 
                     update();
@@ -1801,7 +1937,6 @@
                 }
 
                 // Runs of the same command vary by a few percent, so smaller differences aren't shown as one.
-                const noise = 0.05;
 
                 // Which comparison rows are open, by test, kept across redraws.
                 const speedOpen = new Set();
@@ -1820,7 +1955,7 @@
                         }
                     }
                     const sameType = b => backends.filter(o => o.type === b.type).length > 1;
-                    const columnName = b => b.type === 'none' ? 'Software' : (names[b.type] || b.type) + (sameType(b) ? ' ' + b.device : '');
+                    const columnName = b => (names[b.type] || b.type) + (b.type !== 'none' && sameType(b) ? ' ' + b.device : '');
 
                     if (!speedHistory.length && !speedLive) {
                         div.appendChild(el('p', 'Measured ' + new Date(r.generatedUtc).toLocaleString() + ', ' + methodName(r.method).toLowerCase() + ' accuracy', 'secondaryText'));
@@ -1884,7 +2019,7 @@
                             speedCell.textContent = speedText;
                         }
                         if (baseline && speed) {
-                            speedCell.appendChild(el('span', ' ' + speedChange(x.fps, baseline.fps), 'hwprobe-small secondaryText'));
+                            speedCell.appendChild(el('span', ' ' + speedChange(x.fps / (x.frameRate || 1), baseline.fps / (baseline.frameRate || 1)), 'hwprobe-small secondaryText'));
                         }
                         const n = footnote(x.note);
                         if (n) {
@@ -1937,7 +2072,7 @@
                             top.appendChild(th);
                         }
                         table.appendChild(top);
-                        const parts = resources ? ['CPU', 'Memory', 'GPU', 'GPU memory'] : ['Concurrent streams', 'Speed'];
+                        const parts = resources ? ['Cpu', 'Memory', 'Gpu', 'GpuMemory'].map(k => (resourceNames[k] || k).replace(/^./, c => c.toUpperCase())) : ['Concurrent streams', 'Speed'];
                         row(table, [el('th', 'Input'), el('th', 'Output'), el('th', 'Size')].concat(backends.flatMap(() => parts.map(part => el('th', part, 'hwprobe-num secondaryText')))));
                     } else {
                         row(table, [el('th', 'Input'), el('th', 'Output'), el('th', 'Size')].concat(backends.map(b => el('th', columnName(b), 'hwprobe-num'))));
@@ -2024,26 +2159,23 @@
                         div.appendChild(line);
                     });
 
-                    // The samples a run used, listed as on Performance Tests; a sample no longer in the catalog keeps the credit it was saved with.
+                    // The inputs a run used, listed as on Performance Tests; a sample no longer in the catalog keeps the credit it was saved with.
                     const samples = el('ul', null, 'fieldDescription hwprobe-notes');
-                    const listed = new Set();
-                    for (const x of r.results) {
-                        const v = speedVideos.find(o => o.Key === x.test.split('|')[0]);
-                        const key = v ? v.Key : x.credit;
-                        if (!x.credit || listed.has(key)) {
-                            continue;
-                        }
-                        listed.add(key);
-                        if (v) {
-                            samples.appendChild(videoItem(v));
-                        } else {
+                    const inputKeys = new Set(r.results.map(x => x.test.split('|')[0]));
+                    for (const v of speedVideos.filter(o => inputKeys.has(o.Key))) {
+                        samples.appendChild(videoItem(v));
+                    }
+                    const credits = new Set();
+                    for (const x of r.results.filter(o => o.credit && !speedVideos.some(v => v.Key === o.test.split('|')[0]))) {
+                        if (!credits.has(x.credit)) {
+                            credits.add(x.credit);
                             const line = el('li', x.credit + ', ');
                             line.appendChild(externalLink('licence', x.licenseUrl));
                             samples.appendChild(line);
                         }
                     }
                     if (samples.childElementCount) {
-                        fold(div, 'Samples', false, 'h3').appendChild(samples);
+                        fold(div, 'Inputs', false, 'h3').appendChild(samples);
                     }
                     if (r.settings) {
                         const used = fold(div, 'Settings used', false, 'h3');
@@ -2053,14 +2185,6 @@
                             row(table, [label, el('td', value, 'secondaryText')]);
                         }
                         used.appendChild(sortable(table, 'settings-used'));
-                        const notes = ['Speed: one transcode on its own; 2\u00d7 is twice as fast as playing. Bars and percentages are relative to the fastest result in the row.'];
-                        if (counted) {
-                            notes.push('Concurrent streams: how many keep up when run together; 16+ is the most measured.');
-                        }
-                        if (speedView === 'resources') {
-                            notes.push('Resource usage: what one transcode on its own used: CPU cores in use on average, peak memory, its busiest GPU engine, and peak GPU memory, where the platform reports them.');
-                        }
-                        used.appendChild(el('div', notes.join(' '), 'fieldDescription'));
                     }
                     return div;
                 }
@@ -2084,51 +2208,42 @@
                     ].map(([key, value]) => [settingLabels[key] || key, value]);
                 }
 
-                // Status of a running speed run: test videos being prepared, then measurements with the time left.
-                function speedProgressText(s) {
-                    if (s.Phase === 'Cancelling') {
-                        return 'Cancelling\u2026';
-                    }
-                    if (s.Phase === 'Deferring') {
-                        return 'Waiting: the server is transcoding. Measured ' + (s.Done || 0) + ' of ' + s.Total + '; the interrupted measurement runs again when it ends.';
-                    }
-                    if (s.Phase === 'Paused') {
-                        return 'Paused after ' + (s.Done || 0) + ' of ' + s.Total;
-                    }
-                    if (s.Phase === 'Pausing') {
-                        return 'Pausing when this measurement finishes\u2026';
-                    }
-                    if (s.Phase === 'Preparing' || !s.Total) {
-                        const ahead = s.Total ? timeLeft(s) : '';
-                        return (s.Preparing || 'Preparing test videos') + (ahead ? '\u2026 ' + ahead : '\u2026');
-                    }
-                    const done = s.Done || 0;
-                    const left = timeLeft(s);
-                    return 'Measured ' + done + ' of ' + s.Total + (left ? ', ' + left : '');
+                // In a suite, which step; and anything other than measuring: preparing, pausing, waiting, or cancelling.
+                function speedStatusText(s) {
+                    const what = s.Phase === 'Cancelling' ? 'Cancelling\u2026'
+                        : s.Phase === 'Deferring' ? 'Waiting: the server is transcoding; the interrupted measurement runs again when it ends.'
+                        : s.Phase === 'Paused' ? 'Paused'
+                        : s.Phase === 'Pausing' ? 'Pausing when this measurement finishes\u2026'
+                        : s.Phase === 'Preparing' || !s.Total ? (s.Preparing || 'Preparing test videos') + '\u2026'
+                        : '';
+                    return [s.Suite, what].filter(t => t).join(' \u00b7 ');
                 }
 
-                // From the measurements so far; before the first, from the accuracy's typical time per measurement.
-                function timeLeft(s) {
-                    const done = s.Done || 0;
-                    const remaining = s.Total - done;
-                    if (remaining <= 0) {
+                // Measurements done and planned: across the whole suite in a suite, else the run's.
+                function speedCounts(s) {
+                    return s.SuiteTotal ? { done: (s.SuiteDone || 0) + (s.Done || 0), total: s.SuiteTotal } : { done: s.Done || 0, total: s.Total || 0 };
+                }
+
+                // Measurements done and planned, e.g. " 2 / 20": the count is padded with figure spaces to the total's width, so the text doesn't shift.
+                function speedCountText(s) {
+                    const c = speedCounts(s);
+                    return c.total ? String(c.done).padStart(String(c.total).length, '\u2007') + ' / ' + c.total : '';
+                }
+
+                // How long the run or suite has been going, as mm:ss, or hh:mm:ss from an hour.
+                function speedElapsedText(s) {
+                    if (s.ElapsedSeconds === null || s.ElapsedSeconds === undefined) {
                         return '';
                     }
-                    let seconds;
-                    if (done > 0 && s.MeasuringSeconds) {
-                        seconds = s.MeasuringSeconds / done * remaining;
-                    } else {
-                        const per = methodSeconds[speedLive ? speedLive.method : speedMethod] || methodSeconds[defaultMethod];
-                        // A page opened mid-run polls before the catalog loads.
-                        if (!per) {
-                            return '';
-                        }
-                        seconds = remaining * (per[0] + per[1]) / 2 * (speedLive && speedLive.repeats ? speedLive.repeats : 1);
-                    }
-                    const minutes = Math.round(seconds / 60);
-                    return seconds < 60 ? 'under a minute remains\u2026'
-                        : minutes < 90 ? 'about ' + minutes + (minutes === 1 ? ' minute remains\u2026' : ' minutes remain\u2026')
-                        : 'about ' + Math.round(minutes / 60) + ' hours remain\u2026';
+                    const total = Math.max(0, s.ElapsedSeconds);
+                    const [h, m, sec] = [Math.floor(total / 3600), Math.floor(total / 60) % 60, total % 60];
+                    const two = n => String(n).padStart(2, '0');
+                    return (h ? two(h) + ':' : '') + two(m) + ':' + two(sec);
+                }
+
+                // One line for the status text elsewhere on the page.
+                function speedProgressText(s) {
+                    return [speedStatusText(s), speedCountText(s), speedElapsedText(s)].filter(t => t).join(' \u00b7 ');
                 }
 
                 function streamsText(x) {
@@ -2143,7 +2258,7 @@
                         return '-';
                     }
                     const change = fps / baseFps - 1;
-                    if (Math.abs(change) < noise) {
+                    if (Math.abs(change) < advice.Noise) {
                         return 'same';
                     }
                     return (change > 0 ? '+' : '\u2212') + Math.round(Math.abs(change) * 100) + '%';
@@ -2181,7 +2296,7 @@
 
                 function loadReport() {
                     const config = ApiClient.getNamedConfiguration('encoding').then(c => { encoding = c; }, () => { encoding = null; });
-                    const server = ApiClient.getServerConfiguration().then(c => { trickplay = c.TrickplayOptions || null; }, () => { trickplay = null; });
+                    const server = ApiClient.getServerConfiguration().then(c => { trickplay = c.TrickplayOptions || null; remoteLimit = c.RemoteClientBitrateLimit; }, () => { trickplay = null; remoteLimit = null; });
                     const data = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Report'), dataType: 'json' })
                         .then(r => { report = r; }, () => { report = null; });
                     const changes = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/History'), dataType: 'json' })
@@ -2213,7 +2328,7 @@
                         setRunning(s.State === 'Running');
                         if (running) {
                             const text = s.Activity === 'Speed'
-                                ? (s.Suite ? s.Suite + ' \u00b7 ' : '') + speedProgressText(s)
+                                ? speedProgressText(s)
                                 : (s.Step || 'Probing') + (s.Total ? ' \u00b7 ' + (s.Done || 0) + ' of ' + s.Total + ' tests' : '\u2026');
                             statusText.textContent = text;
                             const wasProbing = !!probeProgress;

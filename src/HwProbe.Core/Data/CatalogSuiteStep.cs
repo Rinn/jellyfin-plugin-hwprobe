@@ -14,4 +14,7 @@ public sealed class CatalogSuiteStep
 
     /// <summary>Gets the outputs this run measures instead of the suite's, or null.</summary>
     public IReadOnlyList<string>? Outputs { get; init; }
+
+    /// <summary>Gets the hardware backends the step applies to, or null for every one; on others it's left out.</summary>
+    public IReadOnlyList<Model.HwType>? Backends { get; init; }
 }

@@ -53,6 +53,18 @@ public sealed class HwProbeCommandTests
         Assert.Equal([HwType.qsv, HwType.nvenc, HwType.vaapi], options.Types.Order());
     }
 
+    /// <summary>A suite on its own measures at Confirm accuracy; with --speed, at the accuracy given.</summary>
+    [Fact]
+    public void SuiteBinds()
+    {
+        var alone = Bind(["--suite", "presets"]);
+        var quick = Bind(["--suite", "tonemap", "--speed", "quick"]);
+
+        Assert.Equal(("presets", Core.Speed.SpeedMethod.Confirm), (alone.Suite, alone.Speed!.Method));
+        Assert.Equal(("tonemap", Core.Speed.SpeedMethod.Quick), (quick.Suite, quick.Speed!.Method));
+        Assert.Null(Bind([]).Suite);
+    }
+
     /// <summary>Invalid values are parse errors, not exceptions.</summary>
     /// <param name="args">The command line.</param>
     [Theory]
@@ -63,6 +75,7 @@ public sealed class HwProbeCommandTests
     [InlineData("--fixture-timeout", "-1")]
     [InlineData("--format", "xml")]
     [InlineData("--bogus")]
+    [InlineData("--suite", "nope")]
     public void InvalidValuesAreErrors(params string[] args)
     {
         var result = new HwProbeCommand().Root.Parse(args);

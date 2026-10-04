@@ -33,6 +33,12 @@ public sealed record ProbeStatus(ProbeState State, DateTimeOffset? LastStartedUt
     /// <summary>Gets the test suite step running, e.g. <c>Encoder presets: medium, 4 of 5</c>, or null.</summary>
     public string? Suite { get; init; }
 
-    /// <summary>Gets the seconds a speed run has spent measuring, leaving out pauses; the page estimates the time left from it.</summary>
-    public int? MeasuringSeconds { get; init; }
+    /// <summary>Gets the measurements a running test suite's earlier steps made, or null outside a suite.</summary>
+    public int? SuiteDone { get; init; }
+
+    /// <summary>Gets the measurements in the whole running test suite: each finished or running step's planned count, and an estimate for the rest; null outside a suite.</summary>
+    public int? SuiteTotal { get; init; }
+
+    /// <summary>Gets the seconds since the running speed run or test suite started, pauses included, from the server's clock.</summary>
+    public int? ElapsedSeconds { get; init; }
 }

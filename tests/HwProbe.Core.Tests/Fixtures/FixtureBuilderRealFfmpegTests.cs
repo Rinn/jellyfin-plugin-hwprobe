@@ -27,6 +27,14 @@ public sealed class FixtureBuilderRealFfmpegTests : IDisposable
         Assert.All(results, r => Assert.True(r.Status != FixtureStatus.Failed, $"{r.Spec.FileName}: {r.Reason}"));
         Assert.Equal(FixtureStatus.Available, results.Single(r => r.Spec.FileName == "h264_8bit.mp4").Status);
         Assert.Equal(FixtureStatus.Untested, results.Single(r => r.Spec.Codec == "vc1").Status);
+
+        // A clip that isn't tagged PQ is SDR to decoders, so tone mapping fails or does nothing.
+        var hdr = results.Single(r => r.Spec.FileName == "hdr10.mp4");
+        if (hdr.Status == FixtureStatus.Available)
+        {
+            var info = await runner.RunAsync(new FfmpegInvocation(ffmpeg, $"-hide_banner -i \"{hdr.Path}\"", new Dictionary<string, string?>(), TimeSpan.FromSeconds(15)), ct);
+            Assert.Contains("bt2020nc/bt2020/smpte2084", info.Stderr, StringComparison.Ordinal);
+        }
     }
 
     /// <inheritdoc/>

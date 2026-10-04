@@ -23,7 +23,7 @@ internal sealed class SettingsHarness : IDisposable
     public SettingsHarness()
     {
         Service = new SettingsService(
-            () => new ServerSettings(Copy(Saved), new TrickplayOptions { EnableHwAcceleration = SavedTrickplay.EnableHwAcceleration, EnableHwEncoding = SavedTrickplay.EnableHwEncoding, EnableKeyFrameOnlyExtraction = SavedTrickplay.EnableKeyFrameOnlyExtraction }),
+            () => new ServerSettings(Copy(Saved), new TrickplayOptions { EnableHwAcceleration = SavedTrickplay.EnableHwAcceleration, EnableHwEncoding = SavedTrickplay.EnableHwEncoding, EnableKeyFrameOnlyExtraction = SavedTrickplay.EnableKeyFrameOnlyExtraction }) { Streaming = new StreamingOptions { RemoteClientBitrateLimit = SavedBitrateLimit } },
             Save,
             options => SavedTrickplay = options,
             _ => Task.FromResult<CapabilityReport?>(Report),
@@ -34,6 +34,7 @@ internal sealed class SettingsHarness : IDisposable
             NullLogger.Instance)
         {
             Suggestions = (_, _) => Task.FromResult(Suggestions),
+            SaveStreaming = options => SavedBitrateLimit = options.RemoteClientBitrateLimit,
         };
     }
 
@@ -55,6 +56,9 @@ internal sealed class SettingsHarness : IDisposable
         AllowAv1Encoding = true,
         EnableTonemapping = false,
     };
+
+    /// <summary>Gets or sets the server's saved Internet streaming bitrate limit; 0 for none.</summary>
+    public int SavedBitrateLimit { get; set; }
 
     /// <summary>Gets or sets the server's saved trickplay options.</summary>
     public TrickplayOptions SavedTrickplay { get; set; } = new();

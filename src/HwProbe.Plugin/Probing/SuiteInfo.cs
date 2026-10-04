@@ -1,4 +1,5 @@
 using Jellyfin.Plugin.HwProbe.Core.Model;
+using Jellyfin.Plugin.HwProbe.Core.Speed;
 
 namespace Jellyfin.Plugin.HwProbe.Probing;
 
@@ -9,4 +10,7 @@ namespace Jellyfin.Plugin.HwProbe.Probing;
 /// <param name="Steps">The steps' labels, in order.</param>
 /// <param name="Backends">The backends it runs on; software is <see cref="HwType.none"/>.</param>
 /// <param name="Offered">Whether it can run here: a probe has run and the server has what it needs.</param>
-public sealed record SuiteInfo(string Key, string Name, string Description, IReadOnlyList<string> Steps, IReadOnlyList<HwType> Backends, bool Offered);
+/// <param name="Method">The accuracy its steps measure at.</param>
+/// <param name="Note">Advice shown with the suite and its results, or null.</param>
+/// <param name="Measurements">How many measurements its steps make together: inputs times outputs times backends, per step.</param>
+public sealed record SuiteInfo(string Key, string Name, string Description, IReadOnlyList<string> Steps, IReadOnlyList<HwType> Backends, bool Offered, int Measurements, SpeedMethod Method, string? Note);

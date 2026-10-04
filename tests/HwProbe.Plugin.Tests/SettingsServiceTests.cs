@@ -27,6 +27,31 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.Equal([new AppliedChange("EncoderPreset", "auto", "medium") { Label = "Encoding preset" }], applied.Changes);
     }
 
+    /// <summary>A suggested bitrate limit is saved to the streaming settings and reverted from there; one at or above a stricter limit already set is refused, as is a suggestion that only confirms the server's value.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task AppliesAndRevertsABitrateLimit()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        _harness.Suggestions =
+        [
+            new SpeedSuggestion(SpeedSuggestionKind.BitrateLimit, ["a"]) { Setting = SpeedAdvisor.BitrateLimitKey, Value = "20000000" },
+            new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, ["a"]) { Setting = "EncoderPreset", Value = "fast", Current = true },
+        ];
+
+        Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange("EncoderPreset", "fast"), "admin", ct)).Outcome);
+        var applied = await _harness.Service.ApplyMeasuredAsync(new MeasuredChange(SpeedAdvisor.BitrateLimitKey, "20000000"), "admin", ct);
+        Assert.Equal((ApplyOutcome.Applied, 20000000), (applied.Outcome, _harness.SavedBitrateLimit));
+        Assert.Equal("Internet streaming bitrate limit", Assert.Single(applied.Changes).Label);
+
+        await _harness.Service.RevertAsync("admin", ct);
+        Assert.Equal(0, _harness.SavedBitrateLimit);
+
+        _harness.SavedBitrateLimit = 8000000;
+        Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange(SpeedAdvisor.BitrateLimitKey, "20000000"), "admin", ct)).Outcome);
+        Assert.Equal(8000000, _harness.SavedBitrateLimit);
+    }
+
     /// <summary>Changes matching the advice are saved; other options are left as they were.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

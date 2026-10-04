@@ -50,7 +50,7 @@ public sealed class SettingsService : IDisposable
     /// <param name="logger">Logger.</param>
     public SettingsService(IServerConfigurationManager config, IMediaEncoder mediaEncoder, ProbeService probes, IApplicationPaths paths, ILogger<SettingsService> logger)
         : this(
-            () => new ServerSettings(Clone(config.GetEncodingOptions()), Clone(config.Configuration.TrickplayOptions)),
+            () => new ServerSettings(Clone(config.GetEncodingOptions()), Clone(config.Configuration.TrickplayOptions)) { Streaming = new StreamingOptions { RemoteClientBitrateLimit = config.Configuration.RemoteClientBitrateLimit } },
             options => config.SaveConfiguration(EncodingKey, options),
             options =>
             {
@@ -66,6 +66,11 @@ public sealed class SettingsService : IDisposable
     {
         ArgumentNullException.ThrowIfNull(probes);
         Suggestions = probes.SpeedSuggestionsAsync;
+        SaveStreaming = options =>
+        {
+            config.Configuration.RemoteClientBitrateLimit = options.RemoteClientBitrateLimit;
+            config.SaveConfiguration();
+        };
     }
 
     /// <summary>Initializes a new instance of the <see cref="SettingsService"/> class with injected behaviour.</summary>
@@ -94,6 +99,9 @@ public sealed class SettingsService : IDisposable
     /// <summary>Gets a value indicating whether HwProbe changed the backend or device since Jellyfin started.</summary>
     /// <remarks>Kept in memory, so restarting Jellyfin clears it.</remarks>
     public bool RestartRequired => _restartRequired;
+
+    /// <summary>Gets what saves the streaming options.</summary>
+    internal Action<StreamingOptions> SaveStreaming { get; init; } = _ => { };
 
     /// <summary>Gets what draws the suggestions from performance tests, for a run or the latest.</summary>
     internal Func<string?, CancellationToken, Task<IReadOnlyList<SpeedSuggestion>>> Suggestions { get; init; } = (_, _) => Task.FromResult<IReadOnlyList<SpeedSuggestion>>([]);
@@ -149,13 +157,22 @@ public sealed class SettingsService : IDisposable
             async () =>
             {
                 var suggested = (await Suggestions(change.Run, cancellationToken))
-                    .Any(s => s.Kind is SpeedSuggestionKind.FasterSetting or SpeedSuggestionKind.HigherQuality && s.Setting == change.Setting && s.Value == change.Value);
+                    .Any(s => s.Kind is SpeedSuggestionKind.FasterSetting or SpeedSuggestionKind.HigherQuality or SpeedSuggestionKind.EfficientSetting or SpeedSuggestionKind.BitrateLimit && !s.Current && s.Setting == change.Setting && s.Value == change.Value);
                 if (!suggested || MeasuredSettings.ToSetting(change.Setting, change.Value) is not { } setting)
                 {
                     return Refuse($"{change.Setting} = {change.Value} isn't suggested by the performance tests.");
                 }
 
-                return await WriteAsync(_read(), [setting], HistoryKind.Apply, user, cancellationToken);
+                // A limit the admin set lower already keeps streams within what the backend handles; raising it isn't the suggestion's to make.
+                var options = _read();
+                if (StreamingSettings.IsKnown(setting.Setting)
+                    && options.Streaming.RemoteClientBitrateLimit is > 0 and var limit
+                    && limit <= int.Parse(setting.Value, System.Globalization.CultureInfo.InvariantCulture))
+                {
+                    return Refuse("A bitrate limit at or below the suggested one is already set.");
+                }
+
+                return await WriteAsync(options, [setting], HistoryKind.Apply, user, cancellationToken);
             },
             cancellationToken);
     }
@@ -335,9 +352,14 @@ public sealed class SettingsService : IDisposable
         history ??= await ReadHistoryAsync(cancellationToken);
         if (changed.Count > 0)
         {
-            if (changed.Any(c => !ServerSettings.IsTrickplay(c.Setting)))
+            if (changed.Any(c => !ServerSettings.IsTrickplay(c.Setting) && !StreamingSettings.IsKnown(c.Setting)))
             {
                 _saveEncoding(options.Encoding);
+            }
+
+            if (changed.Any(c => StreamingSettings.IsKnown(c.Setting)))
+            {
+                SaveStreaming(options.Streaming);
             }
 
             if (changed.Any(c => ServerSettings.IsTrickplay(c.Setting)))

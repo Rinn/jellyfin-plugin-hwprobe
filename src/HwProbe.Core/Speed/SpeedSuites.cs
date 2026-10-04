@@ -13,27 +13,26 @@ public static class SpeedSuites
     /// <summary>Returns a suite's runs, in order.</summary>
     /// <param name="suite">The suite.</param>
     /// <param name="processorCount">The server's logical CPU count, which bounds the thread limits.</param>
+    /// <param name="server">The server's settings; when a suite varies one setting and none of its steps is the server's value, that value is added as a last step, since suggestions compare against it. Null leaves the steps as they are.</param>
+    /// <param name="hardware">The hardware backend the suite runs on, which leaves out steps for other backends; null keeps every step.</param>
     /// <returns>The runs.</returns>
-    public static IReadOnlyList<SuiteStep> Steps(CatalogSuite suite, int processorCount)
+    public static IReadOnlyList<SuiteStep> Steps(CatalogSuite suite, int processorCount, SpeedSettings? server = null, HwType? hardware = null)
     {
-        ArgumentNullException.ThrowIfNull(suite);
-        if (!suite.ThreadSteps)
+        var steps = CatalogSteps(suite, processorCount, hardware);
+        var keys = steps.SelectMany(s => s.Options.Keys).Distinct(StringComparer.Ordinal).ToList();
+        if (server is null || keys is not [var key] || steps.Any(s => !s.Options.ContainsKey(key)) || !SpeedAdvisor.Settings.Contains(key))
         {
-            return [.. suite.Steps.Select(s => new SuiteStep(s.Label, s.Options, s.Videos ?? suite.Videos, s.Outputs ?? suite.Outputs))];
+            return steps;
         }
 
-        // Auto, then doubling thread limits, then the CPU count itself; only limits the setting offers.
-        var option = Catalog.Default.Options.First(o => o.Key == ThreadOption);
-        List<int> limits = [];
-        for (var n = 1; n < processorCount; n *= 2)
+        var value = SpeedAdvisor.ValueOf(server, key);
+        if (steps.Any(s => s.Options[key] == value) || Catalog.Default.Options.FirstOrDefault(o => o.Key == key) is not { } option || !option.Takes(value))
         {
-            limits.Add(n);
+            return steps;
         }
 
-        limits.Add(processorCount);
-        var values = limits.Select(n => n.ToString(CultureInfo.InvariantCulture)).Where(option.Takes).Distinct(StringComparer.Ordinal);
-        return [.. new[] { ("-1", "Auto") }.Concat(values.Select(v => (v, v + (v == "1" ? " thread" : " threads"))))
-            .Select(v => new SuiteStep(v.Item2, new Dictionary<string, string>(StringComparer.Ordinal) { [ThreadOption] = v.Item1 }, suite.Videos, suite.Outputs))];
+        var label = option.Choices?.FirstOrDefault(c => c.Key == value)?.Label ?? value;
+        return [.. steps, new SuiteStep($"{label} (server setting)", new Dictionary<string, string>(StringComparer.Ordinal) { [key] = value }, suite.Videos, suite.Outputs)];
     }
 
     /// <summary>Returns the backends a suite runs on.</summary>
@@ -67,5 +66,41 @@ public static class SpeedSuites
             "lowPower" => configured == HwType.qsv && report.Backends.Any(b => b.Type == HwType.qsv && b.Encode.Any(e => e.Key.EndsWith("_lowpower", StringComparison.Ordinal) && e.Value == ProbeOutcome.Pass)),
             _ => true,
         };
+    }
+
+    /// <summary>Returns a suite's runs as the catalog defines them.</summary>
+    /// <param name="suite">The suite.</param>
+    /// <param name="processorCount">The server's logical CPU count, which bounds the thread limits.</param>
+    /// <param name="hardware">The hardware backend, or null to keep every step.</param>
+    /// <returns>The runs.</returns>
+    private static IReadOnlyList<SuiteStep> CatalogSteps(CatalogSuite suite, int processorCount, HwType? hardware)
+    {
+        ArgumentNullException.ThrowIfNull(suite);
+        if (!suite.ThreadSteps)
+        {
+            return [.. suite.Steps
+                .Where(s => s.Backends is null || hardware is null || s.Backends.Contains(hardware.Value))
+                .Select(s => new SuiteStep(s.Label, s.Options, s.Videos ?? suite.Videos, s.Outputs ?? suite.Outputs) { HardwareOnly = s.Backends is not null })];
+        }
+
+        // Auto, then doubling thread limits, then the CPU count itself; only limits the setting offers.
+        var option = Catalog.Default.Options.First(o => o.Key == ThreadOption);
+        List<int> limits = [];
+        for (var n = 1; n < processorCount; n *= 2)
+        {
+            limits.Add(n);
+        }
+
+        limits.Add(processorCount);
+        var values = limits.Select(n => n.ToString(CultureInfo.InvariantCulture)).Where(option.Takes).Distinct(StringComparer.Ordinal);
+
+        // Auto is the option's own first choice; limits are labelled from the suite's pattern.
+        if (option.Choices is not [var auto, ..])
+        {
+            throw new InvalidOperationException($"The catalog's {ThreadOption} option has no choices.");
+        }
+
+        return [.. new[] { (auto.Key, auto.Label) }.Concat(values.Select(v => (v, (v == "1" ? suite.ThreadLabelOne : suite.ThreadLabel).Replace("{n}", v, StringComparison.Ordinal))))
+            .Select(v => new SuiteStep(v.Item2, new Dictionary<string, string>(StringComparer.Ordinal) { [ThreadOption] = v.Item1 }, suite.Videos, suite.Outputs))];
     }
 }
