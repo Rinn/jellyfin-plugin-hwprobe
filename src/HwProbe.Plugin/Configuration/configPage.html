@@ -1408,30 +1408,13 @@
                     return td;
                 }
 
-                // A download links to where it comes from, with the credit its licence asks for.
-                function sourceCell(v) {
-                    const td = el('td', null, 'secondaryText');
-                    if (!v.SourceUrl) {
-                        td.textContent = v.Origin;
-                        return td;
-                    }
-                    const external = (text, url) => {
-                        const a = el('a', text, 'button-link');
-                        a.href = url;
-                        a.target = '_blank';
-                        a.rel = 'noopener noreferrer';
-                        return a;
-                    };
-                    td.appendChild(external(v.Title, v.ArticleUrl || v.SourceUrl));
-                    const credit = el('div', null, 'hwprobe-small');
-                    credit.appendChild(v.HolderUrl ? external(v.CreditHolder, v.HolderUrl) : document.createTextNode(v.CreditHolder));
-                    credit.appendChild(document.createTextNode(', '));
-                    credit.appendChild(external(v.LicenseName, v.LicenseUrl));
-                    credit.appendChild(document.createTextNode(' (' + v.Origin + ' from '));
-                    credit.appendChild(external('Wikimedia Commons', v.SourceUrl));
-                    credit.appendChild(document.createTextNode(')'));
-                    td.appendChild(credit);
-                    return td;
+                // A link that opens another site in a new tab.
+                function externalLink(text, url) {
+                    const a = el('a', text, 'button-link');
+                    a.href = url;
+                    a.target = '_blank';
+                    a.rel = 'noopener noreferrer';
+                    return a;
                 }
 
                 // Where each chosen input comes from, under the Input field.
@@ -1441,27 +1424,38 @@
                         target.appendChild(libraryCell(update));
                     }
                     const list = el('ul', null, 'fieldDescription hwprobe-notes');
+                    // Each input: its name and what it shows on the left, its format on the right; a sample adds its credit and download.
+                    const entry = (left, right) => {
+                        const row = el('div', null, 'hwprobe-row');
+                        row.appendChild(left);
+                        row.appendChild(el('span', right, 'hwprobe-small secondaryText'));
+                        return row;
+                    };
                     const videoLine = v => {
-                        const line = el('li', v.Name);
-                        const source = v.SourceUrl ? sourceCell(v) : el('div', v.Description);
-                        if (v.SourceUrl || v.Description) {
-                            line.appendChild(document.createTextNode(': '));
+                        const line = el('li');
+                        const name = el('span', v.Name + (v.SourceUrl || v.Description ? ': ' : ''));
+                        name.appendChild(v.SourceUrl ? externalLink(v.Title, v.ArticleUrl || v.SourceUrl) : document.createTextNode(v.Description || ''));
+                        line.appendChild(entry(name, v.Input));
+                        if (v.SourceUrl) {
+                            const credit = el('span', null, 'hwprobe-small');
+                            credit.appendChild(v.HolderUrl ? externalLink(v.CreditHolder, v.HolderUrl) : document.createTextNode(v.CreditHolder));
+                            credit.appendChild(document.createTextNode(', '));
+                            credit.appendChild(externalLink(v.LicenseName, v.LicenseUrl));
+                            const download = entry(credit, v.Origin + ' from ');
+                            download.lastElementChild.appendChild(externalLink('Wikimedia Commons', v.SourceUrl));
+                            line.appendChild(download);
                         }
-                        while (source.firstChild) {
-                            line.appendChild(source.firstChild);
-                        }
-                        // The format ends the first line, before a sample's credit.
-                        line.insertBefore(document.createTextNode(' (' + v.Input + ')'), line.querySelector('div'));
                         list.appendChild(line);
                     };
                     // In the Input menu's order: samples, the library video, then test videos.
                     speedVideos.filter(v => v.SourceUrl && chosenVideos.has(v.Key)).forEach(videoLine);
                     if (chosenVideos.has('library') && libraryVideo) {
-                        const line = el('li', 'Library video: ');
+                        const line = el('li');
+                        const name = el('span', 'Library video: ');
                         const link = el('a', speedItem.Name, 'button-link');
                         link.href = '#/details?id=' + speedItem.Id + '&serverId=' + ApiClient.serverId();
-                        line.appendChild(link);
-                        line.appendChild(document.createTextNode(' (' + libraryVideo.Input + ')'));
+                        name.appendChild(link);
+                        line.appendChild(entry(name, libraryVideo.Input));
                         list.appendChild(line);
                     }
                     speedVideos.filter(v => !v.SourceUrl && chosenVideos.has(v.Key)).forEach(videoLine);
