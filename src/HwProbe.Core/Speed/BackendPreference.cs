@@ -5,7 +5,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 /// <summary>Which of two backends on the same GPU performance tests run and suggestions favour.</summary>
 /// <remarks>
 /// Jellyfin's Intel guide lists QSV on Linux as "preferred on mainstream GPUs, for better performance", with VA-API for pre-Broadwell GPUs, where QSV doesn't work
-/// (jellyfin.org docs/general/post-install/transcoding/hardware-acceleration/intel.md). Measured on a Gen 9 NAS, the two were within 10% of each other.
+/// (jellyfin.org docs/general/post-install/transcoding/hardware-acceleration/intel.md). On a Gen 9 NAS, QSV matched VAAPI at decoding, was 7-15% faster at H.264, and was about 2.8 times as fast at HEVC.
 /// </remarks>
 public static class BackendPreference
 {
