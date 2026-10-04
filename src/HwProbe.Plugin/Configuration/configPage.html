@@ -46,7 +46,7 @@
             #HwProbeConfigPage .hwprobe-matrix td:first-child { white-space: nowrap; }
             #HwProbeConfigPage .hwprobe-backends td:nth-child(2), #HwProbeConfigPage .hwprobe-backends th:nth-child(2) { width: 18em; }
             #HwProbeConfigPage .hwprobe-backends td:nth-child(3), #HwProbeConfigPage .hwprobe-backends th:nth-child(3) { width: 12em; }
-            #HwProbeConfigPage .hwprobe-group td { padding-top: 1em; font-weight: 500; }
+            #HwProbeConfigPage .hwprobe-group td { padding-top: 1em; font-weight: 600; color: var(--jf-palette-primary-main, #00a4dc); border-bottom: 2px solid var(--jf-palette-divider, rgba(255, 255, 255, 0.12)); }
             #HwProbeConfigPage tr.hwprobe-group:nth-child(n):hover > td, #HwProbeConfigPage tr:nth-child(n):has(> th):hover > td { background: none; }
             #HwProbeConfigPage .hwprobe-mark { width: 1.5em; }
             #HwProbeConfigPage .hwprobe-mark .material-icons, #HwProbeConfigPage .hwprobe-card .material-icons { font-size: 1.2em; vertical-align: middle; }
@@ -455,21 +455,35 @@
                                 c.removeAttribute('aria-sort');
                             }
                         });
-                        const rows = [...table.rows].filter(r => !r.querySelector('th'));
-                        rows.sort((a, b) => {
+                        // Rows sort within each group, between the group rows.
+                        const segments = [[]];
+                        for (const r of [...table.rows].filter(r => !r.querySelector('th'))) {
+                            if (r.classList.contains('hwprobe-group')) {
+                                segments.push([r]);
+                            } else {
+                                segments[segments.length - 1].push(r);
+                            }
+                        }
+                        const order = (a, b) => {
                             const x = value(a, i);
                             const y = value(b, i);
                             if (x === '' || y === '') {
                                 return (x === '') - (y === '');
                             }
-                            const order = !isNaN(Number(x)) && !isNaN(Number(y)) ? Number(x) - Number(y) : x.localeCompare(y, undefined, { numeric: true });
-                            return ascending ? order : -order;
-                        });
-                        rows.forEach(r => table.appendChild(r));
+                            const compared = !isNaN(Number(x)) && !isNaN(Number(y)) ? Number(x) - Number(y) : x.localeCompare(y, undefined, { numeric: true });
+                            return ascending ? compared : -compared;
+                        };
+                        for (const segment of segments) {
+                            const group = segment[0] && segment[0].classList.contains('hwprobe-group') ? segment.shift() : null;
+                            if (group) {
+                                table.appendChild(group);
+                            }
+                            segment.sort(order).forEach(r => table.appendChild(r));
+                        }
                         sortState[name] = [i, ascending];
                     };
                     [...header.cells].forEach((th, i) => {
-                        if (!th.textContent.trim()) {
+                        if (!th.textContent.trim() || th.querySelector('button')) {
                             return;
                         }
                         th.classList.add('hwprobe-sortable');
@@ -869,7 +883,7 @@
                     groupRow(table, 'Also tested');
                     outcomeRow(table, 'Hardware deinterlacing', firstOutcome(selected.deinterlace));
                     outcomeRow(table, 'Subtitle burn‑in', firstOutcome(selected.subtitles));
-                    container.appendChild(table);
+                    container.appendChild(sortable(table, 'settings'));
                 }
 
                 function renderDetails(r) {
