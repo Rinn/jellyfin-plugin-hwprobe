@@ -1551,7 +1551,7 @@
                     const sources = el('div', null, 'hwprobe-sources');
                     // Real video first, then the test videos.
                     const input = v => ({ key: v.Key, text: v.Name, secondary: v.Input });
-                    multiSelect(form, 'Input', speedVideos.filter(v => v.SourceUrl).map(input).concat([{ key: 'library', text: 'Library video', secondary: libraryVideo ? libraryVideo.Name : 'A movie or episode' }], speedVideos.filter(v => !v.SourceUrl).map(input)), chosenVideos, () => { sourceLines(sources, update); update(); })
+                    multiSelect(form, 'Input', speedVideos.filter(v => v.SourceUrl).map(input).concat([{ key: 'library', text: 'Library video', secondary: libraryVideo ? libraryVideo.Name : 'A movie or episode from a library' }], speedVideos.filter(v => !v.SourceUrl).map(input)), chosenVideos, () => { sourceLines(sources, update); update(); })
                         .appendChild(sources);
                     sourceLines(sources, update);
                     form.appendChild(el('h3', 'Output', 'sectionTitle'));
