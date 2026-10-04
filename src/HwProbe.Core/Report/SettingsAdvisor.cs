@@ -214,7 +214,7 @@ public static class SettingsAdvisor
         // Faster but less accurate timing, so a pass only says it's safe to choose.
         var keyFrames = Advise(TrickplaySection, KeyFrameSetting, KeyFrameLabel, Cell(backend.Decode, "h264_keyframes"));
         yield return keyFrames.State == SettingState.TurnOn
-            ? keyFrames with { State = SettingState.Optional, Note = "Works with hardware decoding; faster, less accurate timing" }
+            ? keyFrames with { State = SettingState.Optional, Note = "Faster, but less accurate timing" }
             : keyFrames;
     }
 
@@ -239,7 +239,7 @@ public static class SettingsAdvisor
             ProbeOutcome.Pass => new(section, setting, label, SettingState.TurnOn, string.Empty),
             null or ProbeOutcome.Skipped or ProbeOutcome.Untested => new(section, setting, label, SettingState.NotTested, notTested),
             ProbeOutcome.CodecUnsupported => new(section, setting, label, SettingState.LeaveOff, NotSupported),
-            ProbeOutcome.NotUsed => new(section, setting, label, SettingState.LeaveOff, "Jellyfin doesn't use hardware for this"),
+            ProbeOutcome.NotUsed => new(section, setting, label, SettingState.LeaveOff, "Software only"),
             _ => new(section, setting, label, SettingState.LeaveOff, "Test failed"),
         };
 

@@ -87,7 +87,7 @@ public static class Hints
         ProbeOutcome.Untested =>
             "Not verified: no hardware or sample was available to test this.",
         ProbeOutcome.NotUsed =>
-            "Jellyfin doesn't use hardware for this with this ffmpeg build, so the setting has no effect.",
+            "Software only with this ffmpeg build, so the setting has no effect.",
         _ => throw new ArgumentOutOfRangeException(nameof(outcome), outcome, null),
     };
 
