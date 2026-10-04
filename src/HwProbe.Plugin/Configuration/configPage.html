@@ -1441,7 +1441,7 @@
                         target.appendChild(libraryCell(update));
                     }
                     const list = el('ul', null, 'fieldDescription hwprobe-notes');
-                    for (const v of allVideos().filter(x => chosenVideos.has(x.Key) && x.Key !== 'library')) {
+                    const videoLine = v => {
                         const line = el('li');
                         line.appendChild(document.createTextNode(v.Name + ': '));
                         const source = sourceCell(v);
@@ -1449,7 +1449,9 @@
                             line.appendChild(source.firstChild);
                         }
                         list.appendChild(line);
-                    }
+                    };
+                    // In the Input menu's order: samples, the library video, then test videos.
+                    speedVideos.filter(v => v.SourceUrl && chosenVideos.has(v.Key)).forEach(videoLine);
                     if (chosenVideos.has('library') && libraryVideo) {
                         const line = el('li', 'Library video: ');
                         const link = el('a', speedItem.Name, 'button-link');
@@ -1458,6 +1460,7 @@
                         line.appendChild(el('div', libraryVideo.Input, 'hwprobe-small'));
                         list.appendChild(line);
                     }
+                    speedVideos.filter(v => !v.SourceUrl && chosenVideos.has(v.Key)).forEach(videoLine);
                     if (list.childElementCount) {
                         target.appendChild(list);
                     }
