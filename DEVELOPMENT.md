@@ -7,7 +7,7 @@ How to build, test, and release. How the engines, caches, and suggestions work i
 | Path | Contents |
 |---|---|
 | `src/HwProbe.Core` | Probe and speed engines, report, fixtures, and the cache listing. No Jellyfin dependency. |
-| `src/HwProbe.Core/Data/catalog.yaml` | Everything the plugin page lists: speed inputs, codecs, qualities, run options, and labels. Compiled in and checked by `Catalog.Parse`; served to the page by `HwProbe/Catalog`. |
+| `src/HwProbe.Core/Data/catalog.yaml` | Everything the plugin page lists: speed inputs, codecs, qualities, run options, test suites, and labels. Compiled in and checked by `Catalog.Parse`; served to the page by `HwProbe/Catalog`. |
 | `src/HwProbe.Jellyfin` | Builds ffmpeg commands with Jellyfin's own `EncodingHelper`. |
 | `src/HwProbe.Plugin` | The Jellyfin plugin: service, API, and the page (`Configuration/configPage.html`). |
 | `src/HwProbe.Cli` | The `hwprobe` command-line tool. |

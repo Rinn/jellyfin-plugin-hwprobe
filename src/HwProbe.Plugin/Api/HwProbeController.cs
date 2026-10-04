@@ -82,6 +82,31 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
         var other => Problem($"Unexpected result {other}."),
     };
 
+    /// <summary>Lists the test suites as this server would run them.</summary>
+    /// <param name="cancellationToken">Cancels reading the latest report.</param>
+    /// <returns>Every suite, with its steps and whether it's offered.</returns>
+    [HttpGet("Suites")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<SuiteInfo>>> SuitesAsync(CancellationToken cancellationToken) => Ok(await service.SuitesAsync(cancellationToken));
+
+    /// <summary>Starts a test suite: its steps run one after another.</summary>
+    /// <param name="request">The suite and how to run it.</param>
+    /// <param name="cancellationToken">Cancels the checks.</param>
+    /// <returns>202 when started; 400 for an unknown suite or one this server can't run; 409 when busy or no probe has run.</returns>
+    [HttpPost("Suite")]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult> StartSuiteAsync([FromBody] SuiteRequest request, CancellationToken cancellationToken) => await service.StartSuiteAsync(request, cancellationToken) switch
+    {
+        ProbeRunResult.Started => Accepted(),
+        ProbeRunResult.Invalid => BadRequest("Unknown suite, or one this server can't run."),
+        ProbeRunResult.NoReport => Conflict("Run a probe first, so the performance test knows which backends work."),
+        ProbeRunResult.AlreadyRunning => Conflict("A probe or performance test is already running."),
+        ProbeRunResult.ServerBusy => Conflict("A session is transcoding; measure when the server is idle."),
+        var other => Problem($"Unexpected result {other}."),
+    };
+
     /// <summary>Pauses the running speed run when its current measurement finishes.</summary>
     /// <returns>204 when pausing; 409 when no speed run is running.</returns>
     [HttpPost("Speed/Pause")]
