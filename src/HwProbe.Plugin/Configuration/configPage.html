@@ -204,6 +204,7 @@
                 let speedResources = null;
                 let speedWhenTranscoding = null;
                 let suiteResources = null;
+                let chosenSuite = null;
                 let suiteWhenTranscoding = null;
                 let speedTimeLimit = null;
                 // Null measures with the server's own thread count.
@@ -688,8 +689,9 @@
                 function setRunning(on) {
                     running = on;
                     idleButtons = idleButtons.filter(b => b.isConnected || b === runButton);
+                    // A button for something this server can't do stays off when the run ends.
                     for (const b of idleButtons) {
-                        b.disabled = on;
+                        b.disabled = on || b.dataset.unavailable === 'true';
                     }
                 }
 
@@ -1632,42 +1634,56 @@
                 }
 
                 // Named sets of runs that differ in one setting, each started with one button; listed as this server would run them.
-                function renderSuites(container) {
+                function renderSuites(container, idle) {
                     const body = el('div');
                     container.appendChild(body);
                     ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Suites'), dataType: 'json' }).then(suites => {
-                        const table = el('table', null, 'hwprobe-full');
-                        row(table, [el('th', 'Suite'), el('th', 'Steps'), el('th', 'Backend'), el('th', 'Duration'), el('th', '')]);
-                        for (const suite of suites) {
-                            const name = el('td');
-                            name.appendChild(el('div', suite.Name));
-                            name.appendChild(el('div', suite.Description, 'secondaryText hwprobe-small'));
-                            const steps = el('td', suite.Steps.join(', '), 'secondaryText');
-                            const backends = el('td', !suite.Offered ? '-' : suite.Backends.map(b => b === 'none' ? 'Software' : names[b] || b).join(', ') || '-', 'secondaryText');
-                            const run = el('td', null, 'hwprobe-num');
-                            if (suite.Offered) {
-                                const button = idleAction('Run', () => {
-                                    ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Suite'), data: JSON.stringify({ Key: suite.Key, MeasureResources: suiteResources, WhenTranscoding: suiteWhenTranscoding }), contentType: 'application/json' })
-                                        .then(() => {
-                                            showTab(tabs[3][0]);
-                                            return loadStatus();
-                                        }, response => (response && response.text ? response.text() : Promise.resolve('')).then(text => {
-                                            setMessage('Could not start: ' + (text.replace(/^"|"$/g, '') || 'a probe is running or a session is transcoding.'));
-                                            button.disabled = running;
-                                        }));
-                                }, 'raised');
-                                run.appendChild(button);
-                            } else {
-                                run.appendChild(el('span', 'Not available', 'secondaryText'));
-                            }
-                            // Suites measure once each, without a time limit.
-                            const duration = el('td', suite.Offered ? measurementsText(suite.Measurements, suite.Method, 1, null) : '-', 'secondaryText');
-                            duration.dataset.sort = String(suite.Offered ? suite.Measurements : 0);
-                            row(table, [name, steps, backends, duration, run]);
+                        if (!suites.some(x => x.Key === chosenSuite)) {
+                            chosenSuite = (suites.find(x => x.Offered) || suites[0] || {}).Key;
                         }
-                        const scroll = el('div', null, 'hwprobe-scroll');
-                        scroll.appendChild(table);
-                        body.appendChild(scroll);
+                        const estimate = el('span', null, 'secondaryText');
+                        const button = idleAction('Run suite', () => {
+                            ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Suite'), data: JSON.stringify({ Key: chosenSuite, MeasureResources: suiteResources, WhenTranscoding: suiteWhenTranscoding }), contentType: 'application/json' })
+                                .then(() => {
+                                    showTab(tabs[3][0]);
+                                    return loadStatus();
+                                }, response => (response && response.text ? response.text() : Promise.resolve('')).then(text => {
+                                    setMessage('Could not start: ' + (text.replace(/^"|"$/g, '') || 'a probe is running or a session is transcoding.'));
+                                    button.disabled = running;
+                                }));
+                        }, 'raised button-submit');
+                        const go = el('div', null, 'hwprobe-row hwprobe-start');
+                        go.append(button, estimate);
+                        body.appendChild(go);
+                        body.appendChild(el('div', idle, 'infoBanner'));
+
+                        const select = themedSelect(body, 'Suite');
+                        for (const suite of suites) {
+                            const option = el('option', suite.Name);
+                            option.value = suite.Key;
+                            option.selected = suite.Key === chosenSuite;
+                            select.appendChild(option);
+                        }
+                        // What the chosen suite runs, under its field as an input's details are.
+                        const details = el('div');
+                        select.parentNode.appendChild(details);
+                        const show = () => {
+                            const suite = suites.find(x => x.Key === chosenSuite);
+                            details.replaceChildren();
+                            details.appendChild(el('div', suite.Description, 'fieldDescription'));
+                            const list = el('ul', null, 'fieldDescription hwprobe-notes');
+                            list.appendChild(el('li', 'Steps: ' + suite.Steps.join(', ')));
+                            if (suite.Offered) {
+                                list.appendChild(el('li', 'Backend: ' + suite.Backends.map(b => b === 'none' ? 'Software' : names[b] || b).join(', ')));
+                            }
+                            details.appendChild(list);
+                            // Suites measure once each, without a time limit.
+                            estimate.textContent = suite.Offered ? measurementsText(suite.Measurements, suite.Method, 1, null) : 'Not available on this server.';
+                            button.dataset.unavailable = String(!suite.Offered);
+                            button.disabled = running || !suite.Offered;
+                        };
+                        select.addEventListener('change', () => { chosenSuite = select.value; show(); });
+                        show();
                     }, () => {});
                 }
 
@@ -1801,8 +1817,7 @@
                         }
                         options('When the server starts transcoding', whenTranscodingOptions, whenTranscoding, setWhenTranscoding, null, target);
                     };
-                    renderSuites(suites);
-                    suites.appendChild(el('div', idle, 'infoBanner'));
+                    renderSuites(suites, idle);
                     shared(suites, suiteResources, v => { suiteResources = v; }, suiteWhenTranscoding, v => { suiteWhenTranscoding = v; });
                     shared(form, speedResources, v => { speedResources = v; }, speedWhenTranscoding, v => { speedWhenTranscoding = v; });
                     options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); }, 'A measurement that reaches the limit stops and reports what it measured.');
