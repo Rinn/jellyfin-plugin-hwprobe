@@ -1095,10 +1095,14 @@
                                 tr.appendChild(name);
                                 table.appendChild(tr);
                             }
-                            row(table, [el('td', e.Description || 'Not used by this version', e.Description ? '' : 'secondaryText'), el('td', e.File, 'secondaryText hwprobe-small hwprobe-file'), el('td', sizeText(e.Bytes), 'hwprobe-num'), el('td', new Date(e.ModifiedUtc).toLocaleDateString(), 'secondaryText hwprobe-num')]);
+                            const size = el('td', sizeText(e.Bytes), 'hwprobe-num');
+                            size.dataset.sort = String(e.Bytes);
+                            const written = el('td', new Date(e.ModifiedUtc).toLocaleDateString(), 'secondaryText hwprobe-num');
+                            written.dataset.sort = String(Date.parse(e.ModifiedUtc));
+                            row(table, [el('td', e.Description || 'Not used by this version', e.Description ? '' : 'secondaryText'), el('td', e.File, 'secondaryText hwprobe-small hwprobe-file'), size, written]);
                         }
                         const scroll = el('div', null, 'hwprobe-scroll');
-                        scroll.appendChild(table);
+                        scroll.appendChild(sortable(table, 'cache'));
                         div.appendChild(scroll);
                     }, () => {});
                     return div;
