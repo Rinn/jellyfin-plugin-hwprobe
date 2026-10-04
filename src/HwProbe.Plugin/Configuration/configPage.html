@@ -72,7 +72,6 @@
             #HwProbeConfigPage .hwprobe-change-list { margin: 0 0 0.5em 1em; }
             #HwProbeConfigPage .hwprobe-change-list table { margin: 0.2em 0 0; }
             #HwProbeConfigPage .hwprobe-disclosure { display: inline-flex; align-items: center; gap: 0.3em; padding: 0; border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
-            #HwProbeConfigPage .hwprobe-choices { display: flex; flex-wrap: wrap; gap: 0 1.5em; }
             #HwProbeConfigPage .hwprobe-fold > summary { display: flex; align-items: center; gap: 0.3em; cursor: pointer; list-style: none; }
             #HwProbeConfigPage .hwprobe-fold > summary::-webkit-details-marker { display: none; }
             #HwProbeConfigPage .hwprobe-fold > summary .sectionTitle { margin-top: 0.5em; margin-bottom: 0.5em; }
@@ -1368,10 +1367,7 @@
                     search.placeholder = 'Search for a movie or episode';
                     search.value = speedItem ? speedItem.Name : '';
                     td.appendChild(box);
-                    const found = el('div', null, 'hwprobe-choices');
-                    td.appendChild(found);
                     const choose = item => {
-                        found.replaceChildren();
                         search.value = item.Name;
                         ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedLibraryVideo', { itemId: item.Id }), dataType: 'json' }).then(v => {
                             speedItem = { Id: item.Id, Name: item.Name };
@@ -1385,12 +1381,27 @@
                         clearTimeout(timer);
                         const term = search.value.trim();
                         if (term.length < 2) {
-                            found.replaceChildren();
+                            closeMenu();
                             return;
                         }
                         timer = setTimeout(() => {
-                            ApiClient.getItems(ApiClient.getCurrentUserId(), { SearchTerm: term, IncludeItemTypes: 'Movie,Episode', Recursive: true, Limit: 8 }).then(r => {
-                                found.replaceChildren(...(r.Items || []).map(item => action(item.SeriesName ? item.SeriesName + ': ' + item.Name : item.Name, () => choose(item))));
+                            ApiClient.getItems(ApiClient.getCurrentUserId(), { SearchTerm: term, IncludeItemTypes: 'Movie,Episode', Recursive: true, Limit: 5 }).then(r => {
+                                // Results replace the open menu rather than toggling it closed.
+                                closeMenu();
+                                if (!(r.Items || []).length || search.value.trim() !== term) {
+                                    return;
+                                }
+                                popMenu(search, (menu, close) => {
+                                    for (const item of r.Items) {
+                                        const row = el('div', item.SeriesName ? item.SeriesName + ': ' + item.Name : item.Name, 'hwprobe-menu-item');
+                                        row.setAttribute('role', 'option');
+                                        row.addEventListener('click', () => {
+                                            close();
+                                            choose(item);
+                                        });
+                                        menu.appendChild(row);
+                                    }
+                                });
                             });
                         }, 300);
                     });
