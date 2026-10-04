@@ -1,4 +1,5 @@
 using System.Globalization;
+using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
@@ -12,16 +13,6 @@ public static class SpeedAdvisor
 
     /// <summary>A higher-quality value is suggested only when it keeps at least this multiple of real time, leaving room for a second stream or a busy server.</summary>
     public const double Headroom = 1.5;
-
-    /// <summary>Settings where one value gives a better picture than another, with their values from best quality to fastest.</summary>
-    private static readonly Dictionary<string, string[]> _quality = new(StringComparer.Ordinal)
-    {
-        ["DeinterlaceMethod"] = ["bwdif", "yadif"],
-        ["DoubleRate"] = ["true", "false"],
-        ["EncoderPreset"] = ["veryslow", "slower", "slow", "medium", "fast", "faster", "veryfast", "superfast", "ultrafast"],
-        ["H264Crf"] = [.. Enumerable.Range(0, 52).Select(n => n.ToString(CultureInfo.InvariantCulture))],
-        ["H265Crf"] = [.. Enumerable.Range(0, 52).Select(n => n.ToString(CultureInfo.InvariantCulture))],
-    };
 
     /// <summary>The settings a run records, by catalog option key, with the value it used; Audio and BurnIn describe the client, not the server, so they're left out.</summary>
     private static readonly Dictionary<string, Func<SpeedSettings, string>> _values = new(StringComparer.Ordinal)
@@ -197,10 +188,7 @@ public static class SpeedAdvisor
     {
         // Auto is veryfast for libx264 and libx265 (EncodingHelper.GetEncoderParam, v12.1); other encoders map it to their fastest setting, near enough for ordering.
         static string Preset(string v) => v == "auto" ? "veryfast" : v;
-        return _quality.TryGetValue(key, out var order)
-            && Array.IndexOf(order, Preset(value)) is var mine and >= 0
-            && Array.IndexOf(order, Preset(other)) is var theirs and >= 0
-            && mine < theirs;
+        return Catalog.Default.Options.FirstOrDefault(o => o.Key == key) is { } option && option.IsBetterQuality(Preset(value), Preset(other));
     }
 
     /// <summary>Returns the better of two results for one output: more streams kept up, then faster.</summary>

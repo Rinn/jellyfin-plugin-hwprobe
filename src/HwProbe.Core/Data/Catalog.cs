@@ -37,6 +37,12 @@ public sealed partial class Catalog
     /// <summary>Gets the time limits per measurement offered, in seconds.</summary>
     public required IReadOnlyList<CatalogOption> TimeLimits { get; init; }
 
+    /// <summary>Gets what a run can do when the server starts transcoding.</summary>
+    public required IReadOnlyList<CatalogTranscodeAction> WhenTranscoding { get; init; }
+
+    /// <summary>Gets what a run does when the server starts transcoding and the request doesn't say.</summary>
+    public required TranscodeAction DefaultWhenTranscoding { get; init; }
+
     /// <summary>Gets the backends, in the order of Jellyfin's dropdown.</summary>
     public required IReadOnlyList<CatalogBackend> Backends { get; init; }
 
@@ -185,6 +191,7 @@ public sealed partial class Catalog
     private void Check()
     {
         RequireAll("methods", Methods.Select(m => m.Key));
+        RequireAll("whenTranscoding", WhenTranscoding.Select(w => w.Key));
         RequireAll("backends", Backends.Select(b => b.Type), HwType.none);
         RequireAll("tiers", Tiers.Keys, PipelineTier.Unknown);
         RequireAll("verdicts", Verdicts.Keys, BackendVerdict.Viable, BackendVerdict.NotBuilt);
@@ -206,8 +213,18 @@ public sealed partial class Catalog
             var sample = option.Switch ? "true" : option.Range is [var low, _] ? low.ToString(CultureInfo.InvariantCulture) : option.Choices is [var first, ..] ? first.Key : string.Empty;
             if (kinds != 1 || SpeedSettingsOptions.Apply(new SpeedSettings(), option.Key, sample) is null)
             {
-                throw new InvalidDataException($"catalog.yaml: option {option.Key} needs one of switch, range or choices, and a key SpeedSettingsOptions applies.");
+                throw new InvalidDataException($"catalog.yaml: option {option.Key} requires one of switch, range, or choices, and a key SpeedSettingsOptions applies.");
             }
+
+            if ((option.QualityOrder?.Any(v => !option.Takes(v)) ?? false) || (option.LowerIsBetter && option.Range is null))
+            {
+                throw new InvalidDataException($"catalog.yaml: option {option.Key}'s qualityOrder lists values it doesn't take, or lowerIsBetter is set without a range.");
+            }
+        }
+
+        if (Videos.Select(v => v.Sample).FirstOrDefault(s => s?.HolderUrl is { } site && !Uri.TryCreate(site, UriKind.Absolute, out _)) is { } unlinked)
+        {
+            throw new InvalidDataException($"catalog.yaml: {unlinked.Title}'s holderUrl requires an absolute URL.");
         }
 
         if (Subtitles is null || TestAudio is null)
@@ -222,7 +239,7 @@ public sealed partial class Catalog
             var made = clip.Arguments.Length > 0 || clip.Download is not null || clip.Piece is not null;
             if (unknown.Count > 0 || (hash is not null && !Sha256().IsMatch(hash)) || (clip.Download is not null && clip.Sha256 is null) || !made)
             {
-                throw new InvalidDataException($"catalog.yaml: {clip.File} needs arguments or a download with a lowercase SHA-256, and no unknown placeholders ({string.Join(", ", unknown)}).");
+                throw new InvalidDataException($"catalog.yaml: {clip.File} requires arguments or a download with a lowercase SHA-256, and no unknown placeholders ({string.Join(", ", unknown)}).");
             }
         }
     }

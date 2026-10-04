@@ -18,8 +18,11 @@ internal sealed class CatalogVideo
     /// <summary>Gets the height.</summary>
     public required int Height { get; init; }
 
-    /// <summary>Gets the audio as the page describes it.</summary>
-    public required string Audio { get; init; }
+    /// <summary>Gets the audio as the page describes it, or null for a video without audio.</summary>
+    public string? Audio { get; init; }
+
+    /// <summary>Gets what the picture shows, for a generated video, or null.</summary>
+    public string? Description { get; init; }
 
     /// <summary>Gets the clip.</summary>
     public required CatalogClip Clip { get; init; }

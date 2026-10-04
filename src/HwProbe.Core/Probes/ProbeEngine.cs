@@ -50,6 +50,9 @@ public sealed class ProbeEngine : IDisposable
     /// <summary>Gets the downloader for fixtures that can't be generated, such as the VC-1 sample.</summary>
     public IFixtureDownloader FixtureDownloader { get; init; } = new HttpFixtureDownloader();
 
+    /// <summary>Gets what receives each step and the tests done so far, or null.</summary>
+    public IProgress<ProbeProgress>? Progress { get; init; }
+
     /// <summary>Probes the host.</summary>
     /// <param name="options">What to probe.</param>
     /// <param name="cancellationToken">Cancels the run; in-flight ffmpeg trees are killed.</param>
@@ -59,7 +62,9 @@ public sealed class ProbeEngine : IDisposable
     {
         ArgumentNullException.ThrowIfNull(options);
 
+        var started = _time.GetTimestamp();
         var ffmpeg = options.Ffmpeg.Path;
+        Progress?.Report(new ProbeProgress("Checking ffmpeg", 0, 0));
         var caps = await new FfmpegCapabilityProbe(_runner, options.ProbeTimeout).ProbeAsync(ffmpeg, cancellationToken);
         if (caps.Validation != FfmpegValidation.Valid)
         {
@@ -72,8 +77,12 @@ public sealed class ProbeEngine : IDisposable
 
         if (options.StopAfter >= StopStage.Devices)
         {
+            Progress?.Report(new ProbeProgress("Opening devices", 0, 0));
             await OpenDevicesAsync(run, cancellationToken);
         }
+
+        // Each opened device runs its smoke test, then its matrix; a device that fails smoke skips the rest.
+        run.Total = run.Opened.Sum(o => 1 + (options.StopAfter == StopStage.Matrix ? MatrixCatalog.For(o.Candidate.Type).Count : 0));
 
         var fingerprint = ComputeFingerprint(run, ToolBuild(_arguments));
         var store = new ReportStore(options.ReportCacheDirectory);
@@ -90,13 +99,18 @@ public sealed class ProbeEngine : IDisposable
         {
             var key = Fingerprint.Compute(new FingerprintInputs(ffmpeg, caps.VersionLine, null, null, null, null, null, null));
             FixtureCacheContents.Prune(options.FixturesDirectory, key);
-            var fixtures = await new FixtureBuilder(_runner, ffmpeg, options.FixturesDirectory, options.FixtureTimeout, FixtureDownloader)
+            Progress?.Report(new ProbeProgress("Generating test clips", 0, run.Total));
+            var steps = Progress is { } progress ? new Progress<FixtureStep>(step => progress.Report(new ProbeProgress(step.Describe(step.Spec.FileName), 0, run.Total))) : null;
+            var fixtures = await new FixtureBuilder(_runner, ffmpeg, options.FixturesDirectory, options.FixtureTimeout, FixtureDownloader) { Progress = steps }
                 .BuildAsync(key, caps.Encoders, cancellationToken);
             run.Fixtures = fixtures.ToDictionary(f => f.Spec.FileName, StringComparer.Ordinal);
 
             foreach (var (candidate, open) in run.Opened)
             {
+                // Tests a backend skips (after a failed smoke test, or tone mapping without a 10-bit decode) still count as done.
+                var planned = run.Done + 1 + (options.StopAfter == StopStage.Matrix ? MatrixCatalog.For(candidate.Type).Count : 0);
                 await ProbeBackendAsync(run, candidate, open, cancellationToken);
+                run.Done = planned;
             }
         }
 
@@ -117,6 +131,7 @@ public sealed class ProbeEngine : IDisposable
             run.Probes)
         {
             HwProbeVersion = CapabilityReport.CurrentHwProbeVersion,
+            Seconds = _time.GetElapsedTime(started).TotalSeconds,
         };
 
         if (options.StopAfter == StopStage.Matrix)
@@ -234,6 +249,18 @@ public sealed class ProbeEngine : IDisposable
             ToolBuild = toolBuild,
         });
     }
+
+    /// <summary>The report column a matrix group fills, as the report's JSON names it.</summary>
+    /// <param name="group">The matrix group.</param>
+    /// <returns>The column name.</returns>
+    private static string ColumnName(MatrixGroup group) => group switch
+    {
+        MatrixGroup.Decode => "decode",
+        MatrixGroup.Encode => "encode",
+        MatrixGroup.Tonemap => "tonemap",
+        MatrixGroup.Deinterlace => "deinterlace",
+        _ => "subtitles",
+    };
 
     /// <summary>Report key for a hardware tone-map: the filter family the tier implies.</summary>
     /// <param name="type">The backend.</param>
@@ -479,6 +506,7 @@ public sealed class ProbeEngine : IDisposable
                 : $"Filters run in software (copy-back). This ffmpeg lacks {string.Join(", ", missing)}; use jellyfin-ffmpeg for the {(candidate.Type == HwType.nvenc ? "CUDA" : "Metal")} pipeline.";
             run.Findings.Add(new Finding(FindingSeverity.Warn, "legacy-copyback", $"{candidate.Type}{DevicePrefix(candidate.Device)}{remedy}")
             {
+                Backend = candidate.Type,
                 Fix = missing is null ? Hints.OpenclFix(inContainer) : new Fix("Use jellyfin-ffmpeg", null),
             });
         }
@@ -490,12 +518,12 @@ public sealed class ProbeEngine : IDisposable
 
         if (open.Driver == VaapiDriver.Amd)
         {
-            run.Findings.Add(new Finding(FindingSeverity.Info, "vulkan-interop-unprobed", $"{candidate.Type}{DevicePrefix(candidate.Device)}Vulkan DRM interop is not probed, so FullVulkan is never reported."));
+            run.Findings.Add(new Finding(FindingSeverity.Info, "vulkan-interop-unprobed", $"{candidate.Type}{DevicePrefix(candidate.Device)}Vulkan DRM interop is not probed, so FullVulkan is never reported.") { Backend = candidate.Type });
         }
 
         if (_unvalidated.Contains(candidate.Type))
         {
-            run.Findings.Add(new Finding(FindingSeverity.Info, "unvalidated-backend", $"{candidate.Type}: hwprobe's {candidate.Type} checks have not been validated on real hardware."));
+            run.Findings.Add(new Finding(FindingSeverity.Info, "unvalidated-backend", $"{candidate.Type}: hwprobe's {candidate.Type} checks have not been validated on real hardware.") { Backend = candidate.Type });
         }
 
         Dictionary<string, ProbeOutcome> decode = [];
@@ -503,6 +531,7 @@ public sealed class ProbeEngine : IDisposable
         Dictionary<string, ProbeOutcome> tonemap = [];
         Dictionary<string, ProbeOutcome> deinterlace = [];
         Dictionary<string, ProbeOutcome> subtitles = [];
+        Dictionary<string, double> seconds = [];
         var decodedTenBit = false;
         if (run.Options.StopAfter == StopStage.Matrix)
         {
@@ -515,29 +544,29 @@ public sealed class ProbeEngine : IDisposable
                 }
 
                 var result = await RunCellAsync(run, candidate, source, cell, ProbeStage.Matrix, cancellationToken);
-                switch (cell.Group)
+                var (column, key) = cell.Group switch
                 {
-                    case MatrixGroup.Decode:
-                        decode[cell.Key] = result.Outcome;
-                        decodedTenBit |= cell.Fixture.BitDepth >= 10 && result.Outcome == ProbeOutcome.Pass;
-                        break;
-                    case MatrixGroup.Encode:
-                        encode[cell.Key] = result.Outcome;
-                        break;
-                    case MatrixGroup.Tonemap when result.Outcome != ProbeOutcome.Skipped:
-                        tonemap[cell.Cell.VppTonemap ? cell.Key : TonemapKey(candidate.Type, tier)] = result.Outcome;
-                        break;
+                    MatrixGroup.Decode => (decode, cell.Key),
+                    MatrixGroup.Encode => (encode, cell.Key),
+                    MatrixGroup.Tonemap when result.Outcome != ProbeOutcome.Skipped => (tonemap, cell.Cell.VppTonemap ? cell.Key : TonemapKey(candidate.Type, tier)),
 
                     // Keyed by the hardware family that deinterlaced; CPU deinterlacing is Skipped and left out, like tone-map.
-                    case MatrixGroup.Deinterlace when result.Outcome != ProbeOutcome.Skipped:
-                        deinterlace[result.Codec is { } family && family != cell.Cell.InputCodec ? family : cell.Key] = result.Outcome;
-                        break;
-                    case MatrixGroup.Subtitles:
-                        subtitles[cell.Key] = result.Outcome;
-                        break;
-                    default:
-                        break;
+                    MatrixGroup.Deinterlace when result.Outcome != ProbeOutcome.Skipped => (deinterlace, result.Codec is { } family && family != cell.Cell.InputCodec ? family : cell.Key),
+                    MatrixGroup.Subtitles => (subtitles, cell.Key),
+                    _ => (null, string.Empty),
+                };
+                if (column is null)
+                {
+                    continue;
                 }
+
+                column[key] = result.Outcome;
+                if (result.CommandLine is not null)
+                {
+                    seconds[ColumnName(cell.Group) + ":" + key] = result.Duration.TotalSeconds;
+                }
+
+                decodedTenBit |= cell.Group == MatrixGroup.Decode && cell.Fixture.BitDepth >= 10 && result.Outcome == ProbeOutcome.Pass;
             }
         }
 
@@ -547,7 +576,7 @@ public sealed class ProbeEngine : IDisposable
         }
 
         var row = new BackendReport(candidate.Type, candidate.Device, BackendVerdict.Viable, tier, decode, encode, tonemap, deinterlace, subtitles, string.Empty);
-        run.Backends.Add(row with { Settings = SettingsAdvisor.For(row, new AdviceContext(run.Host.Os, inContainer, run.NoOpencl.Contains(candidate)) { IntelLowPower = IntelLowPower(run, candidate) }) });
+        run.Backends.Add(row with { Seconds = seconds, Settings = SettingsAdvisor.For(row, new AdviceContext(run.Host.Os, inContainer, run.NoOpencl.Contains(candidate)) { IntelLowPower = IntelLowPower(run, candidate) }) });
     }
 
     /// <summary>Opens OpenCL on a device that upstream will send through its OpenCL pipeline.</summary>
@@ -572,6 +601,7 @@ public sealed class ProbeEngine : IDisposable
                 "opencl-unavailable",
                 $"{candidate.Type}{DevicePrefix(candidate.Device)}OpenCL doesn't start, but Jellyfin still picks its OpenCL pipeline because this ffmpeg was built with OpenCL, so OpenCL tone-mapping fails. {remedy}")
             {
+                Backend = candidate.Type,
                 Fix = Hints.OpenclFix(run.Host.Container is not null),
             });
         }
@@ -586,6 +616,36 @@ public sealed class ProbeEngine : IDisposable
     /// <param name="cancellationToken">Cancels the probe.</param>
     /// <returns>The recorded probe.</returns>
     private async Task<ProbeResult> RunCellAsync(Run run, DeviceCandidate candidate, IArgumentSource source, MatrixCell cell, ProbeStage stage, CancellationToken cancellationToken)
+    {
+        var what = stage == ProbeStage.Smoke ? "smoke test" : cell.Group switch
+        {
+            MatrixGroup.Decode => "decode " + cell.Key,
+            MatrixGroup.Encode => "encode " + cell.Key,
+            MatrixGroup.Tonemap => "tone mapping " + cell.Key,
+            MatrixGroup.Deinterlace => "deinterlacing " + cell.Key,
+            MatrixGroup.Subtitles => "subtitle burn-in " + cell.Key,
+            _ => cell.Key,
+        };
+        Progress?.Report(new ProbeProgress($"Testing {candidate.Type}: {what}", run.Done, run.Total));
+        try
+        {
+            return await RunCellCountedAsync(run, candidate, source, cell, stage, cancellationToken);
+        }
+        finally
+        {
+            run.Done++;
+        }
+    }
+
+    /// <summary>Runs one cell: builds its arguments, runs them under the probe gate, and records the result.</summary>
+    /// <param name="run">Run state.</param>
+    /// <param name="candidate">The device.</param>
+    /// <param name="source">The device's argument source.</param>
+    /// <param name="cell">The cell.</param>
+    /// <param name="stage">Smoke or Matrix.</param>
+    /// <param name="cancellationToken">Cancels the probe.</param>
+    /// <returns>The recorded probe.</returns>
+    private async Task<ProbeResult> RunCellCountedAsync(Run run, DeviceCandidate candidate, IArgumentSource source, MatrixCell cell, ProbeStage stage, CancellationToken cancellationToken)
     {
         var inContainer = run.Host.Container is not null;
 
@@ -715,5 +775,11 @@ public sealed class ProbeEngine : IDisposable
 
         /// <summary>Gets report-level findings.</summary>
         public List<Finding> Findings { get; } = [];
+
+        /// <summary>Gets or sets the tests finished, for progress.</summary>
+        public int Done { get; set; }
+
+        /// <summary>Gets or sets the tests planned, for progress.</summary>
+        public int Total { get; set; }
     }
 }

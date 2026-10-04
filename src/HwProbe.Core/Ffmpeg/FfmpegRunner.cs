@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
+using System.Text;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
 
@@ -12,6 +14,9 @@ public sealed class FfmpegRunner : IFfmpegRunner
 {
     // Pipes still open after this mean a descendant escaped the tree kill.
     private static readonly TimeSpan _drainGrace = TimeSpan.FromSeconds(5);
+
+    /// <summary>Gets the variables every launch starts from, before the invocation's own.</summary>
+    public static IReadOnlyDictionary<string, string> BaseEnvironment { get; } = new Dictionary<string, string>(StringComparer.Ordinal) { ["LC_ALL"] = "C" };
 
     /// <inheritdoc/>
     public async Task<FfmpegRunResult> RunAsync(FfmpegInvocation invocation, CancellationToken cancellationToken)
@@ -34,7 +39,8 @@ public sealed class FfmpegRunner : IFfmpegRunner
         LowerPriority(process);
 
         // Drain both streams concurrently, or >1 MB of output deadlocks (jellyfin#17429).
-        var stdoutTask = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
+        FrameTiming? timing = null;
+        var stdoutTask = ReadProgressAsync(process.StandardOutput, stopwatch, (at, frames) => timing = timing is null ? new FrameTiming(at, frames, at, frames) : timing with { LastAt = at, LastFrames = frames });
         var stderrTask = process.StandardError.ReadToEndAsync(CancellationToken.None);
         var drained = Task.WhenAll(stdoutTask, stderrTask);
 
@@ -75,13 +81,13 @@ public sealed class FfmpegRunner : IFfmpegRunner
         var stdout = drained.IsCompletedSuccessfully ? await stdoutTask : string.Empty;
         var stderr = drained.IsCompletedSuccessfully ? await stderrTask : string.Empty;
         var exitCode = status == FfmpegRunStatus.Exited ? process.ExitCode : (int?)null;
-        return new FfmpegRunResult(status, exitCode, stdout, stderr, ProgressParser.LastFrame(stdout), stopwatch.Elapsed, null);
+        return new FfmpegRunResult(status, exitCode, stdout, stderr, ProgressParser.LastFrame(stdout), stopwatch.Elapsed, null) { Timing = timing };
     }
 
     /// <summary>Builds start info with redirected stdio and the invocation's environment overrides.</summary>
     /// <param name="invocation">The invocation to launch.</param>
     /// <returns>The start info.</returns>
-    private static ProcessStartInfo CreateStartInfo(FfmpegInvocation invocation)
+    internal static ProcessStartInfo CreateStartInfo(FfmpegInvocation invocation)
     {
         var info = new ProcessStartInfo(invocation.ExecutablePath, invocation.Arguments)
         {
@@ -90,7 +96,18 @@ public sealed class FfmpegRunner : IFfmpegRunner
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+
+            // ffmpeg writes UTF-8 to a pipe on every platform; the console code page (850 on a Windows PC tested) doesn't apply.
+            StandardOutputEncoding = System.Text.Encoding.UTF8,
+            StandardErrorEncoding = System.Text.Encoding.UTF8,
         };
+
+        // Verdicts match stderr text such as strerror's "Permission denied" and parse numbers with dots; the server's
+        // locale could change both in libraries ffmpeg loads (drivers, OpenCL). An invocation can still override it.
+        foreach (var (name, value) in BaseEnvironment)
+        {
+            info.Environment[name] = value;
+        }
 
         foreach (var (name, value) in invocation.Environment)
         {
@@ -137,5 +154,27 @@ public sealed class FfmpegRunner : IFfmpegRunner
         {
             // Already exited.
         }
+    }
+
+    /// <summary>Reads stdout to the end, noting when each <c>-progress</c> report with frames done arrives.</summary>
+    /// <param name="reader">The process's stdout.</param>
+    /// <param name="stopwatch">Time since launch.</param>
+    /// <param name="onFrames">Called with the time and frame count of each report past the first frame.</param>
+    /// <returns>All of stdout.</returns>
+    private static async Task<string> ReadProgressAsync(StreamReader reader, Stopwatch stopwatch, Action<TimeSpan, long> onFrames)
+    {
+        var text = new StringBuilder();
+        while (await reader.ReadLineAsync(CancellationToken.None) is { } line)
+        {
+            text.Append(line).Append('\n');
+            if (line.StartsWith("frame=", StringComparison.Ordinal)
+                && long.TryParse(line.AsSpan("frame=".Length).Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var frames)
+                && frames > 0)
+            {
+                onFrames(stopwatch.Elapsed, frames);
+            }
+        }
+
+        return text.ToString();
     }
 }

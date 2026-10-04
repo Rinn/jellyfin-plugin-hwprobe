@@ -1,3 +1,4 @@
+using System.Globalization;
 using Jellyfin.Plugin.HwProbe.Core.Devices;
 using Jellyfin.Plugin.HwProbe.Core.Diagnostics;
 using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
@@ -110,7 +111,7 @@ internal static class HwProbeApp
             var speed = requested;
             if (options.SpeedFilePath is null && speed.Videos.Contains(SpeedCatalog.LibraryKey))
             {
-                await stderr.WriteLineAsync("hwprobe: the library speed video needs --speed-file.".AsMemory(), cancellationToken);
+                await stderr.WriteLineAsync("hwprobe: the library speed video requires --speed-file.".AsMemory(), cancellationToken);
                 return (int)HwProbeExitCode.UsageError;
             }
 
@@ -133,7 +134,7 @@ internal static class HwProbeApp
 
             var viable = report.Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device)).ToList();
             using var engine = new SpeedEngine(new FfmpegRunner(), new ArgumentSourceFactory(), platform, TimeProvider.System, EnvironmentRules.Standalone());
-            var progress = new DirectProgress<SpeedProgress>(p => stderr.Write($"\rhwprobe: speed {p.Done} of {p.Total}"));
+            var progress = new DirectProgress<SpeedProgress>(p => stderr.Write(string.Create(CultureInfo.InvariantCulture, $"\rhwprobe: speed {p.Done} of {p.Total}")));
             var measured = await engine.RunAsync(engineOptions, speed, viable, progress, cancellationToken);
 
             // A cancelled run still returns what it finished, so its output isn't cancelled with it.

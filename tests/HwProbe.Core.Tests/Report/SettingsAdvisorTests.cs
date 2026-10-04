@@ -75,10 +75,10 @@ public sealed class SettingsAdvisorTests
     [InlineData("VP9 10bit", SettingState.LeaveOff, "Not supported by this GPU")]
     [InlineData("Prefer OS native DXVA or VA-API hardware decoders", SettingState.TurnOn, "")]
     [InlineData("Enable Intel Low-Power H.264 hardware encoder", SettingState.TurnOn, "")]
-    [InlineData("Enable Intel Low-Power HEVC hardware encoder", SettingState.LeaveOff, "Needs HuC firmware")]
+    [InlineData("Enable Intel Low-Power HEVC hardware encoder", SettingState.LeaveOff, "Requires HuC firmware")]
     [InlineData("Allow encoding in AV1 format", SettingState.LeaveOff, "Not supported by this GPU")]
     [InlineData("Enable Tone mapping", SettingState.TurnOn, "")]
-    [InlineData("Enable VPP Tone mapping", SettingState.LeaveOff, "Test failed")]
+    [InlineData("Enable VPP Tone mapping", SettingState.LeaveOff, "Filter missing from ffmpeg")]
     public void AdviceFollowsResults(string label, SettingState state, string note)
     {
         var advice = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv, _docker), a => a.Label == label);
@@ -104,7 +104,7 @@ public sealed class SettingsAdvisorTests
         var advice = SettingsAdvisor.For(_apolloLakeQsv with { Tonemap = new Dictionary<string, ProbeOutcome>(), Decode = new Dictionary<string, ProbeOutcome>() }, _docker);
 
         Assert.Equal(SettingState.NotTested, Assert.Single(advice, a => a.Setting == "EnableTonemapping").State);
-        Assert.Equal("Needs HEVC 10bit decoding", Assert.Single(advice, a => a.Setting == "EnableTonemapping").Note);
+        Assert.Equal("Requires HEVC 10bit decoding", Assert.Single(advice, a => a.Setting == "EnableTonemapping").Note);
         Assert.Equal(SettingState.NotTested, Assert.Single(advice, a => a.Setting == "HardwareDecodingCodecs:h264").State);
     }
 
@@ -151,8 +151,8 @@ public sealed class SettingsAdvisorTests
         var h264 = Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerH264HwEncoder");
         var hevc = Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerHevcHwEncoder");
 
-        Assert.Equal(h264Fix ? ("Gen 9+: Enable HuC firmware", "Needs HuC firmware") : (null, "Not supported by this GPU"), (h264.Fix?.Action, h264.Note));
-        Assert.Equal(hevcFix ? ("Gen 11+: Enable HuC firmware", "Needs HuC firmware") : (null, "Not supported by this GPU"), (hevc.Fix?.Action, hevc.Note));
+        Assert.Equal(h264Fix ? ("Gen 9+: Enable HuC firmware", "Requires HuC firmware") : (null, "Not supported by this GPU"), (h264.Fix?.Action, h264.Note));
+        Assert.Equal(hevcFix ? ("Gen 11+: Enable HuC firmware", "Requires HuC firmware") : (null, "Not supported by this GPU"), (hevc.Fix?.Action, hevc.Note));
     }
 
     /// <summary>Each backend gets the options its Transcoding page shows, and a backend that doesn't work gets none.</summary>
@@ -191,7 +191,7 @@ public sealed class SettingsAdvisorTests
 
         var advice = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Encode = encode }, _docker), a => a.Setting == "Trickplay:EnableHwEncoding");
 
-        Assert.Equal((SettingState.LeaveOff, "Needs hardware encoding"), (advice.State, advice.Note));
+        Assert.Equal((SettingState.LeaveOff, "Requires hardware encoding"), (advice.State, advice.Note));
     }
 
     /// <summary>NVENC and AMF have no MJPEG encoder in Jellyfin, so trickplay hardware encoding does nothing there.</summary>
@@ -223,7 +223,7 @@ public sealed class SettingsAdvisorTests
         var optional = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Type = HwType.vaapi, Decode = passed }, _docker), a => a.Setting == Setting);
 
         Assert.Equal(SettingState.NotTested, Assert.Single(native, a => a.Setting == Setting).State);
-        Assert.Equal((SettingState.Optional, "Works with hardware decoding; faster, less accurate timing"), (optional.State, optional.Note));
+        Assert.Equal((SettingState.Optional, "Faster, but less accurate timing"), (optional.State, optional.Note));
         Assert.Equal((SettingState.LeaveOff, "Turns off hardware decoding with this backend"), (qsvDecoders.State, qsvDecoders.Note));
         Assert.Equal((SettingState.LeaveOff, "Turns off hardware decoding with this backend"), (nvenc.State, nvenc.Note));
     }
@@ -263,7 +263,7 @@ public sealed class SettingsAdvisorTests
     [InlineData(ProbeOutcome.NotUsed, ProbeOutcome.Pass, SettingState.TurnOn, "")]
     [InlineData(ProbeOutcome.Pass, ProbeOutcome.CodecUnsupported, SettingState.LeaveOff, "Not supported by this GPU")]
     [InlineData(ProbeOutcome.Pass, null, SettingState.NotTested, "Not tested")]
-    [InlineData(ProbeOutcome.NotUsed, ProbeOutcome.NotUsed, SettingState.LeaveOff, "Jellyfin uses software for this")]
+    [InlineData(ProbeOutcome.NotUsed, ProbeOutcome.NotUsed, SettingState.LeaveOff, "Software only")]
     public void RextNeedsEveryFormatJellyfinDecodesInHardware(ProbeOutcome yuv422, ProbeOutcome? yuv444, SettingState state, string note)
     {
         var decode = new Dictionary<string, ProbeOutcome>(_apolloLakeQsv.Decode) { ["hevc_rext_10bit"] = yuv422 };

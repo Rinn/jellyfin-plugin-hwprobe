@@ -129,7 +129,7 @@ public sealed partial class FixtureBuilder
 
         // A re-pinned piece changes the recipe, so a clip made from the old one is fetched again.
         var text = $"{spec.RequiredEncoder}\n{spec.EncodeArguments}" + (spec.FallbackArguments is null ? string.Empty : $"\n{spec.FallbackArguments}")
-            + (spec.Piece is { } piece ? $"\n{piece.Url} {piece.HeaderLength} {piece.Start} {piece.Length} {piece.Sha256}" : string.Empty);
+            + (spec.Piece is { } piece ? string.Create(CultureInfo.InvariantCulture, $"\n{piece.Url} {piece.HeaderLength} {piece.Start} {piece.Length} {piece.Sha256}") : string.Empty);
         var recipe = SHA256.HashData(Encoding.UTF8.GetBytes(text));
         return string.Create(CultureInfo.InvariantCulture, $"{stream.Length} {Convert.ToHexStringLower(hash)} {Convert.ToHexStringLower(recipe)}");
     }
@@ -146,7 +146,7 @@ public sealed partial class FixtureBuilder
         {
             FfmpegRunStatus.LaunchFailed => $"ffmpeg failed to launch: {result.LaunchError}",
             FfmpegRunStatus.TimedOut => "fixture generation timed out",
-            _ when result.ExitCode != 0 => $"ffmpeg exited {result.ExitCode}: {lastLine}",
+            _ when result.ExitCode != 0 => string.Create(CultureInfo.InvariantCulture, $"ffmpeg exited {result.ExitCode}: {lastLine}"),
             _ => "ffmpeg exited 0 but wrote no output",
         };
     }
@@ -270,7 +270,7 @@ public sealed partial class FixtureBuilder
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return new FixtureResult(spec, FixtureStatus.Untested, null, $"downloading {piece.Url} stopped for {_downloadStall.TotalSeconds:0} s");
+            return new FixtureResult(spec, FixtureStatus.Untested, null, string.Create(CultureInfo.InvariantCulture, $"downloading {piece.Url} stopped for {_downloadStall.TotalSeconds:0} s"));
         }
 
         var hash = Convert.ToHexStringLower(SHA256.HashData([.. header, .. body]));

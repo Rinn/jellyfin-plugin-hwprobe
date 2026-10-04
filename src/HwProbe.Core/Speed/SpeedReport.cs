@@ -20,6 +20,10 @@ public sealed record SpeedReport(DateTimeOffset GeneratedUtc, FfmpegSummary Ffmp
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool Cancelled { get; init; }
 
+    /// <summary>Gets a value indicating whether it was cancelled because the server started transcoding.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool CancelledForTranscode { get; init; }
+
     /// <summary>Gets the version of HwProbe that measured it.</summary>
     public string HwProbeVersion { get; init; } = CapabilityReport.CurrentHwProbeVersion;
 }

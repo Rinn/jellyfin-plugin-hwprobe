@@ -8,6 +8,34 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Speed;
 [Trait("Category", "Unit")]
 public sealed class SpeedMeterTests
 {
+    /// <summary>A copy keeps up when it runs at real time from its first frame on: slow start-up is neither counted nor excused.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task CopiesAreTimedFromTheirFirstFrame()
+    {
+        Task<IReadOnlyList<FfmpegRunResult>> LaunchAsync(int copies, TimeSpan content, CancellationToken cancellationToken)
+        {
+            // Every copy takes 2 s to start; up to three hold 24 fps after that, four drop to 23.
+            var fps = copies <= 3 ? 24.0 : 23.0;
+            var run = copies == 1
+                ? new FfmpegRunResult(FfmpegRunStatus.Exited, 0, string.Empty, string.Empty, 240, TimeSpan.FromSeconds(5), null)
+                : new FfmpegRunResult(FfmpegRunStatus.Exited, 0, string.Empty, string.Empty, 240, TimeSpan.FromSeconds(2 + (240 / fps)), null) { Timing = new FrameTiming(TimeSpan.FromSeconds(2.5), 12, TimeSpan.FromSeconds(2.5 + (228 / fps)), 240) };
+            return Task.FromResult<IReadOnlyList<FfmpegRunResult>>([.. Enumerable.Repeat(run, copies)]);
+        }
+
+        var measured = await SpeedMeter.MeasureAsync(LaunchAsync, SpeedMethod.Confirm, 24, countStreams: true, TestContext.Current.CancellationToken);
+
+        Assert.Equal(3, measured.Streams);
+    }
+
+    /// <summary>Steady fps leaves out the time before the first report and needs a second of reports to say.</summary>
+    [Fact]
+    public void SteadyFpsSkipsStartUp()
+    {
+        Assert.Equal(24, new FrameTiming(TimeSpan.FromSeconds(2), 24, TimeSpan.FromSeconds(12), 264).SteadyFps!.Value, 3);
+        Assert.Null(new FrameTiming(TimeSpan.FromSeconds(2), 24, TimeSpan.FromSeconds(2.5), 36).SteadyFps);
+    }
+
     /// <summary>Quick measures one copy's fps and counts no streams, since one copy's speed doesn't say how many keep up together.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

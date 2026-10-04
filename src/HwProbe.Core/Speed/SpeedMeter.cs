@@ -13,9 +13,6 @@ public static class SpeedMeter
     /// <summary>The content each copy transcodes: long enough that start-up is a small part of it.</summary>
     public static readonly TimeSpan Content = TimeSpan.FromSeconds(10);
 
-    // ffmpeg start-up (device init, probing the input) on top of real time.
-    private static readonly TimeSpan _startup = TimeSpan.FromSeconds(1);
-
     // A single run shorter than this is repeated with more content, so start-up doesn't skew its fps.
     private static readonly TimeSpan _shortest = TimeSpan.FromSeconds(5);
 
@@ -90,7 +87,8 @@ public static class SpeedMeter
                 return false;
             }
 
-            var kept = runs.All(r => r.Status == FfmpegRunStatus.Exited && r.Duration <= Content + _startup);
+            // Judged from the first frame on, so start-up (device init, probing the input) doesn't count against a copy and isn't excused either.
+            var kept = runs.All(r => r.Status == FfmpegRunStatus.Exited && (r.Timing?.SteadyFps ?? Fps(r)) >= frameRate);
             keptUp = kept ? Math.Max(keptUp, copies) : keptUp;
             return kept;
         }

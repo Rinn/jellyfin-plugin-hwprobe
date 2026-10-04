@@ -19,6 +19,8 @@ templates:
     width: 1920
     height: 1080
     audio: 5.1 AAC
+    # ffmpeg's testsrc2 (ffmpeg-filters, "testsrc").
+    description: Colour bars, a scrolling gradient, and a timestamp
   sampleVideo: &sampleVideo
     frameRate: 24
     width: 1920
@@ -35,6 +37,169 @@ testAudio: { file: speed_audio_51.mka, codec: aac, encoder: aac, arguments: "{qu
 
 # Every video, in the order the page lists them; the library video is added from a chosen file.
 videos:
+  - <<: *sampleVideo
+    key: drama
+    name: Live action
+    # Films are wider than 16:9.
+    height: 804
+    audio: stereo Opus
+    sample: &manBehindTheMachine
+      title: The Man Behind the Machine
+      credit: The Man Behind the Machine, Dalano’s Films, CC BY 3.0, via Wikimedia Commons
+      holder: Dalano’s Films
+      holderUrl: https://www.youtube.com/@dalano_films
+      # No Wikipedia article; the film's own release page, as the Commons credit gives it.
+      article: https://www.youtube.com/watch?v=Qn2wb3-iuRk
+      license: https://creativecommons.org/licenses/by/3.0/
+      licenseName: CC BY 3.0
+      source: https://commons.wikimedia.org/wiki/File:The_Man_Behind_the_Machine_(sci-fi_thriller_short_film).webm
+    # 3:08.7 to 3:19.6 of Commons' 1080p VP9 transcode: a cluttered warehouse, wide shots and close-ups, no visual effects.
+    clip:
+      <<: *sampleClip
+      file: sample_live_action_only.webm
+      seconds: 10.9
+      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/9/9d/The_Man_Behind_the_Machine_%28sci-fi_thriller_short_film%29.webm/The_Man_Behind_the_Machine_%28sci-fi_thriller_short_film%29.webm.1080p.vp9.webm", headerLength: 860, start: 53023790, length: 3697127, sha256: a90475735cc01e67c6ee27e96f40a1595acaa78a8e457dbfbc05da07584f3aff }
+  - <<: *sampleVideo
+    key: drama-4k
+    name: Live action 4K
+    width: 3840
+    height: 1608
+    audio: stereo Opus
+    sample: *manBehindTheMachine
+    # The same scene from Commons' original 4K VP9 file: 3:08.7 to 3:17.3, ending on the cluster before the 1080p piece's.
+    clip:
+      <<: *sampleClip
+      file: sample_live_action_4k.webm
+      seconds: 8.6
+      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/9/9d/The_Man_Behind_the_Machine_%28sci-fi_thriller_short_film%29.webm", headerLength: 632, start: 110647202, length: 6719911, sha256: 487d78ebf149d52f0e65dd1ac764d7aa78e17ec23c3091b44ba5648d60f63449 }
+  - <<: *sampleVideo
+    key: drama-8k
+    name: Live action 8K
+    frameRate: 25
+    width: 8192
+    height: 4320
+    sample:
+      title: Sherman "Fury" at Tankfest 2021
+      credit: Fury Tank tankfest 2021, Geni, CC BY-SA 4.0, via Wikimedia Commons
+      holder: Geni
+      holderUrl: https://commons.wikimedia.org/wiki/User:Geni
+      license: https://creativecommons.org/licenses/by-sa/4.0/
+      licenseName: CC BY-SA 4.0
+      source: https://commons.wikimedia.org/wiki/File:Fury_Tank_tankfest_2021.webm
+    # The whole 10 s file, one cluster: VP9 profile 0, 58 Mbps, no audio; Jellyfin outputs at most 4K (EncodingHelper.GetFixedOutputSize).
+    clip:
+      file: sample_live_action_8k.webm
+      seconds: 10.1
+      codec: vp9
+      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/4/45/Fury_Tank_tankfest_2021.webm", headerLength: 495, start: 495, length: 73946061, sha256: b398285f93f25d56962f67e5d7c49f4478d26497d84c7e34db02866628992107 }
+      keepAcrossBuilds: true
+  - <<: *sampleVideo
+    key: live-action
+    name: Live-action + CGI
+    # Films are wider than 16:9.
+    height: 858
+    audio: stereo Opus
+    sample:
+      title: Tears of Steel
+      credit: Tears of Steel, Blender Foundation (mango.blender.org), CC BY 3.0, via Wikimedia Commons
+      holder: Blender Foundation (mango.blender.org)
+      holderUrl: https://mango.blender.org/
+      license: https://creativecommons.org/licenses/by/3.0/
+      licenseName: CC BY 3.0
+      source: https://commons.wikimedia.org/wiki/File:Tears_of_Steel_in_4k_-_Official_Blender_Foundation_release.webm
+      article: https://en.wikipedia.org/wiki/Tears_of_Steel
+    # 6:39 to 6:49 of Commons' 1080p VP9 transcode.
+    clip:
+      <<: *sampleClip
+      file: sample_live_action.webm
+      seconds: 10.1
+      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/1/10/Tears_of_Steel_in_4k_-_Official_Blender_Foundation_release.webm/Tears_of_Steel_in_4k_-_Official_Blender_Foundation_release.webm.1080p.vp9.webm", headerLength: 530, start: 131614236, length: 2131288, sha256: 0da88a6b1572b095bac20cb490485652feee5ab7fc45e82438174871ce657e96 }
+  - <<: *sampleVideo
+    key: digital-animation
+    name: 3D animation
+    height: 818
+    audio: 5.1 Opus
+    sample:
+      title: Sintel
+      credit: Sintel, Blender Foundation (durian.blender.org), CC BY 3.0, via Wikimedia Commons
+      holder: Blender Foundation (durian.blender.org)
+      holderUrl: https://durian.blender.org/
+      license: https://creativecommons.org/licenses/by/3.0/
+      licenseName: CC BY 3.0
+      source: https://commons.wikimedia.org/wiki/File:Sintel_movie_4K.webm
+      article: https://en.wikipedia.org/wiki/Sintel
+    # 5:30 to 5:42; pieces end on a keyframe.
+    clip:
+      <<: *sampleClip
+      file: sample_digital_animation.webm
+      seconds: 11.9
+      audioChannels: 6
+      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/f/f1/Sintel_movie_4K.webm/Sintel_movie_4K.webm.1080p.vp9.webm", headerLength: 559, start: 96184958, length: 5440342, sha256: b9b721186ca9cb06bb1b1d961566b56e9f355a7b55df4ba37ab4c55529901902 }
+  - <<: *sampleVideo
+    key: digital-animation-4k
+    name: 3D animation 4K HDR
+    width: 3840
+    height: 1608
+    audio: stereo Opus
+    sample:
+      title: SINGULARITY
+      credit: SINGULARITY, Blender Studio, CC BY 4.0, via Wikimedia Commons
+      holder: Blender Studio
+      holderUrl: https://studio.blender.org/
+      # No Wikipedia article; the film's own release page, as the Commons credit gives it.
+      article: https://www.youtube.com/watch?v=l5OZu-IrXpw
+      license: https://creativecommons.org/licenses/by/4.0/
+      licenseName: CC BY 4.0
+      source: https://commons.wikimedia.org/wiki/File:SINGULARITY_-_Blender_Open_Movie-full_movie.webm
+    # 2:15 to 2:22.5 of Commons' original: HDR10 AV1 Main 10-bit, which current GPUs decode.
+    clip:
+      <<: *sampleClip
+      file: sample_3d_animation_4k_hdr10.webm
+      seconds: 7.5
+      codec: av1
+      bitDepth: 10
+      hdr10: true
+      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/f/f2/SINGULARITY_-_Blender_Open_Movie-full_movie.webm", headerLength: 834, start: 254455210, length: 14293364, sha256: 7a9812153aae92b8b58d608c8d8a2fca5351c5bbdb6254646079307bd4480764 }
+  - <<: *sampleVideo
+    key: anime
+    name: Animation
+    height: 1080
+    audio: stereo Opus
+    sample: &solLevante
+      title: Sol Levante
+      credit: Sol Levante, Netflix and Production I.G, CC BY 4.0, via Wikimedia Commons
+      holder: Netflix and Production I.G
+      holderUrl: https://opencontent.netflix.com/
+      license: https://creativecommons.org/licenses/by/4.0/
+      licenseName: CC BY 4.0
+      source: https://commons.wikimedia.org/wiki/File:Sol_Levante.webm
+      article: https://en.wikipedia.org/wiki/Sol_Levante
+    # 1:31 to 1:43.
+    clip:
+      <<: *sampleClip
+      file: sample_anime.webm
+      seconds: 12.5
+      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/4/44/Sol_Levante.webm/Sol_Levante.webm.1080p.vp9.webm", headerLength: 991, start: 45210548, length: 5534544, sha256: b922a2619a09f50e4e07ea31a083000c5d0b87ee789a36cf7673e8a4385ef5e5 }
+  - <<: *sampleVideo
+    key: anime-4k
+    name: Animation 4K HDR
+    width: 3840
+    height: 2160
+    audio: stereo Opus
+    sample: *solLevante
+    # 1:30 to 1:35 of Commons' 4K HDR10 AV1 copy: Professional profile, 4:4:4 12-bit, which GPUs don't decode. 5 s, since it's the largest download.
+    clip:
+      file: sample_anime_4k_hdr10.webm
+      seconds: 5
+      codec: av1
+      bitDepth: 12
+      hdr10: true
+      pixelFormat: yuv444p12le
+      profile: Professional
+      audioCodec: opus
+      audioChannels: 2
+      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/4/44/Sol_Levante.webm", headerLength: 1022, start: 563867512, length: 21230224, sha256: d1d4c263e3ab895dad850c4110e9161f563414ca5c4609ae095434d4911ac8ae }
+      keepAcrossBuilds: true
   - <<: *testVideo
     key: pattern
     name: Test video, H.264
@@ -68,81 +233,8 @@ videos:
     width: 3840
     height: 2160
     clip: { file: speed_2160p_hdr10.mkv, seconds: 10, codec: hevc, bitDepth: 10, hdr10: true, encoder: libx265, arguments: "{quiet} -f lavfi -i testsrc2=size=3840x2160:rate=24 {audio} -t 10 {x265} -pix_fmt yuv420p10le {hdr10} {audioOut}", generateMinutes: 10 }
-  - <<: *sampleVideo
-    key: live-action
-    name: Live-action + CGI
-    # Films are wider than 16:9.
-    height: 858
-    audio: stereo Opus
-    sample:
-      title: Tears of Steel
-      credit: Tears of Steel, Blender Foundation (mango.blender.org), CC BY 3.0, via Wikimedia Commons
-      license: https://creativecommons.org/licenses/by/3.0/
-      source: https://commons.wikimedia.org/wiki/File:Tears_of_Steel_in_4k_-_Official_Blender_Foundation_release.webm
-      article: https://en.wikipedia.org/wiki/Tears_of_Steel
-    # 6:39 to 6:49 of Commons' 1080p VP9 transcode.
-    clip:
-      <<: *sampleClip
-      file: sample_live_action.webm
-      seconds: 10.1
-      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/1/10/Tears_of_Steel_in_4k_-_Official_Blender_Foundation_release.webm/Tears_of_Steel_in_4k_-_Official_Blender_Foundation_release.webm.1080p.vp9.webm", headerLength: 530, start: 131614236, length: 2131288, sha256: 0da88a6b1572b095bac20cb490485652feee5ab7fc45e82438174871ce657e96 }
-  - <<: *sampleVideo
-    key: digital-animation
-    name: 3D animation
-    height: 818
-    audio: 5.1 Opus
-    sample:
-      title: Sintel
-      credit: Sintel, Blender Foundation (durian.blender.org), CC BY 3.0, via Wikimedia Commons
-      license: https://creativecommons.org/licenses/by/3.0/
-      source: https://commons.wikimedia.org/wiki/File:Sintel_movie_4K.webm
-      article: https://en.wikipedia.org/wiki/Sintel
-    # 5:30 to 5:42; pieces end on a keyframe.
-    clip:
-      <<: *sampleClip
-      file: sample_digital_animation.webm
-      seconds: 11.9
-      audioChannels: 6
-      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/f/f1/Sintel_movie_4K.webm/Sintel_movie_4K.webm.1080p.vp9.webm", headerLength: 559, start: 96184958, length: 5440342, sha256: b9b721186ca9cb06bb1b1d961566b56e9f355a7b55df4ba37ab4c55529901902 }
-  - <<: *sampleVideo
-    key: anime
-    name: Animation
-    height: 1080
-    audio: stereo Opus
-    sample: &solLevante
-      title: Sol Levante
-      credit: Sol Levante, Netflix and Production I.G, CC BY 4.0, via Wikimedia Commons
-      license: https://creativecommons.org/licenses/by/4.0/
-      source: https://commons.wikimedia.org/wiki/File:Sol_Levante.webm
-      article: https://en.wikipedia.org/wiki/Sol_Levante
-    # 1:31 to 1:43.
-    clip:
-      <<: *sampleClip
-      file: sample_anime.webm
-      seconds: 12.5
-      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/4/44/Sol_Levante.webm/Sol_Levante.webm.1080p.vp9.webm", headerLength: 991, start: 45210548, length: 5534544, sha256: b922a2619a09f50e4e07ea31a083000c5d0b87ee789a36cf7673e8a4385ef5e5 }
-  - <<: *sampleVideo
-    key: anime-4k
-    name: Animation 4K HDR
-    width: 3840
-    height: 2160
-    audio: stereo Opus
-    sample: *solLevante
-    # 1:30 to 1:35 of Commons' 4K HDR10 AV1 copy: Professional profile, 4:4:4 12-bit, which GPUs don't decode. 5 s, since it's the largest download.
-    clip:
-      file: sample_anime_4k_hdr10.webm
-      seconds: 5
-      codec: av1
-      bitDepth: 12
-      hdr10: true
-      pixelFormat: yuv444p12le
-      profile: Professional
-      audioCodec: opus
-      audioChannels: 2
-      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/4/44/Sol_Levante.webm", headerLength: 1022, start: 563867512, length: 21230224, sha256: d1d4c263e3ab895dad850c4110e9161f563414ca5c4609ae095434d4911ac8ae }
-      keepAcrossBuilds: true
 
-defaultVideos: [pattern]
+defaultVideos: [drama]
 
 # Outputs are every codec at every quality, as a player asks for them, plus decoding alone; keys are codec-quality, e.g. hevc-8mbps.
 # Every video codec Jellyfin transcodes to (EncodingHelper.GetVideoEncoder, v12.1).
@@ -322,8 +414,9 @@ options:
       - { key: veryfast, label: veryfast }
       - { key: superfast, label: superfast }
       - { key: ultrafast, label: ultrafast }
-  - { key: H265Crf, label: H.265 encoding CRF, server: H265Crf, range: [0, 51], help: CRF only reaches the software encoders; hardware encoders follow the bitrate. }
-  - { key: H264Crf, label: H.264 encoding CRF, server: H264Crf, range: [0, 51] }
+    qualityOrder: [veryslow, slower, slow, medium, fast, faster, veryfast, superfast, ultrafast]
+  - { key: H265Crf, label: H.265 encoding CRF, server: H265Crf, range: [0, 51], lowerIsBetter: true }
+  - { key: H264Crf, label: H.264 encoding CRF, server: H264Crf, range: [0, 51], lowerIsBetter: true, help: CRF only applies to software encoders. }
   - key: DeinterlaceMethod
     label: Deinterlacing method
     server: DeinterlaceMethod
@@ -331,7 +424,8 @@ options:
     choices:
       - { key: yadif, label: Yet Another DeInterlacing Filter (YADIF) }
       - { key: bwdif, label: Bob Weaver DeInterlacing Filter (BWDIF) }
-  - { key: DoubleRate, label: Double the frame rate when deinterlacing, server: DeinterlaceDoubleRate, switch: true }
+    qualityOrder: [bwdif, yadif]
+  - { key: DoubleRate, label: Double the frame rate when deinterlacing, server: DeinterlaceDoubleRate, switch: true, qualityOrder: ["true", "false"] }
   - key: Audio
     label: Audio
     help: Copying passes the source's audio through, as for a client that plays it, so only the video is transcoded.
@@ -345,6 +439,14 @@ options:
       - { key: none, label: None }
       - { key: text, label: Text (ASS) }
       - { key: image, label: Image (PGS) }
+
+# What a run does when the server starts transcoding for a player; keyed by TranscodeAction.
+whenTranscoding:
+  - { key: Pause, label: "Pause, then repeat the interrupted measurement" }
+  - { key: Continue, label: Keep measuring }
+  - { key: Cancel, label: Cancel the test }
+
+defaultWhenTranscoding: Pause
 
 # Seconds per measurement; no value for no limit.
 timeLimits:

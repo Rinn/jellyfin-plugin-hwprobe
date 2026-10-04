@@ -1,5 +1,6 @@
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
+using Jellyfin.Plugin.HwProbe.TestSupport;
 using Xunit;
 
 namespace Jellyfin.Plugin.HwProbe.Cli.Tests;
@@ -67,6 +68,21 @@ public sealed class HwProbeCommandTests
         var result = new HwProbeCommand().Root.Parse(args);
 
         Assert.NotEmpty(result.Errors);
+    }
+
+    /// <summary>Numbers parse the same in every culture, and a bad one is an error rather than a crash.</summary>
+    /// <param name="culture">The current culture.</param>
+    [Theory]
+    [MemberData(nameof(CultureScope.Different), MemberType = typeof(CultureScope))]
+    public void NumbersParseInEveryCulture(string culture)
+    {
+        using var scope = new CultureScope(culture);
+
+        Assert.NotEmpty(new HwProbeCommand().Root.Parse(["--fixture-timeout", "-1"]).Errors);
+        Assert.NotEmpty(new HwProbeCommand().Root.Parse(["--timeout", "x"]).Errors);
+        Assert.NotEmpty(new HwProbeCommand().Root.Parse(["--speed-repeats", "x"]).Errors);
+        Assert.NotEmpty(new HwProbeCommand().Root.Parse(["--speed-time-limit", "x"]).Errors);
+        Assert.Empty(new HwProbeCommand().Root.Parse(["--timeout", "30", "--speed-time-limit", "60"]).Errors);
     }
 
     /// <summary>Parses and binds a command line that must be valid.</summary>

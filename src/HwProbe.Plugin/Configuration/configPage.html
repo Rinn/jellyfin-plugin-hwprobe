@@ -7,8 +7,8 @@
 <body>
     <div id="HwProbeConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-button,emby-checkbox,emby-select,emby-input">
         <style>
-            /* Layout only: colours, buttons, inputs and panels come from jellyfin-web's theme classes. */
-            /* Headings, width and help text as the dashboard's own pages have them (jellyfin-web src/themes/_base/theme.ts and MUI's defaults, v12.1). */
+            /* Layout only: colours, buttons, inputs, and panels come from jellyfin-web's theme classes. */
+            /* Headings, width, and help text as the dashboard's own pages have them (jellyfin-web src/themes/_base/theme.ts and MUI's defaults, v12.1). */
             #HwProbeConfigPage .content-primary > * { max-width: 54em; }
             #HwProbeConfigPage h1 { font-size: 1.8rem; font-weight: 300; line-height: 1.167; margin: 0 0 0.5em; }
             #HwProbeConfigPage h2.sectionTitle { font-size: 1.5rem; font-weight: 300; line-height: 1.2; margin: 24px 0 8px; }
@@ -36,14 +36,15 @@
             #HwProbeConfigPage .selectContainer select.emby-select option { color: var(--jf-palette-text-primary, #fff); background: var(--jf-palette-background-paper, #202020); }
             #HwProbeConfigPage table { border-collapse: collapse; margin: 0.25em 0 1em; }
             #HwProbeConfigPage td, #HwProbeConfigPage th { padding: 0.35em 1.2em 0.35em 0.4em; text-align: left; vertical-align: middle; height: 1.8em; border-bottom: 1px solid var(--jf-palette-divider, rgba(255, 255, 255, 0.12)); }
-            #HwProbeConfigPage th { font-weight: 500; }
+            #HwProbeConfigPage th { font-weight: 600; background: var(--jf-palette-background-paper, #202020); border-bottom: 2px solid var(--jf-palette-divider, rgba(255, 255, 255, 0.12)); }
             #HwProbeConfigPage tr:hover > td { background: var(--jf-palette-action-hover, rgba(255, 255, 255, 0.08)); }
             #HwProbeConfigPage tr:hover > td.hwprobe-best { background: color-mix(in srgb, var(--jf-palette-primary-main, #00a4dc) 30%, transparent); }
             #HwProbeConfigPage .hwprobe-scroll { overflow-x: auto; }
+            #HwProbeConfigPage table.hwprobe-full { width: 100%; }
             #HwProbeConfigPage .hwprobe-matrix td:first-child { white-space: nowrap; }
             #HwProbeConfigPage .hwprobe-backends td:nth-child(2), #HwProbeConfigPage .hwprobe-backends th:nth-child(2) { width: 18em; }
             #HwProbeConfigPage .hwprobe-backends td:nth-child(3), #HwProbeConfigPage .hwprobe-backends th:nth-child(3) { width: 12em; }
-            #HwProbeConfigPage .hwprobe-group td { padding-top: 1em; font-weight: 500; }
+            #HwProbeConfigPage .hwprobe-group td { padding-top: 1em; font-weight: 600; color: var(--jf-palette-primary-main, #00a4dc); border-bottom: 2px solid var(--jf-palette-divider, rgba(255, 255, 255, 0.12)); }
             #HwProbeConfigPage tr.hwprobe-group:hover > td, #HwProbeConfigPage tr:has(> th):hover > td { background: none; }
             #HwProbeConfigPage .hwprobe-mark { width: 1.5em; }
             #HwProbeConfigPage .hwprobe-mark .material-icons, #HwProbeConfigPage .hwprobe-card .material-icons { font-size: 1.2em; vertical-align: middle; }
@@ -53,6 +54,7 @@
             #HwProbeConfigPage .hwprobe-card { padding: 0.8em 1em; margin: 0 0 1.5em; }
             #HwProbeConfigPage .hwprobe-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5em 1em; margin: 0.2em 0; }
             #HwProbeConfigPage .hwprobe-row.hwprobe-start { justify-content: flex-start; }
+            #HwProbeConfigPage .hwprobe-row.hwprobe-end { justify-content: flex-end; }
             /* Banners drawn like the dashboard's MUI Alert (standard variant), with its outlined icons. */
             #HwProbeConfigPage .infoBanner { position: relative; margin: 0.5em 0 1em; padding: 14px 16px 14px 50px; border: none; border-radius: 4px; box-shadow: none; background: var(--jf-palette-Alert-infoStandardBg, rgb(7, 19, 24)); color: var(--jf-palette-Alert-infoColor, rgb(184, 231, 251)); font-size: 0.875rem; line-height: 1.43; letter-spacing: 0.01071em; }
             #HwProbeConfigPage .infoBanner[hidden] { display: none; }
@@ -63,12 +65,13 @@
             #HwProbeConfigPage .hwprobe-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em 1em; margin: 1.5em 0 0.3em; }
             #HwProbeConfigPage .hwprobe-heading h2 { margin: 0; }
             #HwProbeConfigPage .hwprobe-heading .selectContainer { margin: 0; flex: 1 1 16em; max-width: 28em; }
-            #HwProbeConfigPage .hwprobe-heading .selectContainer.hwprobe-view { flex: 0 1 12em; }
-            #HwProbeConfigPage .hwprobe-change { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em; }
+            #HwProbeConfigPage .hwprobe-views { font-size: 0.85em; margin: 0.3em 0 0.6em; }
+            #HwProbeConfigPage .hwprobe-views label { display: inline-flex; align-items: center; gap: 0.3em; cursor: pointer; }
+            #HwProbeConfigPage .hwprobe-views input { accent-color: var(--jf-palette-primary-main, #00a4dc); margin: 0; }
+            #HwProbeConfigPage .hwprobe-change { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5em; }
             #HwProbeConfigPage .hwprobe-change-list { margin: 0 0 0.5em 1em; }
             #HwProbeConfigPage .hwprobe-change-list table { margin: 0.2em 0 0; }
             #HwProbeConfigPage .hwprobe-disclosure { display: inline-flex; align-items: center; gap: 0.3em; padding: 0; border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
-            #HwProbeConfigPage .hwprobe-choices { display: flex; flex-wrap: wrap; gap: 0 1.5em; }
             #HwProbeConfigPage .hwprobe-fold > summary { display: flex; align-items: center; gap: 0.3em; cursor: pointer; list-style: none; }
             #HwProbeConfigPage .hwprobe-fold > summary::-webkit-details-marker { display: none; }
             #HwProbeConfigPage .hwprobe-fold > summary .sectionTitle { margin-top: 0.5em; margin-bottom: 0.5em; }
@@ -80,12 +83,23 @@
             #HwProbeConfigPage .hwprobe-variant td:first-child { padding-left: 1.2em; }
             #HwProbeConfigPage .hwprobe-small { font-size: 0.85em; }
             #HwProbeConfigPage .hwprobe-file { word-break: break-all; }
+            #HwProbeConfigPage .emby-button.hwprobe-danger:not(:disabled) { color: var(--jf-palette-error-main, #c62828); }
+            #HwProbeConfigPage th.hwprobe-sortable { cursor: pointer; user-select: none; }
+            #HwProbeConfigPage th.hwprobe-sortable[aria-sort="ascending"]::after { content: " \25B2"; font-size: 0.7em; }
+            #HwProbeConfigPage th.hwprobe-sortable[aria-sort="descending"]::after { content: " \25BC"; font-size: 0.7em; }
+            #HwProbeConfigPage .hwprobe-emoji { font-size: 1em; line-height: 1; }
+            #HwProbeConfigPage .hwprobe-notes { margin: 0; padding-left: 1.4em; }
             #HwProbeConfigPage .selectContainer .hwprobe-notes { margin: 0 14px; padding-left: 1.4em; }
             #HwProbeConfigPage .hwprobe-progress { position: relative; width: 16em; }
+            #hwprobeCard, #HwProbeConfigPage .hwprobe-progress-card { position: relative; }
+            #HwProbeConfigPage .hwprobe-progress.hwprobe-progress-wide { position: absolute; left: 1em; right: 1em; bottom: 0.3em; width: auto; margin: 0; }
             #HwProbeConfigPage .hwprobe-inline { margin: 0 0 0 0.5em; padding: 0.2em 0.8em; }
             /* jellyfin-web's legacy buttons look the same when disabled; this follows the dashboard's MUI buttons. */
             #HwProbeConfigPage .emby-button:disabled { color: var(--jf-palette-action-disabled, rgba(255, 255, 255, 0.3)); background: var(--jf-palette-action-disabledBackground, rgba(255, 255, 255, 0.12)); cursor: default; }
             #HwProbeConfigPage .emby-button.button-flat:disabled { background: transparent; }
+            /* jellyfin-web hides a disabled select's field and arrow with !important; this draws it like the dashboard's disabled MUI select. */
+            #HwProbeConfigPage .emby-select-withcolor:disabled { opacity: 1; background-color: var(--jf-palette-action-disabledBackground, rgba(255, 255, 255, 0.12)) !important; border-bottom-style: dotted; border-bottom-color: var(--jf-palette-action-disabled, rgba(255, 255, 255, 0.3)) !important; color: var(--jf-palette-action-disabled, rgba(255, 255, 255, 0.3)) !important; }
+            #HwProbeConfigPage .emby-select-withcolor:disabled + .selectArrowContainer { display: block; opacity: 0.3; }
             #HwProbeConfigPage sup { font-size: 0.7em; }
             /* Phones: let columns size to their content and wrap, so nothing runs off the screen. */
             @media (max-width: 40em) {
@@ -132,8 +146,11 @@
                 // Buttons that start work or change settings, which the server refuses while a probe or performance test runs.
                 let idleButtons = [];
                 const runButton = idleAction('Run probe', () => {
+                    statusText.textContent = 'Probing\u2026';
+                    probeProgress = {};
+                    render();
                     ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Run') })
-                        .then(loadStatus, () => { setMessage('Could not start: a probe is running or a session is transcoding.'); runButton.disabled = false; });
+                        .then(loadStatus, () => { setMessage('Could not start: a probe is running or a session is transcoding.'); runButton.disabled = false; probeProgress = null; render(); loadStatus(); });
                 }, 'raised button-submit');
 
                 // The banner is a themed panel, so it's hidden while empty.
@@ -175,10 +192,11 @@
                 // While a speed run goes, its results so far; shown in place of the saved run.
                 let speedLive = null;
                 let speedProgress = null;
+                let probeProgress = null;
                 let speedMethod = null;
                 let speedRepeats = 1;
-                let speedReuse = false;
-                let speedDefer = true;
+                let speedReuse = true;
+                let speedWhenTranscoding = null;
                 let speedTimeLimit = null;
                 // Null measures with the server's own thread count.
                 // Run options chosen on the page, by catalog key; one left out keeps the server's setting.
@@ -204,6 +222,8 @@
                 let repeatOptions = [];
                 let runOptions = [];
                 let timeLimitOptions = [];
+                let whenTranscodingOptions = [];
+                let defaultMethod = null;
                 let names = {};
                 let order = [];
                 let platforms = {};
@@ -233,6 +253,9 @@
                     speedOutputs = c.Outputs;
                     speedCodecs = c.Codecs;
                     speedQualities = c.Qualities;
+                    whenTranscodingOptions = c.WhenTranscoding.map(o => [o.Key, o.Label]);
+                    speedWhenTranscoding = speedWhenTranscoding || c.DefaultWhenTranscoding;
+                    defaultMethod = c.DefaultMethod;
                     speedMethod = speedMethod || c.DefaultMethod;
                 }
 
@@ -263,10 +286,16 @@
                     return div;
                 }
 
+                // Which sections were opened or closed, by key, kept across redraws.
+                const foldOpen = new Map();
+
                 // A collapsible section with Jellyfin's heading style; emby-collapse isn't loaded on plugin pages.
-                function fold(container, title, open, level) {
+                // The key defaults to the title without a trailing count.
+                function fold(container, title, open, level, key) {
                     const details = el('details', null, 'hwprobe-fold');
-                    details.open = !!open;
+                    const id = key || title.replace(/ \(\d+\)$/, '');
+                    details.open = foldOpen.has(id) ? foldOpen.get(id) : !!open;
+                    details.addEventListener('toggle', () => foldOpen.set(id, details.open));
                     const summary = el('summary');
                     summary.appendChild(icon('chevron_right'));
                     summary.appendChild(el(level || 'h2', title, 'sectionTitle'));
@@ -425,14 +454,81 @@
                 }
 
                 // Working and not, in one layout: backend, device, status. Green works, red failed, grey doesn't apply here.
-                function backendTable(rows) {
-                    const table = el('table', null, 'hwprobe-backends');
-                    row(table, [el('th'), el('th', 'Backend'), el('th', 'Device'), el('th', 'Status')]);
-                    for (const [type, device, status, fix, state] of rows) {
-                        const markCell = state === 'works' ? spokenMark('TurnOn', 'Works') : state === 'failed' ? spokenMark('LeaveOff', 'Failed') : spokenMark('NotTested', 'Not available');
-                        row(table, [markCell, names[type] || type, breakable(device || '-'), resultCell(status, fix, state === 'works' ? '' : 'secondaryText')]);
+                const sortState = {};
+
+                function sortable(table, name) {
+                    const header = [...table.rows].filter(r => r.querySelector('th')).pop();
+                    if (!header) {
+                        return table;
+                    }
+                    const value = (r, i) => {
+                        const c = r.cells[i];
+                        return c ? (c.dataset.sort !== undefined ? c.dataset.sort : c.textContent.trim()) : '';
+                    };
+                    const apply = (i, ascending) => {
+                        [...header.cells].forEach((c, j) => {
+                            if (j === i) {
+                                c.setAttribute('aria-sort', ascending ? 'ascending' : 'descending');
+                            } else {
+                                c.removeAttribute('aria-sort');
+                            }
+                        });
+                        // Rows sort within each group, between the group rows.
+                        const segments = [[]];
+                        for (const r of [...table.rows].filter(r => !r.querySelector('th'))) {
+                            if (r.classList.contains('hwprobe-group')) {
+                                segments.push([r]);
+                            } else {
+                                segments[segments.length - 1].push(r);
+                            }
+                        }
+                        const order = (a, b) => {
+                            const x = value(a, i);
+                            const y = value(b, i);
+                            if (x === '' || y === '') {
+                                return (x === '') - (y === '');
+                            }
+                            const compared = !isNaN(Number(x)) && !isNaN(Number(y)) ? Number(x) - Number(y) : x.localeCompare(y, undefined, { numeric: true });
+                            return ascending ? compared : -compared;
+                        };
+                        for (const segment of segments) {
+                            const group = segment[0] && segment[0].classList.contains('hwprobe-group') ? segment.shift() : null;
+                            if (group) {
+                                table.appendChild(group);
+                            }
+                            segment.sort(order).forEach(r => table.appendChild(r));
+                        }
+                        sortState[name] = [i, ascending];
+                    };
+                    [...header.cells].forEach((th, i) => {
+                        if (!th.textContent.trim() || th.querySelector('button')) {
+                            return;
+                        }
+                        th.classList.add('hwprobe-sortable');
+                        th.tabIndex = 0;
+                        const go = () => apply(i, th.getAttribute('aria-sort') !== 'ascending');
+                        th.addEventListener('click', go);
+                        th.addEventListener('keydown', e => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                go();
+                            }
+                        });
+                    });
+                    if (sortState[name] && sortState[name][0] < header.cells.length) {
+                        apply(sortState[name][0], sortState[name][1]);
                     }
                     return table;
+                }
+
+                function backendTable(rows) {
+                    const table = el('table', null, 'hwprobe-backends hwprobe-full');
+                    row(table, [el('th'), el('th', 'Backend'), el('th', 'Device'), el('th', 'Status')]);
+                    for (const [type, device, status, fix, state] of rows) {
+                        const markCell = state === 'works' ? emojiMark('\u2705', 'Works') : state === 'failed' ? emojiMark('\u274c', 'Failed') : emojiMark('\ud83d\udeab', 'Not available');
+                        row(table, [markCell, names[type] || type, breakable(device || '-'), resultCell(status, fix, state === 'works' ? '' : 'secondaryText')]);
+                    }
+                    return sortable(table, 'backends');
                 }
 
                 function notBuilt(type) {
@@ -493,6 +589,15 @@
                     return td;
                 }
 
+                function emojiMark(emoji, word) {
+                    const td = el('td', null, 'hwprobe-mark');
+                    const glyph = el('span', emoji, 'hwprobe-emoji');
+                    glyph.setAttribute('aria-hidden', 'true');
+                    td.appendChild(glyph);
+                    td.appendChild(el('span', word, 'hwprobe-sr'));
+                    return td;
+                }
+
                 function flagMark(on) {
                     return spokenMark(on ? 'TurnOn' : 'LeaveOff', on ? 'On' : 'Off');
                 }
@@ -506,13 +611,15 @@
 
                 function mark(state) {
                     const td = el('td', null, 'hwprobe-mark');
-                    td.appendChild(icon(state === 'TurnOn' || state === 'Optional' ? 'check' : state === 'LeaveOff' ? 'close' : 'remove'));
+                    const glyph = el('span', state === 'LeaveOff' ? '\u274c' : state === 'TurnOn' || state === 'Optional' ? '\u2705' : '\u2754', 'hwprobe-emoji');
+                    glyph.setAttribute('aria-hidden', 'true');
+                    td.appendChild(glyph);
                     return td;
                 }
 
                 function outcomeRow(table, label, outcome) {
                     const state = outcome === 'Pass' ? 'TurnOn' : (outcome ? 'LeaveOff' : 'NotTested');
-                    const reason = outcome === 'Pass' ? '' : (outcome ? 'Test failed' : 'Not tested');
+                    const reason = outcome === 'Pass' ? '' : !outcome ? 'Not tested' : ({ SoftwareFallback: 'Hardware not used', FilterUnsupported: 'Filter missing from ffmpeg', CodecUnsupported: 'Not supported by this GPU', Timeout: 'Timed out', DeviceUnavailable: 'Device unavailable', PermissionDenied: 'No permission to use the device', NotUsed: 'Software only' }[outcome] || 'Test failed');
                     row(table, [mark(state), label, el('td', reason, 'secondaryText'), el('td')]);
                 }
 
@@ -544,6 +651,29 @@
                     button.disabled = running;
                     idleButtons = idleButtons.filter(b => b.isConnected || b === runButton);
                     idleButtons.push(button);
+                    return button;
+                }
+
+                // Can't be undone, so the first press only asks; a click anywhere else takes the question back.
+                function confirmAction(text, question, onConfirm, kind) {
+                    let sure = false;
+                    const button = idleAction(text, () => {
+                        if (sure) {
+                            onConfirm();
+                            return;
+                        }
+                        sure = true;
+                        button.firstElementChild.textContent = question;
+                        button.disabled = false;
+                        const elsewhere = e => {
+                            document.removeEventListener('click', elsewhere, true);
+                            if (!button.contains(e.target)) {
+                                sure = false;
+                                button.firstElementChild.textContent = text;
+                            }
+                        };
+                        document.addEventListener('click', elsewhere, true);
+                    }, kind);
                     return button;
                 }
 
@@ -665,13 +795,15 @@
                     toggle.appendChild(document.createTextNode('Last change: ' + new Date(last.TimeUtc).toLocaleString()));
                     line.appendChild(toggle);
                     // With every setting changed since, Revert would change nothing; it only clears the entry.
-                    line.appendChild(idleAction(nothing ? 'Dismiss' : 'Revert', () => post('HwProbe/Revert')));
+                    line.appendChild(idleAction(nothing ? 'Dismiss' : 'Revert', () => post('HwProbe/Revert'), 'raised'));
                     changeText.appendChild(line);
 
                     const list = el('div', null, 'hwprobe-change-list');
                     list.id = 'hwprobeChangeList';
-                    list.appendChild(el('div', nothing ? 'Every setting was changed since; nothing to revert.' : 'Revert sets:', 'secondaryText'));
-                    const table = el('table');
+                    if (nothing) {
+                        list.appendChild(el('div', 'Every setting was changed since; nothing to revert.', 'secondaryText'));
+                    }
+                    const table = el('table', null, 'hwprobe-full');
                     for (const r of rows) {
                         const c = r.change;
                         // The server labels every setting it knows; the key is a last resort.
@@ -722,7 +854,7 @@
                 }
 
                 function restartPrompt() {
-                    const pending = el('p', 'Backend changed; Jellyfin needs a restart. ');
+                    const pending = el('p', 'Backend changed; Jellyfin requires a restart. ');
                     const button = idleAction('Restart Jellyfin', restart, 'raised button-delete');
                     pending.appendChild(button);
                     return pending;
@@ -737,16 +869,18 @@
                         return;
                     }
                     const warning = el('div', null, 'infoBanner hwprobe-warning');
-                    warning.appendChild(document.createTextNode('Didn\u2019t work in the last probe; transcodes that use it can fail. '));
-                    warning.appendChild(idleAction('Switch to None', () => post('HwProbe/UseBackend', { Type: 'none', Device: '' })));
+                    warning.textContent = 'Unsuccessful in last probe; transcodes may fail.';
                     container.appendChild(warning);
+                    const line = el('div', null, 'hwprobe-row hwprobe-end');
+                    line.appendChild(idleAction('Switch to None', () => post('HwProbe/UseBackend', { Type: 'none', Device: '' }), 'raised'));
+                    container.appendChild(line);
                 }
 
                 function renderSettings(container, viable, title) {
                     container.replaceChildren();
-                    title.replaceChildren(el('h2', 'Settings', 'sectionTitle'));
+                    title.textContent = 'Settings';
                     if (viable.length > 1) {
-                        const pick = themedSelect(title, 'Backend');
+                        const pick = themedSelect(container, 'Backend');
                         viable.forEach((b, i) => {
                             const option = el('option', (names[b.type] || b.type) + (viable.filter(o => o.type === b.type).length > 1 ? ' ' + b.device : ''));
                             option.value = String(i);
@@ -755,23 +889,25 @@
                         });
                         pick.addEventListener('change', () => { selected = viable[Number(pick.value)]; renderSettings(container, viable, title); });
                     } else {
-                        title.appendChild(el('span', names[selected.type] || selected.type, 'secondaryText'));
+                        title.textContent = 'Settings for ' + (names[selected.type] || selected.type);
                     }
 
                     const configured = isConfigured(selected);
                     if (!configured) {
-                        title.appendChild(el('span', 'Not the configured backend', 'secondaryText'));
-                        title.appendChild(idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: selected.type, Device: selected.device })));
+                        const line = el('div', null, 'hwprobe-row hwprobe-start');
+                        line.appendChild(el('span', 'Not the configured backend', 'secondaryText'));
+                        line.appendChild(idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: selected.type, Device: selected.device })));
+                        container.appendChild(line);
                     }
 
                     const settings = selected.settings || [];
-                    const table = el('table');
+                    const table = el('table', null, 'hwprobe-full');
                     const everything = configured ? settings.filter(differs) : [];
                     const header = el('th');
                     if (everything.length > 1) {
-                        header.appendChild(idleAction('Apply all', () => apply(everything)));
+                        header.appendChild(idleAction('Apply all', () => apply(everything), 'raised'));
                     }
-                    row(table, [el('th'), el('th', 'Option'), el('th', 'Result'), header]);
+                    row(table, [el('th'), el('th', 'Setting'), el('th', 'Result'), header]);
                     let group = null;
                     for (const a of settings.filter(x => !x.hidden || differs(x))) {
                         if (a.section !== group) {
@@ -779,58 +915,74 @@
                             const pending = configured ? settings.filter(x => x.section === group && differs(x)) : [];
                             const cell = el('td');
                             if (pending.length > 1) {
-                                cell.appendChild(idleAction('Apply section', () => apply(pending)));
+                                cell.appendChild(idleAction('Apply section', () => apply(pending), 'raised'));
                             }
                             row(table, [el('td'), el('td', group), el('td'), cell]).className = 'hwprobe-group';
                         }
                         const cell = el('td');
                         if (configured && differs(a)) {
-                            cell.appendChild(idleAction('Apply', () => apply([a])));
+                            cell.appendChild(idleAction('Apply', () => apply([a]), 'raised'));
                         }
                         row(table, [mark(a.state), a.label, resultCell(a.note, a.fix, 'secondaryText'), cell]);
                     }
                     groupRow(table, 'Also tested');
                     outcomeRow(table, 'Hardware deinterlacing', firstOutcome(selected.deinterlace));
                     outcomeRow(table, 'Subtitle burn‑in', firstOutcome(selected.subtitles));
-                    container.appendChild(table);
+                    container.appendChild(sortable(table, 'settings'));
                 }
 
                 function renderDetails(r) {
-                    const details = fold(results, 'Test details');
+                    const details = fold(results, 'Detailed results');
 
-                    const table = el('table');
-                    row(table, [el('th', 'Backend'), el('th', 'Device'), el('th', 'Column'), el('th', 'Test'), el('th', 'Result')]);
+                    const table = el('table', null, 'hwprobe-full');
+                    row(table, [el('th', 'Backend'), el('th', 'Device'), el('th', 'Column'), el('th', 'Test'), el('th', 'Result'), el('th', 'Duration', 'hwprobe-num')]);
                     for (const b of r.backends) {
                         for (const column of columns) {
                             for (const [key, outcome] of Object.entries(b[column] || {})) {
-                                row(table, [b.type, b.device || '-', column, key, outcome]);
+                                const result = el('td');
+                                result.dataset.sort = outcome;
+                                const glyph = el('span', { Pass: '\u2705 ', NotUsed: '\u2796 ', Untested: '\u2754 ', Skipped: '\u2754 ', SoftwareFallback: '\u26a0\ufe0f ' }[outcome] || '\u274c ', 'hwprobe-emoji');
+                                glyph.setAttribute('aria-hidden', 'true');
+                                result.appendChild(glyph);
+                                result.appendChild(document.createTextNode(outcome));
+                                // A test with no time launched nothing; a report from before times were recorded has none at all.
+                                const seconds = b.seconds ? b.seconds[column + ':' + key] || 0 : undefined;
+                                const time = el('td', seconds === undefined ? '-' : seconds.toFixed(1) + ' s', 'hwprobe-num');
+                                time.dataset.sort = seconds === undefined ? '' : String(seconds);
+                                row(table, [b.type, b.device || '-', column, key, result, time]);
                             }
                         }
                     }
-                    // Five columns of ids and outcomes don't fit a phone, and breaking them mid-word reads worse than scrolling.
+                    sortable(table, 'details');
+                    // Six columns of ids and outcomes don't fit a phone, and breaking them mid-word reads worse than scrolling.
                     const scroll = el('div', null, 'hwprobe-scroll');
                     scroll.appendChild(table);
                     details.appendChild(scroll);
+                    if (r.seconds) {
+                        const minutes = Math.floor(r.seconds / 60);
+                        details.appendChild(el('div', 'Total duration: ' + (minutes ? minutes + ' min ' + Math.round(r.seconds % 60) + ' s' : r.seconds.toFixed(1) + ' s'), 'secondaryText'));
+                    }
                 }
 
                 function renderNotes() {
                     // Low-power findings are already in the settings list.
                     const grouped = {};
                     for (const f of report.findings.filter(x => x.code.indexOf('lowpower') === -1)) {
-                        const backend = f.message.split(' ')[0].replace(':', '');
+                        // Reports from before findings named their backend start the message with it.
+                        const backend = f.backend || f.message.split(' ')[0].replace(':', '');
                         (grouped[f.code] = grouped[f.code] || { finding: f, backends: [] }).backends.push(names[backend] || backend);
                     }
                     const codes = Object.keys(grouped);
                     if (!codes.length) {
                         return;
                     }
-                    const table = el('table');
+                    const table = el('table', null, 'hwprobe-full');
                     row(table, [el('th', 'Note'), el('th', 'Backends')]);
                     for (const code of codes) {
                         const g = grouped[code];
                         row(table, [resultCell(notes[code] || g.finding.message, g.finding.fix, ''), g.backends.join(', ')]);
                     }
-                    fold(results, 'Notes (' + codes.length + ')').appendChild(table);
+                    fold(results, 'Notes (' + codes.length + ')').appendChild(sortable(table, 'notes'));
                 }
 
                 // The configured backend, its result, the run state, and anything that needs doing now.
@@ -841,34 +993,43 @@
                     top.appendChild(statusText);
                     top.appendChild(runButton);
                     card.appendChild(top);
+                    if (probeProgress) {
+                        const bar = jf('<div class="itemProgressBar hwprobe-progress hwprobe-progress-wide"><div class="itemProgressBarForeground"></div></div>');
+                        bar.firstElementChild.style.width = (probeProgress.Total ? Math.round(100 * (probeProgress.Done || 0) / probeProgress.Total) : 0) + '%';
+                        card.appendChild(bar);
+                    }
                 }
 
                 // What Jellyfin uses now, and whether it works; then a failed backend's way out, a pending restart and the last change.
                 function renderBackendStatus(container, viable) {
                     const box = el('div', null, 'paperList hwprobe-card');
                     const type = encoding && encoding.HardwareAccelerationType;
+                    // While a probe runs, the last report's verdicts aren't shown.
+                    const shown = probeProgress ? null : report;
                     const title = el('div');
                     if (!encoding) {
                         title.textContent = 'Hardware acceleration: unknown (Jellyfin\u2019s settings didn\u2019t load)';
                     } else if (!type || type === 'none') {
                         title.textContent = 'Hardware acceleration: None';
                     } else {
-                        const entry = report && report.backends.find(isConfigured);
+                        const entry = shown && shown.backends.find(isConfigured);
                         const device = type === 'vaapi' ? encoding.VaapiDevice : (type === 'qsv' ? encoding.QsvDevice : '');
-                        title.appendChild(document.createTextNode('Hardware acceleration: ' + (names[type] || type) + (device ? ' ' + device : '') + '  '));
+                        const backend = (names[type] || type) + (device ? ' ' + device : '');
+                        title.appendChild(document.createTextNode('Hardware acceleration: '));
+                        if (entry) {
+                            title.appendChild(el('span', entry.verdict === 'Viable' ? '\u2705 ' : '\u274c ', 'hwprobe-emoji'));
+                        }
+                        title.appendChild(document.createTextNode(backend));
                         if (entry && entry.verdict === 'Viable') {
-                            title.appendChild(icon('check'));
-                            title.appendChild(document.createTextNode(' works  '));
-                            title.appendChild(el('span', tiers[entry.tier] || '', 'secondaryText'));
+                            title.appendChild(el('span', ' - ' + (tiers[entry.tier] || ''), 'secondaryText'));
                         } else if (entry) {
-                            title.appendChild(icon('close'));
-                            title.appendChild(document.createTextNode(' ' + (verdicts[entry.verdict] || entry.verdict)));
-                        } else if (report) {
-                            title.appendChild(el('span', 'not tested', 'secondaryText'));
+                            title.appendChild(document.createTextNode(' - ' + (verdicts[entry.verdict] || entry.verdict)));
+                        } else if (shown) {
+                            title.appendChild(el('span', ' - not tested', 'secondaryText'));
                         }
                     }
                     box.appendChild(title);
-                    if (report) {
+                    if (shown) {
                         renderBrokenBackend(box, viable);
                     }
                     if (restartRequired) {
@@ -883,16 +1044,19 @@
                     for (const tab of [results, settingsTab, speedTab, resultsTab, helpTab]) {
                         tab.replaceChildren();
                     }
-                    const viable = report ? report.backends.filter(b => b.verdict === 'Viable').sort(byDropdown) : [];
+                    // While a probe runs, the page shows no results, as before the first run.
+                    const viable = report && !probeProgress ? report.backends.filter(b => b.verdict === 'Viable').sort(byDropdown) : [];
                     renderCard();
                     renderBackendStatus(settingsTab, viable);
                     speedViable = viable;
                     renderResultsTab(resultsTab);
                     renderHelp(helpTab);
-                    if (!report) {
-                        results.appendChild(el('p', 'No results yet. Run a probe while nothing is being transcoded; the first run takes a few minutes.', 'secondaryText'));
-                        settingsTab.appendChild(el('p', 'Run a probe first: the settings are advised from what it finds.', 'secondaryText'));
-                        speedTab.appendChild(el('p', 'Run a probe first: performance is measured on the backends it finds working.', 'secondaryText'));
+                    if (!report || probeProgress) {
+                        if (!probeProgress) {
+                            results.appendChild(el('p', 'No results yet. Run a probe while nothing is being transcoded; the first run takes a few minutes.', 'secondaryText'));
+                        }
+                        settingsTab.appendChild(el('div', 'Recommended settings require first running a hardware probe.', 'infoBanner'));
+                        speedTab.appendChild(el('div', 'Performance testing requires first running a hardware probe.', 'infoBanner'));
                         return;
                     }
 
@@ -904,8 +1068,7 @@
                         // A NotPresent row per adapter would repeat the same line.
                         .filter((r, i, all) => all.findIndex(o => o[0] === r[0] && o[1] === r[1] && o[2] === r[2]) === i)
                         .sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
-                    heading(results, 'Backends');
-                    results.appendChild(backendTable(viable.map(b => [b.type, b.device, tiers[b.tier] || 'Works', null, 'works']).concat(unavailable)));
+                    fold(results, 'Hardware acceleration backends', true).appendChild(backendTable(viable.map(b => [b.type, b.device, tiers[b.tier] || 'Works', null, 'works']).concat(unavailable)));
                     renderNotes();
                     renderDetails(report);
 
@@ -913,10 +1076,11 @@
                         if (!selected || viable.indexOf(selected) === -1) {
                             selected = viable.find(isConfigured) || viable[0];
                         }
-                        const title = heading(settingsTab, 'Settings');
-                        const container = el('div');
-                        settingsTab.appendChild(container);
-                        renderSettings(container, viable, title);
+                        const container = fold(settingsTab, 'Settings', true, null, 'recommended');
+                        const title = container.firstElementChild.lastElementChild;
+                        const body = el('div');
+                        container.appendChild(body);
+                        renderSettings(body, viable, title);
                     } else {
                         settingsTab.appendChild(el('p', 'No backend works on this server, so there are no hardware settings to advise.', 'secondaryText'));
                     }
@@ -954,7 +1118,7 @@
 
                 function cacheFolderName(folder) {
                     if (folder === 'samples') {
-                        return 'Film samples, kept across ffmpeg builds';
+                        return 'Video samples';
                     }
                     if (folder === 'downloads') {
                         return 'Downloads';
@@ -967,15 +1131,16 @@
                     const div = el('div');
                     ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Cache/Contents'), dataType: 'json' }).then(entries => {
                         const bytes = entries.reduce((sum, e) => sum + e.Bytes, 0);
-                        const line = el('p', 'Cache: ' + sizeText(bytes) + ' in ' + entries.length + ' file' + (entries.length === 1 ? '' : 's') + ' (test clips, samples) ', 'secondaryText');
+                        const line = el('div', null, 'hwprobe-row');
+                        line.appendChild(el('span', sizeText(bytes) + ' in ' + entries.length + ' file' + (entries.length === 1 ? '' : 's'), 'secondaryText'));
                         div.appendChild(line);
                         if (!entries.length) {
                             return;
                         }
-                        line.appendChild(idleAction('Delete', () => {
+                        line.appendChild(confirmAction('Delete all', 'Delete all ' + entries.length + ' files', () => {
                             ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('HwProbe/Cache') })
                                 .then(render, () => { setMessage('Could not delete: a probe or performance test is using the cache.'); render(); });
-                        }));
+                        }, 'raised button-delete'));
                         const table = el('table');
                         row(table, [el('th', 'Contents'), el('th', 'File'), el('th', 'Size', 'hwprobe-num'), el('th', 'Written')]);
                         let folder = null;
@@ -988,10 +1153,18 @@
                                 tr.appendChild(name);
                                 table.appendChild(tr);
                             }
-                            row(table, [el('td', e.Description || 'Not used by this version', e.Description ? '' : 'secondaryText'), el('td', e.File, 'secondaryText hwprobe-small hwprobe-file'), el('td', sizeText(e.Bytes), 'hwprobe-num'), el('td', new Date(e.ModifiedUtc).toLocaleDateString(), 'secondaryText hwprobe-num')]);
+                            const size = el('td', sizeText(e.Bytes), 'hwprobe-num');
+                            size.dataset.sort = String(e.Bytes);
+                            const written = el('td', new Date(e.ModifiedUtc).toLocaleDateString(), 'secondaryText hwprobe-num');
+                            written.dataset.sort = String(Date.parse(e.ModifiedUtc));
+                            // Downloads are named by SHA-256; the first 12 characters tell them apart, and the whole name is in the tooltip.
+                            const file = el('td', e.File.replace(/^([0-9a-f]{12})[0-9a-f]{52}/, '$1\u2026'), 'secondaryText hwprobe-small hwprobe-file');
+                            file.title = e.File;
+                            file.dataset.sort = e.File;
+                            row(table, [el('td', e.Description || 'Not used by this version', e.Description ? '' : 'secondaryText'), file, size, written]);
                         }
                         const scroll = el('div', null, 'hwprobe-scroll');
-                        scroll.appendChild(table);
+                        scroll.appendChild(sortable(table, 'cache'));
                         div.appendChild(scroll);
                     }, () => {});
                     return div;
@@ -1013,23 +1186,33 @@
                     }
                 }
 
-                function renderResultsTab(container) {
-                    const title = heading(container, 'Results');
-                    const view = themedSelect(title, 'View');
-                    view.parentNode.classList.add('hwprobe-view');
-                    for (const [key, text] of speedViews) {
-                        const option = el('option', text);
-                        option.value = key;
-                        option.selected = key === speedView;
-                        view.appendChild(option);
+                // The Run select on Test Results, or null when there are no saved runs.
+                let runPicker = null;
+
+                // While a run goes, the Run select shows it and can't be changed.
+                function syncRunPicker() {
+                    if (!runPicker) {
+                        return;
                     }
-                    view.addEventListener('change', () => {
-                        speedView = view.value;
-                        localStorage.setItem('hwprobe-speed-view', speedView);
-                        renderSpeedResults();
-                    });
+                    const live = runPicker.querySelector('option[value=""]');
+                    runPicker.disabled = !!speedProgress;
+                    if (speedProgress && !live) {
+                        const option = el('option', 'In progress');
+                        option.value = '';
+                        runPicker.prepend(option);
+                        runPicker.value = '';
+                    } else if (!speedProgress && live) {
+                        live.remove();
+                        runPicker.value = speedViewing || speedHistory[0].Id;
+                    }
+                }
+
+                function renderResultsTab(tab) {
+                    const container = fold(tab, 'Results', true);
+                    runPicker = null;
                     if (speedHistory.length) {
-                        const runs = themedSelect(title, 'Run');
+                        const runs = themedSelect(container, 'Run');
+                        runPicker = runs;
                         for (const h of speedHistory) {
                             const option = el('option', new Date(h.GeneratedUtc).toLocaleString() + ' \u00b7 ' + methodName(h.Method) + ' \u00b7 ' + h.Tests + ' test' + (h.Tests === 1 ? '' : 's') + (h.Current ? '' : ' (another version or ffmpeg)'));
                             option.value = h.Id;
@@ -1045,20 +1228,11 @@
                         });
                         const remove = url => ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl(url) })
                             .then(loadReport, () => { setMessage('Could not delete: a probe or performance test is running.'); loadReport(); });
-                        title.appendChild(idleAction('Delete', () => remove('HwProbe/SpeedHistory/' + runs.value)));
+                        const actions = el('div', null, 'hwprobe-row hwprobe-end');
+                        container.appendChild(actions);
+                        actions.appendChild(idleAction('Delete', () => remove('HwProbe/SpeedHistory/' + runs.value), 'raised hwprobe-danger'));
                         if (speedHistory.length > 1) {
-                            // Can't be undone, so the first press only asks.
-                            let sure = false;
-                            const all = idleAction('Delete all', () => {
-                                if (sure) {
-                                    remove('HwProbe/SpeedHistory');
-                                    return;
-                                }
-                                sure = true;
-                                all.firstElementChild.textContent = 'Delete all ' + speedHistory.length + ' runs';
-                                all.disabled = false;
-                            }, 'raised button-delete');
-                            title.appendChild(all);
+                            actions.appendChild(confirmAction('Delete all', 'Delete all ' + speedHistory.length + ' runs', () => remove('HwProbe/SpeedHistory'), 'raised button-delete'));
                         }
                     }
                     container.appendChild(speedResults);
@@ -1066,35 +1240,52 @@
                 }
 
                 function renderHelp(container) {
-                    heading(container, 'Diagnostics');
-                    container.appendChild(renderReporting());
-                    heading(container, 'Cache');
-                    container.appendChild(renderCache());
+                    fold(container, 'Diagnostics', true).appendChild(renderReporting());
+                    fold(container, 'Cache').appendChild(renderCache());
                 }
 
-                function renderSpeedResults() {
+                // What the results area last drew, so a poll that changes only the time left doesn't redraw it under the cursor.
+                let speedDrawn = null;
+                let speedProgressParts = null;
+
+                // A poll redraws only the progress text and bar unless the results or the run's phase changed.
+                function renderSpeedResults(poll) {
+                    syncRunPicker();
+                    const drawn = JSON.stringify([speedLive && speedLive.results, speedReport && speedReport.generatedUtc, speedProgress && speedProgress.Phase, speedProgress && speedProgress.Done]);
+                    if (poll === true && drawn === speedDrawn && speedProgress && speedProgressParts) {
+                        speedProgressParts.text.textContent = speedProgressText(speedProgress);
+                        return;
+                    }
+                    speedDrawn = drawn;
+                    speedProgressParts = null;
                     speedResults.replaceChildren();
                     if (speedProgress) {
-                        const line = el('div', null, 'hwprobe-row hwprobe-start');
-                        const bar = jf('<div class="itemProgressBar hwprobe-progress"><div class="itemProgressBarForeground"></div></div>');
-                        bar.firstElementChild.style.width = (speedProgress.Total ? Math.round(100 * speedProgress.Done / speedProgress.Total) : 0) + '%';
-                        line.appendChild(bar);
-                        line.appendChild(el('span', speedProgressText(speedProgress), 'secondaryText'));
+                        const box = el('div', null, 'paperList hwprobe-card hwprobe-progress-card');
+                        const line = el('div', null, 'hwprobe-row');
+                        const text = el('span', speedProgressText(speedProgress), 'secondaryText');
+                        line.appendChild(text);
+                        const buttons = el('div', null, 'hwprobe-row hwprobe-end');
                         const cancel = action('Cancel', () => {
                             cancel.disabled = true;
                             ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed/Cancel') }).then(loadStatus, loadStatus);
-                        });
+                        }, 'raised button-delete');
                         const cancelling = speedProgress.Phase === 'Cancelling';
                         cancel.disabled = cancelling;
                         const paused = speedProgress.Phase === 'Paused' || speedProgress.Phase === 'Pausing';
                         const pause = action(paused ? 'Resume' : 'Pause', () => {
                             pause.disabled = true;
                             ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl(paused ? 'HwProbe/Speed/Resume' : 'HwProbe/Speed/Pause') }).then(loadStatus, loadStatus);
-                        });
+                        }, 'raised');
                         pause.disabled = cancelling;
-                        line.appendChild(pause);
-                        line.appendChild(cancel);
-                        speedResults.appendChild(line);
+                        buttons.appendChild(pause);
+                        buttons.appendChild(cancel);
+                        line.appendChild(buttons);
+                        box.appendChild(line);
+                        const bar = jf('<div class="itemProgressBar hwprobe-progress hwprobe-progress-wide"><div class="itemProgressBarForeground"></div></div>');
+                        bar.firstElementChild.style.width = (speedProgress.Total ? Math.round(100 * (speedProgress.Done || 0) / speedProgress.Total) : 0) + '%';
+                        box.appendChild(bar);
+                        speedResults.appendChild(box);
+                        speedProgressParts = { text };
                     }
                     const shown = speedLive || speedReport;
                     if (shown && shown.results.length) {
@@ -1144,11 +1335,11 @@
                             } else if (s.Kind === 'FasterSetting') {
                                 title = label + ': ' + optionValueText(s.Setting, s.Value);
                                 reason = percent + ' faster than ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + (s.LowerQuality ? ', at lower quality.' : '.');
-                                actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }));
+                                actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }), 'raised');
                             } else if (s.Kind === 'HigherQuality') {
                                 title = label + ': ' + optionValueText(s.Setting, s.Value);
                                 reason = 'Better quality than ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + '; at most ' + percent + ' slower, still ' + s.Speed.toFixed(1) + '\u00d7 real time.';
-                                actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }));
+                                actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }), 'raised');
                             }
                             text.appendChild(el('div', title));
                             text.appendChild(el('div', reason, 'secondaryText'));
@@ -1177,10 +1368,7 @@
                     search.placeholder = 'Search for a movie or episode';
                     search.value = speedItem ? speedItem.Name : '';
                     td.appendChild(box);
-                    const found = el('div', null, 'hwprobe-choices');
-                    td.appendChild(found);
                     const choose = item => {
-                        found.replaceChildren();
                         search.value = item.Name;
                         ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedLibraryVideo', { itemId: item.Id }), dataType: 'json' }).then(v => {
                             speedItem = { Id: item.Id, Name: item.Name };
@@ -1194,63 +1382,101 @@
                         clearTimeout(timer);
                         const term = search.value.trim();
                         if (term.length < 2) {
-                            found.replaceChildren();
+                            closeMenu();
                             return;
                         }
                         timer = setTimeout(() => {
-                            ApiClient.getItems(ApiClient.getCurrentUserId(), { SearchTerm: term, IncludeItemTypes: 'Movie,Episode', Recursive: true, Limit: 8 }).then(r => {
-                                found.replaceChildren(...(r.Items || []).map(item => action(item.SeriesName ? item.SeriesName + ': ' + item.Name : item.Name, () => choose(item))));
+                            ApiClient.getItems(ApiClient.getCurrentUserId(), { SearchTerm: term, IncludeItemTypes: 'Movie,Episode', Recursive: true, Limit: 5 }).then(r => {
+                                // Results replace the open menu rather than toggling it closed.
+                                closeMenu();
+                                if (!(r.Items || []).length || search.value.trim() !== term) {
+                                    return;
+                                }
+                                popMenu(search, (menu, close) => {
+                                    for (const item of r.Items) {
+                                        const row = el('div', item.SeriesName ? item.SeriesName + ': ' + item.Name : item.Name, 'hwprobe-menu-item');
+                                        row.setAttribute('role', 'option');
+                                        row.addEventListener('click', () => {
+                                            close();
+                                            choose(item);
+                                        });
+                                        menu.appendChild(row);
+                                    }
+                                });
                             });
                         }, 300);
                     });
                     return td;
                 }
 
-                // A download links to where it comes from, with the credit its licence asks for.
-                function sourceCell(v) {
-                    const td = el('td', null, 'secondaryText');
-                    if (!v.SourceUrl) {
-                        td.textContent = v.Origin;
-                        return td;
+                // A link that opens another site in a new tab.
+                function externalLink(text, url) {
+                    const a = el('a', text, 'button-link');
+                    a.href = url;
+                    a.target = '_blank';
+                    a.rel = 'noopener noreferrer';
+                    return a;
+                }
+
+                // A line of an input's details: what it is on the left, a small note on the right.
+                function inputEntry(left, right) {
+                    const row = el('div', null, 'hwprobe-row');
+                    row.appendChild(left);
+                    row.appendChild(el('span', right, 'hwprobe-small secondaryText'));
+                    return row;
+                }
+
+                // A catalog video as a list item: its name and what it shows, its format, and for a sample its credit and download.
+                function videoItem(v) {
+                    const line = el('li');
+                    const name = el('span', v.Name + (v.SourceUrl || v.Description ? ': ' : ''));
+                    name.appendChild(v.SourceUrl ? externalLink(v.Title, v.ArticleUrl || v.SourceUrl) : document.createTextNode(v.Description || ''));
+                    line.appendChild(inputEntry(name, v.Input));
+                    if (v.SourceUrl) {
+                        const credit = el('span', null, 'hwprobe-small');
+                        credit.appendChild(v.HolderUrl ? externalLink(v.CreditHolder, v.HolderUrl) : document.createTextNode(v.CreditHolder));
+                        credit.appendChild(document.createTextNode(', '));
+                        credit.appendChild(externalLink(v.LicenseName, v.LicenseUrl));
+                        const download = inputEntry(credit, v.Origin + ', ');
+                        download.lastElementChild.appendChild(externalLink('Wikimedia Commons', v.SourceUrl));
+                        line.appendChild(download);
                     }
-                    const external = (text, url) => {
-                        const a = el('a', text, 'button-link');
-                        a.href = url;
-                        a.target = '_blank';
-                        a.rel = 'noopener noreferrer';
-                        return a;
-                    };
-                    td.appendChild(external(v.Title, v.ArticleUrl));
-                    td.appendChild(document.createTextNode(', ' + v.Origin + ' from '));
-                    td.appendChild(external('Wikimedia Commons', v.SourceUrl));
-                    const credit = el('div', v.Credit.substring(v.Title.length + 2).replace(/, via Wikimedia Commons$/, '') + ' (', 'hwprobe-small');
-                    const licence = el('a', 'licence', 'button-link');
-                    licence.href = v.LicenseUrl;
-                    licence.target = '_blank';
-                    licence.rel = 'noopener noreferrer';
-                    credit.appendChild(licence);
-                    credit.appendChild(document.createTextNode(')'));
-                    td.appendChild(credit);
-                    return td;
+                    return line;
+                }
+
+                // The catalog's videos in its order, with the library video before the first test video.
+                function inputOrder() {
+                    const tests = speedVideos.findIndex(v => !v.SourceUrl);
+                    const at = tests === -1 ? speedVideos.length : tests;
+                    return [...speedVideos.slice(0, at), 'library', ...speedVideos.slice(at)];
                 }
 
                 // Where each chosen input comes from, under the Input field.
                 function sourceLines(target, update) {
                     target.replaceChildren();
-                    for (const v of allVideos().filter(x => chosenVideos.has(x.Key) && x.Key !== 'library')) {
-                        const line = el('div', null, 'fieldDescription');
-                        line.appendChild(document.createTextNode(v.Name + ': '));
-                        const source = sourceCell(v);
-                        while (source.firstChild) {
-                            line.appendChild(source.firstChild);
-                        }
-                        target.appendChild(line);
-                    }
                     if (chosenVideos.has('library')) {
                         target.appendChild(libraryCell(update));
-                        if (libraryVideo) {
-                            target.appendChild(el('div', libraryVideo.Name + ': ' + libraryVideo.Input, 'fieldDescription'));
-                        }
+                    }
+                    const list = el('ul', null, 'fieldDescription hwprobe-notes');
+                    for (const v of inputOrder().filter(v => v !== 'library' && chosenVideos.has(v.Key))) {
+                        list.appendChild(videoItem(v));
+                    }
+                    if (chosenVideos.has('library') && libraryVideo) {
+                        const line = el('li');
+                        const name = el('span', 'Library video: ');
+                        const link = el('a', speedItem.Name, 'button-link');
+                        link.href = '#/details?id=' + speedItem.Id + '&serverId=' + ApiClient.serverId();
+                        name.appendChild(link);
+                        line.appendChild(inputEntry(name, libraryVideo.Input));
+                        list.appendChild(line);
+                    }
+                    if (list.childElementCount) {
+                        const details = fold(target, 'Details', false, 'span', 'input-details');
+                        details.firstElementChild.lastElementChild.className = 'fieldDescription';
+                        details.appendChild(list);
+                    }
+                    if (speedVideos.some(v => chosenVideos.has(v.Key) && !v.SourceUrl)) {
+                        target.appendChild(el('div', 'Test video results may not be representative compared to actual videos.', 'infoBanner'));
                     }
                 }
 
@@ -1267,20 +1493,40 @@
                         const videos = allVideos().filter(v => chosenVideos.has(v.Key)).length;
                         const outputs = selectedOutputs().length;
                         const runs = speedRuns(viable);
-                        const per = methodSeconds[speedMethod] || [20, 60];
+                        const per = methodSeconds[speedMethod] || methodSeconds[defaultMethod];
                         const minutes = n => Math.max(1, Math.round(n / 60));
                         const cap = n => speedTimeLimit ? Math.min(n, speedTimeLimit) : n;
                         const low = minutes(runs * cap(per[0] * speedRepeats));
                         const high = minutes(runs * cap(per[1] * speedRepeats));
                         const span = low === high ? 'about ' + low : 'about ' + low + ' to ' + high;
-                        estimate.textContent = videos + ' input' + (videos === 1 ? '' : 's') + ' \u00d7 ' + outputs + ' output' + (outputs === 1 ? '' : 's') + ' on ' + speedBackends(viable) + ' backend' + (speedBackends(viable) === 1 ? '' : 's') + ': ' + runs + ' measurement' + (runs === 1 ? '' : 's') + ', ' + span + ' minute' + (high === 1 ? '' : 's');
+                        const missing = [[videos, 'an input'], [outputs, 'an output'], [speedBackends(viable), 'a backend']].filter(([n]) => !n).map(([, what]) => what);
+                        estimate.textContent = missing.length
+                            ? 'Requires ' + (missing.length > 2 ? missing.slice(0, -1).join(', ') + ', and ' + missing[missing.length - 1] : missing.join(' and ')) + '.'
+                            : !runs ? 'Nothing to measure with these choices.'
+                            : videos + ' input' + (videos === 1 ? '' : 's') + ' \u00d7 ' + outputs + ' output' + (outputs === 1 ? '' : 's') + ' on ' + speedBackends(viable) + ' backend' + (speedBackends(viable) === 1 ? '' : 's') + ': ' + runs + ' measurement' + (runs === 1 ? '' : 's') + ', ' + span + ' minute' + (high === 1 ? '' : 's');
                         button.disabled = runs === 0 || running;
                     };
-
+                    button = action('Measure performance', () => {
+                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, ReuseResults: speedReuse, WhenTranscoding: speedWhenTranscoding, Options: speedSettings, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Backends: [...chosenBackends], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
+                        ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed'), data: JSON.stringify(body), contentType: 'application/json' })
+                            .then(() => {
+                                showTab(tabs[3][0]);
+                                return loadStatus();
+                            }, response => (response && response.text ? response.text() : Promise.resolve('')).then(text => {
+                                setMessage('Could not start: ' + (text.replace(/^"|"$/g, '') || 'a probe is running or a session is transcoding.'));
+                                button.disabled = false;
+                            }));
+                    }, 'raised button-submit');
+                    const go = el('div', null, 'hwprobe-row hwprobe-start');
+                    go.appendChild(button);
+                    go.appendChild(estimate);
+                    container.appendChild(go);
+                    container.appendChild(el('div', 'For more accurate results, measure while the server is idle.', 'infoBanner'));
+                    const form = fold(container, 'Settings', true, null, 'performance');
 
                     // Help goes under its field, before the gap to the next one, as the dashboard's helper text does.
                     const options = (label, values, current, onChange, help) => {
-                        const select = themedSelect(container, label);
+                        const select = themedSelect(form, label);
                         if (help) {
                             select.parentNode.appendChild(el('div', help, 'fieldDescription'));
                         }
@@ -1315,7 +1561,7 @@
                             const types = viable.map(b => b.type).filter((t, i, all) => all.indexOf(t) === i).concat(['none']);
                             const notes = types.map(t => o.BackendNotes[t]).filter(n => n);
                             if (notes.length) {
-                                const box = container.lastElementChild;
+                                const box = form.lastElementChild;
                                 box.appendChild(el('div', 'Auto:', 'fieldDescription'));
                                 const list = el('ul', null, 'fieldDescription hwprobe-notes');
                                 for (const n of notes) {
@@ -1328,51 +1574,35 @@
                     if (!chosenBackends) {
                         chosenBackends = new Set(viable.map(b => b.type).concat(['none']));
                     }
-                    container.appendChild(el('h3', 'Backends', 'sectionTitle'));
+                    form.appendChild(el('h3', 'Backend', 'sectionTitle'));
                     const sameType = b => viable.filter(o => o.type === b.type).length > 1;
-                    multiSelect(container, 'Backends', viable.filter((b, i) => viable.findIndex(o => o.type === b.type) === i)
-                        .map(b => ({ key: b.type, text: (names[b.type] || b.type) + (sameType(b) ? ' ' + b.device : '') }))
-                        .concat([{ key: 'none', text: 'Software' }]), chosenBackends, () => update());
+                    // In the order of Jellyfin's Hardware acceleration dropdown, which lists None first.
+                    multiSelect(form, 'Backend', [{ key: 'none', text: 'None (software)' }].concat(viable.filter((b, i) => viable.findIndex(o => o.type === b.type) === i)
+                        .map(b => ({ key: b.type, text: (names[b.type] || b.type) + (sameType(b) ? ' ' + b.device : '') }))), chosenBackends, () => update());
                     // Settings for one backend, shown when it works and its probe found the option supported.
                     const supported = o => viable.some(b => b.type === o.Backend && (b.settings || []).some(x => x.setting === o.Report && (x.state === 'TurnOn' || x.state === 'Optional')));
                     runOptions.filter(o => o.Backend && supported(o)).forEach(runOption);
 
-                    container.appendChild(el('h3', 'Input', 'sectionTitle'));
+                    form.appendChild(el('h3', 'Input', 'sectionTitle'));
                     const sources = el('div', null, 'hwprobe-sources');
-                    multiSelect(container, 'Input', speedVideos.map(v => ({ key: v.Key, text: v.Name, secondary: v.Input })).concat([{ key: 'library', text: 'Library video', secondary: libraryVideo ? libraryVideo.Name : 'A movie or episode' }]), chosenVideos, () => { sourceLines(sources, update); update(); })
+                    multiSelect(form, 'Input', inputOrder().map(v => v === 'library' ? { key: 'library', text: 'Library video', secondary: 'A movie or episode from a library' } : { key: v.Key, text: v.Title ? v.Name + ': ' + v.Title : v.Name, secondary: v.Input }), chosenVideos, () => { sourceLines(sources, update); update(); })
                         .appendChild(sources);
                     sourceLines(sources, update);
-                    container.appendChild(el('h3', 'Output', 'sectionTitle'));
-                    multiSelect(container, 'Codec', speedCodecs.map(c => ({ key: c.Key, text: c.Name })).concat(speedOutputs.filter(o => o.DecodeOnly).map(o => ({ key: o.Key, text: o.Label }))), chosenCodecs, () => update())
-                        .appendChild(el('div', 'Every selected codec at every selected quality is made from every selected input, as a player asks for it.', 'fieldDescription'));
-                    multiSelect(container, 'Quality', speedQualities.map(q => ({ key: q.Key, text: q.Name })), chosenQualities, () => update())
-                        .appendChild(el('div', 'The player\u2019s quality choices. Jellyfin picks the output size from the quality and codec; the results show it.', 'fieldDescription'));
+                    form.appendChild(el('h3', 'Output', 'sectionTitle'));
+                    multiSelect(form, 'Codec', speedCodecs.map(c => ({ key: c.Key, text: c.Name })).concat(speedOutputs.filter(o => o.DecodeOnly).map(o => ({ key: o.Key, text: o.Label }))), chosenCodecs, () => update())
+                        .appendChild(el('div', 'Every selected codec at every selected quality is processed for every selected input.', 'fieldDescription'));
+                    multiSelect(form, 'Quality', speedQualities.map(q => ({ key: q.Key, text: q.Name })), chosenQualities, () => update())
+                        .appendChild(el('div', 'Output resolution is determined by transcoded quality and codec.', 'fieldDescription'));
 
-                    container.appendChild(el('h3', 'Transcoding Settings', 'sectionTitle'));
+                    form.appendChild(el('h3', 'Transcoding Settings', 'sectionTitle'));
                     runOptions.filter(o => !o.Backend).forEach(runOption);
-                    container.appendChild(el('h3', 'Accuracy and time', 'sectionTitle'));
+                    form.appendChild(el('h3', 'Accuracy and time', 'sectionTitle'));
                     options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });
                     options('Repeats', repeatOptions, speedRepeats, v => { speedRepeats = Number(v); });
-                    options('Earlier results', [['false', 'Measure everything again'], ['true', 'Reuse when the settings match']], String(speedReuse), v => { speedReuse = v === 'true'; }, 'Reuses a measurement from an earlier run with the same input, output, backend, accuracy, repeats, ffmpeg and plugin version, and the same values for the settings that affect it, so a repeated comparison runs faster.');
-                    options('When the server starts transcoding', [['true', 'Pause, then repeat the interrupted measurement'], ['false', 'Keep measuring']], String(speedDefer), v => { speedDefer = v === 'true'; }, 'Pausing stops the measurement running so the transcode has the hardware to itself, waits until nothing is transcoding, then measures it again. Keeping on measures alongside it, which slows both.');
+                    options('Earlier results', [['true', 'Reuse when the settings match'], ['false', 'Measure everything again']], String(speedReuse), v => { speedReuse = v === 'true'; }, 'Reuses a measurement from an earlier run with the same input, output, backend, accuracy, repeats, and ffmpeg, and the same values for the settings that affect it, so a repeated comparison completes faster.');
+                    options('When the server starts transcoding', whenTranscodingOptions, speedWhenTranscoding, v => { speedWhenTranscoding = v; });
                     options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); }, 'A measurement that reaches the limit stops and reports what it measured.');
 
-                    button = action('Measure performance', () => {
-                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, ReuseResults: speedReuse, DeferToTranscodes: speedDefer, Options: speedSettings, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Backends: [...chosenBackends], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
-                        ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed'), data: JSON.stringify(body), contentType: 'application/json' })
-                            .then(() => {
-                                showTab(tabs[3][0]);
-                                return loadStatus();
-                            }, response => (response && response.text ? response.text() : Promise.resolve('')).then(text => {
-                                setMessage('Could not start: ' + (text.replace(/^"|"$/g, '') || 'a probe is running or a session is transcoding.'));
-                                button.disabled = false;
-                            }));
-                    }, 'raised button-submit');
-                    const go = el('div', null, 'hwprobe-row hwprobe-start');
-                    go.appendChild(button);
-                    go.appendChild(estimate);
-                    container.appendChild(go);
-                    container.appendChild(el('div', 'For accurate numbers, measure while nothing is playing and the server isn’t busy with other work, such as library scans or backups. Keep laptops plugged in. Results may vary from run to run.', 'fieldDescription'));
                     update();
                     speedUpdate = update;
                 }
@@ -1403,7 +1633,7 @@
                         div.appendChild(el('p', 'Measured ' + new Date(r.generatedUtc).toLocaleString() + ', ' + methodName(r.method).toLowerCase() + ' accuracy', 'secondaryText'));
                     }
                     if (r.cancelled) {
-                        div.appendChild(el('div', 'Cancelled: these are the measurements finished before then.', 'infoBanner'));
+                        div.appendChild(el('div', (r.cancelledForTranscode ? 'Cancelled when the server started transcoding' : 'Cancelled') + ': these are the measurements finished before then.', 'infoBanner'));
                     }
 
                     // A note shared by cells becomes one numbered footnote.
@@ -1438,6 +1668,8 @@
                         }
                         const speed = speedOf(x);
                         const speedText = speed ? speed.toFixed(1) + '\u00d7' : '\u2013';
+                        speedCell.dataset.sort = speed ? String(speed) : '';
+                        streams.dataset.sort = x.streams === null || x.streams === undefined ? '' : String(x.streams);
                         if (!speed) {
                             speedCell.textContent = speedText;
                         } else if (speedView === 'relative') {
@@ -1460,8 +1692,7 @@
                         if (n) {
                             speedCell.appendChild(el('sup', String(n)));
                         }
-                        // One footnote for every reused cell; each cell's date is in its details.
-                        const reused = x.reusedFromUtc ? footnote('Reused from an earlier run with the same settings; point at the value for when it was measured.') : null;
+                        const reused = x.reusedFromUtc ? footnote('Reused from a prior run.') : null;
                         if (reused) {
                             speedCell.appendChild(el('sup', String(reused)));
                         }
@@ -1495,10 +1726,11 @@
                     }, null);
                     const fastestOf = cells => Math.max(0, ...cells.filter(x => x && !x.pending).map(speedOf).filter(v => v));
 
-                    const table = el('table', null, 'hwprobe-matrix');
-                    const columns = backends.length * per + 2;
+                    const table = el('table', null, 'hwprobe-matrix hwprobe-full');
+                    const columns = backends.length * per + 3;
                     if (per === 2) {
                         const top = el('tr');
+                        top.appendChild(el('th'));
                         top.appendChild(el('th'));
                         top.appendChild(el('th'));
                         for (const b of backends) {
@@ -1507,34 +1739,31 @@
                             top.appendChild(th);
                         }
                         table.appendChild(top);
-                        row(table, [el('th', 'Output'), el('th', 'Size')].concat(backends.flatMap(() => [el('th', 'Concurrent streams', 'hwprobe-num secondaryText'), el('th', 'Speed', 'hwprobe-num secondaryText')])));
+                        row(table, [el('th', 'Input'), el('th', 'Output'), el('th', 'Size')].concat(backends.flatMap(() => [el('th', 'Concurrent streams', 'hwprobe-num secondaryText'), el('th', 'Speed', 'hwprobe-num secondaryText')])));
                     } else {
-                        row(table, [el('th', 'Output'), el('th', 'Size')].concat(backends.map(b => el('th', columnName(b), 'hwprobe-num'))));
+                        row(table, [el('th', 'Input'), el('th', 'Output'), el('th', 'Size')].concat(backends.map(b => el('th', columnName(b), 'hwprobe-num'))));
                     }
-                    let video = null;
+                    let hasVariants = false;
                     for (const key of [...new Set(r.results.map(x => x.test))]) {
                         const base = backends.map(b => r.results.find(x => x.test === key && !x.variant && keyOf(x) === keyOf(b)));
                         const first = base.find(x => x) || r.results.find(x => x.test === key);
                         // Reports from before videos and outputs were recorded show their test's label alone.
-                        if (first.video && first.video !== video) {
-                            video = first.video;
-                            const name = el('td');
-                            name.colSpan = columns;
-                            name.appendChild(document.createTextNode(first.video + '  '));
-                            name.appendChild(el('span', first.input || '', 'secondaryText hwprobe-small'));
-                            const tr = el('tr', null, 'hwprobe-group');
-                            tr.appendChild(name);
-                            table.appendChild(tr);
+                        const input = el('td');
+                        input.dataset.sort = first.video || '';
+                        if (first.video) {
+                            input.appendChild(el('div', first.video));
+                            input.appendChild(el('div', first.input || '', 'secondaryText hwprobe-small'));
                         }
                         const best = bestOf(base);
                         const fastest = fastestOf(r.results.filter(x => x.test === key));
                         const sized = base.find(x => x && x.outputSize);
-                        row(table, [el('td', first.output || first.label || key), el('td', sized ? sized.outputSize : '', 'secondaryText')].concat(base.flatMap(x => cellsFor(x, best, null, fastest))));
+                        row(table, [input, el('td', first.output || first.label || key), el('td', sized ? sized.outputSize : base.some(x => x && x.pending) ? '\u2026' : '', 'secondaryText')].concat(base.flatMap(x => cellsFor(x, best, null, fastest))));
 
                         const variants = [...new Set(r.results.filter(x => x.test === key && x.variant).map(x => x.variant))];
                         if (!variants.length) {
                             continue;
                         }
+                        hasVariants = true;
                         const toggle = el('button', null, 'hwprobe-disclosure hwprobe-small secondaryText');
                         toggle.type = 'button';
                         const toggleRow = el('tr', null, 'hwprobe-variant');
@@ -1545,7 +1774,7 @@
                         table.appendChild(toggleRow);
                         const rows = variants.map(v => {
                             const cells = backends.map(b => r.results.find(x => x.test === key && x.variant === v && keyOf(x) === keyOf(b)));
-                            const tr = row(table, [el('td', v), el('td')].concat(cells.flatMap((x, i) => cellsFor(x, null, base[i], fastest))));
+                            const tr = row(table, [el('td'), el('td', v), el('td')].concat(cells.flatMap((x, i) => cellsFor(x, null, base[i], fastest))));
                             tr.className = 'hwprobe-variant';
                             return tr;
                         });
@@ -1561,9 +1790,33 @@
                         });
                         show();
                     }
+                    // Old reports' comparison rows belong under their row, so those tables keep their order.
+                    if (!hasVariants) {
+                        sortable(table, 'results-' + per);
+                    }
                     const scroll = el('div', null, 'hwprobe-scroll');
                     scroll.appendChild(table);
                     div.appendChild(scroll);
+                    const views = el('div', null, 'hwprobe-row hwprobe-start hwprobe-views');
+                    views.setAttribute('role', 'radiogroup');
+                    views.setAttribute('aria-label', 'View');
+                    views.appendChild(el('span', 'View', 'secondaryText'));
+                    for (const [key, text] of speedViews) {
+                        const label = el('label');
+                        const radio = el('input');
+                        radio.type = 'radio';
+                        radio.name = 'hwprobeView';
+                        radio.checked = key === speedView;
+                        radio.addEventListener('change', () => {
+                            speedView = key;
+                            localStorage.setItem('hwprobe-speed-view', speedView);
+                            renderSpeedResults();
+                        });
+                        label.appendChild(radio);
+                        label.appendChild(document.createTextNode(' ' + text));
+                        views.appendChild(label);
+                    }
+                    div.appendChild(views);
 
                     footnotes.forEach((note, i) => {
                         const line = el('div', null, 'fieldDescription');
@@ -1571,49 +1824,41 @@
                         line.appendChild(document.createTextNode(' ' + note));
                         div.appendChild(line);
                     });
-                    // Only what this table shows.
-                    const legend = [];
-                    if (values && counted) {
-                        legend.push('Concurrent streams: how many keep up when run together; 16+ is the most measured.');
-                    }
-                    if (speedView === 'relative') {
-                        legend.push('Speed of one transcode on its own, as a share of the fastest backend for the row. Point at a value for the details.');
-                    } else {
-                        legend.push('Speed: one transcode on its own; 2\u00d7 is twice as fast as playing.' + (speedView === 'bars' ? ' Bars are relative to the fastest backend for the row.' : '') + ' Point at a value for the details.');
-                    }
-                    if (backends.length > 1) {
-                        legend.push(values && counted ? 'The highlighted cell keeps up with the most concurrent streams, then is the fastest, for the row.' : 'The highlighted cell is the fastest for the row.');
-                    }
-                    if (r.results.some(x => (speedVideos.find(v => v.Key === x.test.split('|')[0]) || {}).Origin === 'Generated')) {
-                        legend.push('Test videos encode faster than real video.');
-                    }
-                    div.appendChild(el('div', legend.join(' '), 'fieldDescription'));
 
-                    const credits = new Map();
+                    // The samples a run used, listed as on Performance Tests; a sample no longer in the catalog keeps the credit it was saved with.
+                    const samples = el('ul', null, 'fieldDescription hwprobe-notes');
+                    const listed = new Set();
                     for (const x of r.results) {
-                        if (x.credit) {
-                            credits.set(x.credit, x.licenseUrl);
+                        const v = speedVideos.find(o => o.Key === x.test.split('|')[0]);
+                        const key = v ? v.Key : x.credit;
+                        if (!x.credit || listed.has(key)) {
+                            continue;
+                        }
+                        listed.add(key);
+                        if (v) {
+                            samples.appendChild(videoItem(v));
+                        } else {
+                            const line = el('li', x.credit + ', ');
+                            line.appendChild(externalLink('licence', x.licenseUrl));
+                            samples.appendChild(line);
                         }
                     }
-                    if (credits.size) {
-                        const line = el('div', 'Samples: ', 'fieldDescription');
-                        [...credits].forEach(([credit, url], i) => {
-                            line.appendChild(document.createTextNode((i ? '; ' : '') + credit + ' ('));
-                            const link = el('a', 'licence', 'button-link');
-                            link.href = url;
-                            link.target = '_blank';
-                            line.appendChild(link);
-                            line.appendChild(document.createTextNode(')'));
-                        });
-                        div.appendChild(line);
+                    if (samples.childElementCount) {
+                        fold(div, 'Samples', false, 'h3').appendChild(samples);
                     }
                     if (r.settings) {
                         const used = fold(div, 'Settings used', false, 'h3');
-                        const table = el('table');
+                        const table = el('table', null, 'hwprobe-full');
+                        row(table, [el('th', 'Setting'), el('th', 'Value')]);
                         for (const [label, value] of settingsRows(r.settings)) {
                             row(table, [label, el('td', value, 'secondaryText')]);
                         }
-                        used.appendChild(table);
+                        used.appendChild(sortable(table, 'settings-used'));
+                        const notes = ['Speed: one transcode on its own; 2\u00d7 is twice as fast as playing. Bars and percentages are relative to the fastest result in the row.'];
+                        if (counted) {
+                            notes.push('Concurrent streams: how many keep up when run together; 16+ is the most measured.');
+                        }
+                        used.appendChild(el('div', notes.join(' '), 'fieldDescription'));
                     }
                     return div;
                 }
@@ -1652,7 +1897,8 @@
                         return 'Pausing when this measurement finishes\u2026';
                     }
                     if (s.Phase === 'Preparing' || !s.Total) {
-                        return (s.Preparing || 'Preparing test videos') + '\u2026';
+                        const ahead = s.Total ? timeLeft(s) : '';
+                        return (s.Preparing || 'Preparing test videos') + (ahead ? '\u2026 ' + ahead : '\u2026');
                     }
                     const done = s.Done || 0;
                     const left = timeLeft(s);
@@ -1670,13 +1916,17 @@
                     if (done > 0 && s.MeasuringSeconds) {
                         seconds = s.MeasuringSeconds / done * remaining;
                     } else {
-                        const per = methodSeconds[speedLive ? speedLive.method : speedMethod] || [20, 60];
+                        const per = methodSeconds[speedLive ? speedLive.method : speedMethod] || methodSeconds[defaultMethod];
+                        // A page opened mid-run polls before the catalog loads.
+                        if (!per) {
+                            return '';
+                        }
                         seconds = remaining * (per[0] + per[1]) / 2 * (speedLive && speedLive.repeats ? speedLive.repeats : 1);
                     }
                     const minutes = Math.round(seconds / 60);
-                    return seconds < 60 ? 'under a minute left'
-                        : minutes < 90 ? 'about ' + minutes + ' minute' + (minutes === 1 ? '' : 's') + ' left'
-                        : 'about ' + Math.round(minutes / 60) + ' hours left';
+                    return seconds < 60 ? 'under a minute remains\u2026'
+                        : minutes < 90 ? 'about ' + minutes + (minutes === 1 ? ' minute remains\u2026' : ' minutes remain\u2026')
+                        : 'about ' + Math.round(minutes / 60) + ' hours remain\u2026';
                 }
 
                 function streamsText(x) {
@@ -1700,7 +1950,7 @@
                 function renderReporting() {
                     const div = el('div');
                     div.appendChild(el('p', 'The report and every ffmpeg log of the last probe, to attach to a GitHub issue.', 'secondaryText'));
-                    div.appendChild(el('div', 'Not anonymised: holds file paths and this server\u2019s user and host names. Check before sharing.', 'infoBanner hwprobe-warning'));
+                    div.appendChild(el('div', 'The archive may include file paths, user names, and host names from this server.', 'infoBanner hwprobe-warning'));
                     const buttons = el('p');
                     const download = action('Download diagnostics', () => {
                         // ApiClient.ajax returns the raw response for a non-JSON request, with the session's token sent.
@@ -1760,10 +2010,16 @@
                         if (running) {
                             const text = s.Activity === 'Speed'
                                 ? speedProgressText(s)
-                                : 'Probing\u2026';
+                                : (s.Step || 'Probing') + (s.Total ? ' \u00b7 ' + (s.Done || 0) + ' of ' + s.Total + ' tests' : '\u2026');
                             statusText.textContent = text;
+                            const wasProbing = !!probeProgress;
+                            probeProgress = s.Activity === 'Speed' ? null : s;
+                            if (loaded && !!probeProgress !== wasProbing) {
+                                render();
+                            } else if (probeProgress) {
+                                renderCard();
+                            }
                             speedUpdate();
-                            pollTimer = setTimeout(loadStatus, 3000);
                             // A page opened mid-run still needs its first render.
                             if (!loaded) {
                                 loaded = true;
@@ -1772,12 +2028,15 @@
                             if (s.Activity === 'Speed') {
                                 speedProgress = s;
                                 ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedProgress'), dataType: 'json' })
-                                    .then(r => { speedLive = r; }, () => {}).then(renderSpeedResults);
+                                    .then(r => { speedLive = r; }, () => {}).then(() => renderSpeedResults(true)).then(schedulePoll);
+                            } else {
+                                schedulePoll();
                             }
                             return;
                         }
                         speedProgress = null;
                         speedLive = null;
+                        probeProgress = null;
                         loaded = true;
                         const last = s.Activity === 'Speed' ? 'Last performance test' : 'Last probe';
                         statusText.textContent = s.LastError ? last + ' failed: ' + s.LastError : (s.LastCompletedUtc ? last + ' ' + new Date(s.LastCompletedUtc).toLocaleString() : '');
@@ -1785,8 +2044,17 @@
                     });
                 }
 
-                page.addEventListener('pageshow', loadStatus);
-                page.addEventListener('pagehide', () => { clearTimeout(pollTimer); closeMenu(); });
+                // A request in flight when the page is left would otherwise schedule the next poll.
+                let pageShown = false;
+                function schedulePoll() {
+                    clearTimeout(pollTimer);
+                    if (pageShown) {
+                        pollTimer = setTimeout(loadStatus, 250);
+                    }
+                }
+
+                page.addEventListener('pageshow', () => { pageShown = true; loadStatus(); });
+                page.addEventListener('pagehide', () => { pageShown = false; clearTimeout(pollTimer); closeMenu(); });
             })();
         </script>
     </div>

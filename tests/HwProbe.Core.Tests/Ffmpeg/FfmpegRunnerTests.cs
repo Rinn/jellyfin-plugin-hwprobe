@@ -14,6 +14,17 @@ public sealed class FfmpegRunnerTests : IDisposable
     private readonly FakeFfmpegHost _host = new();
     private readonly FfmpegRunner _runner = new();
 
+    /// <summary>ffmpeg runs in the C locale whatever the host's language, unless the invocation sets its own.</summary>
+    [Fact]
+    public void RunsInTheCLocale()
+    {
+        var plain = FfmpegRunner.CreateStartInfo(new FfmpegInvocation("ffmpeg", "-version", new Dictionary<string, string?>(), _generous));
+        var overridden = FfmpegRunner.CreateStartInfo(new FfmpegInvocation("ffmpeg", "-version", new Dictionary<string, string?> { ["LC_ALL"] = "en_US.UTF-8" }, _generous));
+
+        Assert.Equal("C", plain.Environment["LC_ALL"]);
+        Assert.Equal("en_US.UTF-8", overridden.Environment["LC_ALL"]);
+    }
+
     /// <summary>Exit code, stderr and the final progress frame are all captured.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

@@ -1,5 +1,6 @@
 using Jellyfin.Plugin.HwProbe.Core.Probes;
 using Jellyfin.Plugin.HwProbe.Core.Speed;
+using Jellyfin.Plugin.HwProbe.TestSupport;
 using Xunit;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Tests.Speed;
@@ -26,6 +27,19 @@ public sealed class SpeedCommandLineTests
         Assert.Equal(
             "-hide_banner -v warning -nostats -progress pipe:1 -hwaccel videotoolbox -stream_loop -1 -i file:\"/c/a.mkv\" -stream_loop -1 -i file:\"/c/s.sup\" -t 12.5 -threads 0 -filter_complex \"[1:0]scale[sub];[0:0][sub]overlay\" -c:v h264_videotoolbox -b:v 4000000 -codec:a:0 aac -ac 2 -ab 256000 -f null -",
             SpeedCommandLine.Build(_args, TimeSpan.FromSeconds(12.5), decodeOnly: false));
+
+    /// <summary>The command reads the same in every culture: dots in the duration and seek, plain digits.</summary>
+    /// <param name="culture">The current culture.</param>
+    [Theory]
+    [MemberData(nameof(CultureScope.Different), MemberType = typeof(CultureScope))]
+    public void SameInEveryCulture(string culture)
+    {
+        var invariant = SpeedCommandLine.Build(_args, TimeSpan.FromSeconds(12.5), decodeOnly: false, TimeSpan.FromSeconds(90.25));
+        using var scope = new CultureScope(culture);
+
+        Assert.Equal(invariant, SpeedCommandLine.Build(_args, TimeSpan.FromSeconds(12.5), decodeOnly: false, TimeSpan.FromSeconds(90.25)));
+        Assert.Contains("-ss 90.25 ", invariant, StringComparison.Ordinal);
+    }
 
     /// <summary>A decode test keeps only the input and drops audio.</summary>
     [Fact]

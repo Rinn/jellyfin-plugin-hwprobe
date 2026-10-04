@@ -31,7 +31,7 @@ public sealed class DiagnosticsBundleTests
         Assert.Equal(["README.txt", "report.json", "ffmpeg/version.txt", "ffmpeg/h-filter-scale_cuda.txt", "stderr/001-launch.txt", "stderr/002-vaapi__dev_dri_renderD128_Smoke_h264.txt"], entries.Keys);
         Assert.Equal("ffmpeg version 8.1.2-Jellyfin\n", entries["ffmpeg/version.txt"]);
         Assert.Equal(
-            "# ffmpeg -hide_banner -v debug -i /home/alex/fixtures/h264.mp4 -c:v h264_vaapi -f null -\n# env: LIBVA_DRIVER_NAME=iHD -OCL_ICD_VENDORS\n# probe: vaapi:/dev/dri/renderD128:Smoke:h264 Pass\n# result: exit 0, 10 frames, 0.50 s\n[h264 @ 0x1] Using VAAPI\n",
+            "# ffmpeg -hide_banner -v debug -i /home/alex/fixtures/h264.mp4 -c:v h264_vaapi -f null -\n# env: LC_ALL=C LIBVA_DRIVER_NAME=iHD -OCL_ICD_VENDORS\n# probe: vaapi:/dev/dri/renderD128:Smoke:h264 Pass\n# result: exit 0, 10 frames, 0.50 s\n[h264 @ 0x1] Using VAAPI\n",
             entries["stderr/002-vaapi__dev_dri_renderD128_Smoke_h264.txt"]);
     }
 

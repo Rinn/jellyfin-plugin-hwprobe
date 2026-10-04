@@ -3,9 +3,9 @@ name: "HwProbe"
 guid: "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93"
 targetAbi: "12.1.0.0"
 framework: "net10.0"
-overview: "Tests which hardware transcoding options work on a Jellyfin server, and how fast each one transcodes"
+overview: "Tests which hardware transcoding backends work on a Jellyfin server, and how fast each one transcodes"
 description: >
-  Runs short test transcodes for each hardware acceleration option on the Transcoding and Trickplay pages. Shows which ones work, how to fix the ones that don't, and measures the performance of each. Recommended settings can be applied to Jellyfin's settings and reverted, or downloaded as a diagnostics zip to attach to an issue.
+  Runs short test transcodes for each hardware acceleration backend and setting on the Transcoding and Trickplay pages. Shows which ones work, how to fix the ones that don't, and measures the performance of each. Recommended settings can be applied to Jellyfin's settings and reverted, or downloaded as a diagnostics zip to attach to an issue.
 category: "General"
 imageUrl: "https://raw.githubusercontent.com/Rinn/jellyfin-plugin-hwprobe/main/assets/plugin.png"
 owner: "Rinn"

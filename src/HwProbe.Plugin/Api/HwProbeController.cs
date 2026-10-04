@@ -73,7 +73,7 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     public async Task<ActionResult> StartSpeedAsync([FromBody] SpeedRequest request, CancellationToken cancellationToken) => await service.StartSpeedAsync(request, cancellationToken) switch
     {
         ProbeRunResult.Started => Accepted(),
-        ProbeRunResult.Invalid => BadRequest("Unknown method, test or comparison."),
+        ProbeRunResult.Invalid => BadRequest("Unknown method, test, or comparison."),
         ProbeRunResult.NoReport => Conflict("Run a probe first, so the performance test knows which backends work."),
         ProbeRunResult.AlreadyRunning => Conflict("A probe or performance test is already running."),
         ProbeRunResult.ServerBusy => Conflict("A session is transcoding; measure when the server is idle."),

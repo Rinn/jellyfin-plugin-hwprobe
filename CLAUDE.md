@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Operating manual for this repo: what it is, commands, conventions, the traps that cost real time, and the work still to do. End-user docs are in `README.md`; build, release and test-host details are in `DEVELOPMENT.md`.
+Operating manual for this repo: what it is, commands, conventions, the traps that cost real time, and the work still to do. End-user docs are in `README.md`; how to build, test, and release is in `DEVELOPMENT.md`; how the engines, caches, and suggestions work is in `ARCHITECTURE.md`.
 
 ## What this is
 
@@ -28,7 +28,7 @@ Releases: run `release.yml` by hand (see `DEVELOPMENT.md`). Releases are immutab
 
 - Dev machine: macOS. Only VideoToolbox is exercisable here. ffmpeg at `/opt/homebrew/bin/ffmpeg` is not the binary the server uses; always report the resolved path and flag non-Jellyfin builds.
 - Real hardware: an Intel NAS (QSV over VAAPI) and an RTX 5080 Windows PC; see the NAS and Windows testing memories.
-- No AMD, AMF or Rockchip hardware: ship those as argument-string tests plus recorded logs and report them `Untested`. Never imply a verdict that wasn't tested.
+- No AMD, AMF, or Rockchip hardware: ship those as argument-string tests plus recorded logs and report them `Untested`. Never imply a verdict that wasn't tested.
 - Pinned argument strings: Linux in `LinuxDriftTests` (from recorded jellyfin-ffmpeg builds in `tests/Corpus/ffmpeg/`), Windows in `WindowsDriftTests` (blessed on the PC with `HWPROBE_BLESS`). Each runs only on its OS; re-bless when upstream changes.
 
 ## Consulting upstream Jellyfin source
@@ -49,8 +49,9 @@ Pull files with `gh` and grep locally. WebFetch truncates `EncodingHelper.cs` (8
 ## House rules
 
 - **Verify against source; never describe upstream behaviour from memory.** The owner checks provenance and has caught real errors. Anything claimed about Jellyfin should trace to a file and symbol; if it rests on a summary, say so.
+- **Put catalog-like data in `catalog.yaml`, not code.** Lists, labels, defaults, and orderings the page, CLI, or advisor share (inputs, outputs, run options, quality order) belong in the catalog, served to the page by `HwProbe/Catalog`; the page shouldn't keep its own copy. Upstream constants and logic stay in code.
 - **Don't hardcode ffmpeg arguments.** Generate them through `EncodingHelper`. The pinned drift strings detect upstream changes; they aren't the source of truth. The one exception is the bare device-open probe, which upstream never emits.
-- **Keep this file current in every PR**, along with `README.md`, `DEVELOPMENT.md` and `build.yaml`: state, commands, traps and the to-do list.
+- **Keep this file current in every PR**, along with `README.md`, `DEVELOPMENT.md`, `ARCHITECTURE.md`, and `build.yaml`: state, commands, traps, and the to-do list.
 - **Never auto-apply settings and never restart the server.** Apply writes only advised `EncodingOptions` values through `SaveConfiguration`, with history and Revert.
 
 ## Code style
@@ -60,7 +61,18 @@ Pull files with `gh` and grep locally. WebFetch truncates `EncodingHelper.cs` (8
 - **Async entry points**: `static async Task<int> Main` in an explicit `Program` class. No `Thread.Sleep` or blocking I/O; no `ConfigureAwait(false)` (CA2007 is off, as upstream has it).
 - **Comments only where the code isn't self-documenting**, terse, explaining why. Upstream constraints and ffmpeg quirks are the usual reason; cite the source.
 - **Gate platform- and hardware-bound tests declaratively** with `[Fact(Skip = "Requires …", SkipUnless = nameof(TestEnvironment.X), SkipType = typeof(TestEnvironment))]` from `tests/TestSupport/TestEnvironment.cs`, never an `if (OperatingSystem.Is…)` inside a test. Real ffmpeg comes from `TestEnvironment.RealFfmpeg`.
-- **Plugin page**: only jellyfin-web's own classes and `--jf-palette` theme variables, styled like the dashboard's pages; no `${` anywhere in `configPage.html`.
+
+## Plugin page conventions
+
+The page should look and behave like a native Jellyfin dashboard page, stay calm while work runs, and say only what's needed.
+
+- **Consistency**: the same kind of thing looks and reads the same everywhere. Sections on every tab use the same collapsible heading, and buttons for the same kind of action share a style: raised for an action, red for a destructive one. Notices are the same banner, and icons mean one thing across tabs. Each concept has one term, used alike on the page, in the CLI, in the docs, and in `catalog.yaml`: setting, backend, input, output, Duration. When a term or style changes, change it everywhere in the same commit.
+- **Wording**: terse, impersonal (no "you"), plain words. Serial commas in every list. "requires", not "needs". "performance" in UI text, "speed" in code. A label shouldn't repeat what an icon or heading already says. Help text only where the control isn't self-explanatory.
+- **Look**: only jellyfin-web classes and `--jf-palette` variables; no `${` anywhere in `configPage.html`. When jellyfin-web's legacy styles differ from the dashboard's MUI components (disabled buttons and selects), match the MUI look. Status uses emoji icons placed before the item: ✅ works, ❌ failed, ⚠️ software fallback, ➖ not used, 🚫 unavailable, ❔ untested.
+- **Layout**: tables full width and sortable, by value for numbers and naturally for text. Distinct header and group rows, no alternating stripes. Action buttons right-aligned. Destructive actions are red, and the bulk one asks first, the question going away on a click elsewhere. Main actions go at the top of a tab, and long settings sit in collapsible sections that keep their open state across redraws.
+- **Order and defaults**: follow Jellyfin's own order (the Hardware acceleration dropdown, the Transcoding page), with None (software) first. Real video comes before test video, and defaults favour real video.
+- **While work runs**: give feedback the moment a button is pressed. Show progress as text, a bar, and the time remaining, updated about every 250 ms, without changing the layout's size. Redraw only what changed, never rebuilding controls under the cursor. Disable whatever the server would refuse. Hide results that a running probe will replace instead of showing them as current.
+- **Data**: lists, labels, defaults, and orderings come from `catalog.yaml` through `HwProbe/Catalog`, not from copies in the page.
 
 ## Zero warnings
 
@@ -83,6 +95,7 @@ Pull files with `gh` and grep locally. WebFetch truncates `EncodingHelper.cs` (8
 - A second i965/AMD GPU (not the configured device) is reported `Untested` by the plugin, since probing it would change the server's environment; the CLI can test it.
 - CUDA is probed at index 0 only; `EncodingHelper` hard-codes device 0.
 - v4l2m2m is confirmed from a recorded Raspberry Pi run (`Using device /dev/videoN`), not yet through Jellyfin.
+- Page and CLI text are English only. Behaviour doesn't depend on locale: ffmpeg runs with `LC_ALL=C`, numbers are formatted and parsed invariantly, and the page reads structured fields rather than message text. `CultureScope` tests and `HWPROBE_LOCALE` in `container-plugin.sh` check it.
 - The busy check (`ProbeService.IsTranscoding`) skips direct play and remux, but a transcode that finished ahead of playback still blocks until playback stops: `TranscodeManager.OnFfMpegProcessExited` leaves the session's `TranscodingInfo` set, and Jellyfin has no API to list running jobs by session.
 
 ## To do
@@ -93,5 +106,4 @@ Pull files with `gh` and grep locally. WebFetch truncates `EncodingHelper.cs` (8
 Queued by the user on 2026-10-03, in no particular order:
 
 - **Test suites** (queued 2026-10-03): named sets of performance tests run in sequence to draw suggestions from, e.g. one input at every encoding preset to see which presets cost no speed. Defined in YAML (like catalog.yaml), mostly on real video (film samples or a library file) rather than test videos. Recommend suites to the user before adding them.
-- Trickplay generation as a Performance Tests output (deferred 2026-10-03). `MediaEncoder.ExtractVideoImagesOnIntervalAccelerated` takes its input, filter and encoder from EncodingHelper but assembles the command itself (skip_frame, setpts, qscale per encoder, image2), so it needs either a pinned copy of that assembly or a direct call limited to the configured backend.
-- Non-English use: find what breaks when the server or browser isn't in English, and consider translations, ideally reusing jellyfin-web's own strings. Include a non-English server locale: whether ffmpeg's output (stderr, progress, numbers) can be localized and break parsing, and whether .NET culture affects number formatting or parsing.
+- Trickplay generation as a Performance Tests output (deferred 2026-10-03). `MediaEncoder.ExtractVideoImagesOnIntervalAccelerated` takes its input, filter, and encoder from EncodingHelper but assembles the command itself (skip_frame, setpts, qscale per encoder, image2), so it needs either a pinned copy of that assembly or a direct call limited to the configured backend.

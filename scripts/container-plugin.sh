@@ -8,6 +8,7 @@
 # second container, added as a plugin repository, and installed through Jellyfin's package API.
 # HWPROBE_INSTALL=existing checks a server that is already running with the plugin installed and the
 # setup wizard not yet done, at HWPROBE_BASE (e.g. http://nas.local:18096); nothing is built or started.
+# HWPROBE_LOCALE (e.g. de_DE.UTF-8) runs the server under that locale, to check nothing depends on the server's language.
 set -eu
 
 root="$(git rev-parse --show-toplevel)"
@@ -78,7 +79,9 @@ esac
 network=""
 [ "$install" = repository ] && network="--network $net"
 # Nothing is downloaded: fixtures that only download (the VC-1 sample) are reported as untested.
-podman run -d --name "$name" $network -p 127.0.0.1::8096 -e HWPROBE_NO_DOWNLOADS=1 \
+locale=""
+[ -n "${HWPROBE_LOCALE:-}" ] && locale="-e LANG=$HWPROBE_LOCALE -e LC_ALL=$HWPROBE_LOCALE"
+podman run -d --name "$name" $network $locale -p 127.0.0.1::8096 -e HWPROBE_NO_DOWNLOADS=1 \
     -v "$work/config":/config -v "$work/cache":/cache "$image" >/dev/null
 base="http://$(podman port "$name" 8096 | head -1)"
 wait_healthy
@@ -139,7 +142,7 @@ check "ffmpeg source" Server "$(printf "%s" "$report" | json 'j["ffmpeg"]["sourc
 check "backends reported" True "$(printf "%s" "$report" | json 'len(j["backends"]) > 0')"
 curl -sf "$base/HwProbe/Diagnostics" -H "$h" -o "$work/diagnostics.zip"
 check "diagnostics zip" True "$(python3 -c "import sys,zipfile; n=zipfile.ZipFile(sys.argv[1]).namelist(); print('report.json' in n and 'ffmpeg/version.txt' in n and any(x.startswith('stderr/') for x in n))" "$work/diagnostics.zip")"
-check "catalog listed" True "$(curl -sf "$base/HwProbe/Catalog" -H "$h" | json 'any(v["Key"] == "pattern" and v["Default"] for v in j["Videos"]) and any(o["Key"] == "decode" for o in j["Outputs"]) and j["Backends"][0]["Type"] == "amf" and j["Tiers"]["FullOpencl"] != ""')"
+check "catalog listed" True "$(curl -sf "$base/HwProbe/Catalog" -H "$h" | json 'any(v["Key"] == "drama" and v["Default"] for v in j["Videos"]) and any(o["Key"] == "decode" for o in j["Outputs"]) and j["Backends"][0]["Type"] == "amf" and j["Tiers"]["FullOpencl"] != ""')"
 check "speed with an unknown video" 400 "$(code -X POST "$base/HwProbe/Speed" -H "$h" -H 'Content-Type: application/json' -d '{"Method":"Quick","Videos":["nope"],"Outputs":[]}')"
 check "start speed run" 202 "$(code -X POST "$base/HwProbe/Speed" -H "$h" -H 'Content-Type: application/json' -d '{"Method":"Quick","Videos":["pattern"],"Outputs":["decode"]}')"
 state=Running

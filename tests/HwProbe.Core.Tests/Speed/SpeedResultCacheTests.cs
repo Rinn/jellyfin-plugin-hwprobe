@@ -1,5 +1,4 @@
 using Jellyfin.Plugin.HwProbe.Core.Model;
-using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Core.Speed;
 using Xunit;
 
@@ -43,8 +42,8 @@ public sealed class SpeedResultCacheTests : IDisposable
         var measured = new DateTimeOffset(2026, 10, 3, 12, 0, 0, TimeSpan.Zero);
 
         Assert.Null(await cache.GetAsync("missing", ct));
-        await cache.SaveAsync("current", new SpeedCacheEntry(measured, CapabilityReport.CurrentHwProbeVersion, "ffmpeg version 7", result), ct);
-        await cache.SaveAsync("older", new SpeedCacheEntry(measured, CapabilityReport.CurrentHwProbeVersion, "ffmpeg version 6", result), ct);
+        await cache.SaveAsync("current", new SpeedCacheEntry(measured, SpeedResultCache.MeasurementVersion, "ffmpeg version 7", result), ct);
+        await cache.SaveAsync("older", new SpeedCacheEntry(measured, SpeedResultCache.MeasurementVersion, "ffmpeg version 6", result), ct);
         await File.WriteAllTextAsync(Path.Combine(_root, "broken.json"), "{", ct);
 
         var entry = await cache.GetAsync("current", ct);

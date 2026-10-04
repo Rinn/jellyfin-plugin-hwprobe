@@ -23,7 +23,10 @@ internal static class FfprobeFile
             throw new InvalidOperationException($"No {name} beside {ffmpegPath}.");
         }
 
-        var start = new ProcessStartInfo(ffprobe) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+        var start = new ProcessStartInfo(ffprobe) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, StandardOutputEncoding = System.Text.Encoding.UTF8, StandardErrorEncoding = System.Text.Encoding.UTF8 };
+
+        // As FfmpegRunner does, so its messages and numbers don't follow the host's language.
+        start.Environment["LC_ALL"] = "C";
         foreach (var argument in new[] { "-v", "error", "-show_streams", "-show_format", "-of", "json", path })
         {
             start.ArgumentList.Add(argument);

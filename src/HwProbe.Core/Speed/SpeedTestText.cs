@@ -80,8 +80,13 @@ public static class SpeedTestText
     /// <returns>e.g. <c>4K</c>, <c>1080i</c>.</returns>
     internal static string Resolution(int width, int height, bool interlaced)
     {
-        var lines = width >= 3200 || height >= 1800 ? 2160 : width >= 1700 || height >= 1000 ? 1080 : width >= 1100 || height >= 700 ? 720 : height;
-        return lines == 2160 ? "4K" : string.Create(CultureInfo.InvariantCulture, $"{lines}{(interlaced ? "i" : "p")}");
+        var lines = width >= 6400 || height >= 3600 ? 4320 : width >= 3200 || height >= 1800 ? 2160 : width >= 1700 || height >= 1000 ? 1080 : width >= 1100 || height >= 700 ? 720 : height;
+        return lines switch
+        {
+            4320 => "8K",
+            2160 => "4K",
+            _ => string.Create(CultureInfo.InvariantCulture, $"{lines}{(interlaced ? "i" : "p")}"),
+        };
     }
 
     /// <summary>Names a codec as Jellyfin's settings do.</summary>

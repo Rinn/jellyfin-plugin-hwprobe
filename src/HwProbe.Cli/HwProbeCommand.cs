@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Globalization;
 using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
@@ -10,7 +11,7 @@ namespace Jellyfin.Plugin.HwProbe.Cli;
 internal sealed class HwProbeCommand
 {
     private readonly Option<string?> _ffmpeg = new("--ffmpeg") { Description = "ffmpeg binary. Default: auto-discover." };
-    private readonly Option<StopStage> _stage = new("--stage") { Description = "Stop after this step: build, devices or matrix.", DefaultValueFactory = _ => StopStage.Matrix };
+    private readonly Option<StopStage> _stage = new("--stage") { Description = "Stop after this step: build, devices, or matrix.", DefaultValueFactory = _ => StopStage.Matrix };
     private readonly Option<IReadOnlySet<HwType>> _types = new("--type")
     {
         Description = "Restrict to backends, e.g. vaapi,qsv.",
@@ -25,7 +26,7 @@ internal sealed class HwProbeCommand
     private readonly Option<string?> _diagnostics = new("--diagnostics") { Description = "Also write a zip of the report and every ffmpeg log, to attach to an issue. Runs a fresh probe." };
     private readonly Option<SpeedMethod?> _speed = new("--speed")
     {
-        Description = "After the probe, measure the speed of each working backend and software: quick (speed only), confirm or full (also concurrent streams, starting from the speed or from one).",
+        Description = "After the probe, measure the speed of each working backend and software: quick (speed only), confirm, or full (also concurrent streams, starting from the speed or from one).",
         Arity = ArgumentArity.ZeroOrOne,
         CustomParser = r => r.Tokens.Count == 0 ? SpeedMethod.Confirm : Enum.TryParse<SpeedMethod>(r.Tokens[0].Value, ignoreCase: true, out var m) ? m : Error<SpeedMethod?>(r, $"Unknown speed method '{r.Tokens[0].Value}'. Expected: quick, confirm, full."),
     };
@@ -56,11 +57,11 @@ internal sealed class HwProbeCommand
         AllowMultipleArgumentsPerToken = false,
     };
 
-    private readonly Option<int> _speedRepeats = new("--speed-repeats") { Description = "Run each speed measurement 1 to 3 times and report the median.", DefaultValueFactory = _ => 1 };
-    private readonly Option<int?> _speedTimeLimit = new("--speed-time-limit") { Description = "Seconds each speed measurement may take before it reports what it has." };
+    private readonly Option<int> _speedRepeats = new("--speed-repeats") { Description = "Run each speed measurement 1 to 3 times and report the median.", DefaultValueFactory = _ => 1, CustomParser = Whole };
+    private readonly Option<int?> _speedTimeLimit = new("--speed-time-limit") { Description = "Seconds each speed measurement may take before it reports what it has.", CustomParser = r => Whole(r) };
     private readonly Option<string?> _speedJson = new("--speed-json") { Description = "Also write the speed report to this file." };
-    private readonly Option<int> _timeout = new("--timeout") { Description = "Per-probe hard timeout, seconds.", DefaultValueFactory = _ => 15 };
-    private readonly Option<int> _fixtureTimeout = new("--fixture-timeout") { Description = "Fixture generation timeout, seconds.", DefaultValueFactory = _ => 120 };
+    private readonly Option<int> _timeout = new("--timeout") { Description = "Per-probe hard timeout, seconds.", DefaultValueFactory = _ => 15, CustomParser = Whole };
+    private readonly Option<int> _fixtureTimeout = new("--fixture-timeout") { Description = "Fixture generation timeout, seconds.", DefaultValueFactory = _ => 120, CustomParser = Whole };
     private readonly Option<bool> _refresh = new("--refresh") { Description = "Ignore cached results for this fingerprint." };
     private readonly Option<string> _fixtures = new("--fixtures")
     {
@@ -78,7 +79,7 @@ internal sealed class HwProbeCommand
         _fixtureTimeout.Validators.Add(r => RequirePositive(r, "--fixture-timeout"));
         _speedRepeats.Validators.Add(r =>
         {
-            if (r.GetValueOrDefault<int>() is < 1 or > 3)
+            if (Parsed(r) is < 1 or > 3)
             {
                 r.AddError("--speed-repeats must be 1, 2 or 3.");
             }
@@ -106,7 +107,7 @@ internal sealed class HwProbeCommand
         });
         _speedTimeLimit.Validators.Add(r =>
         {
-            if (r.GetValueOrDefault<int?>() is <= 0)
+            if (Parsed(r) is <= 0)
             {
                 r.AddError("--speed-time-limit must be a positive number of seconds.");
             }
@@ -206,11 +207,23 @@ internal sealed class HwProbeCommand
     /// <param name="name">Option name for the error message.</param>
     private static void RequirePositive(System.CommandLine.Parsing.OptionResult result, string name)
     {
-        if (result.GetValueOrDefault<int>() <= 0)
+        if (Parsed(result) is <= 0)
         {
             result.AddError($"{name} must be a positive number of seconds.");
         }
     }
+
+    /// <summary>Returns the whole number given for an option, or null when none was given or it didn't parse.</summary>
+    /// <param name="result">The option result.</param>
+    /// <returns>The number, or null; a value that didn't parse already has its error, and reading it from the result would throw.</returns>
+    private static int? Parsed(System.CommandLine.Parsing.OptionResult result) =>
+        result.Tokens.Count > 0 && int.TryParse(result.Tokens[0].Value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var n) ? n : null;
+
+    /// <summary>Parses a whole number the same way in every culture; the default parser follows the current culture, and some don't take "-1".</summary>
+    /// <param name="result">The option's argument result.</param>
+    /// <returns>The number, or 0 with an error.</returns>
+    private static int Whole(System.CommandLine.Parsing.ArgumentResult result) =>
+        int.TryParse(result.Tokens[0].Value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var n) ? n : Error<int>(result, $"'{result.Tokens[0].Value}' isn't a whole number.");
 
     /// <summary>Binds the speed options.</summary>
     /// <param name="result">The parse result.</param>

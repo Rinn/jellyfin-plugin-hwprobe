@@ -245,9 +245,7 @@ public sealed class SpeedEngine : IDisposable
     {
         var name = names.GetValueOrDefault(step.Spec.FileName)
             ?? (step.Spec.FileName == SpeedCatalog.TextSubtitles.FileName ? "text subtitles" : step.Spec.FileName == SpeedCatalog.ImageSubtitles.FileName ? "PGS subtitles" : step.Spec.FileName);
-        return step.Action == FixtureAction.Generating ? "Generating " + name
-            : step.Total > 0 ? string.Create(CultureInfo.InvariantCulture, $"Downloading {name}: {step.Done / 1_000_000} of {Math.Round(step.Total / 1_000_000.0):0} MB")
-            : "Downloading " + name;
+        return step.Describe(name);
     }
 
     /// <summary>Makes or downloads the clips the tests need.</summary>
@@ -363,7 +361,7 @@ public sealed class SpeedEngine : IDisposable
         // Only a full measurement is worth reusing: a failure may be fixed by the next run, and a run cut off by a timeout or the time limit is short of what a full one measures.
         if (key is not null && result.Fps is not null && !result.Interrupted)
         {
-            await cache.SaveAsync(key, new SpeedCacheEntry(_time.GetUtcNow(), CapabilityReport.CurrentHwProbeVersion, ffmpegVersion, result), cancellationToken);
+            await cache.SaveAsync(key, new SpeedCacheEntry(_time.GetUtcNow(), SpeedResultCache.MeasurementVersion, ffmpegVersion, result), cancellationToken);
         }
 
         return result;
@@ -426,7 +424,7 @@ public sealed class SpeedEngine : IDisposable
                 catch (ArgumentConstructionException)
                 {
                     // No hardware arguments at all: Jellyfin would do the whole job in software.
-                    return new SpeedResult(type, device, test.Key, string.Empty, null, null, false, test.DecodeOnly ? "Not measured: Jellyfin decodes this in software with this backend." : "Not measured: Jellyfin decodes and encodes this in software with this backend.");
+                    return new SpeedResult(type, device, test.Key, string.Empty, null, null, false, test.DecodeOnly ? "Not measured: decoded in software with this backend." : "Not measured: decoded and encoded in software with this backend.");
                 }
                 catch (UnsafeProbeException ex)
                 {
@@ -435,21 +433,21 @@ public sealed class SpeedEngine : IDisposable
                 catch (NotSupportedException)
                 {
                     // The command-line tool has no subtitle encoder to extract a file's internal text subtitles with.
-                    return new SpeedResult(type, device, test.Key, string.Empty, null, null, false, "Burning in a file's own text subtitles needs Jellyfin; measure it from the plugin.");
+                    return new SpeedResult(type, device, test.Key, string.Empty, null, null, false, "Burning in a file's own text subtitles requires Jellyfin; measure it from the plugin.");
                 }
 
                 // A hardware column needs the step it's about on the GPU: the encode for a transcode, the decode for a decode test. Software has its own column.
                 var softwareDecode = type != HwType.none && args.Hwaccel is null && args.HardwareDecoder is null;
                 var softwareStep = type == HwType.none ? null
-                    : test.DecodeOnly ? (softwareDecode ? "decodes" : null)
+                    : test.DecodeOnly ? (softwareDecode ? "decoded" : null)
                     : args.HardwareEncoder ? null
-                    : "encodes";
+                    : "encoded";
                 if (softwareStep is not null)
                 {
-                    return new SpeedResult(type, device, test.Key, string.Empty, null, null, false, $"Not measured: Jellyfin {softwareStep} this in software with this backend.");
+                    return new SpeedResult(type, device, test.Key, string.Empty, null, null, false, $"Not measured: {softwareStep} in software with this backend.");
                 }
 
-                var note = softwareDecode ? "Jellyfin decodes this in software with this backend, then encodes on the GPU." : null;
+                var note = softwareDecode ? "Decoded in software with this backend, then encoded on the GPU." : null;
                 var width = Math.Min(args.OutputWidth ?? test.Width, test.Width);
                 var size = test.DecodeOnly ? null : SpeedTestText.Resolution(width, test.Height * width / test.Width, false);
 
