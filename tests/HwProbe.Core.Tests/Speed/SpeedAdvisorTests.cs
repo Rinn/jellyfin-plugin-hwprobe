@@ -55,6 +55,29 @@ public sealed class SpeedAdvisorTests
         Assert.Equal(("EncoderPreset", "fast"), (faster.Setting, faster.Value));
     }
 
+    /// <summary>A backend that measures alike with the configured one is suggested when it used less, with what it saved; a setting value likewise.</summary>
+    [Fact]
+    public void PrefersWhatUsesLess()
+    {
+        const string Film = "live-action|h264-8mbps";
+        static SpeedResult Used(SpeedResult r, double cpuSeconds, long memory) => r with { Resources = new Core.Resources.ResourceUsage(10, cpuSeconds, memory) };
+        var run = Run(new SpeedSettings(), Used(Result(HwType.vaapi, Film, 100), 8, 400_000_000), Used(Result(HwType.nvenc, Film, 102), 4, 400_000_000) with { Device = string.Empty });
+
+        var backend = Assert.Single(SpeedAdvisor.Advise(run, [run], HwType.vaapi, "/dev/dri/renderD128", new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.FastestBackend);
+        Assert.Equal((HwType.nvenc, false), (backend.Type, backend.Preferred));
+        Assert.Equal([("Cpu", 0.5)], backend.Savings.Select(x => (x.Resource, Math.Round(x.Fraction, 2))));
+
+        // Using more memory cancels the saving.
+        var mixed = Run(new SpeedSettings(), Used(Result(HwType.vaapi, Film, 100), 8, 400_000_000), Used(Result(HwType.nvenc, Film, 102), 4, 800_000_000) with { Device = string.Empty });
+        Assert.DoesNotContain(SpeedAdvisor.Advise(mixed, [mixed], HwType.vaapi, "/dev/dri/renderD128", new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.FastestBackend);
+
+        var auto = Run(new SpeedSettings(), Used(Result(HwType.none, Film, 100), 40, 600_000_000) with { Command = "auto" });
+        var four = Run(new SpeedSettings { EncodingThreadCount = 4 }, Used(Result(HwType.none, Film, 98), 30, 500_000_000) with { Command = "four" });
+        var efficient = Assert.Single(SpeedAdvisor.Advise(four, [auto, four], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.EfficientSetting);
+        Assert.Equal(("EncodingThreadCount", "4"), (efficient.Setting, efficient.Value));
+        Assert.Equal(["Cpu", "Memory"], efficient.Savings.Select(x => x.Resource));
+    }
+
     /// <summary>Outputs below real time on the configured backend are flagged, and marked when only test videos showed it.</summary>
     [Fact]
     public void FlagsOutputsThatFallBehind()

@@ -149,7 +149,7 @@ public sealed class SettingsService : IDisposable
             async () =>
             {
                 var suggested = (await Suggestions(change.Run, cancellationToken))
-                    .Any(s => s.Kind is SpeedSuggestionKind.FasterSetting or SpeedSuggestionKind.HigherQuality && s.Setting == change.Setting && s.Value == change.Value);
+                    .Any(s => s.Kind is SpeedSuggestionKind.FasterSetting or SpeedSuggestionKind.HigherQuality or SpeedSuggestionKind.EfficientSetting && s.Setting == change.Setting && s.Value == change.Value);
                 if (!suggested || MeasuredSettings.ToSetting(change.Setting, change.Value) is not { } setting)
                 {
                     return Refuse($"{change.Setting} = {change.Value} isn't suggested by the performance tests.");

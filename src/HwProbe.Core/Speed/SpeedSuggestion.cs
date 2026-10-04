@@ -32,6 +32,9 @@ public sealed record SpeedSuggestion(SpeedSuggestionKind Kind, IReadOnlyList<str
     /// <summary>Gets a value indicating whether a suggested backend measured alike with the configured one and is suggested as the one Jellyfin prefers, QSV over VAAPI.</summary>
     public bool Preferred { get; init; }
 
+    /// <summary>Gets how much more efficient the suggestion is where it measured alike, each at its smallest saving across the outputs; empty otherwise.</summary>
+    public IReadOnlyList<ResourceSaving> Savings { get; init; } = [];
+
     /// <summary>Gets a value indicating whether it rests on generated test videos alone, which encode faster than real video.</summary>
     public bool TestVideosOnly { get; init; }
 }

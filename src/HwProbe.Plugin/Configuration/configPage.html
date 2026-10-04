@@ -1393,6 +1393,13 @@
                     return choice ? choice.Label : value === 'true' ? 'On' : value === 'false' ? 'Off' : value;
                 }
 
+                // How much more efficient a suggestion is, e.g. "30% less CPU and 20% less memory".
+                function savingsText(savings) {
+                    const names = { Cpu: 'CPU', Memory: 'memory', Gpu: 'GPU', GpuMemory: 'GPU memory' };
+                    const parts = savings.map(x => Math.round(x.Fraction * 100) + '% less ' + (names[x.Resource] || x.Resource));
+                    return parts.length > 2 ? parts.slice(0, -1).join(', ') + ', and ' + parts[parts.length - 1] : parts.join(' and ');
+                }
+
                 function renderSuggestions() {
                     const div = el('div');
                     ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedSuggestions', speedViewing ? { id: speedViewing } : {}), dataType: 'json' }).then(list => {
@@ -1413,9 +1420,11 @@
                             const backendName = t => t === 'none' ? 'Software' : names[t] || t;
                             if (s.Kind === 'FastestBackend') {
                                 title = 'Hardware acceleration: ' + backendName(s.Type);
+                                // Measured alike, it's suggested when it is more efficient, or as Jellyfin's preferred Intel backend.
+                                const alike = [s.Savings.length ? 'with ' + savingsText(s.Savings) : '', s.Preferred ? 'Jellyfin prefers it on mainstream Intel GPUs' : ''].filter(t => t);
                                 reason = !configured || configured === 'none'
                                     ? 'Works on this server; a hardware backend draws less power than software for the same work.'
-                                    : s.Preferred ? 'As fast as ' + backendName(configured) + ' here, and Jellyfin prefers it on mainstream Intel GPUs.'
+                                    : alike.length ? 'As fast as ' + backendName(configured) + ' here, ' + alike.join('; ') + '.'
                                     : 'The fastest hardware backend measured.';
                                 actionButton = idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: s.Type, Device: s.Device }));
                             } else if (s.Kind === 'FallsBehind') {
@@ -1424,6 +1433,10 @@
                             } else if (s.Kind === 'FasterSetting') {
                                 title = label + ': ' + optionValueText(s.Setting, s.Value);
                                 reason = percent + ' faster than ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + (s.LowerQuality ? ', at lower quality.' : '.');
+                                actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }), 'raised');
+                            } else if (s.Kind === 'EfficientSetting') {
+                                title = label + ': ' + optionValueText(s.Setting, s.Value);
+                                reason = 'As fast as ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + ', with ' + savingsText(s.Savings) + (s.LowerQuality ? ', at lower quality.' : '.');
                                 actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }), 'raised');
                             } else if (s.Kind === 'HigherQuality') {
                                 title = label + ': ' + optionValueText(s.Setting, s.Value);

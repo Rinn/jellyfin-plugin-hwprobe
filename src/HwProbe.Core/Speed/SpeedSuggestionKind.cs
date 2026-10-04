@@ -14,4 +14,7 @@ public enum SpeedSuggestionKind
 
     /// <summary>A setting's higher-quality value still keeps up with real time.</summary>
     HigherQuality,
+
+    /// <summary>A setting's other value measured as fast and is more efficient: less CPU, memory, or GPU.</summary>
+    EfficientSetting,
 }
