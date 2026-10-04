@@ -32,6 +32,9 @@ public sealed record CapabilityReport(
     /// <summary>Gets how long the probe took in seconds; 0 for reports from before it was recorded.</summary>
     public double Seconds { get; init; }
 
+    /// <summary>Gets the software row: its tests and advice for the settings that still apply with no hardware backend; null for reports from before it was recorded, or a run limited to a device or backend.</summary>
+    public BackendReport? Software { get; init; }
+
     /// <summary>Gets the version of this HwProbe build, as reports record it.</summary>
     public static string CurrentHwProbeVersion { get; } = typeof(CapabilityReport).Assembly.GetName().Version?.ToString() ?? "unknown";
 }

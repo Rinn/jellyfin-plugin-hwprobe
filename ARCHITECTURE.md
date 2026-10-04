@@ -2,6 +2,11 @@
 
 Implementation notes for the engines, caches, and suggestions. How to build, test, and release is in `DEVELOPMENT.md`. The performance tests are called speed runs in the code.
 
+## Probes and advice
+
+- `ProbeEngine` opens each device, runs its smoke test, then its matrix (`MatrixCatalog.For`). Software runs `MatrixCatalog.Software` last, also when no device opens: BWDIF deinterlacing (`EncodingHelper.GetSwDeinterlaceFilter` takes the method with no filter check) and key-frame-only decoding for trickplay. A software test passes on exit 0 with its frames (`VerdictEvaluator.EvaluateSoftware`), as there is no hardware to confirm. A run limited to a device or backend skips it.
+- `SettingsAdvisor` turns each backend's results into advice for every option the Transcoding and Trickplay pages show for it; the software row (`CapabilityReport.Software`) gets the options shown for None. HEVC and AV1 encoding are advised off in software, as CPU encoding of them is slow. Allow subtitle extraction on the fly is advised on for every backend, so text subtitles reach clients instead of being burned in. Apply accepts the software advice when the server is set to None.
+
 ## Performance tests (speed runs)
 
 - `SpeedEngine` measures every chosen output (a codec at a player quality, or decode only) from every chosen input on each chosen backend and software, and reports each result as it finishes.

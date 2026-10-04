@@ -150,7 +150,7 @@ public sealed class ProbeEngineTests : IDisposable
         Assert.Equal(1, runner.Calls.Count(c => c.EndsWith("d3d11va=dx11:3", StringComparison.Ordinal)));
     }
 
-    /// <summary>A device that won't open is NotPresent after one probe, with nothing further launched.</summary>
+    /// <summary>A device that won't open is NotPresent after one probe, with nothing further launched on it.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
     public async Task FailedOpenPrunesAfterOneProbe()
@@ -177,7 +177,43 @@ public sealed class ProbeEngineTests : IDisposable
         var report = await RunAsync(StopStage.Matrix);
 
         Assert.Equal(BackendVerdict.DevicePresentPipelineBroken, Assert.Single(report.Backends).Verdict);
-        Assert.DoesNotContain(report.Probes, p => p.Stage == ProbeStage.Matrix);
+        Assert.DoesNotContain(report.Probes, p => p.Stage == ProbeStage.Matrix && p.Type != HwType.none);
+    }
+
+    /// <summary>With no device, software is still tested, and advised for the settings that apply without hardware.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task SoftwareIsTestedWithNoDevice()
+    {
+        _runner.Probe = i => i.Arguments.StartsWith("-v verbose", StringComparison.Ordinal)
+            ? EngineRunner.Exited(234, null, "Device creation failed: -12.\n")
+            : EngineRunner.Exited(0, 10, string.Empty);
+
+        var report = await RunAsync(StopStage.Matrix);
+
+        var software = Assert.IsType<BackendReport>(report.Software);
+        Assert.Equal(ProbeOutcome.Pass, software.Deinterlace["bwdif"]);
+        Assert.Equal(ProbeOutcome.Pass, software.Decode["h264_keyframes"]);
+        Assert.Contains(_runner.Calls, c => c.Contains("bwdif=0:-1:0", StringComparison.Ordinal));
+        Assert.Equal(SettingState.TurnOn, Assert.Single(software.Settings, a => a.Setting == "DeinterlaceMethod:bwdif").State);
+        Assert.Equal(SettingState.Optional, Assert.Single(software.Settings, a => a.Setting == "Trickplay:EnableKeyFrameOnlyExtraction").State);
+    }
+
+    /// <summary>A software test that exits without its frames fails; software has no hardware to confirm, so frames are the check.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task SoftwareTestWithoutFramesFails()
+    {
+        _runner.Probe = i => i.Arguments.StartsWith("-v verbose", StringComparison.Ordinal)
+            ? EngineRunner.Exited(234, null, "Device creation failed: -12.\n")
+            : EngineRunner.Exited(1, 0, "No such filter: 'bwdif'\n");
+
+        var report = await RunAsync(StopStage.Matrix);
+
+        var software = Assert.IsType<BackendReport>(report.Software);
+        Assert.NotEqual(ProbeOutcome.Pass, software.Deinterlace["bwdif"]);
+        var bwdif = Assert.Single(software.Settings, a => a.Setting == "DeinterlaceMethod:bwdif");
+        Assert.Equal((SettingState.LeaveOff, "Filter missing from ffmpeg"), (bwdif.State, bwdif.Note));
     }
 
     /// <summary>A clean exit without hardware frames is a software fallback, so the smoke probe fails.</summary>
@@ -293,7 +329,7 @@ public sealed class ProbeEngineTests : IDisposable
         var report = await RunAsync(StopStage.Matrix);
 
         Assert.Empty(report.Backends[0].Deinterlace);
-        Assert.All(report.Probes.Where(p => p.ProbeId.Contains("Deinterlace", StringComparison.Ordinal)), p => Assert.Equal(ProbeOutcome.Skipped, p.Outcome));
+        Assert.All(report.Probes.Where(p => p.Type != HwType.none && p.ProbeId.Contains("Deinterlace", StringComparison.Ordinal)), p => Assert.Equal(ProbeOutcome.Skipped, p.Outcome));
     }
 
     /// <summary>A codec Jellyfin won't hardware-decode is NotUsed even with no fixture to test it.</summary>

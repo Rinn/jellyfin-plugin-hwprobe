@@ -60,9 +60,31 @@ public sealed class SettingsAdvisorTests
                 "Enable hardware encoding", "Enable Intel Low-Power H.264 hardware encoder", "Enable Intel Low-Power HEVC hardware encoder",
                 "Allow encoding in HEVC format", "Allow encoding in AV1 format",
                 "Enable Tone mapping", "Enable VPP Tone mapping",
+                "Allow subtitle extraction on the fly",
                 "Enable hardware decoding", "Enable hardware accelerated MJPEG encoding", "Only generate images from key frames",
             ],
             labels);
+    }
+
+    /// <summary>Software advice covers the options Jellyfin's pages show with no hardware backend: HEVC and AV1 off, BWDIF and key frames from their tests, and subtitles extracted rather than burned in.</summary>
+    [Fact]
+    public void SoftwareAdvisesTheOptionsShownWithNoBackend()
+    {
+        var software = new BackendReport(HwType.none, string.Empty, BackendVerdict.Viable, PipelineTier.Unknown, new Dictionary<string, ProbeOutcome> { ["h264_keyframes"] = P }, new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome> { ["bwdif"] = ProbeOutcome.CodecUnsupported }, new Dictionary<string, ProbeOutcome>(), string.Empty);
+
+        var advice = SettingsAdvisor.For(software, _docker).Select(a => (a.Setting, a.State, a.Note));
+
+        Assert.Equal(
+            [
+                ("AllowHevcEncoding", SettingState.LeaveOff, "Slow on the CPU"),
+                ("AllowAv1Encoding", SettingState.LeaveOff, "Slow on the CPU"),
+                ("DeinterlaceMethod:bwdif", SettingState.LeaveOff, "Test failed"),
+                ("EnableSubtitleExtraction", SettingState.TurnOn, "Avoids burning in text subtitles"),
+                ("Trickplay:EnableHwAcceleration", SettingState.LeaveOff, "Not used with this backend"),
+                ("Trickplay:EnableHwEncoding", SettingState.LeaveOff, "Not used with this backend"),
+                ("Trickplay:EnableKeyFrameOnlyExtraction", SettingState.Optional, "Faster, but less accurate timing"),
+            ],
+            advice);
     }
 
     /// <summary>Passing tests turn options on; unsupported codecs and failed tests leave them off with a short reason.</summary>

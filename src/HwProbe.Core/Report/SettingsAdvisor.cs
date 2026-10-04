@@ -19,11 +19,13 @@ public static class SettingsAdvisor
     private const string TonemapSection = "Tone mapping";
     private const string TrickplaySection = "Trickplay";
     private const string DeinterlaceSection = "Deinterlacing";
+    private const string SubtitlesSection = "Subtitles";
     private const string EnhancedNvdec = "EnableEnhancedNvdecDecoder";
     private const string NativeDecoder = "PreferSystemNativeHwDecoder";
     private const string NotUsed = "Not used with this backend";
     private const string NotSupported = "Not supported by this GPU";
     private const string NotTested = "Not tested";
+    private const string MjpegLabel = "Enable hardware accelerated MJPEG encoding";
 
     // Every label the advisor gives, gathered from advice for a backend of each type with no results, plus the
     // backend and device settings that "Use this backend" changes.
@@ -36,7 +38,7 @@ public static class SettingsAdvisor
             ["QsvDevice"] = "QSV device",
         };
         var deinterlace = new Dictionary<string, ProbeOutcome> { ["any_bwdif"] = ProbeOutcome.Untested };
-        foreach (var type in Enum.GetValues<HwType>().Where(t => t != HwType.none))
+        foreach (var type in Enum.GetValues<HwType>())
         {
             var row = new BackendReport(type, string.Empty, BackendVerdict.Viable, PipelineTier.Unknown, new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), deinterlace, new Dictionary<string, ProbeOutcome>(), string.Empty);
             foreach (var advice in For(row, new AdviceContext(HostOs.Linux, InContainer: false, OpenclUnavailable: false)))
@@ -94,6 +96,11 @@ public static class SettingsAdvisor
         }
 
         var type = backend.Type;
+        if (type == HwType.none)
+        {
+            return Software(backend, context);
+        }
+
         var intel = type is HwType.qsv or HwType.vaapi;
         List<SettingAdvice> advice = [];
         foreach (var (label, codec, _) in _codecs.Where(c => c.Types.Contains(type)))
@@ -163,9 +170,39 @@ public static class SettingsAdvisor
             advice.Add(Advise(DeinterlaceSection, "DeinterlaceMethod:bwdif", "Deinterlacing method: BWDIF", bwdif.Value));
         }
 
+        advice.Add(SubtitleExtraction());
         advice.AddRange(Trickplay(backend, context, advice));
         return advice;
     }
+
+    /// <summary>Advice for the options Jellyfin's Transcoding page still shows with no hardware backend.</summary>
+    /// <param name="backend">The software row.</param>
+    /// <param name="context">Host facts.</param>
+    /// <returns>The advice in the page's order.</returns>
+    private static List<SettingAdvice> Software(BackendReport backend, AdviceContext context)
+    {
+        // Encoding HEVC or AV1 on the CPU is much slower than H.264, so a transcode that keeps up in H.264 may not.
+        const string Slow = "Slow on the CPU";
+        List<SettingAdvice> advice =
+        [
+            new(FormatSection, "AllowHevcEncoding", "Allow encoding in HEVC format", SettingState.LeaveOff, Slow),
+            new(FormatSection, "AllowAv1Encoding", "Allow encoding in AV1 format", SettingState.LeaveOff, Slow),
+            NoGpu(Advise(DeinterlaceSection, "DeinterlaceMethod:bwdif", "Deinterlacing method: BWDIF", Cell(backend.Deinterlace, "bwdif"))),
+            SubtitleExtraction(),
+        ];
+        advice.AddRange(Trickplay(backend, context, advice));
+        return advice;
+    }
+
+    /// <summary>Rewords a software failure that <see cref="Advise"/> would blame on the GPU.</summary>
+    /// <param name="advice">Software advice.</param>
+    /// <returns>The advice, saying the test failed where it named the GPU.</returns>
+    private static SettingAdvice NoGpu(SettingAdvice advice) => advice.Note == NotSupported ? advice with { Note = "Test failed" } : advice;
+
+    /// <summary>Advice for "Allow subtitle extraction on the fly", which applies with every backend.</summary>
+    /// <returns>Turn on: text subtitles are then sent to the client instead of burned into the video, which costs a transcode.</returns>
+    private static SettingAdvice SubtitleExtraction() =>
+        new(SubtitlesSection, "EnableSubtitleExtraction", "Allow subtitle extraction on the fly", SettingState.TurnOn, "Avoids burning in text subtitles");
 
     /// <summary>Advice for the Trickplay page's hardware options, which reuse the Transcoding page's settings.</summary>
     /// <param name="backend">The backend's results.</param>
@@ -175,24 +212,23 @@ public static class SettingsAdvisor
     private static IEnumerable<SettingAdvice> Trickplay(BackendReport backend, AdviceContext context, List<SettingAdvice> transcoding)
     {
         var type = backend.Type;
-        if (type == HwType.v4l2m2m)
+        if (type is HwType.v4l2m2m or HwType.none)
         {
             yield return new(TrickplaySection, "Trickplay:EnableHwAcceleration", "Enable hardware decoding", SettingState.LeaveOff, NotUsed);
-            yield return new(TrickplaySection, "Trickplay:EnableHwEncoding", "Enable hardware accelerated MJPEG encoding", SettingState.LeaveOff, NotUsed);
-            yield break;
+            yield return new(TrickplaySection, "Trickplay:EnableHwEncoding", MjpegLabel, SettingState.LeaveOff, NotUsed);
+        }
+        else
+        {
+            foreach (var hardware in HardwareTrickplay(backend, transcoding))
+            {
+                yield return hardware;
+            }
         }
 
-        yield return Advise(TrickplaySection, "Trickplay:EnableHwAcceleration", "Enable hardware decoding", Cell(backend.Decode, "h264"));
-
-        // The MJPEG encoder is only picked with the Transcoding page's hardware encoding on (EncodingHelper.GetMjpegEncoder).
-        const string MjpegLabel = "Enable hardware accelerated MJPEG encoding";
-        var mjpeg = backend.Encode.ContainsKey("mjpeg")
-            ? Advise(TrickplaySection, "Trickplay:EnableHwEncoding", MjpegLabel, Cell(backend.Encode, "mjpeg"))
-            : new(TrickplaySection, "Trickplay:EnableHwEncoding", MjpegLabel, type is HwType.nvenc or HwType.amf ? SettingState.LeaveOff : SettingState.NotTested, type is HwType.nvenc or HwType.amf ? NotUsed : NotTested);
-        var encoding = transcoding.Find(a => a.Setting == "EnableHardwareEncoding");
-        yield return mjpeg.State == SettingState.TurnOn && encoding?.State != SettingState.TurnOn
-            ? mjpeg with { State = SettingState.LeaveOff, Note = "Requires hardware encoding" }
-            : mjpeg;
+        if (type == HwType.v4l2m2m)
+        {
+            yield break;
+        }
 
         // Key-frame-only extraction quietly drops to software decoding on backends that can't do it.
         const string KeyFrameSetting = "Trickplay:EnableKeyFrameOnlyExtraction";
@@ -213,9 +249,29 @@ public static class SettingsAdvisor
 
         // Faster but less accurate timing, so a pass only says it's safe to choose.
         var keyFrames = Advise(TrickplaySection, KeyFrameSetting, KeyFrameLabel, Cell(backend.Decode, "h264_keyframes"));
+        keyFrames = type == HwType.none ? NoGpu(keyFrames) : keyFrames;
         yield return keyFrames.State == SettingState.TurnOn
             ? keyFrames with { State = SettingState.Optional, Note = "Faster, but less accurate timing" }
             : keyFrames;
+    }
+
+    /// <summary>Advice for the Trickplay page's hardware decoding and MJPEG encoding options.</summary>
+    /// <param name="backend">The backend's results.</param>
+    /// <param name="transcoding">The Transcoding page advice already given.</param>
+    /// <returns>The advice.</returns>
+    private static IEnumerable<SettingAdvice> HardwareTrickplay(BackendReport backend, List<SettingAdvice> transcoding)
+    {
+        var type = backend.Type;
+        yield return Advise(TrickplaySection, "Trickplay:EnableHwAcceleration", "Enable hardware decoding", Cell(backend.Decode, "h264"));
+
+        // The MJPEG encoder is only picked with the Transcoding page's hardware encoding on (EncodingHelper.GetMjpegEncoder).
+        var mjpeg = backend.Encode.ContainsKey("mjpeg")
+            ? Advise(TrickplaySection, "Trickplay:EnableHwEncoding", MjpegLabel, Cell(backend.Encode, "mjpeg"))
+            : new(TrickplaySection, "Trickplay:EnableHwEncoding", MjpegLabel, type is HwType.nvenc or HwType.amf ? SettingState.LeaveOff : SettingState.NotTested, type is HwType.nvenc or HwType.amf ? NotUsed : NotTested);
+        var encoding = transcoding.Find(a => a.Setting == "EnableHardwareEncoding");
+        yield return mjpeg.State == SettingState.TurnOn && encoding?.State != SettingState.TurnOn
+            ? mjpeg with { State = SettingState.LeaveOff, Note = "Requires hardware encoding" }
+            : mjpeg;
     }
 
     /// <summary>Names an option outside the settings list, where its heading isn't there to place it.</summary>

@@ -47,6 +47,23 @@ public static class VerdictEvaluator
         return expectation.ConfirmationStrings.Count == 0 ? ProbeOutcome.Untested : ProbeOutcome.Pass;
     }
 
+    /// <summary>Classifies a software transcode, which has no hardware to confirm.</summary>
+    /// <param name="result">The ffmpeg run.</param>
+    /// <param name="expectedFrames">Minimum final <c>frame=</c> count.</param>
+    /// <returns><see cref="ProbeOutcome.Pass"/> for exit 0 with enough frames; otherwise the failure class.</returns>
+    /// <exception cref="ArgumentException">The run never launched.</exception>
+    public static ProbeOutcome EvaluateSoftware(FfmpegRunResult result, long expectedFrames)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        RejectLaunchFailure(result);
+        if (result.Status == FfmpegRunStatus.TimedOut)
+        {
+            return ProbeOutcome.Timeout;
+        }
+
+        return result.ExitCode == 0 && result.Frames >= expectedFrames ? ProbeOutcome.Pass : ClassifyFailure(result.Stderr);
+    }
+
     /// <summary>Classifies a bare device open, judged by stderr alone.</summary>
     /// <param name="result">The run of <c>-v verbose -hide_banner -init_hw_device …</c>.</param>
     /// <param name="driverName">Driver name expected in stderr, as in upstream CheckVaapiDeviceByDriverName.</param>

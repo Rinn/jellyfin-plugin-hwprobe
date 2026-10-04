@@ -915,18 +915,18 @@
                     container.appendChild(line);
                 }
 
-                function renderSettings(container, viable, title) {
+                function renderSettings(container, choices, title) {
                     container.replaceChildren();
                     title.textContent = 'Settings';
-                    if (viable.length > 1) {
+                    if (choices.length > 1) {
                         const pick = themedSelect(container, 'Backend');
-                        viable.forEach((b, i) => {
-                            const option = el('option', (names[b.type] || b.type) + (viable.filter(o => o.type === b.type).length > 1 ? ' ' + b.device : ''));
+                        choices.forEach((b, i) => {
+                            const option = el('option', (names[b.type] || b.type) + (choices.filter(o => o.type === b.type).length > 1 ? ' ' + b.device : ''));
                             option.value = String(i);
                             option.selected = b === selected;
                             pick.appendChild(option);
                         });
-                        pick.addEventListener('change', () => { selected = viable[Number(pick.value)]; renderSettings(container, viable, title); });
+                        pick.addEventListener('change', () => { selected = choices[Number(pick.value)]; renderSettings(container, choices, title); });
                     } else {
                         title.textContent = 'Settings for ' + (names[selected.type] || selected.type);
                     }
@@ -964,9 +964,11 @@
                         }
                         row(table, [mark(a.state), a.label, resultCell(a.note, a.fix, 'secondaryText'), cell]);
                     }
-                    groupRow(table, 'Also tested');
-                    outcomeRow(table, 'Hardware deinterlacing', firstOutcome(selected.deinterlace));
-                    outcomeRow(table, 'Subtitle burn‑in', firstOutcome(selected.subtitles));
+                    if (selected.type !== 'none') {
+                        groupRow(table, 'Also tested');
+                        outcomeRow(table, 'Hardware deinterlacing', firstOutcome(selected.deinterlace));
+                        outcomeRow(table, 'Subtitle burn‑in', firstOutcome(selected.subtitles));
+                    }
                     container.appendChild(sortable(table, 'settings'));
                 }
 
@@ -975,7 +977,7 @@
 
                     const table = el('table', null, 'hwprobe-full');
                     row(table, [el('th', 'Backend'), el('th', 'Device'), el('th', 'Column'), el('th', 'Test'), el('th', 'Result'), el('th', 'Duration', 'hwprobe-num')]);
-                    for (const b of r.backends) {
+                    for (const b of r.backends.concat(r.software ? [r.software] : [])) {
                         for (const column of columns) {
                             for (const [key, outcome] of Object.entries(b[column] || {})) {
                                 const result = el('td');
@@ -1113,15 +1115,17 @@
                     renderNotes();
                     renderDetails(report);
 
-                    if (viable.length) {
-                        if (!selected || viable.indexOf(selected) === -1) {
-                            selected = viable.find(isConfigured) || viable[0];
+                    // Software first, as in Jellyfin's dropdown; a report from before software was tested has none.
+                    const choices = (report.software ? [report.software] : []).concat(viable);
+                    if (choices.length) {
+                        if (!selected || choices.indexOf(selected) === -1) {
+                            selected = choices.find(isConfigured) || viable[0] || choices[0];
                         }
                         const container = fold(settingsTab, 'Settings', true, null, 'recommended');
                         const title = container.firstElementChild.lastElementChild;
                         const body = el('div');
                         container.appendChild(body);
-                        renderSettings(body, viable, title);
+                        renderSettings(body, choices, title);
                     } else {
                         settingsTab.appendChild(el('p', 'No backend works on this server, so there are no hardware settings to advise.', 'secondaryText'));
                     }

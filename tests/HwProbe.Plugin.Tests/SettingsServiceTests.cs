@@ -1,3 +1,6 @@
+using Jellyfin.Plugin.HwProbe.Core.Devices;
+using Jellyfin.Plugin.HwProbe.Core.Model;
+using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Core.Speed;
 using Jellyfin.Plugin.HwProbe.Settings;
 using MediaBrowser.Model.Entities;
@@ -74,6 +77,24 @@ public sealed class SettingsServiceTests : IDisposable
                 new AppliedChange("AllowAv1Encoding", "true", "false") { Label = "Allow encoding in AV1 format" },
             ],
             result.Changes);
+    }
+
+    /// <summary>With software configured, the report's software advice is what can be applied; a report without it refuses.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task ApplyUsesSoftwareAdviceWhenSoftwareIsConfigured()
+    {
+        _harness.Saved.HardwareAccelerationType = HardwareAccelerationType.none;
+        _harness.Saved.EnableSubtitleExtraction = false;
+        Assert.Equal(ApplyOutcome.Rejected, (await ApplyAsync(("EnableSubtitleExtraction", true))).Outcome);
+
+        var software = new BackendReport(HwType.none, string.Empty, BackendVerdict.Viable, PipelineTier.Unknown, new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), string.Empty);
+        _harness.Report = _harness.Report! with { Software = software with { Settings = SettingsAdvisor.For(software, new AdviceContext(HostOs.Linux, InContainer: true, OpenclUnavailable: false)) } };
+        var result = await ApplyAsync(("EnableSubtitleExtraction", true), ("AllowAv1Encoding", false));
+
+        Assert.Equal(ApplyOutcome.Applied, result.Outcome);
+        Assert.True(_harness.Saved.EnableSubtitleExtraction);
+        Assert.False(_harness.Saved.AllowAv1Encoding);
     }
 
     /// <summary>A value the advice doesn't support, an untested option or an unknown setting is refused and nothing is saved.</summary>
