@@ -1626,7 +1626,7 @@
                     options('Accuracy', Object.entries(methods).map(([key, [, text]]) => [key, text]), speedMethod, v => { speedMethod = v; });
                     options('Repeats', repeatOptions, speedRepeats, v => { speedRepeats = Number(v); });
                     options('Earlier results', [['true', 'Reuse when the settings match'], ['false', 'Measure everything again']], String(speedReuse), v => { speedReuse = v === 'true'; }, 'Reuses a measurement from an earlier run with the same input, output, backend, accuracy, repeats, and ffmpeg, and the same values for the settings that affect it, so a repeated comparison completes faster.');
-                    options('Resources', [['false', 'Don\u2019t measure'], ['true', 'Measure CPU, memory, and GPU use']], String(speedResources), v => { speedResources = v === 'true'; }, 'Measures what one transcode on its own uses, shown in Test Results\u2019 Resources view.');
+                    options('Resources', [['false', 'Don\u2019t measure'], ['true', 'Measure CPU, memory, and GPU use']], String(speedResources), v => { speedResources = v === 'true'; }, 'CPU, memory, and GPU use of a single transcode.');
                     options('When the server starts transcoding', whenTranscodingOptions, speedWhenTranscoding, v => { speedWhenTranscoding = v; });
                     options('Time limit per measurement', timeLimitOptions, speedTimeLimit === null ? '' : speedTimeLimit, v => { speedTimeLimit = v === '' ? null : Number(v); }, 'A measurement that reaches the limit stops and reports what it measured.');
 
