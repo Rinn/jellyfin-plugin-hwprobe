@@ -167,7 +167,7 @@ internal static class HwProbeApp
 
                 var started = DateTimeOffset.UtcNow;
                 var backends = SpeedSuites.Backends(suite, type);
-                var steps = SpeedSuites.Steps(suite, Environment.ProcessorCount);
+                var steps = SpeedSuites.Steps(suite, Environment.ProcessorCount, hardware: type);
                 List<SpeedReport> reports = [];
                 foreach (var step in steps)
                 {

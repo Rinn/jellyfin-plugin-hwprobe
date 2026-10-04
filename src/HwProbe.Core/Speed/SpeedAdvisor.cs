@@ -129,7 +129,7 @@ public static class SpeedAdvisor
     private static IEnumerable<SpeedSuggestion> CompareSettings(IReadOnlyList<SpeedReport> runs, Func<SpeedResult, bool> configured, SpeedSettings server)
     {
         // Per setting and value: each output's speed, from every run that differs from another in that setting alone.
-        List<(string Key, string Value, string Other, string Test, string Label, double Gain, double Speed, bool Generated, IReadOnlyList<ResourceSaving> Savings, int? Streams, int? OtherStreams)> seen = [];
+        List<(string Key, string Value, string Other, string Test, string Label, double Gain, double Speed, bool Generated, IReadOnlyList<ResourceSaving> Savings, int? Streams, int? OtherStreams, bool ToneMaps)> seen = [];
         var withSettings = runs.Where(r => r.Settings is not null).ToList();
         for (var i = 0; i < withSettings.Count; i++)
         {
@@ -156,7 +156,7 @@ public static class SpeedAdvisor
                     if (b.Results.FirstOrDefault(r => r.Test == mine.Test && r.Type == mine.Type && r.Device == mine.Device && r.Input == mine.Input && r.Video == mine.Video && r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && !r.LowPowerDropped && configured(r)) is { } theirs
                         && (mine.Command is null || mine.Command != theirs.Command))
                     {
-                        seen.Add((key, _values[key](a.Settings!), _values[key](b.Settings!), mine.Test, Label(mine, a.Settings), Gain(mine, theirs), Speed(mine), IsGenerated(mine), ResourceComparison.Savings(mine, theirs), mine.Streams, theirs.Streams));
+                        seen.Add((key, _values[key](a.Settings!), _values[key](b.Settings!), mine.Test, Label(mine, a.Settings), Gain(mine, theirs), Speed(mine), IsGenerated(mine), ResourceComparison.Savings(mine, theirs), mine.Streams, theirs.Streams, a.Settings!.Tonemap || a.Settings.VppTonemap || a.Settings.VideoToolboxTonemap));
                     }
                 }
             }
@@ -186,8 +186,8 @@ public static class SpeedAdvisor
             var outputs = group.Select(s => s.Label).Distinct(StringComparer.Ordinal).ToList();
             var generated = group.All(s => s.Generated);
 
-            // Turning tone mapping off sends HDR colours to SDR players unconverted, which neither speed nor savings are worth.
-            var tonemapOff = key is "Tonemap" or "VppTonemap" or "VideoToolboxTonemap" && value == "false";
+            // Turning tone mapping off altogether sends HDR colours to SDR players unconverted, which neither speed nor savings are worth; switching from one method to another is fine.
+            var tonemapOff = key is "Tonemap" or "VppTonemap" or "VideoToolboxTonemap" && value == "false" && group.Any(s => !s.ToneMaps);
             if (gains.All(g => g > Noise))
             {
                 if (tonemapOff)

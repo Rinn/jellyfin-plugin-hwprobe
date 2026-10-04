@@ -646,12 +646,15 @@ suites:
       - { label: "MPEG-2 576i, Theora, Xvid AVI, Flash video, RealVideo, and WMV" }
   - key: tonemap
     name: Tone mapping
-    description: Encodes HDR video to H.264 with tone mapping on and off.
+    description: Encodes HDR video to H.264 with each tone-mapping method Jellyfin offers on this backend, and with tone mapping off.
     videos: [digital-animation-4k]
     outputs: [h264-8mbps]
+    # Jellyfin uses VPP tone mapping on Intel and VideoToolbox tone mapping on Apple when they're on, else the general method (OpenCL, CUDA, Metal, Vulkan, or software); EncodingHelper, v12.1. Each method step leaves the general one on, so software still tone maps.
     steps:
-      - { label: Tone mapping on, options: { Tonemap: "true" } }
-      - { label: Tone mapping off, options: { Tonemap: "false" } }
+      - { label: Tone mapping, options: { Tonemap: "true", VppTonemap: "false", VideoToolboxTonemap: "false" } }
+      - { label: VPP tone mapping, backends: [qsv, vaapi], options: { Tonemap: "true", VppTonemap: "true", VideoToolboxTonemap: "false" } }
+      - { label: VideoToolbox tone mapping, backends: [videotoolbox], options: { Tonemap: "true", VppTonemap: "false", VideoToolboxTonemap: "true" } }
+      - { label: Tone mapping off, options: { Tonemap: "false", VppTonemap: "false", VideoToolboxTonemap: "false" } }
   - key: threads
     name: Thread count
     description: Encodes H.264 and HEVC in software at each thread limit.

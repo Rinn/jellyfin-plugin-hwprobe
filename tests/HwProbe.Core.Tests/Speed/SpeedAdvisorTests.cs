@@ -105,6 +105,18 @@ public sealed class SpeedAdvisorTests
         Assert.DoesNotContain(advice, s => s.Kind == SpeedSuggestionKind.HigherQuality);
     }
 
+    /// <summary>Switching from VPP to the general tone-mapping method can be suggested; it still tone maps.</summary>
+    [Fact]
+    public void SwitchesToneMappingMethod()
+    {
+        const string Film = "live-action|h264-8mbps";
+        var vpp = Run(new SpeedSettings { Tonemap = true, VppTonemap = true }, Result(HwType.qsv, Film, 100) with { Command = "vpp" });
+        var opencl = Run(new SpeedSettings { Tonemap = true, VppTonemap = false }, Result(HwType.qsv, Film, 150) with { Command = "opencl" });
+
+        var faster = Assert.Single(SpeedAdvisor.Advise(opencl, [vpp, opencl], HwType.qsv, "/dev/dri/renderD128", new SpeedSettings { Tonemap = true, VppTonemap = true }), s => s.Kind == SpeedSuggestionKind.FasterSetting);
+        Assert.Equal(("VppTonemap", "false"), (faster.Setting, faster.Value));
+    }
+
     /// <summary>Outputs below real time on the configured backend are flagged, and marked when only test videos showed it.</summary>
     [Fact]
     public void FlagsOutputsThatFallBehind()

@@ -38,6 +38,15 @@ public sealed class SpeedSuitesTests
         Assert.Equal(2, SpeedSuites.Steps(Suite("lowpower"), 8, new SpeedSettings()).Count);
     }
 
+    /// <summary>Steps for another backend are left out: tone mapping offers VPP on Intel and VideoToolbox's on Apple.</summary>
+    [Fact]
+    public void StepsFollowTheBackend()
+    {
+        Assert.Equal(["Tone mapping", "VPP tone mapping", "Tone mapping off"], SpeedSuites.Steps(Suite("tonemap"), 8, hardware: HwType.qsv).Select(s => s.Label));
+        Assert.Equal(["Tone mapping", "VideoToolbox tone mapping", "Tone mapping off"], SpeedSuites.Steps(Suite("tonemap"), 8, hardware: HwType.videotoolbox).Select(s => s.Label));
+        Assert.Equal(["Tone mapping", "Tone mapping off"], SpeedSuites.Steps(Suite("tonemap"), 8, hardware: HwType.nvenc).Select(s => s.Label));
+    }
+
     /// <summary>A step's own videos replace the suite's; the rest keep the suite's.</summary>
     [Fact]
     public void StepsCanNameTheirOwnVideos()

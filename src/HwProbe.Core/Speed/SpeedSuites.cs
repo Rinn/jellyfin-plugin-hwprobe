@@ -14,10 +14,11 @@ public static class SpeedSuites
     /// <param name="suite">The suite.</param>
     /// <param name="processorCount">The server's logical CPU count, which bounds the thread limits.</param>
     /// <param name="server">The server's settings; when a suite varies one setting and none of its steps is the server's value, that value is added as a last step, since suggestions compare against it. Null leaves the steps as they are.</param>
+    /// <param name="hardware">The hardware backend the suite runs on, which leaves out steps for other backends; null keeps every step.</param>
     /// <returns>The runs.</returns>
-    public static IReadOnlyList<SuiteStep> Steps(CatalogSuite suite, int processorCount, SpeedSettings? server = null)
+    public static IReadOnlyList<SuiteStep> Steps(CatalogSuite suite, int processorCount, SpeedSettings? server = null, HwType? hardware = null)
     {
-        var steps = CatalogSteps(suite, processorCount);
+        var steps = CatalogSteps(suite, processorCount, hardware);
         var keys = steps.SelectMany(s => s.Options.Keys).Distinct(StringComparer.Ordinal).ToList();
         if (server is null || keys is not [var key] || steps.Any(s => !s.Options.ContainsKey(key)) || !SpeedAdvisor.Settings.Contains(key))
         {
@@ -70,13 +71,16 @@ public static class SpeedSuites
     /// <summary>Returns a suite's runs as the catalog defines them.</summary>
     /// <param name="suite">The suite.</param>
     /// <param name="processorCount">The server's logical CPU count, which bounds the thread limits.</param>
+    /// <param name="hardware">The hardware backend, or null to keep every step.</param>
     /// <returns>The runs.</returns>
-    private static IReadOnlyList<SuiteStep> CatalogSteps(CatalogSuite suite, int processorCount)
+    private static IReadOnlyList<SuiteStep> CatalogSteps(CatalogSuite suite, int processorCount, HwType? hardware)
     {
         ArgumentNullException.ThrowIfNull(suite);
         if (!suite.ThreadSteps)
         {
-            return [.. suite.Steps.Select(s => new SuiteStep(s.Label, s.Options, s.Videos ?? suite.Videos, s.Outputs ?? suite.Outputs))];
+            return [.. suite.Steps
+                .Where(s => s.Backends is null || hardware is null || s.Backends.Contains(hardware.Value))
+                .Select(s => new SuiteStep(s.Label, s.Options, s.Videos ?? suite.Videos, s.Outputs ?? suite.Outputs))];
         }
 
         // Auto, then doubling thread limits, then the CPU count itself; only limits the setting offers.

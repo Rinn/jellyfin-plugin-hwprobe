@@ -244,7 +244,7 @@ public sealed partial class ProbeService : IDisposable
         }
 
         var backends = SpeedSuites.Backends(suite, configured).Select(b => b.ToString()).ToList();
-        var runs = SpeedSuites.Steps(suite, Environment.ProcessorCount, ServerSpeedSettings())
+        var runs = SpeedSuites.Steps(suite, Environment.ProcessorCount, ServerSpeedSettings(), configured)
             .Select(step => ((string?)suite.Name, (string?)step.Label, new SpeedRequest(Catalog.Default.SuiteMethod.ToString(), step.Videos, step.Outputs)
             {
                 Backends = backends,
@@ -265,7 +265,7 @@ public sealed partial class ProbeService : IDisposable
         var configured = report is null ? ServerBackend().Type : PreferredBackend(report);
         return [.. Catalog.Default.Suites.Select(s =>
         {
-            var steps = SpeedSuites.Steps(s, Environment.ProcessorCount, ServerSpeedSettings());
+            var steps = SpeedSuites.Steps(s, Environment.ProcessorCount, ServerSpeedSettings(), configured);
             var backends = SpeedSuites.Backends(s, configured);
             return new SuiteInfo(
                 s.Key,
