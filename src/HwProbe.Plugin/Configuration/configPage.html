@@ -1448,6 +1448,8 @@
                         while (source.firstChild) {
                             line.appendChild(source.firstChild);
                         }
+                        // The format ends the first line, before a sample's credit.
+                        line.insertBefore(document.createTextNode(' (' + v.Input + ')'), line.querySelector('div'));
                         list.appendChild(line);
                     };
                     // In the Input menu's order: samples, the library video, then test videos.
@@ -1457,7 +1459,7 @@
                         const link = el('a', speedItem.Name, 'button-link');
                         link.href = '#/details?id=' + speedItem.Id + '&serverId=' + ApiClient.serverId();
                         line.appendChild(link);
-                        line.appendChild(el('div', libraryVideo.Input, 'hwprobe-small'));
+                        line.appendChild(document.createTextNode(' (' + libraryVideo.Input + ')'));
                         list.appendChild(line);
                     }
                     speedVideos.filter(v => !v.SourceUrl && chosenVideos.has(v.Key)).forEach(videoLine);
