@@ -89,7 +89,14 @@ public static class SpeedSuites
 
         limits.Add(processorCount);
         var values = limits.Select(n => n.ToString(CultureInfo.InvariantCulture)).Where(option.Takes).Distinct(StringComparer.Ordinal);
-        return [.. new[] { ("-1", "Auto") }.Concat(values.Select(v => (v, v + (v == "1" ? " thread" : " threads"))))
+
+        // Auto is the option's own first choice; limits are labelled from the suite's pattern.
+        if (option.Choices is not [var auto, ..])
+        {
+            throw new InvalidOperationException($"The catalog's {ThreadOption} option has no choices.");
+        }
+
+        return [.. new[] { (auto.Key, auto.Label) }.Concat(values.Select(v => (v, (v == "1" ? suite.ThreadLabelOne : suite.ThreadLabel).Replace("{n}", v, StringComparison.Ordinal))))
             .Select(v => new SuiteStep(v.Item2, new Dictionary<string, string>(StringComparer.Ordinal) { [ThreadOption] = v.Item1 }, suite.Videos, suite.Outputs))];
     }
 }

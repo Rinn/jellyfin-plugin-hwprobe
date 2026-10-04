@@ -30,6 +30,12 @@ public sealed class CatalogSuite
     /// <summary>Gets a value indicating whether the steps are the thread limits Auto, 1, 2, 4 ... up to the server's logical CPU count.</summary>
     public bool ThreadSteps { get; init; }
 
+    /// <summary>Gets how a thread-limit step is labelled, with <c>{n}</c> for the limit.</summary>
+    public string ThreadLabel { get; init; } = "{n}";
+
+    /// <summary>Gets how the one-thread step is labelled.</summary>
+    public string ThreadLabelOne { get; init; } = "1";
+
     /// <summary>Gets the steps, in order.</summary>
     public IReadOnlyList<CatalogSuiteStep> Steps { get; init; } = [];
 }

@@ -659,6 +659,8 @@ suites:
     outputs: [h264-8mbps, hevc-8mbps]
     backends: software
     threadSteps: true
+    threadLabel: "{n} threads"
+    threadLabelOne: 1 thread
   - key: lowpower
     name: Intel low power
     description: Encodes H.264 and HEVC on QSV with low power on and off.
