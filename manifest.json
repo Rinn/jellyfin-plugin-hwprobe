@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.16.0.0",
+        "changelog": "More test suites on real video: decoding, subtitle burn-in, deinterlacing (real 576i), VBR audio, legacy formats, and tone mapping by method. Legacy inputs: MPEG-2, Theora, Xvid AVI, Flash video, RealVideo, and WMV. Suggestions weigh CPU, memory, and GPU use, report the server's setting when it wins, guard concurrent streams, and can set an Internet streaming bitrate limit. Progress shows a bar with elapsed time. Fixes: HDR10 test clips are tagged correctly, and double-rate deinterlacing is measured against the field rate.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.16.0/hwprobe-plugin_0.16.0.0.zip",
+        "checksum": "bae6a6f550e610bf2f0731c460b6febf",
+        "timestamp": "2026-10-04T18:07:17Z"
+      },
+      {
         "version": "0.15.0.0",
         "changelog": "Test suites: encoder presets, quality ladder, tone mapping, thread count, Intel low power, and extras, run from Performance Tests and compared side by side in Test Results. QSV is preferred over VAAPI on the same Intel GPU. Low-power encoders that fall back to normal mode are noted, and missing ones skipped. Windows GPU usage no longer adds two decoders past 100%.",
         "targetAbi": "12.1.0.0",
