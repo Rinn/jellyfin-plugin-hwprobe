@@ -134,11 +134,30 @@ internal static class HwProbeApp
 
             var viable = report.Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device)).ToList();
             using var engine = new SpeedEngine(new FfmpegRunner(), new ArgumentSourceFactory(), platform, TimeProvider.System, EnvironmentRules.Standalone());
-            var progress = new DirectProgress<SpeedProgress>(p => stderr.Write(string.Create(CultureInfo.InvariantCulture, $"\rhwprobe: speed {p.Done} of {p.Total}")));
+
+            // A terminal gets one line rewritten in place; a log (Docker, a pipe) gets a line each time the status changes.
+            var lastStatus = string.Empty;
+            var progress = new DirectProgress<SpeedProgress>(p =>
+            {
+                var status = p.Preparing is { } preparing ? $"hwprobe: speed: {preparing}" : string.Create(CultureInfo.InvariantCulture, $"hwprobe: speed {p.Done} of {p.Total}");
+                if (status == lastStatus)
+                {
+                    return;
+                }
+
+                lastStatus = status;
+                stderr.Write(Console.IsErrorRedirected ? status + Environment.NewLine : "\r" + status);
+            });
+
             var measured = await engine.RunAsync(engineOptions, speed, viable, progress, cancellationToken);
 
             // A cancelled run still returns what it finished, so its output isn't cancelled with it.
             await stderr.WriteLineAsync(string.Empty.AsMemory(), CancellationToken.None);
+            if (measured.Cancelled)
+            {
+                await stderr.WriteLineAsync(string.Create(CultureInfo.InvariantCulture, $"hwprobe: speed test stopped after {measured.Results.Count} measurements: {StopReason.Describe()}").AsMemory(), CancellationToken.None);
+            }
+
             if (options.Format != OutputFormat.Json)
             {
                 await stdout.WriteAsync(SpeedRenderer.Render(measured).AsMemory(), CancellationToken.None);
