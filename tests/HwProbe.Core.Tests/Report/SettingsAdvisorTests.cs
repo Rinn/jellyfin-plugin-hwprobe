@@ -78,7 +78,7 @@ public sealed class SettingsAdvisorTests
     [InlineData("Enable Intel Low-Power HEVC hardware encoder", SettingState.LeaveOff, "Requires HuC firmware")]
     [InlineData("Allow encoding in AV1 format", SettingState.LeaveOff, "Not supported by this GPU")]
     [InlineData("Enable Tone mapping", SettingState.TurnOn, "")]
-    [InlineData("Enable VPP Tone mapping", SettingState.LeaveOff, "Test failed")]
+    [InlineData("Enable VPP Tone mapping", SettingState.LeaveOff, "Filter missing from ffmpeg")]
     public void AdviceFollowsResults(string label, SettingState state, string note)
     {
         var advice = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv, _docker), a => a.Label == label);

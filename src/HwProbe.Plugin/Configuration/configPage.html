@@ -600,7 +600,7 @@
 
                 function outcomeRow(table, label, outcome) {
                     const state = outcome === 'Pass' ? 'TurnOn' : (outcome ? 'LeaveOff' : 'NotTested');
-                    const reason = outcome === 'Pass' ? '' : (outcome ? 'Test failed' : 'Not tested');
+                    const reason = outcome === 'Pass' ? '' : !outcome ? 'Not tested' : ({ SoftwareFallback: 'Fell back to software', FilterUnsupported: 'Filter missing from ffmpeg', CodecUnsupported: 'Not supported by this GPU', Timeout: 'Timed out', DeviceUnavailable: 'Device didn\u2019t open', PermissionDenied: 'No permission to use the device', NotUsed: 'Software only' }[outcome] || 'Test failed');
                     row(table, [mark(state), label, el('td', reason, 'secondaryText'), el('td')]);
                 }
 
@@ -758,7 +758,9 @@
 
                     const list = el('div', null, 'hwprobe-change-list');
                     list.id = 'hwprobeChangeList';
-                    list.appendChild(el('div', nothing ? 'Every setting was changed since; nothing to revert.' : 'Revert sets:', 'secondaryText'));
+                    if (nothing) {
+                        list.appendChild(el('div', 'Every setting was changed since; nothing to revert.', 'secondaryText'));
+                    }
                     const table = el('table', null, 'hwprobe-full');
                     for (const r of rows) {
                         const c = r.change;
