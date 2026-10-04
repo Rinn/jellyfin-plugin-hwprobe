@@ -1483,9 +1483,21 @@
                                 title = label + ': ' + optionValueText(s.Setting, s.Value);
                                 reason = 'Better quality than ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + '; at most ' + percent + ' slower, still ' + s.Speed.toFixed(1) + '\u00d7 real time.';
                                 actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }), 'raised');
+                            } else if (s.Kind === 'NoChange') {
+                                title = label + ': ' + optionValueText(s.Setting, s.Value);
+                                reason = 'No other value measured is worth changing to (' + s.Others.map(o => optionValueText(s.Setting, o)).join(', ') + ').';
+                            }
+                            // The server's value already: it confirms the setting, with nothing to apply.
+                            if (s.Current) {
+                                title += ' (current setting)';
+                                actionButton = null;
                             }
                             text.appendChild(el('div', title));
                             text.appendChild(el('div', reason, 'secondaryText'));
+                            // What a change does to concurrent streams, where they were counted.
+                            if (s.Streams !== null && s.Streams !== undefined && s.OtherStreams !== null && s.OtherStreams !== undefined && s.Streams !== s.OtherStreams) {
+                                text.appendChild(el('div', 'Concurrent streams: ' + s.OtherStreams + ' with ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + ', ' + s.Streams + ' with ' + optionValueText(s.Setting, s.Value) + '.', 'secondaryText hwprobe-small'));
+                            }
                             text.appendChild(el('div', s.Outputs.join('; '), 'secondaryText hwprobe-small'));
                             if (option && option.Caveat) {
                                 text.appendChild(el('div', option.Caveat, 'secondaryText hwprobe-small'));

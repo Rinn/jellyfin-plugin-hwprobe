@@ -11,6 +11,9 @@ public static class SpeedAdvisor
     /// <summary>Differences smaller than this are run-to-run noise, as the page treats them.</summary>
     public const double Noise = 0.05;
 
+    /// <summary>The share of concurrent streams a better-quality value may cost and still be suggested.</summary>
+    public const double MaxStreamLoss = 0.25;
+
     /// <summary>A higher-quality value is suggested only when it keeps at least this multiple of real time, leaving room for a second stream or a busy server.</summary>
     public const double Headroom = 1.5;
 
@@ -126,7 +129,7 @@ public static class SpeedAdvisor
     private static IEnumerable<SpeedSuggestion> CompareSettings(IReadOnlyList<SpeedReport> runs, Func<SpeedResult, bool> configured, SpeedSettings server)
     {
         // Per setting and value: each output's speed, from every run that differs from another in that setting alone.
-        List<(string Key, string Value, string Other, string Test, string Label, double Gain, double Speed, bool Generated, IReadOnlyList<ResourceSaving> Savings)> seen = [];
+        List<(string Key, string Value, string Other, string Test, string Label, double Gain, double Speed, bool Generated, IReadOnlyList<ResourceSaving> Savings, int? Streams, int? OtherStreams)> seen = [];
         var withSettings = runs.Where(r => r.Settings is not null).ToList();
         for (var i = 0; i < withSettings.Count; i++)
         {
@@ -153,20 +156,30 @@ public static class SpeedAdvisor
                     if (b.Results.FirstOrDefault(r => r.Test == mine.Test && r.Type == mine.Type && r.Device == mine.Device && r.Input == mine.Input && r.Video == mine.Video && r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && !r.LowPowerDropped && configured(r)) is { } theirs
                         && (mine.Command is null || mine.Command != theirs.Command))
                     {
-                        seen.Add((key, _values[key](a.Settings!), _values[key](b.Settings!), mine.Test, Label(mine, a.Settings), Gain(mine, theirs), Speed(mine), IsGenerated(mine), ResourceComparison.Savings(mine, theirs)));
+                        seen.Add((key, _values[key](a.Settings!), _values[key](b.Settings!), mine.Test, Label(mine, a.Settings), Gain(mine, theirs), Speed(mine), IsGenerated(mine), ResourceComparison.Savings(mine, theirs), mine.Streams, theirs.Streams));
                     }
                 }
             }
         }
 
+        // Settings a comparison with the server's value covered, and those that produced a suggestion.
+        var compared = new HashSet<string>(StringComparer.Ordinal);
+        var suggested = new HashSet<string>(StringComparer.Ordinal);
         foreach (var group in seen.GroupBy(s => (s.Key, s.Value, s.Other)))
         {
-            // Only comparisons with the server's current value say what changing it would do.
+            // Only comparisons with the server's current value say what changing it would do; where the current value wins, that's said too.
             var (key, value, other) = group.Key;
-            if (value == _values[key](server) || other != _values[key](server))
+            var serverValue = _values[key](server);
+            var current = value == serverValue;
+            if (!current && other != serverValue)
             {
                 continue;
             }
+
+            compared.Add(key);
+            var streams = group.Where(s => s.Streams is not null && s.OtherStreams is not null).ToList();
+            var fewest = streams.Count > 0 ? streams.Min(s => s.Streams) : null;
+            var fewestOther = streams.Count > 0 ? streams.Min(s => s.OtherStreams) : null;
 
             var gains = group.Select(s => s.Gain).Order().ToList();
             var median = gains[gains.Count / 2];
@@ -182,7 +195,8 @@ public static class SpeedAdvisor
                     continue;
                 }
 
-                yield return new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, outputs) { Setting = key, Value = value, Others = [other], Gain = median, Speed = group.Min(s => s.Speed), TestVideosOnly = generated, LowerQuality = IsBetterQuality(key, other, value) };
+                suggested.Add(key);
+                yield return new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, outputs) { Setting = key, Value = value, Others = [other], Gain = median, Speed = group.Min(s => s.Speed), TestVideosOnly = generated, LowerQuality = IsBetterQuality(key, other, value), Current = current, Streams = fewest, OtherStreams = fewestOther };
                 continue;
             }
 
@@ -190,16 +204,46 @@ public static class SpeedAdvisor
             var savings = Common(group.Select(s => s.Savings));
             if (!tonemapOff && gains.All(g => g >= -Noise && g <= Noise) && savings.Count > 0)
             {
-                yield return new SpeedSuggestion(SpeedSuggestionKind.EfficientSetting, outputs) { Setting = key, Value = value, Others = [other], Gain = median, Speed = group.Min(s => s.Speed), TestVideosOnly = generated, LowerQuality = IsBetterQuality(key, other, value), Savings = savings };
+                suggested.Add(key);
+                yield return new SpeedSuggestion(SpeedSuggestionKind.EfficientSetting, outputs) { Setting = key, Value = value, Others = [other], Gain = median, Speed = group.Min(s => s.Speed), TestVideosOnly = generated, LowerQuality = IsBetterQuality(key, other, value), Savings = savings, Current = current, Streams = fewest, OtherStreams = fewestOther };
                 continue;
             }
 
             // Headroom is judged on real video only: a test video's speed overstates it.
+            // Better quality isn't worth losing many concurrent streams, so it's suggested only while most are kept.
             var real = group.Where(s => !s.Generated).ToList();
-            if (IsBetterQuality(key, value, other) && real.Count > 0 && real.Min(s => s.Speed) >= Headroom)
+            var keepsStreams = real.All(s => s.Streams is not { } mine || s.OtherStreams is not { } theirs || theirs == 0 || mine >= theirs * (1 - MaxStreamLoss));
+            if (IsBetterQuality(key, value, other) && real.Count > 0 && real.Min(s => s.Speed) >= Headroom && keepsStreams)
             {
-                yield return new SpeedSuggestion(SpeedSuggestionKind.HigherQuality, [.. real.Select(s => s.Label).Distinct(StringComparer.Ordinal)]) { Setting = key, Value = value, Others = [other], Gain = median, Speed = real.Min(s => s.Speed) };
+                suggested.Add(key);
+                var realStreams = real.Where(s => s.Streams is not null && s.OtherStreams is not null).ToList();
+                yield return new SpeedSuggestion(SpeedSuggestionKind.HigherQuality, [.. real.Select(s => s.Label).Distinct(StringComparer.Ordinal)])
+                {
+                    Setting = key,
+                    Value = value,
+                    Others = [other],
+                    Gain = median,
+                    Speed = real.Min(s => s.Speed),
+                    Current = current,
+                    Streams = realStreams.Count > 0 ? realStreams.Min(s => s.Streams) : null,
+                    OtherStreams = realStreams.Count > 0 ? realStreams.Min(s => s.OtherStreams) : null,
+                };
             }
+        }
+
+        // A setting compared with the server's value, where no other value is worth suggesting, says the current one is kept, so a suite always ends in a result.
+        foreach (var key in compared.Except(suggested, StringComparer.Ordinal))
+        {
+            var serverValue = _values[key](server);
+            var against = seen.Where(s => s.Key == key && s.Other == serverValue).ToList();
+            yield return new SpeedSuggestion(SpeedSuggestionKind.NoChange, [.. against.Select(s => s.Label).Distinct(StringComparer.Ordinal)])
+            {
+                Setting = key,
+                Value = serverValue,
+                Others = [.. against.Select(s => s.Value).Distinct(StringComparer.Ordinal)],
+                Current = true,
+                TestVideosOnly = against.All(s => s.Generated),
+            };
         }
     }
 

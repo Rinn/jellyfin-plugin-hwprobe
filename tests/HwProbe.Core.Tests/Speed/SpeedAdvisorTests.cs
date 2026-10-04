@@ -90,6 +90,21 @@ public sealed class SpeedAdvisorTests
         Assert.Equal(("AudioVbr", "true"), (quality.Setting, quality.Value));
     }
 
+    /// <summary>A server value that wins is reported as current, and a better-quality value that costs many concurrent streams isn't suggested.</summary>
+    [Fact]
+    public void ReportsTheCurrentValueAndGuardsStreams()
+    {
+        const string Film = "live-action|h264-8mbps";
+        var fast = Run(new SpeedSettings { EncoderPreset = "fast" }, Result(HwType.none, Film, 150) with { Command = "fast", Streams = 12 });
+        var medium = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.none, Film, 100) with { Command = "medium", Streams = 6 });
+
+        var advice = SpeedAdvisor.Advise(fast, [fast, medium], HwType.none, string.Empty, new SpeedSettings { EncoderPreset = "fast" });
+
+        var current = Assert.Single(advice, s => s.Kind == SpeedSuggestionKind.FasterSetting);
+        Assert.Equal(("fast", true, 12, 6), (current.Value, current.Current, current.Streams, current.OtherStreams));
+        Assert.DoesNotContain(advice, s => s.Kind == SpeedSuggestionKind.HigherQuality);
+    }
+
     /// <summary>Outputs below real time on the configured backend are flagged, and marked when only test videos showed it.</summary>
     [Fact]
     public void FlagsOutputsThatFallBehind()
@@ -121,7 +136,7 @@ public sealed class SpeedAdvisorTests
         var quality = Assert.Single(onFast, s => s.Kind == SpeedSuggestionKind.HigherQuality);
         Assert.Equal(("medium", 4.0), (quality.Value, quality.Speed!.Value));
         Assert.Equal([Film], quality.Outputs);
-        Assert.DoesNotContain(onFast, s => s.Setting == "EncodingThreadCount");
+        Assert.Equal(SpeedSuggestionKind.NoChange, Assert.Single(onFast, s => s.Setting == "EncodingThreadCount").Kind);
     }
 
     /// <summary>Several runs that suggest the same value become one suggestion, and only comparisons with the server's value count.</summary>
@@ -154,7 +169,7 @@ public sealed class SpeedAdvisorTests
         var medium = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.none, Film, 100));
         var fast = Run(new SpeedSettings { EncoderPreset = "fast" }, Result(HwType.none, Film, 150));
 
-        Assert.DoesNotContain(SpeedAdvisor.Advise(on, [on, off], HwType.none, string.Empty, new SpeedSettings { Tonemap = true }), s => s.Setting == "Tonemap");
+        Assert.Equal(SpeedSuggestionKind.NoChange, Assert.Single(SpeedAdvisor.Advise(on, [on, off], HwType.none, string.Empty, new SpeedSettings { Tonemap = true }), s => s.Setting == "Tonemap").Kind);
         Assert.True(Assert.Single(SpeedAdvisor.Advise(medium, [medium, fast], HwType.none, string.Empty, new SpeedSettings { EncoderPreset = "medium" }), s => s.Kind == SpeedSuggestionKind.FasterSetting).LowerQuality);
     }
 

@@ -17,4 +17,7 @@ public enum SpeedSuggestionKind
 
     /// <summary>A setting's other value measured as fast and is more efficient: less CPU, memory, or GPU.</summary>
     EfficientSetting,
+
+    /// <summary>Nothing compared with the server's value is worth changing to, so it's kept.</summary>
+    NoChange,
 }
