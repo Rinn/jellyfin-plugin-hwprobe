@@ -32,5 +32,7 @@ public static class ResourceMonitors
         {
             _ = Nvml.Available;
         }
+
+        _ = EnergyMeter.Available;
     }
 }

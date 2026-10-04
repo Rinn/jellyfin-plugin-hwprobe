@@ -731,7 +731,10 @@ suiteMethod: Confirm
 softwareName: Software
 
 # Measured resources, as suggestions name them.
-resourceNames: { Cpu: CPU, Memory: memory, Gpu: GPU, GpuMemory: GPU memory }
+resourceNames: { Cpu: CPU, Memory: memory, Gpu: GPU, GpuMemory: GPU memory, Power: power }
+
+# Energy meters' domains, as the Resource Usage view names them.
+powerDomains: { Cpu: CPU package, Gpu: GPU }
 
 # Server settings suggestions change that aren't run options; labels and caveats are jellyfin-web's (en-us.json).
 labels:

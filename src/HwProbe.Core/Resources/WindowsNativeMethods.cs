@@ -30,6 +30,25 @@ internal static partial class WindowsNativeMethods
         return (query, engines, PdhAddEnglishCounter(query, DedicatedUsage, 0, out var memory) == 0 ? memory : 0);
     }
 
+    /// <summary>Opens a query on one counter path.</summary>
+    /// <param name="path">The counter path, in English.</param>
+    /// <returns>The query and counter handles, or null when the counter isn't available.</returns>
+    public static (nint Query, nint Counter)? OpenCounter(string path)
+    {
+        if (PdhOpenQuery(null, 0, out var query) != 0)
+        {
+            return null;
+        }
+
+        if (PdhAddEnglishCounter(query, path, 0, out var counter) != 0)
+        {
+            _ = PdhCloseQuery(query);
+            return null;
+        }
+
+        return (query, counter);
+    }
+
     /// <summary>Collects every counter in a query once.</summary>
     /// <param name="query">The query.</param>
     /// <returns>True when the values were collected.</returns>

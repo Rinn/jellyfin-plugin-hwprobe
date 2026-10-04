@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Resources;
 
-/// <summary>Reads NVIDIA GPU 0's engine use through NVML (libnvidia-ml), for Linux, where NVIDIA's driver has no DRM fdinfo engine stats.</summary>
+/// <summary>Reads NVIDIA GPU 0's engine use through NVML (libnvidia-ml), for Linux, where NVIDIA's driver has no DRM fdinfo engine stats, and its energy use on Linux and Windows.</summary>
 /// <remarks>Whole-device figures: NVML's per-process figures are empty in containers, whose process ids NVML doesn't see (checked in Docker on WSL2 with an RTX 5080). Jellyfin uses CUDA device 0 (EncodingHelper).</remarks>
 internal static unsafe class Nvml
 {
@@ -45,6 +45,19 @@ internal static unsafe class Nvml
         return ((delegate* unmanaged<nint, Memory*, int>)f.Memory)(f.Device, &memory) == 0 ? (long)memory.Used : null;
     }
 
+    /// <summary>Returns GPU 0's energy used since the driver loaded.</summary>
+    /// <returns>Joules, or null when NVML isn't available, the GPU doesn't report it (before Volta), or the read fails.</returns>
+    public static double? TotalEnergyJoules()
+    {
+        if (_functions.Value is not { } f || f.Energy == 0)
+        {
+            return null;
+        }
+
+        ulong millijoules;
+        return ((delegate* unmanaged<nint, ulong*, int>)f.Energy)(f.Device, &millijoules) == 0 ? millijoules / 1000.0 : null;
+    }
+
     /// <summary>Loads libnvidia-ml and opens GPU 0.</summary>
     /// <returns>The functions, or null without NVIDIA's driver or a GPU.</returns>
     private static Functions? Load()
@@ -63,7 +76,9 @@ internal static unsafe class Nvml
     /// <returns>The functions, or null without NVIDIA's driver or a GPU.</returns>
     private static Functions? LoadLibrary()
     {
-        if (!OperatingSystem.IsLinux() || !NativeLibrary.TryLoad("libnvidia-ml.so.1", out var library))
+        // NVIDIA's driver installs nvml.dll in System32 on Windows.
+        var name = OperatingSystem.IsWindows() ? "nvml.dll" : OperatingSystem.IsLinux() ? "libnvidia-ml.so.1" : null;
+        if (name is null || !NativeLibrary.TryLoad(name, typeof(Nvml).Assembly, DllImportSearchPath.System32, out var library))
         {
             return null;
         }
@@ -75,10 +90,11 @@ internal static unsafe class Nvml
         var decoder = Export("nvmlDeviceGetDecoderUtilization");
         var rates = Export("nvmlDeviceGetUtilizationRates");
         var memory = Export("nvmlDeviceGetMemoryInfo");
+        var energy = Export("nvmlDeviceGetTotalEnergyConsumption");
         nint device;
         return init == null || handle == null || encoder == 0 || decoder == 0 || rates == 0 || init() != 0 || handle(0, &device) != 0
             ? null
-            : new Functions(device, encoder, decoder, rates, memory);
+            : new Functions(device, encoder, decoder, rates, memory, energy);
     }
 
     /// <summary>nvmlUtilization_t.</summary>
@@ -100,5 +116,6 @@ internal static unsafe class Nvml
     /// <param name="Decoder">nvmlDeviceGetDecoderUtilization.</param>
     /// <param name="Rates">nvmlDeviceGetUtilizationRates.</param>
     /// <param name="Memory">nvmlDeviceGetMemoryInfo, or 0 when missing.</param>
-    private sealed record Functions(nint Device, nint Encoder, nint Decoder, nint Rates, nint Memory);
+    /// <param name="Energy">nvmlDeviceGetTotalEnergyConsumption, in millijoules, or 0 when missing.</param>
+    private sealed record Functions(nint Device, nint Encoder, nint Decoder, nint Rates, nint Memory, nint Energy);
 }

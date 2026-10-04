@@ -61,6 +61,9 @@ public sealed partial class Catalog
     /// <summary>Gets labels for server settings suggestions change that aren't run options, keyed as suggestions name them, with any caveat under <c>{key}Caveat</c>.</summary>
     public required IReadOnlyDictionary<string, string> Labels { get; init; }
 
+    /// <summary>Gets what each energy meter's domain is called, keyed as <see cref="Resources.ResourceUsage.Joules"/> is.</summary>
+    public required IReadOnlyDictionary<string, string> PowerDomains { get; init; }
+
     /// <summary>Gets what inputs' codecs are called, keyed as ffmpeg names them.</summary>
     public required IReadOnlyDictionary<string, string> CodecNames { get; init; }
 
@@ -293,8 +296,8 @@ public sealed partial class Catalog
             throw new InvalidDataException("catalog.yaml: advice requires noise, maxStreamLoss, and resourceMargin between 0 and 1, and headroom of at least 1.");
         }
 
-        string[] resources = ["Cpu", "Memory", "Gpu", "GpuMemory"];
-        if (ResourceNames is null || resources.Any(r => !ResourceNames.ContainsKey(r)) || Labels is null || !Labels.ContainsKey(Speed.SpeedAdvisor.BitrateLimitKey) || !Labels.ContainsKey("ServerSetting") || !Labels.ContainsKey("ServerSettingAfter") || CodecNames is null || SoftwareName is null)
+        string[] resources = ["Cpu", "Memory", "Gpu", "GpuMemory", "Power"];
+        if (ResourceNames is null || resources.Any(r => !ResourceNames.ContainsKey(r)) || Labels is null || !Labels.ContainsKey(Speed.SpeedAdvisor.BitrateLimitKey) || !Labels.ContainsKey("ServerSetting") || !Labels.ContainsKey("ServerSettingAfter") || CodecNames is null || SoftwareName is null || PowerDomains is null)
         {
             throw new InvalidDataException($"catalog.yaml: resourceNames requires {string.Join(", ", resources)}, labels requires {Speed.SpeedAdvisor.BitrateLimitKey} ServerSetting, and ServerSettingAfter, and codecNames and softwareName are required.");
         }

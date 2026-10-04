@@ -240,6 +240,7 @@
                 // The catalog's thresholds, once it has loaded.
                 let advice = { Noise: 0 };
                 let resourceNames = {};
+                let powerDomains = {};
                 // Labels and caveats for server settings suggestions change that aren't run options.
                 let serverLabels = {};
                 // The server's Internet streaming bitrate limit, to mark a suggested limit already set.
@@ -265,6 +266,7 @@
                     names = Object.fromEntries([['none', c.SoftwareName]].concat(c.Backends.map(b => [b.Type, b.Name])));
                     advice = c.Advice;
                     resourceNames = c.ResourceNames;
+                    powerDomains = c.PowerDomains;
                     serverLabels = c.Labels;
                     order = c.Backends.map(b => b.Type);
                     platforms = Object.fromEntries(c.Backends.map(b => [b.Type, [b.Platforms, b.PlatformNote]]));
@@ -1855,9 +1857,9 @@
                     options('Earlier results', [['true', 'Reuse when the settings match'], ['false', 'Measure everything again']], String(speedReuse), v => { speedReuse = v === 'true'; }, 'Reuses a measurement from an earlier run with the same input, output, backend, accuracy, repeats, and ffmpeg, and the same values for the settings that affect it, so a repeated comparison completes faster.');
                     // What this server's platform can measure, and whose usage it is.
                     const coverage = {
-                        windows: 'CPU, memory, GPU, and GPU memory usage are measured per transcode.',
-                        linux: 'CPU and memory usage are measured per transcode. Intel and AMD GPU usage is measured per transcode on kernel 5.19 or newer (6.8 for Intel\u2019s xe driver). NVIDIA GPU usage covers the whole GPU, including any other work on it.',
-                        macos: 'CPU and memory usage are measured per transcode. GPU usage can\u2019t be measured on macOS.',
+                        windows: 'CPU, memory, GPU, and GPU memory usage are measured per transcode. Power is measured for the CPU package and NVIDIA GPUs where their meters exist, covering the whole device above its idle draw.',
+                        linux: 'CPU and memory usage are measured per transcode. Intel and AMD GPU usage is measured per transcode on kernel 5.19 or newer (6.8 for Intel\u2019s xe driver). NVIDIA GPU usage covers the whole GPU, including any other work on it. Power is measured for NVIDIA GPUs, Intel Arc GPUs, and the CPU package where the server may read their meters (not usually in a container), covering the whole device above its idle draw.',
+                        macos: 'CPU and memory usage are measured per transcode. GPU usage and power can\u2019t be measured on macOS.',
                     }[report && report.host ? report.host.os : ''];
                     // Test suites have their own Resource Usage and transcoding choices.
                     const shared = (target, resources, setResources, whenTranscoding, setWhenTranscoding) => {
@@ -1884,9 +1886,29 @@
                 }
 
                 // A result's cells in the Resource Usage view: CPU cores in use, peak memory, the busiest GPU engine, and peak GPU memory; each tooltip lists every figure.
-                function resourceCells(x, measuring) {
-                    const cells = [0, 1, 2, 3].map(() => el('td', null, 'hwprobe-num'));
-                    if (!x) {
+                // Each resource the view can show: whether a result has it, its sort value, and its text.
+                const resourceKinds = {
+                    Cpu: { has: r => r.cpuSeconds !== null && r.cpuSeconds !== undefined, value: r => r.cpuSeconds / r.seconds, text: v => v.toFixed(1) + ' cores' },
+                    Memory: { has: r => !!r.peakMemoryBytes, value: r => r.peakMemoryBytes, text: sizeText },
+                    Gpu: { has: r => gpuShares(r).length > 0, value: r => gpuShares(r)[0][1], text: (v, r) => gpuShares(r)[0][0] + ' ' + Math.round(Math.min(1, v) * 100) + '%' },
+                    GpuMemory: { has: r => !!r.peakGpuMemoryBytes, value: r => r.peakGpuMemoryBytes, text: sizeText },
+                    Power: { has: r => !!r.joules && Object.keys(r.joules).length > 0, value: r => totalWatts(r), text: v => Math.round(v) + ' W' },
+                };
+
+                // The resources any result of a run has: one this host can't measure (GPU on macOS, power without a readable meter) gets no column.
+                function measuredResources(results) {
+                    return Object.keys(resourceKinds).filter(k => results.some(x => x.resources && resourceKinds[k].has(x.resources)));
+                }
+
+                // Watts above idle over every energy meter.
+                function totalWatts(r) {
+                    return Object.keys(r.joules).reduce((sum, d) => sum + Math.max(0, r.joules[d] / r.seconds - ((r.idleWatts || {})[d] || 0)), 0);
+                }
+
+                // A result's cells in the Resource Usage view, one per measured resource; each tooltip lists every figure.
+                function resourceCells(x, measuring, kinds) {
+                    const cells = kinds.map(() => el('td', null, 'hwprobe-num'));
+                    if (!x || !cells.length) {
                         return cells;
                     }
                     if (x.pending) {
@@ -1895,19 +1917,14 @@
                         return cells;
                     }
                     const r = x.resources;
-                    const cores = r && r.cpuSeconds !== null && r.cpuSeconds !== undefined ? r.cpuSeconds / r.seconds : null;
-                    const busiest = r ? gpuShares(r)[0] : null;
-                    const values = [
-                        [cores, cores === null ? '\u2013' : cores.toFixed(1) + ' cores'],
-                        [r && r.peakMemoryBytes ? r.peakMemoryBytes : null, r && r.peakMemoryBytes ? sizeText(r.peakMemoryBytes) : '\u2013'],
-                        [busiest ? busiest[1] : null, busiest ? busiest[0] + ' ' + Math.round(Math.min(1, busiest[1]) * 100) + '%' : '\u2013'],
-                        [r && r.peakGpuMemoryBytes ? r.peakGpuMemoryBytes : null, r && r.peakGpuMemoryBytes ? sizeText(r.peakGpuMemoryBytes) : '\u2013'],
-                    ];
                     const title = resourceFacts(r).join('\n');
-                    cells.forEach((cell, i) => {
-                        cell.textContent = values[i][1];
-                        cell.dataset.sort = values[i][0] === null ? '' : String(values[i][0]);
-                        cell.title = title;
+                    kinds.forEach((k, i) => {
+                        const kind = resourceKinds[k];
+                        const has = r && kind.has(r);
+                        const value = has ? kind.value(r) : null;
+                        cells[i].textContent = has ? kind.text(value, r) : '\u2013';
+                        cells[i].dataset.sort = has ? String(value) : '';
+                        cells[i].title = title;
                     });
                     return cells;
                 }
@@ -1933,10 +1950,12 @@
                     if (r.gpuWholeDevice) {
                         facts.push('GPU figures cover the whole GPU, not this transcode alone');
                     }
+                    for (const d of Object.keys(r.joules || {})) {
+                        const idle = (r.idleWatts || {})[d] || 0;
+                        facts.push((powerDomains[d] || d) + ' ' + Math.round(Math.max(0, r.joules[d] / r.seconds - idle)) + ' W above idle (' + Math.round(idle) + ' W idle), whole device');
+                    }
                     return facts;
                 }
-
-                // Runs of the same command vary by a few percent, so smaller differences aren't shown as one.
 
                 // Which comparison rows are open, by test, kept across redraws.
                 const speedOpen = new Set();
@@ -1980,7 +1999,8 @@
                     const current = speedProgress && (speedProgress.Phase === 'Measuring' || speedProgress.Phase === 'Pausing') ? r.results.find(x => x.pending) : null;
                     const values = speedView === 'values';
                     const resources = speedView === 'resources';
-                    const per = resources ? 4 : values && counted ? 2 : 1;
+                    const kinds = resources ? measuredResources(r.results) : [];
+                    const per = resources ? Math.max(1, kinds.length) : values && counted ? 2 : 1;
                     // Per backend: concurrent streams kept up with (Values view, when counted), and one transcode's speed as a value, a bar or a share of the row's fastest.
                     const cellsFor = (x, best, baseline, fastest) => {
                         const tint = x && x === best && backends.length > 1 ? ' hwprobe-best' : '';
@@ -1988,7 +2008,7 @@
                         const speedCell = el('td', null, 'hwprobe-num' + tint);
                         const cells = per === 2 ? [streams, speedCell] : [speedCell];
                         if (resources) {
-                            return resourceCells(x, x === current);
+                            return kinds.length ? resourceCells(x, x === current, kinds) : [el('td', '\u2013', 'hwprobe-num secondaryText')];
                         }
 
                         if (!x) {
@@ -2072,7 +2092,7 @@
                             top.appendChild(th);
                         }
                         table.appendChild(top);
-                        const parts = resources ? ['Cpu', 'Memory', 'Gpu', 'GpuMemory'].map(k => (resourceNames[k] || k).replace(/^./, c => c.toUpperCase())) : ['Concurrent streams', 'Speed'];
+                        const parts = resources ? (kinds.length ? kinds.map(k => (resourceNames[k] || k).replace(/^./, c => c.toUpperCase())) : ['Not measured']) : ['Concurrent streams', 'Speed'];
                         row(table, [el('th', 'Input'), el('th', 'Output'), el('th', 'Size')].concat(backends.flatMap(() => parts.map(part => el('th', part, 'hwprobe-num secondaryText')))));
                     } else {
                         row(table, [el('th', 'Input'), el('th', 'Output'), el('th', 'Size')].concat(backends.map(b => el('th', columnName(b), 'hwprobe-num'))));
