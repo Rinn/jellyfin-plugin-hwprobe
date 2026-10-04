@@ -17,7 +17,7 @@ internal sealed class MacResourceMonitor : SampledResourceMonitor
 
     /// <inheritdoc/>
     public override ResourceUsage Finish(double seconds) =>
-        new(seconds, _cpu is { } cpu ? NativeMethods.MachSeconds(cpu) : null, _peak is { } peak ? (long)peak : null);
+        Failed ? new(seconds, null, null) : new(seconds, _cpu is { } cpu ? NativeMethods.MachSeconds(cpu) : null, _peak is { } peak ? (long)peak : null);
 
     /// <inheritdoc/>
     protected override void Sample()

@@ -29,11 +29,11 @@ public sealed class ProcFilesTests
     [Fact]
     public void DrmEnginesInNanoseconds()
     {
-        const string Fdinfo = "pos:\t0\nflags:\t02100002\ndrm-driver:\ti915\ndrm-client-id:\t7\ndrm-engine-render:\t1000 ns\ndrm-engine-video:\t250000000 ns\ndrm-engine-capacity-video:\t2\ndrm-total-system0:\t4 MiB\n";
+        const string Fdinfo = "pos:\t0\nflags:\t02100002\ndrm-driver:\ti915\ndrm-pdev:\t0000:00:02.0\ndrm-client-id:\t7\ndrm-engine-render:\t1000 ns\ndrm-engine-video:\t250000000 ns\ndrm-engine-capacity-video:\t2\ndrm-total-system0:\t4 MiB\n";
 
         var client = ProcFiles.Drm(Fdinfo)!;
 
-        Assert.Equal("7", client.Id);
+        Assert.Equal("0000:00:02.0/7", client.Id);
         Assert.Equal(new Dictionary<string, long> { ["render"] = 1000, ["video"] = 250_000_000 }, client.Nanoseconds);
     }
 

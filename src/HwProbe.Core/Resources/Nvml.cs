@@ -36,6 +36,20 @@ internal static unsafe class Nvml
     /// <returns>The functions, or null without NVIDIA's driver or a GPU.</returns>
     private static Functions? Load()
     {
+        try
+        {
+            return LoadLibrary();
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Loads libnvidia-ml and opens GPU 0, letting a broken library's exceptions through.</summary>
+    /// <returns>The functions, or null without NVIDIA's driver or a GPU.</returns>
+    private static Functions? LoadLibrary()
+    {
         if (!OperatingSystem.IsLinux() || !NativeLibrary.TryLoad("libnvidia-ml.so.1", out var library))
         {
             return null;

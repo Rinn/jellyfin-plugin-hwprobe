@@ -24,6 +24,11 @@ public sealed class FfmpegRunner : IFfmpegRunner
     {
         ArgumentNullException.ThrowIfNull(invocation);
 
+        if (invocation.MeasureResources)
+        {
+            ResourceMonitors.Prepare();
+        }
+
         using var process = new Process { StartInfo = CreateStartInfo(invocation) };
         var stopwatch = Stopwatch.StartNew();
         try

@@ -48,11 +48,12 @@ public static class ProcFiles
 
     /// <summary>Returns a DRM client's engine counters from <c>/proc/[pid]/fdinfo/[fd]</c> (kernel drm-usage-stats).</summary>
     /// <param name="fdinfo">The file's text.</param>
-    /// <returns>The client id, busy nanoseconds by engine (i915, amdgpu), and busy and total cycles by engine (xe); null when the descriptor isn't a DRM client.</returns>
+    /// <returns>The client, keyed by device and client id, with busy nanoseconds by engine (i915, amdgpu) and busy and total cycles by engine (xe); null when the descriptor isn't a DRM client.</returns>
     public static DrmClient? Drm(string fdinfo)
     {
         ArgumentNullException.ThrowIfNull(fdinfo);
         string? client = null;
+        var device = string.Empty;
         var nanoseconds = new Dictionary<string, long>(StringComparer.Ordinal);
         var cycles = new Dictionary<string, (long Busy, long Total)>(StringComparer.Ordinal);
         foreach (var raw in fdinfo.Split('\n'))
@@ -68,6 +69,11 @@ public static class ProcFiles
             if (key == "drm-client-id")
             {
                 client = value;
+            }
+            else if (key == "drm-pdev")
+            {
+                // Client ids are only unique per device on some kernels.
+                device = value;
             }
             else if (key.StartsWith("drm-engine-", StringComparison.Ordinal) && !key.StartsWith("drm-engine-capacity-", StringComparison.Ordinal) && long.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var ns))
             {
@@ -85,6 +91,6 @@ public static class ProcFiles
             }
         }
 
-        return client is null ? null : new DrmClient(client, nanoseconds, cycles);
+        return client is null ? null : new DrmClient(device.Length > 0 ? device + "/" + client : client, nanoseconds, cycles);
     }
 }

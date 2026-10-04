@@ -13,7 +13,7 @@ public static class GpuEngineCounters
         ArgumentNullException.ThrowIfNull(instance);
         const string Pid = "pid_";
         const string Type = "_engtype_";
-        var end = instance.IndexOf('_', Pid.Length);
+        var end = instance.Length > Pid.Length ? instance.IndexOf('_', Pid.Length) : -1;
         var type = instance.LastIndexOf(Type, StringComparison.Ordinal);
         return instance.StartsWith(Pid, StringComparison.Ordinal) && end > Pid.Length && type > end
             && int.TryParse(instance.AsSpan(Pid.Length, end - Pid.Length), NumberStyles.None, CultureInfo.InvariantCulture, out var pid)

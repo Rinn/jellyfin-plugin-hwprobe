@@ -44,6 +44,11 @@ internal sealed class LinuxResourceMonitor : SampledResourceMonitor
             gpu = _nvmlSeconds.Where(e => e.Value > 0).ToDictionary(StringComparer.Ordinal);
         }
 
+        if (Failed)
+        {
+            return new ResourceUsage(seconds, null, null);
+        }
+
         return new ResourceUsage(seconds, _ticks is { } ticks ? (double)ticks / _ticksPerSecond : null, _peak) { GpuSeconds = gpu.Count > 0 ? gpu : null, GpuWholeDevice = whole };
     }
 

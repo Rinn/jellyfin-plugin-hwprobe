@@ -15,6 +15,8 @@ public sealed class GpuEngineCountersTests
     [InlineData("pid_1234_luid_0x00000000_0x0000C2F3_phys_0_eng_3_engtype_VideoDecode", 1234, "VideoDecode")]
     [InlineData("pid_8_luid_0x00000000_0x0000C2F3_phys_0_eng_0_engtype_3D", 8, "3D")]
     [InlineData("_Total", -1, "")]
+    [InlineData("", -1, "")]
+    [InlineData("pid", -1, "")]
     [InlineData("pid_x_luid_0_engtype_3D", -1, "")]
     public void ParsesInstanceNames(string instance, int pid, string engine)
     {

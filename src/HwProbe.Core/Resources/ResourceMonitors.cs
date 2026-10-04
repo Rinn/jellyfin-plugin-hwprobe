@@ -11,9 +11,26 @@ public static class ResourceMonitors
     public static IResourceMonitor? Start(Process process)
     {
         ArgumentNullException.ThrowIfNull(process);
-        return OperatingSystem.IsWindowsVersionAtLeast(5, 1, 2600) ? new WindowsResourceMonitor(process)
-            : OperatingSystem.IsLinux() ? new LinuxResourceMonitor(process.Id, NativeMethods.ClockTicks())
-            : OperatingSystem.IsMacOS() ? new MacResourceMonitor(process.Id)
-            : null;
+        try
+        {
+            return OperatingSystem.IsWindowsVersionAtLeast(5, 1, 2600) ? new WindowsResourceMonitor(process)
+                : OperatingSystem.IsLinux() ? new LinuxResourceMonitor(process.Id, NativeMethods.ClockTicks())
+                : OperatingSystem.IsMacOS() ? new MacResourceMonitor(process.Id)
+                : null;
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException or System.ComponentModel.Win32Exception)
+        {
+            // A missing system library leaves the figures out; the run goes on.
+            return null;
+        }
+    }
+
+    /// <summary>Loads what a monitor needs before the process starts, so the first sample isn't spent on it (NVML's start-up can take a second).</summary>
+    public static void Prepare()
+    {
+        if (OperatingSystem.IsLinux())
+        {
+            _ = Nvml.Available;
+        }
     }
 }

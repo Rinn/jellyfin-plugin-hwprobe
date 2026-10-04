@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.Versioning;
 using Meziantou.Framework.Win32;
@@ -8,17 +9,28 @@ namespace Jellyfin.Plugin.HwProbe.Core.Resources;
 [SupportedOSPlatform("windows5.1.2600")]
 internal sealed class WindowsResourceMonitor : SampledResourceMonitor
 {
-    private readonly JobObject _job = new();
+    private readonly JobObject? _job;
     private readonly int _pid;
-    private readonly (nint Query, nint Counter)? _gpu;
     private readonly Dictionary<string, long> _engines = new(StringComparer.Ordinal);
+    private (nint Query, nint Counter)? _gpu;
 
     /// <summary>Initializes a new instance of the <see cref="WindowsResourceMonitor"/> class and starts sampling.</summary>
     /// <param name="process">The started process.</param>
     public WindowsResourceMonitor(Process process)
     {
-        _job.AssignProcess(process);
         _pid = process.Id;
+        var job = new JobObject();
+        try
+        {
+            job.AssignProcess(process);
+            _job = job;
+        }
+        catch (Win32Exception)
+        {
+            // The process already exited, or a parent job refuses nesting: no CPU or memory figures, the run goes on.
+            job.Dispose();
+        }
+
         _gpu = WindowsNativeMethods.OpenGpuQuery();
         Begin();
     }
@@ -26,16 +38,29 @@ internal sealed class WindowsResourceMonitor : SampledResourceMonitor
     /// <inheritdoc/>
     public override ResourceUsage Finish(double seconds)
     {
-        var basic = _job.GetBasicAccountingInformation();
-        var memory = _job.GetMemoryAccountingInformation();
+        double? cpu = null;
+        long? peak = null;
+        if (_job is { } job)
+        {
+            try
+            {
+                var basic = job.GetBasicAccountingInformation();
+                cpu = (basic.TotalUserTime + basic.TotalKernelTime).TotalSeconds;
+                peak = (long)job.GetMemoryAccountingInformation().PeakJobMemoryUsed;
+            }
+            catch (Win32Exception)
+            {
+                // Leaves the figures out rather than failing the measurement.
+            }
+        }
 
         // Running Time is in 100-nanosecond units and starts at zero with the process; an engine type can have several instances (one per adapter or engine).
-        var gpu = _engines
+        var gpu = Failed ? [] : _engines
             .Where(e => GpuEngineCounters.Parse(e.Key) is not null)
             .GroupBy(e => GpuEngineCounters.Parse(e.Key)!.Value.Engine, StringComparer.Ordinal)
             .Where(g => g.Any(e => e.Value > 0))
             .ToDictionary(g => g.Key, g => g.Sum(e => e.Value / 1e7), StringComparer.Ordinal);
-        return new ResourceUsage(seconds, (basic.TotalUserTime + basic.TotalKernelTime).TotalSeconds, (long)memory.PeakJobMemoryUsed) { GpuSeconds = gpu.Count > 0 ? gpu : null };
+        return new ResourceUsage(seconds, cpu, peak) { GpuSeconds = gpu.Count > 0 ? gpu : null };
     }
 
     /// <inheritdoc/>
@@ -58,15 +83,17 @@ internal sealed class WindowsResourceMonitor : SampledResourceMonitor
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
     {
+        // The base waits for a running sample, so the query isn't closed under it.
         base.Dispose(disposing);
         if (disposing)
         {
-            _job.Dispose();
+            _job?.Dispose();
         }
 
         if (_gpu is { } gpu)
         {
             WindowsNativeMethods.CloseQuery(gpu.Query);
+            _gpu = null;
         }
     }
 }
