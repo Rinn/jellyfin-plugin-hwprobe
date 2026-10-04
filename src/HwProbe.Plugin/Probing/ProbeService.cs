@@ -28,6 +28,9 @@ public sealed partial class ProbeService : IDisposable
     /// <summary>The most speed runs kept in the history.</summary>
     internal const int SpeedHistoryLimit = 50;
 
+    /// <summary>The accuracy suites measure at: it counts concurrent streams, which the step comparisons use, without Thorough's length.</summary>
+    private const SpeedMethod SuiteMethod = SpeedMethod.Confirm;
+
     private readonly Func<IProgress<ProbeProgress>, CancellationToken, Task<CapabilityReport>> _probe;
     private readonly Func<bool> _isTranscoding;
     private readonly string _latestPath;
@@ -240,7 +243,7 @@ public sealed partial class ProbeService : IDisposable
 
         var backends = SpeedSuites.Backends(suite, configured).Select(b => b.ToString()).ToList();
         var runs = SpeedSuites.Steps(suite, Environment.ProcessorCount)
-            .Select(step => ((string?)suite.Name, (string?)step.Label, new SpeedRequest("confirm", step.Videos, step.Outputs)
+            .Select(step => ((string?)suite.Name, (string?)step.Label, new SpeedRequest(SuiteMethod.ToString(), step.Videos, step.Outputs)
             {
                 Backends = backends,
                 Options = step.Options,
@@ -258,13 +261,20 @@ public sealed partial class ProbeService : IDisposable
     {
         var report = await LatestJsonAsync(cancellationToken) is { } json ? ReportStore.Deserialize(json) : null;
         var configured = report is null ? ServerBackend().Type : PreferredBackend(report);
-        return [.. Catalog.Default.Suites.Select(s => new SuiteInfo(
-            s.Key,
-            s.Name,
-            s.Description,
-            [.. SpeedSuites.Steps(s, Environment.ProcessorCount).Select(step => step.Label)],
-            SpeedSuites.Backends(s, configured),
-            report is not null && SpeedSuites.Offered(s, report, configured)))];
+        return [.. Catalog.Default.Suites.Select(s =>
+        {
+            var steps = SpeedSuites.Steps(s, Environment.ProcessorCount);
+            var backends = SpeedSuites.Backends(s, configured);
+            return new SuiteInfo(
+                s.Key,
+                s.Name,
+                s.Description,
+                [.. steps.Select(step => step.Label)],
+                backends,
+                report is not null && SpeedSuites.Offered(s, report, configured),
+                steps.Sum(step => step.Videos.Count * step.Outputs.Count * backends.Count),
+                SuiteMethod);
+        })];
     }
 
     /// <summary>Pauses or resumes the running speed run; a pause takes effect when the current measurement finishes.</summary>
