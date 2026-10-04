@@ -19,6 +19,8 @@ templates:
     width: 1920
     height: 1080
     audio: 5.1 AAC
+    # ffmpeg's testsrc2 (ffmpeg-filters, "testsrc").
+    description: Synthetic pattern of colour bars, a scrolling gradient, and a timestamp
   sampleVideo: &sampleVideo
     frameRate: 24
     width: 1920
@@ -89,6 +91,25 @@ videos:
       file: sample_live_action.webm
       seconds: 10.1
       piece: { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/1/10/Tears_of_Steel_in_4k_-_Official_Blender_Foundation_release.webm/Tears_of_Steel_in_4k_-_Official_Blender_Foundation_release.webm.1080p.vp9.webm", headerLength: 530, start: 131614236, length: 2131288, sha256: 0da88a6b1572b095bac20cb490485652feee5ab7fc45e82438174871ce657e96 }
+  - <<: *sampleVideo
+    key: drama
+    name: Live action
+    frameRate: 25
+    height: 1080
+    audio: stereo Opus
+    sample:
+      title: Допрос (Interrogation)
+      credit: Допрос (Interrogation), Пайза, CC BY 3.0, via Wikimedia Commons
+      holder: Пайза
+      license: https://creativecommons.org/licenses/by/3.0/
+      licenseName: CC BY 3.0
+      source: https://commons.wikimedia.org/wiki/File:%D0%9A%D0%BE%D1%80%D0%BE%D1%82%D0%BA%D0%BE%D0%BC%D0%B5%D1%82%D1%80%D0%B0%D0%B6%D0%BD%D1%8B%D0%B9_%D1%84%D0%B8%D0%BB%D1%8C%D0%BC_%22%D0%94%D0%BE%D0%BF%D1%80%D0%BE%D1%81%22_(Short_Film).webm
+    # 8:23 to 8:33 of Commons' 1080p VP9 transcode: close-ups, then a street.
+    clip:
+      <<: *sampleClip
+      file: sample_drama.webm
+      seconds: 10
+      piece: { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/4/4a/%D0%9A%D0%BE%D1%80%D0%BE%D1%82%D0%BA%D0%BE%D0%BC%D0%B5%D1%82%D1%80%D0%B0%D0%B6%D0%BD%D1%8B%D0%B9_%D1%84%D0%B8%D0%BB%D1%8C%D0%BC_%22%D0%94%D0%BE%D0%BF%D1%80%D0%BE%D1%81%22_%28Short_Film%29.webm/%D0%9A%D0%BE%D1%80%D0%BE%D1%82%D0%BA%D0%BE%D0%BC%D0%B5%D1%82%D1%80%D0%B0%D0%B6%D0%BD%D1%8B%D0%B9_%D1%84%D0%B8%D0%BB%D1%8C%D0%BC_%22%D0%94%D0%BE%D0%BF%D1%80%D0%BE%D1%81%22_%28Short_Film%29.webm.1080p.vp9.webm", headerLength: 933, start: 136593918, length: 3795482, sha256: ac4e027267ca925e411bf63503a8502a33f5475fd124474117d1a1e6c2d814cb }
   - <<: *sampleVideo
     key: digital-animation
     name: 3D animation

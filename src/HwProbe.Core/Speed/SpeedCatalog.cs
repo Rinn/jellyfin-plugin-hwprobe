@@ -118,6 +118,7 @@ public static class SpeedCatalog
         {
             Audio = video.Audio,
             Origin = origin,
+            Description = video.Description,
             Credit = video.Sample?.Credit,
             CreditHolder = video.Sample?.Holder,
             HolderUrl = video.Sample?.HolderUrl is { } site ? new Uri(site) : null,
@@ -125,7 +126,7 @@ public static class SpeedCatalog
             LicenseUrl = video.Sample is null ? null : new Uri(video.Sample.License),
             LicenseName = video.Sample?.LicenseName,
             SourceUrl = video.Sample is null ? null : new Uri(video.Sample.Source),
-            ArticleUrl = video.Sample is null ? null : new Uri(video.Sample.Article),
+            ArticleUrl = video.Sample?.Article is { } article ? new Uri(article) : null,
         };
     }
 }

@@ -20,6 +20,9 @@ public sealed record SpeedVideo(string Key, string Name, FixtureSpec? Fixture, f
     /// <summary>Gets where it comes from, e.g. <c>Generated</c> or <c>10 MB download</c>.</summary>
     public string Origin { get; init; } = string.Empty;
 
+    /// <summary>Gets what a generated video's picture shows, or null.</summary>
+    public string? Description { get; init; }
+
     /// <summary>Gets the credit a sample's licence requires, or null.</summary>
     public string? Credit { get; init; }
 
