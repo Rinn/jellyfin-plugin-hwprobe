@@ -169,11 +169,13 @@ internal static class HwProbeApp
                 var backends = SpeedSuites.Backends(suite, type);
                 var steps = SpeedSuites.Steps(suite, Environment.ProcessorCount, hardware: type);
                 List<SpeedReport> reports = [];
-                foreach (var step in steps)
+
+                // A stop between steps ends the suite there; what finished is still printed, so these writes aren't cancelled with it.
+                foreach (var step in steps.TakeWhile(_ => !cancellationToken.IsCancellationRequested))
                 {
                     var settings = step.Options.Aggregate(speed.Settings, (current, option) => SpeedSettingsOptions.Apply(current, option.Key, option.Value) ?? current);
-                    await stderr.WriteLineAsync(string.Create(CultureInfo.InvariantCulture, $"hwprobe: {suite.Name}: {step.Label}, {reports.Count + 1} of {steps.Count}").AsMemory(), cancellationToken);
-                    var stepReport = await engine.RunAsync(engineOptions, speed with { Videos = step.Videos, Outputs = step.Outputs, Settings = settings, Backends = backends, LowPowerUnsupported = lowPower }, viable, progress, cancellationToken);
+                    await stderr.WriteLineAsync(string.Create(CultureInfo.InvariantCulture, $"hwprobe: {suite.Name}: {step.Label}, {reports.Count + 1} of {steps.Count}").AsMemory(), CancellationToken.None);
+                    var stepReport = await engine.RunAsync(engineOptions, speed with { Videos = step.Videos, Outputs = step.Outputs, Settings = settings, Backends = step.HardwareOnly ? [.. backends.Where(b => b != HwType.none)] : backends, LowPowerUnsupported = lowPower }, viable, progress, cancellationToken);
                     reports.Add(stepReport with { Suite = suite.Name, SuiteStep = step.Label, SuiteStartedUtc = started });
                     if (stepReport.Cancelled)
                     {
@@ -182,9 +184,9 @@ internal static class HwProbeApp
                 }
 
                 await stderr.WriteLineAsync(string.Empty.AsMemory(), CancellationToken.None);
-                if (reports[^1].Cancelled)
+                if (reports.Count < steps.Count)
                 {
-                    await stderr.WriteLineAsync(string.Create(CultureInfo.InvariantCulture, $"hwprobe: {suite.Name} stopped during step {reports.Count} of {steps.Count}: {StopReason.Describe()}").AsMemory(), CancellationToken.None);
+                    await stderr.WriteLineAsync(string.Create(CultureInfo.InvariantCulture, $"hwprobe: {suite.Name} stopped after {reports.Count(r => !r.Cancelled)} of {steps.Count} steps: {StopReason.Describe()}").AsMemory(), CancellationToken.None);
                 }
 
                 if (options.Format != OutputFormat.Json)

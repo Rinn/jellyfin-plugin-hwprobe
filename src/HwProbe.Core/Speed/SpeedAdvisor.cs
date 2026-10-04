@@ -359,7 +359,7 @@ public static class SpeedAdvisor
     /// <param name="a">The result.</param>
     /// <param name="b">The one it's compared with.</param>
     /// <returns>For example 0.2 for 20% faster.</returns>
-    private static double Gain(SpeedResult a, SpeedResult b) => (a.Fps!.Value / b.Fps!.Value) - 1;
+    private static double Gain(SpeedResult a, SpeedResult b) => (Speed(a) / Speed(b)) - 1;
 
     /// <summary>Returns a result's speed as a multiple of real time.</summary>
     /// <param name="r">The result.</param>

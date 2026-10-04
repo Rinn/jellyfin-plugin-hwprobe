@@ -129,6 +129,20 @@ public sealed class SpeedAdvisorTests
         Assert.DoesNotContain(SpeedAdvisor.Advise(fine, [fine], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.BitrateLimit);
     }
 
+    /// <summary>Double-rate deinterlacing is compared by speed against its doubled real time, not by its doubled frame count.</summary>
+    [Fact]
+    public void ComparesDoubleRateBySpeed()
+    {
+        const string Film = "sports-576i|h264-8mbps";
+        var single = Run(new SpeedSettings { Bwdif = true }, Result(HwType.none, Film, 50) with { Command = "single" });
+        var doubled = Run(new SpeedSettings { Bwdif = true, DoubleRate = true }, Result(HwType.none, Film, 80) with { Command = "double", FrameRate = 50 });
+
+        var advice = SpeedAdvisor.Advise(doubled, [single, doubled], HwType.none, string.Empty, new SpeedSettings { Bwdif = true });
+
+        Assert.DoesNotContain(advice, s => s.Setting == "DoubleRate" && s.Value == "true" && s.Kind == SpeedSuggestionKind.FasterSetting);
+        Assert.Equal("false", Assert.Single(advice, s => s.Setting == "DoubleRate" && s.Kind == SpeedSuggestionKind.FasterSetting).Value);
+    }
+
     /// <summary>Outputs below real time on the configured backend are flagged, and marked when only test videos showed it.</summary>
     [Fact]
     public void FlagsOutputsThatFallBehind()

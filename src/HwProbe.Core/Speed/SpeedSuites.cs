@@ -80,7 +80,7 @@ public static class SpeedSuites
         {
             return [.. suite.Steps
                 .Where(s => s.Backends is null || hardware is null || s.Backends.Contains(hardware.Value))
-                .Select(s => new SuiteStep(s.Label, s.Options, s.Videos ?? suite.Videos, s.Outputs ?? suite.Outputs))];
+                .Select(s => new SuiteStep(s.Label, s.Options, s.Videos ?? suite.Videos, s.Outputs ?? suite.Outputs) { HardwareOnly = s.Backends is not null })];
         }
 
         // Auto, then doubling thread limits, then the CPU count itself; only limits the setting offers.

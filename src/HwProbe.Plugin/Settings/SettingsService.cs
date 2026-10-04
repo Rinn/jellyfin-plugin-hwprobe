@@ -163,7 +163,16 @@ public sealed class SettingsService : IDisposable
                     return Refuse($"{change.Setting} = {change.Value} isn't suggested by the performance tests.");
                 }
 
-                return await WriteAsync(_read(), [setting], HistoryKind.Apply, user, cancellationToken);
+                // A limit the admin set lower already keeps streams within what the backend handles; raising it isn't the suggestion's to make.
+                var options = _read();
+                if (StreamingSettings.IsKnown(setting.Setting)
+                    && options.Streaming.RemoteClientBitrateLimit is > 0 and var limit
+                    && limit <= int.Parse(setting.Value, System.Globalization.CultureInfo.InvariantCulture))
+                {
+                    return Refuse("A bitrate limit at or below the suggested one is already set.");
+                }
+
+                return await WriteAsync(options, [setting], HistoryKind.Apply, user, cancellationToken);
             },
             cancellationToken);
     }

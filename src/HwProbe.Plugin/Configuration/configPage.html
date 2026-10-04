@@ -1504,8 +1504,13 @@
                                 const mbps = Number(s.Value) / 1e6;
                                 title = (serverLabels[s.Setting] || s.Setting) + ': ' + mbps + ' Mbps';
                                 reason = 'Higher qualities fall behind real time on ' + backendName(s.Type) + '; ' + mbps + ' Mbps keeps up at ' + s.Speed.toFixed(1) + '\u00d7.';
-                                s.Current = remoteLimit !== null && remoteLimit > 0 && remoteLimit <= Number(s.Value);
-                                actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }), 'raised');
+                                // The server's own limit: the same one is current; a stricter one already keeps streams within it.
+                                s.Current = remoteLimit === Number(s.Value);
+                                if (remoteLimit > 0 && remoteLimit < Number(s.Value)) {
+                                    reason += ' A stricter limit of ' + remoteLimit / 1e6 + ' Mbps is already set.';
+                                } else {
+                                    actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }), 'raised');
+                                }
                                 if (serverLabels[s.Setting + 'Caveat']) {
                                     caveat = serverLabels[s.Setting + 'Caveat'];
                                 }
@@ -1538,7 +1543,7 @@
                             row(table, [text, cell]);
                         }
                         section.appendChild(table);
-                        section.appendChild(el('div', 'Settings are compared between saved runs that differ in that setting alone. Software is never suggested over a working hardware backend. Better quality is suggested only while it keeps ' + advice.Headroom + '\u00d7 real time on real video and at least ' + Math.round((1 - advice.MaxStreamLoss) * 100) + '% of the concurrent streams.', 'fieldDescription'));
+                        section.appendChild(el('div', 'Settings are compared between saved runs that differ in that setting alone. Software is never suggested over a working hardware backend.' + (advice.Headroom ? ' Better quality is suggested only while it keeps ' + advice.Headroom + '\u00d7 real time on real video and at least ' + Math.round((1 - advice.MaxStreamLoss) * 100) + '% of the concurrent streams.' : ''), 'fieldDescription'));
                     }, () => {});
                     return div;
                 }
@@ -2014,7 +2019,7 @@
                             speedCell.textContent = speedText;
                         }
                         if (baseline && speed) {
-                            speedCell.appendChild(el('span', ' ' + speedChange(x.fps, baseline.fps), 'hwprobe-small secondaryText'));
+                            speedCell.appendChild(el('span', ' ' + speedChange(x.fps / (x.frameRate || 1), baseline.fps / (baseline.frameRate || 1)), 'hwprobe-small secondaryText'));
                         }
                         const n = footnote(x.note);
                         if (n) {

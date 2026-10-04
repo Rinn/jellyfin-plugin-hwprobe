@@ -245,13 +245,17 @@ public sealed partial class ProbeService : IDisposable
 
         var backends = SpeedSuites.Backends(suite, configured).Select(b => b.ToString()).ToList();
         var runs = SpeedSuites.Steps(suite, Environment.ProcessorCount, ServerSpeedSettings(), configured)
-            .Select(step => ((string?)suite.Name, (string?)step.Label, new SpeedRequest(Catalog.Default.SuiteMethod.ToString(), step.Videos, step.Outputs)
+            .Select(step =>
             {
-                Backends = backends,
-                Options = step.Options,
-                MeasureResources = request.MeasureResources,
-                WhenTranscoding = request.WhenTranscoding,
-            }, step.Videos.Count * step.Outputs.Count * backends.Count))
+                List<string> stepBackends = [.. backends.Where(b => !step.HardwareOnly || b != nameof(HwType.none))];
+                return ((string?)suite.Name, (string?)step.Label, new SpeedRequest(Catalog.Default.SuiteMethod.ToString(), step.Videos, step.Outputs)
+                {
+                    Backends = stepBackends,
+                    Options = step.Options,
+                    MeasureResources = request.MeasureResources,
+                    WhenTranscoding = request.WhenTranscoding,
+                }, step.Videos.Count * step.Outputs.Count * stepBackends.Count);
+            })
             .ToList();
         return await StartRunsAsync(runs, request.WhenTranscoding, cancellationToken);
     }
@@ -274,7 +278,7 @@ public sealed partial class ProbeService : IDisposable
                 [.. steps.Select(step => step.Label)],
                 backends,
                 report is not null && SpeedSuites.Offered(s, report, configured),
-                steps.Sum(step => step.Videos.Count * step.Outputs.Count * backends.Count),
+                steps.Sum(step => step.Videos.Count * step.Outputs.Count * backends.Count(b => !step.HardwareOnly || b != HwType.none)),
                 Catalog.Default.SuiteMethod,
                 s.Note);
         })];
