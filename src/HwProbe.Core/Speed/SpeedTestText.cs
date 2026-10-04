@@ -1,4 +1,5 @@
 using System.Globalization;
+using Jellyfin.Plugin.HwProbe.Core.Data;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 
@@ -92,21 +93,5 @@ public static class SpeedTestText
     /// <summary>Names a codec as Jellyfin's settings do.</summary>
     /// <param name="codec">The codec as Jellyfin stores it.</param>
     /// <returns>e.g. <c>H.264</c>.</returns>
-    internal static string CodecName(string codec) => codec switch
-    {
-        "h264" => "H.264",
-        "hevc" => "HEVC",
-        "av1" => "AV1",
-        "vp9" => "VP9",
-        "vp8" => "VP8",
-        "mpeg2video" => "MPEG-2",
-        "mpeg4" => "MPEG-4",
-        "vc1" => "VC-1",
-        "theora" => "Theora",
-        "flv1" => "Sorenson Spark",
-        "rv30" => "RealVideo 3",
-        "rv40" => "RealVideo 4",
-        "wmv3" => "WMV 9",
-        _ => codec.ToUpperInvariant(),
-    };
+    internal static string CodecName(string codec) => Catalog.Default.CodecNames.TryGetValue(codec, out var name) ? name : codec.ToUpperInvariant();
 }

@@ -156,7 +156,7 @@ internal sealed class HwProbeCommand
             result.GetValue(_verbose))
         {
             DiagnosticsPath = result.GetValue(_diagnostics),
-            Speed = result.GetValue(_speed) is { } method ? SpeedFrom(result, method) : result.GetValue(_suite) is not null ? SpeedFrom(result, SpeedMethod.Confirm) : null,
+            Speed = result.GetValue(_speed) is { } method ? SpeedFrom(result, method) : result.GetValue(_suite) is not null ? SpeedFrom(result, Catalog.Default.SuiteMethod) : null,
             Suite = result.GetValue(_suite),
             SpeedJsonPath = result.GetValue(_speedJson),
             SpeedFilePath = result.GetValue(_speedFile) is { } file ? Path.GetFullPath(file) : null,

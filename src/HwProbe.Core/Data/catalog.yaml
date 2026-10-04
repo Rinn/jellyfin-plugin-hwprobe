@@ -709,6 +709,28 @@ defaultWhenTranscoding: Pause
 # Whether runs measure resource usage when the page or CLI doesn't say. Only the single copy is sampled, every 200 ms.
 defaultMeasureResources: true
 
+# Thresholds the suggestions, the page, and the CLI judge measurements by.
+advice:
+  # Runs of the same command vary by a few percent, so smaller differences count as alike.
+  noise: 0.05
+  # A better-quality value is suggested only while it keeps this multiple of real time on real video,
+  headroom: 1.5
+  # and loses no more than this share of concurrent streams.
+  maxStreamLoss: 0.25
+  # A resource counts as saved, or as costing more, from this share's difference.
+  resourceMargin: 0.10
+
+# Test suites count concurrent streams, which their comparisons use, without Thorough's length.
+suiteMethod: Confirm
+
+softwareName: Software
+
+# Measured resources, as suggestions name them.
+resourceNames: { Cpu: CPU, Memory: memory, Gpu: GPU, GpuMemory: GPU memory }
+
+# Input codecs as the page and CLI name them, keyed by ffmpeg's codec name; others are shown upper-cased.
+codecNames: { h264: H.264, hevc: HEVC, av1: AV1, vp9: VP9, vp8: VP8, mpeg2video: MPEG-2, mpeg4: MPEG-4, vc1: VC-1, theora: Theora, flv1: Sorenson Spark, rv30: RealVideo 3, rv40: RealVideo 4, wmv3: WMV 9 }
+
 # Seconds per measurement; no value for no limit.
 timeLimits:
   - { label: No limit }

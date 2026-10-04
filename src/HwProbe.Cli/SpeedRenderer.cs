@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Speed;
 
@@ -8,9 +9,6 @@ namespace Jellyfin.Plugin.HwProbe.Cli;
 /// <summary>Renders a speed report as plain text: a summary per transcode, then a table.</summary>
 internal static class SpeedRenderer
 {
-    // Runs of the same command vary by a few percent, so smaller differences aren't shown as one.
-    private const double Noise = 0.05;
-
     private static readonly string[] _headers = ["TYPE", "DEVICE", "TEST", "COMPARED", "STREAMS", "SPEED", "FPS", "CHANGE", "NOTE"];
 
     /// <summary>Renders the report.</summary>
@@ -131,6 +129,6 @@ internal static class SpeedRenderer
         }
 
         var change = (value / baseline) - 1;
-        return Math.Abs(change) < Noise ? "same" : change.ToString("+0%;-0%", CultureInfo.InvariantCulture);
+        return Math.Abs(change) < Catalog.Default.Advice.Noise ? "same" : change.ToString("+0%;-0%", CultureInfo.InvariantCulture);
     }
 }

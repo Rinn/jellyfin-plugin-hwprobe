@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Resources;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
@@ -6,7 +7,6 @@ namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 public static class ResourceComparison
 {
     // Below these, a difference is sampling noise rather than a saving.
-    private const double Margin = 0.10;
     private const double MinCores = 0.05;
     private const double MinGpuShare = 0.02;
     private const long MinBytes = 16L * 1024 * 1024;
@@ -45,12 +45,12 @@ public static class ResourceComparison
                 continue;
             }
 
-            if (mine > theirs * (1 + Margin) && mine - theirs > floor)
+            if (mine > theirs * (1 + Catalog.Default.Advice.ResourceMargin) && mine - theirs > floor)
             {
                 return [];
             }
 
-            if (mine < theirs * (1 - Margin) && theirs - mine > floor)
+            if (mine < theirs * (1 - Catalog.Default.Advice.ResourceMargin) && theirs - mine > floor)
             {
                 savings.Add(new ResourceSaving(resource, 1 - (mine / theirs)));
             }

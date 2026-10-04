@@ -46,6 +46,21 @@ public sealed partial class Catalog
     /// <summary>Gets a value indicating whether a run measures resource usage when the request doesn't say.</summary>
     public bool DefaultMeasureResources { get; init; }
 
+    /// <summary>Gets the thresholds measurements are judged by.</summary>
+    public required CatalogAdvice Advice { get; init; }
+
+    /// <summary>Gets the accuracy test suites measure at.</summary>
+    public required SpeedMethod SuiteMethod { get; init; }
+
+    /// <summary>Gets what the page calls software encoding, the <c>none</c> backend.</summary>
+    public required string SoftwareName { get; init; }
+
+    /// <summary>Gets what the page calls each measured resource, keyed as <see cref="Speed.ResourceSaving.Resource"/> is, in sentence case.</summary>
+    public required IReadOnlyDictionary<string, string> ResourceNames { get; init; }
+
+    /// <summary>Gets what inputs' codecs are called, keyed as ffmpeg names them.</summary>
+    public required IReadOnlyDictionary<string, string> CodecNames { get; init; }
+
     /// <summary>Gets the backends, in the order of Jellyfin's dropdown.</summary>
     public required IReadOnlyList<CatalogBackend> Backends { get; init; }
 

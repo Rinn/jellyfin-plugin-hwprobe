@@ -8,15 +8,6 @@ namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 /// <remarks>Software is never suggested over hardware: a GPU encoder draws less power for the same work.</remarks>
 public static class SpeedAdvisor
 {
-    /// <summary>Differences smaller than this are run-to-run noise, as the page treats them.</summary>
-    public const double Noise = 0.05;
-
-    /// <summary>The share of concurrent streams a better-quality value may cost and still be suggested.</summary>
-    public const double MaxStreamLoss = 0.25;
-
-    /// <summary>A higher-quality value is suggested only when it keeps at least this multiple of real time, leaving room for a second stream or a busy server.</summary>
-    public const double Headroom = 1.5;
-
     /// <summary>The settings a run records, by catalog option key, with the value it used; Audio and BurnIn describe the client, not the server, so they're left out.</summary>
     private static readonly Dictionary<string, Func<SpeedSettings, string>> _values = new(StringComparer.Ordinal)
     {
@@ -43,6 +34,15 @@ public static class SpeedAdvisor
         ["DeinterlaceMethod"] = s => s.Bwdif ? "bwdif" : "yadif",
         ["DoubleRate"] = s => Flag(s.DoubleRate),
     };
+
+    /// <summary>Gets the share under which two speeds count as alike.</summary>
+    public static double Noise => Catalog.Default.Advice.Noise;
+
+    /// <summary>Gets the share of concurrent streams a better-quality value may cost and still be suggested.</summary>
+    public static double MaxStreamLoss => Catalog.Default.Advice.MaxStreamLoss;
+
+    /// <summary>Gets the multiple of real time a better-quality value must keep on real video.</summary>
+    public static double Headroom => Catalog.Default.Advice.Headroom;
 
     /// <summary>Gets the catalog option keys a suggestion can set.</summary>
     public static IReadOnlyCollection<string> Settings => _values.Keys;

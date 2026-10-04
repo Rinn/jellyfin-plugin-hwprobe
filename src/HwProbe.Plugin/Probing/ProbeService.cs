@@ -28,9 +28,6 @@ public sealed partial class ProbeService : IDisposable
     /// <summary>The most speed runs kept in the history.</summary>
     internal const int SpeedHistoryLimit = 250;
 
-    /// <summary>The accuracy suites measure at: it counts concurrent streams, which the step comparisons use, without Thorough's length.</summary>
-    private const SpeedMethod SuiteMethod = SpeedMethod.Confirm;
-
     private readonly Func<IProgress<ProbeProgress>, CancellationToken, Task<CapabilityReport>> _probe;
     private readonly Func<bool> _isTranscoding;
     private readonly string _latestPath;
@@ -248,7 +245,7 @@ public sealed partial class ProbeService : IDisposable
 
         var backends = SpeedSuites.Backends(suite, configured).Select(b => b.ToString()).ToList();
         var runs = SpeedSuites.Steps(suite, Environment.ProcessorCount, ServerSpeedSettings())
-            .Select(step => ((string?)suite.Name, (string?)step.Label, new SpeedRequest(SuiteMethod.ToString(), step.Videos, step.Outputs)
+            .Select(step => ((string?)suite.Name, (string?)step.Label, new SpeedRequest(Catalog.Default.SuiteMethod.ToString(), step.Videos, step.Outputs)
             {
                 Backends = backends,
                 Options = step.Options,
@@ -278,7 +275,7 @@ public sealed partial class ProbeService : IDisposable
                 backends,
                 report is not null && SpeedSuites.Offered(s, report, configured),
                 steps.Sum(step => step.Videos.Count * step.Outputs.Count * backends.Count),
-                SuiteMethod,
+                Catalog.Default.SuiteMethod,
                 s.Note);
         })];
     }

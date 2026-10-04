@@ -237,6 +237,9 @@
                 let defaultMethod = null;
                 let gpuEngines = {};
                 let links = {};
+                // The catalog's thresholds, once it has loaded.
+                let advice = { Noise: 0 };
+                let resourceNames = {};
                 let names = {};
                 let order = [];
                 let platforms = {};
@@ -254,7 +257,10 @@
                     repeatOptions = c.Repeats.map(o => [o.Value, o.Label]);
                     runOptions = c.Options;
                     timeLimitOptions = c.TimeLimits.map(o => [o.Value === undefined || o.Value === null ? '' : o.Value, o.Label]);
-                    names = Object.fromEntries(c.Backends.map(b => [b.Type, b.Name]));
+                    // Software is the none backend, named for results; the dropdown keeps its own "None (software)".
+                    names = Object.fromEntries([['none', c.SoftwareName]].concat(c.Backends.map(b => [b.Type, b.Name])));
+                    advice = c.Advice;
+                    resourceNames = c.ResourceNames;
                     order = c.Backends.map(b => b.Type);
                     platforms = Object.fromEntries(c.Backends.map(b => [b.Type, [b.Platforms, b.PlatformNote]]));
                     armOnly = Object.fromEntries(c.Backends.filter(b => b.ArmNote).map(b => [b.Type, b.ArmNote]));
@@ -1406,7 +1412,7 @@
                             }
                         }
                         const sameType = t => rows.some(x => x.type === t && rows.some(o => o.type === t && o.device !== x.device));
-                        const backendName = x => x.type === 'none' ? 'Software' : (names[x.type] || x.type) + (sameType(x.type) ? ' ' + x.device : '');
+                        const backendName = x => (names[x.type] || x.type) + (x.type !== 'none' && sameType(x.type) ? ' ' + x.device : '');
                         const counted = reports.every(r => r.method !== 'Quick');
                         const table = el('table', null, 'hwprobe-full');
                         row(table, [el('th', 'Backend'), el('th', 'Input'), el('th', 'Output')].concat(steps.map(h => el('th', h.SuiteStep, 'hwprobe-num'))));
@@ -1442,8 +1448,7 @@
 
                 // How much more efficient a suggestion is, e.g. "30% less CPU and 20% less memory".
                 function savingsText(savings) {
-                    const names = { Cpu: 'CPU', Memory: 'memory', Gpu: 'GPU', GpuMemory: 'GPU memory' };
-                    const parts = savings.map(x => Math.round(x.Fraction * 100) + '% less ' + (names[x.Resource] || x.Resource));
+                    const parts = savings.map(x => Math.round(x.Fraction * 100) + '% less ' + (resourceNames[x.Resource] || x.Resource));
                     return parts.length > 2 ? parts.slice(0, -1).join(', ') + ', and ' + parts[parts.length - 1] : parts.join(' and ');
                 }
 
@@ -1464,7 +1469,7 @@
                             let actionButton = null;
                             let title = '';
                             let reason = '';
-                            const backendName = t => t === 'none' ? 'Software' : names[t] || t;
+                            const backendName = t => names[t] || t;
                             if (s.Kind === 'FastestBackend') {
                                 title = 'Hardware acceleration: ' + backendName(s.Type);
                                 // Measured alike, it's suggested when it is more efficient, or as Jellyfin's preferred Intel backend.
@@ -1493,9 +1498,9 @@
                                 title = label + ': ' + optionValueText(s.Setting, s.Value);
                                 reason = 'No other value measured is worth changing to (' + s.Others.map(o => optionValueText(s.Setting, o)).join(', ') + ').';
                             }
-                            // The server's value already: it confirms the setting, with nothing to apply.
+                            // The server's own value: it confirms the setting, with nothing to apply.
                             if (s.Current) {
-                                title += ' (current setting)';
+                                title += ' (server setting)';
                                 actionButton = null;
                             }
                             text.appendChild(el('div', title));
@@ -1699,7 +1704,7 @@
                             const list = el('ul', null, 'fieldDescription hwprobe-notes');
                             list.appendChild(el('li', 'Steps: ' + suite.Steps.join(', ')));
                             if (suite.Offered) {
-                                list.appendChild(el('li', 'Backend: ' + suite.Backends.map(b => b === 'none' ? 'Software' : names[b] || b).join(', ')));
+                                list.appendChild(el('li', 'Backend: ' + suite.Backends.map(b => names[b] || b).join(', ')));
                             }
                             details.appendChild(list);
                             // Suites measure once each, without a time limit.
@@ -1912,7 +1917,6 @@
                 }
 
                 // Runs of the same command vary by a few percent, so smaller differences aren't shown as one.
-                const noise = 0.05;
 
                 // Which comparison rows are open, by test, kept across redraws.
                 const speedOpen = new Set();
@@ -1931,7 +1935,7 @@
                         }
                     }
                     const sameType = b => backends.filter(o => o.type === b.type).length > 1;
-                    const columnName = b => b.type === 'none' ? 'Software' : (names[b.type] || b.type) + (sameType(b) ? ' ' + b.device : '');
+                    const columnName = b => (names[b.type] || b.type) + (b.type !== 'none' && sameType(b) ? ' ' + b.device : '');
 
                     if (!speedHistory.length && !speedLive) {
                         div.appendChild(el('p', 'Measured ' + new Date(r.generatedUtc).toLocaleString() + ', ' + methodName(r.method).toLowerCase() + ' accuracy', 'secondaryText'));
@@ -2048,7 +2052,7 @@
                             top.appendChild(th);
                         }
                         table.appendChild(top);
-                        const parts = resources ? ['CPU', 'Memory', 'GPU', 'GPU memory'] : ['Concurrent streams', 'Speed'];
+                        const parts = resources ? ['Cpu', 'Memory', 'Gpu', 'GpuMemory'].map(k => (resourceNames[k] || k).replace(/^./, c => c.toUpperCase())) : ['Concurrent streams', 'Speed'];
                         row(table, [el('th', 'Input'), el('th', 'Output'), el('th', 'Size')].concat(backends.flatMap(() => parts.map(part => el('th', part, 'hwprobe-num secondaryText')))));
                     } else {
                         row(table, [el('th', 'Input'), el('th', 'Output'), el('th', 'Size')].concat(backends.map(b => el('th', columnName(b), 'hwprobe-num'))));
@@ -2234,7 +2238,7 @@
                         return '-';
                     }
                     const change = fps / baseFps - 1;
-                    if (Math.abs(change) < noise) {
+                    if (Math.abs(change) < advice.Noise) {
                         return 'same';
                     }
                     return (change > 0 ? '+' : '\u2212') + Math.round(Math.abs(change) * 100) + '%';
