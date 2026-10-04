@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.15.0.0",
+        "changelog": "Test suites: encoder presets, quality ladder, tone mapping, thread count, Intel low power, and extras, run from Performance Tests and compared side by side in Test Results. QSV is preferred over VAAPI on the same Intel GPU. Low-power encoders that fall back to normal mode are noted, and missing ones skipped. Windows GPU usage no longer adds two decoders past 100%.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.15.0/hwprobe-plugin_0.15.0.0.zip",
+        "checksum": "5ff5390f9e0a692bb19fa23c74997cb4",
+        "timestamp": "2026-10-04T15:25:51Z"
+      },
+      {
         "version": "0.14.2.0",
         "changelog": "The hardware report form is cleaner and opens with the OS, versions, and working backends filled in from the latest probe. Links come from the catalog.",
         "targetAbi": "12.1.0.0",
