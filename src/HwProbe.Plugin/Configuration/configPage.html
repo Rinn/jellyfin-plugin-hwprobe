@@ -2103,14 +2103,6 @@
                             row(table, [label, el('td', value, 'secondaryText')]);
                         }
                         used.appendChild(sortable(table, 'settings-used'));
-                        const notes = ['Speed: one transcode on its own; 2\u00d7 is twice as fast as playing. Bars and percentages are relative to the fastest result in the row.'];
-                        if (counted) {
-                            notes.push('Concurrent streams: how many keep up when run together; 16+ is the most measured.');
-                        }
-                        if (speedView === 'resources') {
-                            notes.push('Resource usage: what one transcode on its own used: CPU cores in use on average, peak memory, its busiest GPU engine, and peak GPU memory, where the platform reports them.');
-                        }
-                        used.appendChild(el('div', notes.join(' '), 'fieldDescription'));
                     }
                     return div;
                 }
