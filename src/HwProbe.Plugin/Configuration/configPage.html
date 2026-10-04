@@ -1874,9 +1874,9 @@
                         seconds = remaining * (per[0] + per[1]) / 2 * (speedLive && speedLive.repeats ? speedLive.repeats : 1);
                     }
                     const minutes = Math.round(seconds / 60);
-                    return seconds < 60 ? 'under a minute left'
-                        : minutes < 90 ? 'about ' + minutes + ' minute' + (minutes === 1 ? '' : 's') + ' left'
-                        : 'about ' + Math.round(minutes / 60) + ' hours left';
+                    return seconds < 60 ? 'under a minute remains\u2026'
+                        : minutes < 90 ? 'about ' + minutes + (minutes === 1 ? ' minute remains\u2026' : ' minutes remain\u2026')
+                        : 'about ' + Math.round(minutes / 60) + ' hours remain\u2026';
                 }
 
                 function streamsText(x) {
