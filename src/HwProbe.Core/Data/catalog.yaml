@@ -733,6 +733,9 @@ softwareName: Software
 # Measured resources, as suggestions name them.
 resourceNames: { Cpu: CPU, Memory: memory, Gpu: GPU, GpuMemory: GPU memory, Power: power }
 
+# The same, as the Resource Usage view's column headers, kept short since each backend has one of each.
+resourceHeaders: { Cpu: CPU, Memory: Mem, Gpu: GPU, GpuMemory: GPU mem, Power: Power }
+
 # Energy meters' domains, as the Resource Usage view names them.
 powerDomains: { Cpu: CPU package, Gpu: GPU }
 

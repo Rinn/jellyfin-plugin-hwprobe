@@ -241,6 +241,7 @@
                 let advice = { Noise: 0 };
                 let resourceNames = {};
                 let powerDomains = {};
+                let resourceHeaders = {};
                 // Labels and caveats for server settings suggestions change that aren't run options.
                 let serverLabels = {};
                 // The server's Internet streaming bitrate limit, to mark a suggested limit already set.
@@ -267,6 +268,7 @@
                     advice = c.Advice;
                     resourceNames = c.ResourceNames;
                     powerDomains = c.PowerDomains;
+                    resourceHeaders = c.ResourceHeaders;
                     serverLabels = c.Labels;
                     order = c.Backends.map(b => b.Type);
                     platforms = Object.fromEntries(c.Backends.map(b => [b.Type, [b.Platforms, b.PlatformNote]]));
@@ -2092,7 +2094,7 @@
                             top.appendChild(th);
                         }
                         table.appendChild(top);
-                        const parts = resources ? (kinds.length ? kinds.map(k => (resourceNames[k] || k).replace(/^./, c => c.toUpperCase())) : ['Not measured']) : ['Concurrent streams', 'Speed'];
+                        const parts = resources ? (kinds.length ? kinds.map(k => resourceHeaders[k] || k) : ['Not measured']) : ['Concurrent streams', 'Speed'];
                         row(table, [el('th', 'Input'), el('th', 'Output'), el('th', 'Size')].concat(backends.flatMap(() => parts.map(part => el('th', part, 'hwprobe-num secondaryText')))));
                     } else {
                         row(table, [el('th', 'Input'), el('th', 'Output'), el('th', 'Size')].concat(backends.map(b => el('th', columnName(b), 'hwprobe-num'))));

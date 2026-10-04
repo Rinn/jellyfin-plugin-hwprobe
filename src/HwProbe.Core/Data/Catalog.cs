@@ -61,6 +61,9 @@ public sealed partial class Catalog
     /// <summary>Gets labels for server settings suggestions change that aren't run options, keyed as suggestions name them, with any caveat under <c>{key}Caveat</c>.</summary>
     public required IReadOnlyDictionary<string, string> Labels { get; init; }
 
+    /// <summary>Gets the Resource Usage view's column header for each resource, keyed as <see cref="ResourceNames"/> is.</summary>
+    public required IReadOnlyDictionary<string, string> ResourceHeaders { get; init; }
+
     /// <summary>Gets what each energy meter's domain is called, keyed as <see cref="Resources.ResourceUsage.Joules"/> is.</summary>
     public required IReadOnlyDictionary<string, string> PowerDomains { get; init; }
 
@@ -297,9 +300,9 @@ public sealed partial class Catalog
         }
 
         string[] resources = ["Cpu", "Memory", "Gpu", "GpuMemory", "Power"];
-        if (ResourceNames is null || resources.Any(r => !ResourceNames.ContainsKey(r)) || Labels is null || !Labels.ContainsKey(Speed.SpeedAdvisor.BitrateLimitKey) || !Labels.ContainsKey("ServerSetting") || !Labels.ContainsKey("ServerSettingAfter") || CodecNames is null || SoftwareName is null || PowerDomains is null)
+        if (ResourceNames is null || resources.Any(r => !ResourceNames.ContainsKey(r)) || ResourceHeaders is null || resources.Any(r => !ResourceHeaders.ContainsKey(r)) || Labels is null || !Labels.ContainsKey(Speed.SpeedAdvisor.BitrateLimitKey) || !Labels.ContainsKey("ServerSetting") || !Labels.ContainsKey("ServerSettingAfter") || CodecNames is null || SoftwareName is null || PowerDomains is null)
         {
-            throw new InvalidDataException($"catalog.yaml: resourceNames requires {string.Join(", ", resources)}, labels requires {Speed.SpeedAdvisor.BitrateLimitKey} ServerSetting, and ServerSettingAfter, and codecNames and softwareName are required.");
+            throw new InvalidDataException($"catalog.yaml: resourceNames and resourceHeaders require {string.Join(", ", resources)}, labels requires {Speed.SpeedAdvisor.BitrateLimitKey} ServerSetting, and ServerSettingAfter, and codecNames and softwareName are required.");
         }
     }
 
