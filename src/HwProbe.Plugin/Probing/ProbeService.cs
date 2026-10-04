@@ -948,7 +948,6 @@ public sealed partial class ProbeService : IDisposable
             _ = WatchForTranscodeAsync(_speedCancel);
         }
 
-        var missingLowPower = SpeedOptions.MissingLowPower(report);
         var runs = parsed.Select(p =>
         {
             var (suite, step, speed, request, estimate) = p;
@@ -958,7 +957,7 @@ public sealed partial class ProbeService : IDisposable
                 settings = SpeedSettingsOptions.Apply(settings, key, value) ?? settings;
             }
 
-            return (suite, step, speed with { Settings = settings, Pause = _speedPause, LowPowerUnsupported = missingLowPower }, estimate);
+            return (suite, step, speed.ForReport(report) with { Settings = settings, Pause = _speedPause }, estimate);
         }).ToList();
         _background = Task.Run(() => RunSpeedHeldAsync(measure, runs, backends, _speedCancel.Token), CancellationToken.None);
         return ProbeRunResult.Started;

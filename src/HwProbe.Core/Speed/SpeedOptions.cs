@@ -28,6 +28,9 @@ public sealed record SpeedOptions(SpeedMethod Method, IReadOnlyList<string> Vide
     /// <summary>Gets the backends and output codecs whose low-power encoder the probe found missing; a test asking for one isn't measured.</summary>
     public IReadOnlySet<(Model.HwType Type, string Device, string Codec)> LowPowerUnsupported { get; init; } = new HashSet<(Model.HwType, string, string)>();
 
+    /// <summary>Gets the decodes a probe found failing, by backend, device, and decode test (e.g. <c>av1_10bit</c>), which runs decode in software, as Jellyfin does once that codec is left unticked.</summary>
+    public IReadOnlySet<(Model.HwType Type, string Device, string Decode)> DecodeUnsupported { get; init; } = new HashSet<(Model.HwType, string, string)>();
+
     /// <summary>Gets the library file the <c>library</c> video reads, or null.</summary>
     public SpeedFile? File { get; init; }
 
@@ -38,6 +41,19 @@ public sealed record SpeedOptions(SpeedMethod Method, IReadOnlyList<string> Vide
         var videos = Videos.Select(k => k == SpeedCatalog.LibraryKey ? (File is null ? null : SpeedCatalog.LibraryVideo(File)) : SpeedCatalog.FindVideo(k)).OfType<SpeedVideo>().ToList();
         var outputs = Outputs.Select(SpeedCatalog.FindOutput).OfType<SpeedOutput>().ToList();
         return [.. videos.SelectMany(v => outputs.Select(o => SpeedCatalog.Test(v, o)))];
+    }
+
+    /// <summary>Returns these options with what a probe found missing: low-power encoders and decodes that fail.</summary>
+    /// <param name="report">The probe's report.</param>
+    /// <returns>The options.</returns>
+    public SpeedOptions ForReport(Report.CapabilityReport report)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+        return this with
+        {
+            LowPowerUnsupported = MissingLowPower(report),
+            DecodeUnsupported = report.Backends.SelectMany(b => b.Decode.Where(d => d.Value is not (Model.ProbeOutcome.Pass or Model.ProbeOutcome.NotUsed)).Select(d => (b.Type, b.Device, d.Key))).ToHashSet(),
+        };
     }
 
     /// <summary>Returns the low-power encoders a probe found missing, by backend, device, and output codec.</summary>

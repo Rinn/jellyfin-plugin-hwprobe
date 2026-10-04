@@ -133,6 +133,12 @@ public sealed class SpeedEngine : IDisposable
                     var missing = MissingClip(test, speed.Settings, clips);
                     var cell = SpeedVariants.ForBackend(type, test, SpeedVariants.Base(test, speed.Settings, Paths(clips)), speed.Settings);
 
+                    // A codec the probe found this GPU can't decode is left unticked, as the probe advises, so Jellyfin decodes it in software.
+                    if (speed.DecodeUnsupported.Contains((type, device, cell.InputCodec + (cell.BitDepth > 8 ? "_10bit" : string.Empty))))
+                    {
+                        cell = cell with { HardwareDecode = false };
+                    }
+
                     // Jellyfin would ask for low power anyway and ffmpeg would drop it, so the run would only repeat normal mode.
                     var noLowPower = cell.LowPower && test.OutputCodec is { } codec && speed.LowPowerUnsupported.Contains((type, device, codec))
                         ? $"Not measured: this GPU has no low-power {SpeedTestText.CodecName(codec)} encoder, so ffmpeg would encode in normal mode."

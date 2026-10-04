@@ -20,4 +20,16 @@ public sealed class SpeedOptionsTests
 
         Assert.Equal([(HwType.qsv, "/dev/dri/renderD128", "hevc")], SpeedOptions.MissingLowPower(report));
     }
+
+    /// <summary>A decode the probe found failing marks that backend and test, so speed runs decode it in software; passes and codecs Jellyfin doesn't use there don't.</summary>
+    [Fact]
+    public void FailedDecodesFollowTheProbe()
+    {
+        var decode = new Dictionary<string, ProbeOutcome> { ["h264"] = ProbeOutcome.Pass, ["av1_10bit"] = ProbeOutcome.CodecUnsupported, ["mpeg4"] = ProbeOutcome.NotUsed };
+        var empty = new Dictionary<string, ProbeOutcome>();
+        var qsv = new BackendReport(HwType.qsv, "/dev/dri/renderD128", BackendVerdict.Viable, PipelineTier.FullOpencl, decode, empty, empty, empty, empty, string.Empty);
+        var report = new CapabilityReport(CapabilityReport.CurrentSchemaVersion, DateTimeOffset.UnixEpoch, "f", new FfmpegSummary("/ffmpeg", "CommandLine", "8.1.2", true), new HostSummary("linux", "6.8", null), new StageASummary([], new Dictionary<HwType, BuildStatus>(), new Dictionary<string, bool>()), [qsv], [], []);
+
+        Assert.Equal([(HwType.qsv, "/dev/dri/renderD128", "av1_10bit")], new SpeedOptions(SpeedMethod.Quick, [], [], new SpeedSettings()).ForReport(report).DecodeUnsupported);
+    }
 }
