@@ -23,7 +23,7 @@ public sealed record SpeedOptions(SpeedMethod Method, IReadOnlyList<string> Vide
     public bool ReuseResults { get; init; }
 
     /// <summary>Gets a value indicating whether each measurement's single copy is measured for CPU, memory, and GPU use.</summary>
-    public bool MeasureResources { get; init; } = true;
+    public bool MeasureResources { get; init; }
 
     /// <summary>Gets the library file the <c>library</c> video reads, or null.</summary>
     public SpeedFile? File { get; init; }

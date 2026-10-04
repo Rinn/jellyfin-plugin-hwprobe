@@ -58,7 +58,7 @@ internal sealed class HwProbeCommand
     };
 
     private readonly Option<int> _speedRepeats = new("--speed-repeats") { Description = "Run each speed measurement 1 to 3 times and report the median.", DefaultValueFactory = _ => 1, CustomParser = Whole };
-    private readonly Option<bool> _speedNoResources = new("--speed-no-resources") { Description = "Don't measure each speed measurement's CPU, memory, and GPU use." };
+    private readonly Option<bool> _speedResources = new("--speed-resources") { Description = "Also measure each speed measurement's CPU, memory, and GPU use." };
     private readonly Option<int?> _speedTimeLimit = new("--speed-time-limit") { Description = "Seconds each speed measurement may take before it reports what it has.", CustomParser = r => Whole(r) };
     private readonly Option<string?> _speedJson = new("--speed-json") { Description = "Also write the speed report to this file." };
     private readonly Option<int> _timeout = new("--timeout") { Description = "Per-probe hard timeout, seconds.", DefaultValueFactory = _ => 15, CustomParser = Whole };
@@ -116,7 +116,7 @@ internal sealed class HwProbeCommand
 
         Root = new RootCommand("Device-verified hardware transcode detection for Jellyfin.")
         {
-            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _speed, _speedVideos, _speedOutputs, _speedBackends, _speedFile, _speedRepeats, _speedOption, _speedTimeLimit, _speedNoResources, _speedJson, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
+            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _speed, _speedVideos, _speedOutputs, _speedBackends, _speedFile, _speedRepeats, _speedOption, _speedTimeLimit, _speedResources, _speedJson, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
         };
     }
 
@@ -243,7 +243,7 @@ internal sealed class HwProbeCommand
             Backends = result.GetValue(_speedBackends) is { Length: > 0 } names ? [.. names.SelectMany(n => n.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).Select(Enum.Parse<HwType>)] : null,
             Repeats = result.GetValue(_speedRepeats),
             TimeLimit = result.GetValue(_speedTimeLimit) is { } seconds ? TimeSpan.FromSeconds(seconds) : null,
-            MeasureResources = !result.GetValue(_speedNoResources),
+            MeasureResources = result.GetValue(_speedResources),
         };
     }
 }
