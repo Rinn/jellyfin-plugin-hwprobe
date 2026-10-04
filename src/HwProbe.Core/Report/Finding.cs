@@ -6,6 +6,9 @@ namespace Jellyfin.Plugin.HwProbe.Core.Report;
 /// <param name="Message">Human-readable explanation and remedy.</param>
 public sealed record Finding(FindingSeverity Severity, string Code, string Message)
 {
+    /// <summary>Gets the backend it's about, or null for the whole server; the page groups by it rather than reading the message.</summary>
+    public Model.HwType? Backend { get; init; }
+
     /// <summary>Gets a short fix, when the user can act on the finding.</summary>
     public Fix? Fix { get; init; }
 }

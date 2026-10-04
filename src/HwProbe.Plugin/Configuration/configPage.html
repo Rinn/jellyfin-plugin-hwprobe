@@ -817,7 +817,8 @@
                     // Low-power findings are already in the settings list.
                     const grouped = {};
                     for (const f of report.findings.filter(x => x.code.indexOf('lowpower') === -1)) {
-                        const backend = f.message.split(' ')[0].replace(':', '');
+                        // Reports from before findings named their backend start the message with it.
+                        const backend = f.backend || f.message.split(' ')[0].replace(':', '');
                         (grouped[f.code] = grouped[f.code] || { finding: f, backends: [] }).backends.push(names[backend] || backend);
                     }
                     const codes = Object.keys(grouped);
@@ -1223,7 +1224,7 @@
                     td.appendChild(external(v.Title, v.ArticleUrl));
                     td.appendChild(document.createTextNode(', ' + v.Origin + ' from '));
                     td.appendChild(external('Wikimedia Commons', v.SourceUrl));
-                    const credit = el('div', v.Credit.substring(v.Title.length + 2).replace(/, via Wikimedia Commons$/, '') + ' (', 'hwprobe-small');
+                    const credit = el('div', v.CreditHolder + ' (', 'hwprobe-small');
                     const licence = el('a', 'licence', 'button-link');
                     licence.href = v.LicenseUrl;
                     licence.target = '_blank';
@@ -1584,7 +1585,8 @@
                     if (backends.length > 1) {
                         legend.push(values && counted ? 'The highlighted cell keeps up with the most concurrent streams, then is the fastest, for the row.' : 'The highlighted cell is the fastest for the row.');
                     }
-                    if (r.results.some(x => (speedVideos.find(v => v.Key === x.test.split('|')[0]) || {}).Origin === 'Generated')) {
+                    // Catalog videos without a film title are generated.
+                    if (r.results.some(x => speedVideos.some(v => v.Key === x.test.split('|')[0] && !v.Title))) {
                         legend.push('Test videos encode faster than real video.');
                     }
                     div.appendChild(el('div', legend.join(' '), 'fieldDescription'));

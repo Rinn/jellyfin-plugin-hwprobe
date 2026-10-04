@@ -479,6 +479,7 @@ public sealed class ProbeEngine : IDisposable
                 : $"Filters run in software (copy-back). This ffmpeg lacks {string.Join(", ", missing)}; use jellyfin-ffmpeg for the {(candidate.Type == HwType.nvenc ? "CUDA" : "Metal")} pipeline.";
             run.Findings.Add(new Finding(FindingSeverity.Warn, "legacy-copyback", $"{candidate.Type}{DevicePrefix(candidate.Device)}{remedy}")
             {
+                Backend = candidate.Type,
                 Fix = missing is null ? Hints.OpenclFix(inContainer) : new Fix("Use jellyfin-ffmpeg", null),
             });
         }
@@ -490,12 +491,12 @@ public sealed class ProbeEngine : IDisposable
 
         if (open.Driver == VaapiDriver.Amd)
         {
-            run.Findings.Add(new Finding(FindingSeverity.Info, "vulkan-interop-unprobed", $"{candidate.Type}{DevicePrefix(candidate.Device)}Vulkan DRM interop is not probed, so FullVulkan is never reported."));
+            run.Findings.Add(new Finding(FindingSeverity.Info, "vulkan-interop-unprobed", $"{candidate.Type}{DevicePrefix(candidate.Device)}Vulkan DRM interop is not probed, so FullVulkan is never reported.") { Backend = candidate.Type });
         }
 
         if (_unvalidated.Contains(candidate.Type))
         {
-            run.Findings.Add(new Finding(FindingSeverity.Info, "unvalidated-backend", $"{candidate.Type}: hwprobe's {candidate.Type} checks have not been validated on real hardware."));
+            run.Findings.Add(new Finding(FindingSeverity.Info, "unvalidated-backend", $"{candidate.Type}: hwprobe's {candidate.Type} checks have not been validated on real hardware.") { Backend = candidate.Type });
         }
 
         Dictionary<string, ProbeOutcome> decode = [];
@@ -572,6 +573,7 @@ public sealed class ProbeEngine : IDisposable
                 "opencl-unavailable",
                 $"{candidate.Type}{DevicePrefix(candidate.Device)}OpenCL doesn't start, but Jellyfin still picks its OpenCL pipeline because this ffmpeg was built with OpenCL, so OpenCL tone-mapping fails. {remedy}")
             {
+                Backend = candidate.Type,
                 Fix = Hints.OpenclFix(run.Host.Container is not null),
             });
         }

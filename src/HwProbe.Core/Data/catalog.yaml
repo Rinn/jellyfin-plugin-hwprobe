@@ -77,6 +77,7 @@ videos:
     sample:
       title: Tears of Steel
       credit: Tears of Steel, Blender Foundation (mango.blender.org), CC BY 3.0, via Wikimedia Commons
+      holder: Blender Foundation (mango.blender.org), CC BY 3.0
       license: https://creativecommons.org/licenses/by/3.0/
       source: https://commons.wikimedia.org/wiki/File:Tears_of_Steel_in_4k_-_Official_Blender_Foundation_release.webm
       article: https://en.wikipedia.org/wiki/Tears_of_Steel
@@ -94,6 +95,7 @@ videos:
     sample:
       title: Sintel
       credit: Sintel, Blender Foundation (durian.blender.org), CC BY 3.0, via Wikimedia Commons
+      holder: Blender Foundation (durian.blender.org), CC BY 3.0
       license: https://creativecommons.org/licenses/by/3.0/
       source: https://commons.wikimedia.org/wiki/File:Sintel_movie_4K.webm
       article: https://en.wikipedia.org/wiki/Sintel
@@ -112,6 +114,7 @@ videos:
     sample: &solLevante
       title: Sol Levante
       credit: Sol Levante, Netflix and Production I.G, CC BY 4.0, via Wikimedia Commons
+      holder: Netflix and Production I.G, CC BY 4.0
       license: https://creativecommons.org/licenses/by/4.0/
       source: https://commons.wikimedia.org/wiki/File:Sol_Levante.webm
       article: https://en.wikipedia.org/wiki/Sol_Levante

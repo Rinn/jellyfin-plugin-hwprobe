@@ -35,7 +35,7 @@ scripts/container-linux.sh     # test suite on Linux, then hwprobe against jelly
 scripts/container-windows.sh   # win-x64 build under Wine (no GPU)
 ```
 
-`container-plugin.sh` also takes `HWPROBE_INSTALL=repository` (install through a plugin repository, as users do) or `HWPROBE_INSTALL=existing HWPROBE_BASE=http://host:port` (check a running server).
+`container-plugin.sh` also takes `HWPROBE_LOCALE=de_DE.UTF-8` (run the server under another locale) and `HWPROBE_INSTALL=repository` (install through a plugin repository, as users do) or `HWPROBE_INSTALL=existing HWPROBE_BASE=http://host:port` (check a running server).
 
 ## Command-line tool
 

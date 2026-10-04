@@ -119,6 +119,7 @@ public static class SpeedCatalog
             Audio = video.Audio,
             Origin = origin,
             Credit = video.Sample?.Credit,
+            CreditHolder = video.Sample?.Holder,
             Title = video.Sample?.Title,
             LicenseUrl = video.Sample is null ? null : new Uri(video.Sample.License),
             SourceUrl = video.Sample is null ? null : new Uri(video.Sample.Source),

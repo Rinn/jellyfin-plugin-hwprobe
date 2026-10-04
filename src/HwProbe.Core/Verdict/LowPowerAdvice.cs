@@ -86,15 +86,15 @@ public static class LowPowerAdvice
             var lowPowerOk = lowPower == ProbeOutcome.Pass;
             if (!normalOk && lowPowerOk)
             {
-                yield return new Finding(FindingSeverity.Warn, $"enable-lowpower-{codec}", prefix + $"normal {codec} encoding fails but low-power works; this GPU only has low-power encoders. Turn on '{option}'.");
+                yield return new Finding(FindingSeverity.Warn, $"enable-lowpower-{codec}", prefix + $"normal {codec} encoding fails but low-power works; this GPU only has low-power encoders. Turn on '{option}'.") { Backend = type };
             }
             else if (normalOk && lowPowerOk)
             {
-                yield return new Finding(FindingSeverity.Info, $"lowpower-available-{codec}", prefix + $"low-power {codec} encoding works. Turning on '{option}' frees the GPU, which speeds up OpenCL tone-mapping.");
+                yield return new Finding(FindingSeverity.Info, $"lowpower-available-{codec}", prefix + $"low-power {codec} encoding works. Turning on '{option}' frees the GPU, which speeds up OpenCL tone-mapping.") { Backend = type };
             }
             else if (normalOk && !lowPowerOk)
             {
-                yield return new Finding(FindingSeverity.Info, $"lowpower-unavailable-{codec}", prefix + $"leave '{option}' off. " + Remedy(codec, os, inContainer, enableGuc, support));
+                yield return new Finding(FindingSeverity.Info, $"lowpower-unavailable-{codec}", prefix + $"leave '{option}' off. " + Remedy(codec, os, inContainer, enableGuc, support)) { Backend = type };
             }
         }
     }

@@ -83,6 +83,7 @@ Pull files with `gh` and grep locally. WebFetch truncates `EncodingHelper.cs` (8
 - A second i965/AMD GPU (not the configured device) is reported `Untested` by the plugin, since probing it would change the server's environment; the CLI can test it.
 - CUDA is probed at index 0 only; `EncodingHelper` hard-codes device 0.
 - v4l2m2m is confirmed from a recorded Raspberry Pi run (`Using device /dev/videoN`), not yet through Jellyfin.
+- Page and CLI text are English only. Behaviour doesn't depend on locale: ffmpeg runs with `LC_ALL=C`, numbers are formatted and parsed invariantly, and the page reads structured fields rather than message text. `CultureScope` tests and `HWPROBE_LOCALE` in `container-plugin.sh` check it.
 - The busy check (`ProbeService.IsTranscoding`) skips direct play and remux, but a transcode that finished ahead of playback still blocks until playback stops: `TranscodeManager.OnFfMpegProcessExited` leaves the session's `TranscodingInfo` set, and Jellyfin has no API to list running jobs by session.
 
 ## To do
@@ -94,4 +95,3 @@ Queued by the user on 2026-10-03, in no particular order:
 
 - **Test suites** (queued 2026-10-03): named sets of performance tests run in sequence to draw suggestions from, e.g. one input at every encoding preset to see which presets cost no speed. Defined in YAML (like catalog.yaml), mostly on real video (film samples or a library file) rather than test videos. Recommend suites to the user before adding them.
 - Trickplay generation as a Performance Tests output (deferred 2026-10-03). `MediaEncoder.ExtractVideoImagesOnIntervalAccelerated` takes its input, filter and encoder from EncodingHelper but assembles the command itself (skip_frame, setpts, qscale per encoder, image2), so it needs either a pinned copy of that assembly or a direct call limited to the configured backend.
-- Non-English use: find what breaks when the server or browser isn't in English, and consider translations, ideally reusing jellyfin-web's own strings. Include a non-English server locale: whether ffmpeg's output (stderr, progress, numbers) can be localized and break parsing, and whether .NET culture affects number formatting or parsing.

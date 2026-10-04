@@ -6,6 +6,9 @@ internal sealed class CatalogSample
     /// <summary>Gets the film's title.</summary>
     public required string Title { get; init; }
 
+    /// <summary>Gets who holds the rights, with the licence, as the page shows it beside the title, e.g. <c>Blender Foundation (mango.blender.org), CC BY 3.0</c>.</summary>
+    public required string Holder { get; init; }
+
     /// <summary>Gets the credit.</summary>
     public required string Credit { get; init; }
 
