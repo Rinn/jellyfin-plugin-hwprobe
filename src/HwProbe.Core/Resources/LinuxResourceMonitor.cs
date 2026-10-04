@@ -30,7 +30,7 @@ internal sealed class LinuxResourceMonitor : SampledResourceMonitor
         var gpu = new Dictionary<string, double>(_cycleSeconds, StringComparer.Ordinal);
 
         // A client the process opened starts at zero, so its last reading is all its busy time.
-        foreach (var ((_, engine), ns) in _nanoseconds)
+        foreach (var ((_, engine), ns) in _nanoseconds.Where(e => e.Value > 0))
         {
             gpu[engine] = gpu.GetValueOrDefault(engine) + (ns / 1e9);
         }

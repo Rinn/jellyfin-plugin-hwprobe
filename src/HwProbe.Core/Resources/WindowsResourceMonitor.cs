@@ -33,8 +33,9 @@ internal sealed class WindowsResourceMonitor : SampledResourceMonitor
         var gpu = _engines
             .Where(e => GpuEngineCounters.Parse(e.Key) is not null)
             .GroupBy(e => GpuEngineCounters.Parse(e.Key)!.Value.Engine, StringComparer.Ordinal)
+            .Where(g => g.Any(e => e.Value > 0))
             .ToDictionary(g => g.Key, g => g.Sum(e => e.Value / 1e7), StringComparer.Ordinal);
-        return new ResourceUsage(seconds, (basic.TotalUserTime + basic.TotalKernelTime).TotalSeconds, (long)memory.PeakJobMemoryUsed) { GpuSeconds = _gpu is null ? null : gpu };
+        return new ResourceUsage(seconds, (basic.TotalUserTime + basic.TotalKernelTime).TotalSeconds, (long)memory.PeakJobMemoryUsed) { GpuSeconds = gpu.Count > 0 ? gpu : null };
     }
 
     /// <inheritdoc/>

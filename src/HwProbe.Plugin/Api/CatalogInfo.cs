@@ -17,6 +17,7 @@ namespace Jellyfin.Plugin.HwProbe.Api;
 /// <param name="WhenTranscoding">What a run can do when the server starts transcoding.</param>
 /// <param name="DefaultWhenTranscoding">What a run does by default when the server starts transcoding.</param>
 /// <param name="Backends">The backends, in the order of Jellyfin's dropdown.</param>
+/// <param name="GpuEngines">What the page calls each GPU engine.</param>
 /// <param name="Tiers">The pipeline tiers' descriptions.</param>
 /// <param name="Verdicts">The descriptions of backends that don't work.</param>
 /// <param name="Findings">The descriptions of findings, by code.</param>
@@ -34,6 +35,7 @@ public sealed record CatalogInfo(
     IReadOnlyList<CatalogTranscodeAction> WhenTranscoding,
     TranscodeAction DefaultWhenTranscoding,
     IReadOnlyList<CatalogBackend> Backends,
+    IReadOnlyDictionary<string, string> GpuEngines,
     IReadOnlyDictionary<PipelineTier, string> Tiers,
     IReadOnlyDictionary<BackendVerdict, string> Verdicts,
     IReadOnlyDictionary<string, string> Findings,
@@ -58,6 +60,7 @@ public sealed record CatalogInfo(
             catalog.WhenTranscoding,
             catalog.DefaultWhenTranscoding,
             catalog.Backends,
+            catalog.GpuEngines,
             catalog.Tiers,
             catalog.Verdicts,
             catalog.Findings,

@@ -224,6 +224,7 @@
                 let timeLimitOptions = [];
                 let whenTranscodingOptions = [];
                 let defaultMethod = null;
+                let gpuEngines = {};
                 let names = {};
                 let order = [];
                 let platforms = {};
@@ -249,6 +250,7 @@
                     verdicts = c.Verdicts;
                     notes = c.Findings;
                     settingLabels = c.Settings;
+                    gpuEngines = c.GpuEngines;
                     speedVideos = c.Videos;
                     speedOutputs = c.Outputs;
                     speedCodecs = c.Codecs;
@@ -1630,13 +1632,61 @@
                     speedUpdate = update;
                 }
 
+                // One copy's GPU engines busy share, busiest first, named as the catalog names them.
+                function gpuShares(r) {
+                    return Object.entries(r.gpuSeconds || {})
+                        .map(([engine, seconds]) => [gpuEngines[engine] || engine, seconds / r.seconds])
+                        .sort((a, b) => b[1] - a[1]);
+                }
+
+                // A results cell in the Resources view: CPU cores in use and peak memory, then the busiest GPU engine.
+                function resourceCell(cell, r) {
+                    if (!r) {
+                        cell.textContent = '\u2013';
+                        cell.dataset.sort = '';
+                        return;
+                    }
+                    const cores = r.cpuSeconds === null || r.cpuSeconds === undefined ? null : r.cpuSeconds / r.seconds;
+                    cell.dataset.sort = cores === null ? '' : String(cores);
+                    const parts = [];
+                    if (cores !== null) {
+                        parts.push(cores.toFixed(1) + ' cores');
+                    }
+                    if (r.peakMemoryBytes) {
+                        parts.push(sizeText(r.peakMemoryBytes));
+                    }
+                    cell.appendChild(document.createTextNode(parts.join(' \u00b7 ') || '\u2013'));
+                    const busiest = gpuShares(r)[0];
+                    if (busiest) {
+                        cell.appendChild(el('div', 'GPU ' + busiest[0] + ' ' + Math.round(Math.min(1, busiest[1]) * 100) + '%', 'hwprobe-small secondaryText'));
+                    }
+                }
+
+                // The Resources view's tooltip lines: CPU, memory, and every GPU engine that did work.
+                function resourceFacts(r) {
+                    if (!r) {
+                        return ['Resources not measured'];
+                    }
+                    const facts = [];
+                    if (r.cpuSeconds !== null && r.cpuSeconds !== undefined) {
+                        facts.push((r.cpuSeconds / r.seconds).toFixed(1) + ' CPU cores in use on average');
+                    }
+                    if (r.peakMemoryBytes) {
+                        facts.push(sizeText(r.peakMemoryBytes) + ' peak memory');
+                    }
+                    for (const [name, share] of gpuShares(r)) {
+                        facts.push('GPU ' + name + ' busy ' + Math.round(Math.min(1, share) * 100) + '% of the time');
+                    }
+                    return facts;
+                }
+
                 // Runs of the same command vary by a few percent, so smaller differences aren't shown as one.
                 const noise = 0.05;
 
                 // Which comparison rows are open, by test, kept across redraws.
                 const speedOpen = new Set();
 
-                const speedViews = [['bars', 'Bars'], ['relative', 'Relative to fastest'], ['values', 'Values']];
+                const speedViews = [['bars', 'Bars'], ['relative', 'Relative to fastest'], ['values', 'Values'], ['resources', 'Resources']];
                 let speedView = speedViews.some(([k]) => k === localStorage.getItem('hwprobe-speed-view')) ? localStorage.getItem('hwprobe-speed-view') : 'bars';
 
                 // Rows grouped by video, one per output; one column per backend; comparisons fold under their row.
@@ -1677,7 +1727,8 @@
                     const per = values && counted ? 2 : 1;
                     // Per backend: concurrent streams kept up with (Values view, when counted), and one transcode's speed as a value, a bar or a share of the row's fastest.
                     const cellsFor = (x, best, baseline, fastest) => {
-                        const tint = x && x === best && backends.length > 1 ? ' hwprobe-best' : '';
+                        // The highlight marks the fastest; the Resources view isn't about speed.
+                        const tint = x && x === best && backends.length > 1 && speedView !== 'resources' ? ' hwprobe-best' : '';
                         const streams = el('td', null, 'hwprobe-num' + tint);
                         const speedCell = el('td', null, 'hwprobe-num' + tint);
                         const cells = per === 2 ? [streams, speedCell] : [speedCell];
@@ -1693,7 +1744,9 @@
                         const speedText = speed ? speed.toFixed(1) + '\u00d7' : '\u2013';
                         speedCell.dataset.sort = speed ? String(speed) : '';
                         streams.dataset.sort = x.streams === null || x.streams === undefined ? '' : String(x.streams);
-                        if (!speed) {
+                        if (speedView === 'resources') {
+                            resourceCell(speedCell, x.resources);
+                        } else if (!speed) {
                             speedCell.textContent = speedText;
                         } else if (speedView === 'relative') {
                             speedCell.textContent = Math.round(Math.min(1, speed / fastest) * 100) + '%';
@@ -1708,7 +1761,7 @@
                             streams.textContent = streamsText(x);
                             speedCell.textContent = speedText;
                         }
-                        if (baseline && speed) {
+                        if (baseline && speed && speedView !== 'resources') {
                             speedCell.appendChild(el('span', ' ' + speedChange(x.fps, baseline.fps), 'hwprobe-small secondaryText'));
                         }
                         const n = footnote(x.note);
@@ -1734,6 +1787,9 @@
                         }
                         if (x.reusedFromUtc) {
                             facts.push('Measured ' + new Date(x.reusedFromUtc).toLocaleString());
+                        }
+                        if (speedView === 'resources') {
+                            facts.push(...resourceFacts(x.resources));
                         }
                         speedCell.title = facts.join('. ');
                         return cells;
@@ -1880,6 +1936,9 @@
                         const notes = ['Speed: one transcode on its own; 2\u00d7 is twice as fast as playing. Bars and percentages are relative to the fastest result in the row.'];
                         if (counted) {
                             notes.push('Concurrent streams: how many keep up when run together; 16+ is the most measured.');
+                        }
+                        if (speedView === 'resources') {
+                            notes.push('Resources: what one transcode on its own used, on average CPU cores in use, peak memory, and its busiest GPU engine, where the platform reports them.');
                         }
                         used.appendChild(el('div', notes.join(' '), 'fieldDescription'));
                     }

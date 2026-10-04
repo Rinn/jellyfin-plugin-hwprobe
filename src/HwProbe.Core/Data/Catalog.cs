@@ -46,6 +46,9 @@ public sealed partial class Catalog
     /// <summary>Gets the backends, in the order of Jellyfin's dropdown.</summary>
     public required IReadOnlyList<CatalogBackend> Backends { get; init; }
 
+    /// <summary>Gets what the page calls each GPU engine, by the name the platform gives it.</summary>
+    public required IReadOnlyDictionary<string, string> GpuEngines { get; init; }
+
     /// <summary>Gets the pipeline tiers' descriptions.</summary>
     public required IReadOnlyDictionary<PipelineTier, string> Tiers { get; init; }
 
