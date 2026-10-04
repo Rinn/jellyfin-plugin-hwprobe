@@ -131,7 +131,12 @@ public sealed partial class ProbeService : IDisposable
                     : pause.IsPaused ? (pause.IsWaiting ? SpeedPhase.Paused : SpeedPhase.Pausing)
                     : _measuringSince is null ? SpeedPhase.Preparing
                     : SpeedPhase.Measuring;
-                return _status with { Phase = phase, MeasuringSeconds = _measuringSince is { } since ? (int)(_time.GetUtcNow() - since - pause.Paused).TotalSeconds : null };
+                var now = _time.GetUtcNow();
+                return _status with
+                {
+                    Phase = phase,
+                    ElapsedSeconds = _status.LastStartedUtc is { } started ? (int)(now - started).TotalSeconds : null,
+                };
             }
         }
     }

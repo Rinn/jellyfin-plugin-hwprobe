@@ -1302,7 +1302,7 @@
                     if (poll === true && drawn === speedDrawn && speedProgress && speedProgressParts) {
                         speedProgressParts.count.textContent = speedCountText(speedProgress);
                         speedProgressParts.text.textContent = speedStatusText(speedProgress);
-                        speedProgressParts.eta.textContent = speedEtaText(speedProgress);
+                        speedProgressParts.eta.textContent = speedElapsedText(speedProgress);
                         speedProgressParts.fill.style.width = progressWidth(speedProgress);
                         return;
                     }
@@ -1313,7 +1313,7 @@
                         const box = el('div', null, 'paperList hwprobe-card hwprobe-progress-card');
                         const line = el('div', null, 'hwprobe-row');
 
-                        // A loading bar: measurements done on the left, what's running in the middle, and the time left on the right.
+                        // A loading bar: measurements done on the left, what's running in the middle, and how long it has run on the right.
                         const bar = el('div', null, 'hwprobe-loadbar');
                         const fill = el('div');
                         fill.style.width = progressWidth(speedProgress);
@@ -1321,7 +1321,7 @@
                         const label = el('span');
                         const count = el('span', speedCountText(speedProgress));
                         const text = el('span', speedStatusText(speedProgress));
-                        const eta = el('span', speedEtaText(speedProgress));
+                        const eta = el('span', speedElapsedText(speedProgress));
                         label.append(count, text, eta);
                         bar.appendChild(label);
                         line.appendChild(bar);
@@ -2155,35 +2155,19 @@
                     return c.total ? c.done + ' / ' + c.total : '';
                 }
 
-                // The time left, e.g. "~8m30s" or "~1h20m"; empty before it can be estimated.
-                function speedEtaText(s) {
-                    const seconds = secondsLeft(s);
-                    if (seconds === null) {
+                // How long the run or suite has been going, e.g. "8m30s" or "1h20m".
+                function speedElapsedText(s) {
+                    if (s.ElapsedSeconds === null || s.ElapsedSeconds === undefined) {
                         return '';
                     }
-                    const total = Math.max(1, Math.round(seconds));
+                    const total = Math.max(0, s.ElapsedSeconds);
                     const [h, m, sec] = [Math.floor(total / 3600), Math.floor(total / 60) % 60, total % 60];
-                    return '~' + (h ? h + 'h' + (m ? m + 'm' : '') : m ? m + 'm' + (sec ? String(sec).padStart(2, '0') + 's' : '') : sec + 's');
+                    return h ? h + 'h' + String(m).padStart(2, '0') + 'm' : m ? m + 'm' + String(sec).padStart(2, '0') + 's' : sec + 's';
                 }
 
                 // One line for the status text elsewhere on the page.
                 function speedProgressText(s) {
-                    return [speedStatusText(s), speedCountText(s), speedEtaText(s)].filter(t => t).join(' \u00b7 ');
-                }
-
-                // From the run's measurements so far; before the first, from the accuracy's typical time per measurement.
-                function secondsLeft(s) {
-                    const c = speedCounts(s);
-                    const remaining = c.total - c.done;
-                    if (remaining <= 0) {
-                        return null;
-                    }
-                    if (s.Done > 0 && s.MeasuringSeconds) {
-                        return s.MeasuringSeconds / s.Done * remaining;
-                    }
-                    const per = methodSeconds[speedLive ? speedLive.method : speedMethod] || methodSeconds[defaultMethod];
-                    // A page opened mid-run polls before the catalog loads.
-                    return per ? remaining * (per[0] + per[1]) / 2 * (speedLive && speedLive.repeats ? speedLive.repeats : 1) : null;
+                    return [speedStatusText(s), speedCountText(s), speedElapsedText(s)].filter(t => t).join(' \u00b7 ');
                 }
 
                 function streamsText(x) {
