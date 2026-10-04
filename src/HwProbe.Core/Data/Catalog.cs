@@ -46,6 +46,9 @@ public sealed partial class Catalog
     /// <summary>Gets the backends, in the order of Jellyfin's dropdown.</summary>
     public required IReadOnlyList<CatalogBackend> Backends { get; init; }
 
+    /// <summary>Gets the test suites, in the page's order.</summary>
+    public required IReadOnlyList<CatalogSuite> Suites { get; init; }
+
     /// <summary>Gets the links the page, the CLI, and the advice point to, by name: <c>repository</c>, <c>issueForm</c>, <c>notices</c>, <c>jellyfinGuides</c>, <c>intelLowPowerGuide</c>, <c>fateSuite</c>.</summary>
     public required IReadOnlyDictionary<string, string> Links { get; init; }
 
@@ -239,6 +242,8 @@ public sealed partial class Catalog
             throw new InvalidDataException($"catalog.yaml: {unlinked.Title}'s holderUrl requires an absolute URL.");
         }
 
+        CheckSuites();
+
         if (Subtitles is null || TestAudio is null)
         {
             throw new InvalidDataException("catalog.yaml: subtitles or testAudio are missing.");
@@ -252,6 +257,31 @@ public sealed partial class Catalog
             if (unknown.Count > 0 || (hash is not null && !Sha256().IsMatch(hash)) || (clip.Download is not null && clip.Sha256 is null) || !made)
             {
                 throw new InvalidDataException($"catalog.yaml: {clip.File} requires arguments or a download with a lowercase SHA-256, and no unknown placeholders ({string.Join(", ", unknown)}).");
+            }
+        }
+    }
+
+    /// <summary>Checks each suite names videos, outputs, backends, and settings the catalog has.</summary>
+    /// <exception cref="InvalidDataException">A suite names something that isn't there.</exception>
+    private void CheckSuites()
+    {
+        var videos = Videos.Select(v => v.Key).ToHashSet(StringComparer.Ordinal);
+        var outputs = Codecs.SelectMany(c => Qualities.Select(q => OutputKey(c, q))).Append(Decode!.Key).ToHashSet(StringComparer.Ordinal);
+        string[] backends = ["configuredAndSoftware", "configured", "software"];
+        foreach (var suite in Suites)
+        {
+            var steps = suite.Steps;
+            var wrong =
+                !backends.Contains(suite.Backends) ? $"backends {suite.Backends}"
+                : suite.Requires is not (null or "lowPower") ? $"requires {suite.Requires}"
+                : suite.ThreadSteps == (steps.Count > 0) ? "steps (one of steps or threadSteps)"
+                : suite.Videos.Concat(steps.SelectMany(s => s.Videos ?? [])).FirstOrDefault(v => !videos.Contains(v)) is { } video ? $"video {video}"
+                : suite.Outputs.Concat(steps.SelectMany(s => s.Outputs ?? [])).FirstOrDefault(o => !outputs.Contains(o)) is { } output ? $"output {output}"
+                : steps.SelectMany(s => s.Options).FirstOrDefault(o => Options.FirstOrDefault(c => c.Key == o.Key) is not { } known || !known.Takes(o.Value) || SpeedSettingsOptions.Apply(new SpeedSettings(), o.Key, o.Value) is null) is { Key: not null } option ? $"option {option.Key}={option.Value}"
+                : null;
+            if (wrong is not null)
+            {
+                throw new InvalidDataException($"catalog.yaml: suite {suite.Key} has an unknown {wrong}.");
             }
         }
     }
