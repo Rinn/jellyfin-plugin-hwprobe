@@ -10,7 +10,8 @@ namespace Jellyfin.Plugin.HwProbe.Core.Verdict;
 /// Facts from Jellyfin's Intel guide (jellyfin.org, docs/general/post-install/transcoding/hardware-acceleration/intel.md,
 /// "Low-Power Encoding"): Jasper Lake, Elkhart Lake, Arc (DG2) and newer only have low-power encoders; Linux supports
 /// low-power by default only on Gen 12 ADL and newer, and older i915 GPUs need the HuC firmware loaded with
-/// enable_guc=2. DG1, 12th-gen and newer, and Arc A-series default to enable_guc=3; the xe driver needs neither.
+/// enable_guc=2. DG1, 12th-gen and newer, and Arc A-series load HuC by default (enable_guc=3, or 2 on Alder Lake-S, per the
+/// kernel's intel_uc.c uc_expand_default_options); the xe driver needs neither.
 /// </remarks>
 public static class LowPowerAdvice
 {
