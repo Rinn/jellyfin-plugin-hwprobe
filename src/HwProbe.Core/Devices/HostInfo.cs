@@ -8,7 +8,4 @@ public sealed record HostInfo(HostOs Os, string Kernel, string? Container)
 {
     /// <summary>Gets the CPU architecture, e.g. <c>x64</c> or <c>arm64</c>.</summary>
     public string Architecture { get; init; } = "unknown";
-
-    /// <summary>Gets a value indicating whether the host runs Synology DSM.</summary>
-    public bool Synology { get; init; }
 }

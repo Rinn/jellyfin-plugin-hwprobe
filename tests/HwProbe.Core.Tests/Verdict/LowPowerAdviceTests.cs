@@ -66,8 +66,8 @@ public sealed class LowPowerAdviceTests
     public void RemedyAdaptsToEnvironment()
     {
         Assert.Contains("On the host", LowPowerAdvice.Remedy(Linux(inContainer: true, "2")), StringComparison.Ordinal);
-        Assert.DoesNotContain("enable_guc=2", LowPowerAdvice.Remedy(new LowPowerHost(HostOs.Linux, InContainer: false, Synology: false, I915Loaded: false, EnableGuc: null)), StringComparison.Ordinal);
-        Assert.DoesNotContain("enable_guc", LowPowerAdvice.Remedy(new LowPowerHost(HostOs.Windows, InContainer: false, Synology: false, I915Loaded: false, EnableGuc: null)), StringComparison.Ordinal);
+        Assert.DoesNotContain("enable_guc=2", LowPowerAdvice.Remedy(new LowPowerHost(HostOs.Linux, InContainer: false, I915Loaded: false, EnableGuc: null)), StringComparison.Ordinal);
+        Assert.DoesNotContain("enable_guc", LowPowerAdvice.Remedy(new LowPowerHost(HostOs.Windows, InContainer: false, I915Loaded: false, EnableGuc: null)), StringComparison.Ordinal);
     }
 
     /// <summary>A loaded i915 whose enable_guc only root can read still gets the firmware remedy, not "i915 isn't loaded".</summary>
@@ -81,21 +81,9 @@ public sealed class LowPowerAdviceTests
         Assert.DoesNotContain("isn't loaded", remedy, StringComparison.Ordinal);
     }
 
-    /// <summary>On Synology DSM the remedy copies the firmware files and creates /etc/modprobe.d instead of installing a package and updating the initramfs.</summary>
-    [Fact]
-    public void SynologyRemedyCopiesFirmware()
-    {
-        var remedy = LowPowerAdvice.Remedy(new LowPowerHost(HostOs.Linux, InContainer: true, Synology: true, I915Loaded: true, EnableGuc: null));
-
-        Assert.StartsWith("Low-power encoding on Linux requires Intel's HuC firmware. On the NAS (not in the container), as root,", remedy, StringComparison.Ordinal);
-        Assert.Contains(LowPowerAdvice.FirmwareFiles.ToString(), remedy, StringComparison.Ordinal);
-        Assert.Contains("mkdir -p /etc/modprobe.d", remedy, StringComparison.Ordinal);
-        Assert.DoesNotContain("initramfs", remedy, StringComparison.Ordinal);
-    }
-
     /// <summary>Builds Linux host facts with i915 loaded.</summary>
     /// <param name="inContainer">Whether the probe ran in a container.</param>
     /// <param name="enableGuc">The enable_guc value, or null when unreadable.</param>
     /// <returns>The host facts.</returns>
-    private static LowPowerHost Linux(bool inContainer, string? enableGuc) => new(HostOs.Linux, inContainer, Synology: false, I915Loaded: true, enableGuc);
+    private static LowPowerHost Linux(bool inContainer, string? enableGuc) => new(HostOs.Linux, inContainer, I915Loaded: true, enableGuc);
 }

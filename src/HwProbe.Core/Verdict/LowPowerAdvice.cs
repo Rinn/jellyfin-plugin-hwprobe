@@ -18,9 +18,6 @@ public static class LowPowerAdvice
     /// <summary>Path of the i915 driver's GuC/HuC loading parameter; root-only (mode 0400 in the kernel's i915_params.c).</summary>
     public const string EnableGucPath = "/sys/module/i915/parameters/enable_guc";
 
-    /// <summary>Jellyfin's Intel guide links here for missing GuC and HuC files (<c>linuxFirmwareI915</c> in catalog.yaml).</summary>
-    public static readonly Uri FirmwareFiles = new(Data.Catalog.Default.Links["linuxFirmwareI915"]);
-
     /// <summary>Jellyfin's guide to setting up low-power mode on Linux (<c>intelLowPowerGuide</c> in catalog.yaml).</summary>
     public static readonly Uri Guide = new(Data.Catalog.Default.Links["intelLowPowerGuide"]);
 
@@ -61,9 +58,7 @@ public static class LowPowerAdvice
         }
 
         var current = host.EnableGuc is null ? Catalog.Text("lowPowerEnableGucRootOnly", ("path", EnableGucPath)) : Catalog.Text("lowPowerEnableGuc", ("value", host.EnableGuc));
-        return host.Synology
-            ? Catalog.Text("lowPowerFirmwareSynology", ("where", Catalog.Text(host.InContainer ? "lowPowerSynologyContainer" : "lowPowerSynologyHost")), ("firmware", FirmwareFiles.ToString()), ("current", current), ("guide", Guide.ToString()))
-            : Catalog.Text("lowPowerFirmware", ("where", Catalog.Text(host.InContainer ? "lowPowerFirmwareContainer" : "lowPowerFirmwareHost")), ("current", current), ("guide", Guide.ToString()));
+        return Catalog.Text("lowPowerFirmware", ("where", Catalog.Text(host.InContainer ? "lowPowerFirmwareContainer" : "lowPowerFirmwareHost")), ("current", current), ("guide", Guide.ToString()));
     }
 
     /// <summary>Returns findings for the low-power encoder options of one Intel device.</summary>

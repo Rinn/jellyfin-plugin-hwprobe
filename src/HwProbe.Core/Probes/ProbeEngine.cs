@@ -142,7 +142,6 @@ public sealed class ProbeEngine : IDisposable
             new HostSummary(OsName(host.Os), host.Kernel, host.Container)
             {
                 Architecture = host.Architecture,
-                Synology = host.Synology,
             },
             new StageASummary([.. caps.Hwaccels.Order(StringComparer.Ordinal)], caps.BuildStatus, caps.FilterOptions),
             [.. run.Backends
@@ -394,7 +393,7 @@ public sealed class ProbeEngine : IDisposable
     {
         // A loaded i915 lists enable_guc even though only root can read it.
         var loaded = _platform.ListDirectory("/sys/module/i915/parameters", "enable_guc").Entries.Count > 0;
-        return new LowPowerHost(host.Os, host.Container is not null, host.Synology, loaded, _platform.TryReadText(LowPowerAdvice.EnableGucPath)?.Trim());
+        return new LowPowerHost(host.Os, host.Container is not null, loaded, _platform.TryReadText(LowPowerAdvice.EnableGucPath)?.Trim());
     }
 
     /// <summary>Opens every selected device.</summary>
