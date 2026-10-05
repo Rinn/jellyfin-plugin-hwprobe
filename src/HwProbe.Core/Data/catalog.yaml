@@ -789,11 +789,14 @@ texts:
   lowPowerHevcMaybeGen9: "Gen 9 Intel graphics (Skylake to Comet Lake, Apollo Lake, Gemini Lake) have low-power H.264 only, so there this is expected and no firmware change helps. On newer GPUs: {remedy}"
   lowPowerNotLinux: This GPU's driver doesn't support low-power encoding here. Leave the Intel Low-Power encoder option off.
   lowPowerNoI915: "Low-power encoding failed, and the i915 driver isn't loaded (the xe driver requires no firmware option). Check the Intel firmware package is installed. Guide: {guide}"
-  lowPowerFirmware: "Low-power encoding on Linux requires Intel's HuC firmware. {where} the firmware package (firmware-intel-graphics on Debian, linux-firmware on Ubuntu and Arch). Except on DG1, 12th-gen and newer, or Arc A-series GPUs, which already default to enable_guc=3, add 'options i915 enable_guc=2' to /etc/modprobe.d/i915.conf, update the initramfs, and reboot. enable_guc is currently {enableGuc}. Guide: {guide}"
+  lowPowerFirmware: "Low-power encoding on Linux requires Intel's HuC firmware. {where} the firmware package (firmware-intel-graphics on Debian, linux-firmware on Ubuntu and Arch). Except on DG1, 12th-gen and newer, or Arc A-series GPUs, which load HuC by default, add 'options i915 enable_guc=2' to /etc/modprobe.d/i915.conf, update the initramfs, and reboot. {current} Guide: {guide}"
   lowPowerFirmwareContainer: On the host (not in the container), install
   lowPowerFirmwareHost: Install
-  # jellyfin-ffmpeg's qsvenc turns low power off when its parameters aren't supported (debian/patches/0071); on a Gen 9 NAS it was the bitrate target.
-  lowPowerDropped: Low power doesn't work with the bitrate Jellyfin sets, so ffmpeg uses normal mode.
+  lowPowerEnableGuc: enable_guc is currently {value}.
+  # enable_guc is mode 0400 (the kernel's i915_params.c), so a server not running as root can't read it.
+  lowPowerEnableGucRootOnly: Only root can read enable_guc here ({path}).
+  # jellyfin-ffmpeg's qsvenc turns low power off when its parameters aren't supported (debian/patches/0071). Low-power bitrate control requires HuC (intel/media-driver README); when enable_guc shows HuC isn't requested, the firmware remedy is shown instead.
+  lowPowerDropped: "Low power doesn't work with Jellyfin's bitrate settings here, so ffmpeg uses normal mode. Low-power bitrate control requires Intel's HuC firmware; check it loaded (dmesg | grep -i huc)."
   # Fix links: a short action, with the flag or package in brackets.
   fixRenderGroupContainer: Add render group (--group-add render)
   fixRenderGroupHost: Add jellyfin to render group (usermod)
@@ -815,7 +818,7 @@ texts:
   noteSoftwareDecode: Decoded in software with this backend, then encoded on the GPU.
   noteSoftwareDecodeFailed: Decoded in software, as the probe found this GPU can't decode it, then encoded on the GPU.
   noteDecodeFailed: "Not measured: the probe found this GPU can't decode it."
-  noteLowPowerDropped: Low-power mode isn't supported for this encoder here; ffmpeg used normal mode, so this is the normal-mode speed.
+  noteLowPowerDropped: Low power was dropped (see the Hardware Probe finding); ffmpeg used normal mode, so this is the normal-mode speed.
   lowPowerOptionH264: Intel Low-Power H.264 hardware encoder
   lowPowerOptionHevc: Intel Low-Power HEVC hardware encoder
 

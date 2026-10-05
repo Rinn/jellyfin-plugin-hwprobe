@@ -62,6 +62,26 @@ public sealed class ProbeEngineIntelTests : IDisposable
         Assert.Contains(report.Findings, f => f.Code == "lowpower-unavailable-hevc");
     }
 
+    /// <summary>Low power dropped for the bitrate gets the firmware remedy when HuC is known not to be requested, and the dropped text otherwise; -1 on this Gen 9 GPU means the kernel's default, off.</summary>
+    /// <param name="enableGuc">The i915 enable_guc value, or "unreadable".</param>
+    /// <param name="expectedCode">The H.264 low-power finding.</param>
+    /// <param name="expectedText">Text the finding contains.</param>
+    /// <returns>A task representing the test.</returns>
+    [Theory]
+    [InlineData("2", "lowpower-dropped-h264", "check it loaded")]
+    [InlineData("3", "lowpower-dropped-h264", "check it loaded")]
+    [InlineData("unreadable", "lowpower-dropped-h264", "check it loaded")]
+    [InlineData("0", "lowpower-unavailable-h264", "enable_guc is currently 0")]
+    [InlineData("-1", "lowpower-unavailable-h264", "enable_guc is currently -1")]
+    public async Task DroppedLowPowerBlamesFirmwareWhenHucIsOff(string enableGuc, string expectedCode, string expectedText)
+    {
+        var report = await RunAsync(openclStarts: true, lowPowerDropped: "h264", enableGuc: enableGuc);
+
+        var finding = Assert.Single(report.Findings, f => f.Code.StartsWith("lowpower-", StringComparison.Ordinal) && f.Code.EndsWith("-h264", StringComparison.Ordinal));
+        Assert.Equal(expectedCode, finding.Code);
+        Assert.Contains(expectedText, finding.Message, StringComparison.Ordinal);
+    }
+
     /// <summary>Progress counts the test clips, then the tests, never going back, and ends at its total.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
@@ -117,8 +137,9 @@ public sealed class ProbeEngineIntelTests : IDisposable
     /// <param name="nodeDenied">Whether the OS refuses to open the render node.</param>
     /// <param name="openFails">Whether the device open fails.</param>
     /// <param name="progress">Receives the probe's progress, or null.</param>
+    /// <param name="enableGuc">The i915 enable_guc value, "unreadable" for a parameter only root can read, or null when i915 isn't loaded.</param>
     /// <returns>The report.</returns>
-    private async Task<CapabilityReport> RunAsync(bool openclStarts, string? lowPowerDropped = null, bool nodeDenied = false, bool openFails = false, IProgress<ProbeProgress>? progress = null)
+    private async Task<CapabilityReport> RunAsync(bool openclStarts, string? lowPowerDropped = null, bool nodeDenied = false, bool openFails = false, IProgress<ProbeProgress>? progress = null, string? enableGuc = null)
     {
         _runner.Probe = invocation => invocation.Arguments switch
         {
@@ -140,6 +161,11 @@ public sealed class ProbeEngineIntelTests : IDisposable
         if (nodeDenied)
         {
             host.DeniedFiles.Add(Node);
+        }
+
+        if (enableGuc is not null)
+        {
+            host.Files[LowPowerAdvice.EnableGucPath] = enableGuc == "unreadable" ? null : enableGuc + "\n";
         }
 
         var options = new EngineOptions(
