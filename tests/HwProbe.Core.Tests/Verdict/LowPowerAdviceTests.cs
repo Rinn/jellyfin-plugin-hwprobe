@@ -81,6 +81,22 @@ public sealed class LowPowerAdviceTests
         Assert.DoesNotContain("isn't loaded", remedy, StringComparison.Ordinal);
     }
 
+    /// <summary>enable_guc's HuC bit decides when readable; -1 means off on Gen 9 and older and is unknown on newer GPUs, where the kernel's default may load HuC.</summary>
+    /// <param name="enableGuc">The enable_guc value, or null when unreadable.</param>
+    /// <param name="support">The GPU generation's low-power encoders.</param>
+    /// <param name="expected">Whether HuC is requested, or null when unknown.</param>
+    [Theory]
+    [InlineData("2", LowPowerSupport.H264Only, true)]
+    [InlineData("3", LowPowerSupport.Unknown, true)]
+    [InlineData("1", LowPowerSupport.Unknown, false)]
+    [InlineData("0", LowPowerSupport.Unknown, false)]
+    [InlineData("-1", LowPowerSupport.H264Only, false)]
+    [InlineData("-1", LowPowerSupport.None, false)]
+    [InlineData("-1", LowPowerSupport.Unknown, null)]
+    [InlineData(null, LowPowerSupport.H264Only, null)]
+    public void HucRequestedFollowsEnableGuc(string? enableGuc, LowPowerSupport support, bool? expected) =>
+        Assert.Equal(expected, Linux(inContainer: false, enableGuc).HucRequested(support));
+
     /// <summary>Builds Linux host facts with i915 loaded.</summary>
     /// <param name="inContainer">Whether the probe ran in a container.</param>
     /// <param name="enableGuc">The enable_guc value, or null when unreadable.</param>

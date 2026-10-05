@@ -21,11 +21,11 @@ public static class LowPowerAdvice
     /// <summary>Jellyfin's guide to setting up low-power mode on Linux (<c>intelLowPowerGuide</c> in catalog.yaml).</summary>
     public static readonly Uri Guide = new(Data.Catalog.Default.Links["intelLowPowerGuide"]);
 
-    /// <summary>Gets the remedy when the encoder opened in low-power mode but dropped it for Jellyfin's settings although HuC is loaded.</summary>
+    /// <summary>Gets the remedy when the encoder opened in low-power mode but dropped it for Jellyfin's settings, and HuC may be loaded.</summary>
     /// <remarks>
     /// jellyfin-ffmpeg's qsvenc turns low power off when "some encoding parameters are not supported under Low power mode" (debian/patches/0071).
     /// Without HuC that is expected: the intel/media-driver README says HuC is necessary for low-power bitrate control, and a Gen 9 NAS with
-    /// enable_guc=0 logged "Selected ratecontrol mode is unsupported" for VBR. Callers give the firmware remedy instead unless HuC is loaded.
+    /// enable_guc=0 logged "Selected ratecontrol mode is unsupported" for VBR. Callers give the firmware remedy instead when HuC is known not to be requested.
     /// </remarks>
     public static string Dropped => Catalog.Text("lowPowerDropped");
 
