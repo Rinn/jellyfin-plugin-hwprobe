@@ -15,7 +15,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Verdict;
 /// </remarks>
 public static class LowPowerAdvice
 {
-    /// <summary>Path of the i915 driver's GuC/HuC loading parameter; root-only on Synology DSM.</summary>
+    /// <summary>Path of the i915 driver's GuC/HuC loading parameter; root-only (mode 0400 in the kernel's i915_params.c).</summary>
     public const string EnableGucPath = "/sys/module/i915/parameters/enable_guc";
 
     /// <summary>Jellyfin's Intel guide links here for missing GuC and HuC files (<c>linuxFirmwareI915</c> in catalog.yaml).</summary>
@@ -24,8 +24,12 @@ public static class LowPowerAdvice
     /// <summary>Jellyfin's guide to setting up low-power mode on Linux (<c>intelLowPowerGuide</c> in catalog.yaml).</summary>
     public static readonly Uri Guide = new(Data.Catalog.Default.Links["intelLowPowerGuide"]);
 
-    /// <summary>Gets the remedy when the encoder opened in low-power mode but dropped it for Jellyfin's settings, which no firmware change helps.</summary>
-    /// <remarks>jellyfin-ffmpeg's qsvenc turns low power off when "some encoding parameters are not supported under Low power mode" (debian/patches/0071). On a Gen 9 (Apollo Lake) NAS it was the bitrate target.</remarks>
+    /// <summary>Gets the remedy when the encoder opened in low-power mode but dropped it for Jellyfin's settings although HuC is loaded.</summary>
+    /// <remarks>
+    /// jellyfin-ffmpeg's qsvenc turns low power off when "some encoding parameters are not supported under Low power mode" (debian/patches/0071).
+    /// Without HuC that is expected: the intel/media-driver README says HuC is necessary for low-power bitrate control, and a Gen 9 NAS with
+    /// enable_guc=0 logged "Selected ratecontrol mode is unsupported" for VBR. Callers give the firmware remedy instead unless HuC is loaded.
+    /// </remarks>
     public static string Dropped => Catalog.Text("lowPowerDropped");
 
     /// <summary>Returns the remedy for a codec whose low-power encode fails.</summary>

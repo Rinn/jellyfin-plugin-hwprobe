@@ -142,6 +142,7 @@ public sealed class ProbeEngine : IDisposable
             new HostSummary(OsName(host.Os), host.Kernel, host.Container)
             {
                 Architecture = host.Architecture,
+                Synology = host.Synology,
             },
             new StageASummary([.. caps.Hwaccels.Order(StringComparer.Ordinal)], caps.BuildStatus, caps.FilterOptions),
             [.. run.Backends
@@ -391,7 +392,7 @@ public sealed class ProbeEngine : IDisposable
     /// <returns>The host facts the low-power remedy depends on.</returns>
     private LowPowerHost LowPowerHost(HostInfo host)
     {
-        // A loaded i915 lists enable_guc even when only root can read it, as on Synology DSM.
+        // A loaded i915 lists enable_guc even though only root can read it.
         var loaded = _platform.ListDirectory("/sys/module/i915/parameters", "enable_guc").Entries.Count > 0;
         return new LowPowerHost(host.Os, host.Container is not null, host.Synology, loaded, _platform.TryReadText(LowPowerAdvice.EnableGucPath)?.Trim());
     }
@@ -794,7 +795,7 @@ public sealed class ProbeEngine : IDisposable
                     ? ProbeOutcome.CodecUnsupported
                     : VerdictEvaluator.Evaluate(ran, new ProbeExpectation(MatrixCatalog.Frames, StderrMarkers.HardwareFrames(candidate.Type, args.Hwaccel)));
                 var hint = outcome == ProbeOutcome.Pass ? string.Empty
-                    : lowPowerDropped && IntelLowPower(run, candidate) is var gen && gen != LowPowerSupport.None && !(cell.Cell.OutputCodec == "hevc" && gen == LowPowerSupport.H264Only) ? LowPowerAdvice.Dropped
+                    : lowPowerDropped && LowPowerHost(run.Host).HucLoaded && IntelLowPower(run, candidate) is var gen && gen != LowPowerSupport.None && !(cell.Cell.OutputCodec == "hevc" && gen == LowPowerSupport.H264Only) ? LowPowerAdvice.Dropped
                     : cell.Cell.LowPower ? LowPowerAdvice.Remedy(cell.Cell.OutputCodec, LowPowerHost(run.Host), IntelLowPower(run, candidate))
                     : cell.Group == MatrixGroup.Tonemap && !cell.Cell.VppTonemap && run.NoOpencl.Contains(candidate) ? Hints.OpenclUnavailable(inContainer)
                     : Hints.For(outcome, candidate.Type, run.Host.Os, inContainer);

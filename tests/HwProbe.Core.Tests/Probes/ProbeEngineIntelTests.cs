@@ -62,6 +62,22 @@ public sealed class ProbeEngineIntelTests : IDisposable
         Assert.Contains(report.Findings, f => f.Code == "lowpower-unavailable-hevc");
     }
 
+    /// <summary>Low power dropped for the bitrate is put down to the settings only when HuC is loaded; otherwise the firmware remedy is given, as low-power bitrate control requires HuC.</summary>
+    /// <param name="enableGuc">The i915 enable_guc value.</param>
+    /// <param name="expectedCode">The H.264 low-power finding.</param>
+    /// <returns>A task representing the test.</returns>
+    [Theory]
+    [InlineData("2", "lowpower-dropped-h264")]
+    [InlineData("3", "lowpower-dropped-h264")]
+    [InlineData("0", "lowpower-unavailable-h264")]
+    [InlineData("-1", "lowpower-unavailable-h264")]
+    public async Task DroppedLowPowerBlamesSettingsOnlyWithHuc(string enableGuc, string expectedCode)
+    {
+        var report = await RunAsync(openclStarts: true, lowPowerDropped: "h264", enableGuc: enableGuc);
+
+        Assert.Equal(expectedCode, Assert.Single(report.Findings, f => f.Code.StartsWith("lowpower-", StringComparison.Ordinal) && f.Code.EndsWith("-h264", StringComparison.Ordinal)).Code);
+    }
+
     /// <summary>Progress counts the test clips, then the tests, never going back, and ends at its total.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
@@ -117,8 +133,9 @@ public sealed class ProbeEngineIntelTests : IDisposable
     /// <param name="nodeDenied">Whether the OS refuses to open the render node.</param>
     /// <param name="openFails">Whether the device open fails.</param>
     /// <param name="progress">Receives the probe's progress, or null.</param>
+    /// <param name="enableGuc">The i915 enable_guc value, or null when i915 isn't loaded.</param>
     /// <returns>The report.</returns>
-    private async Task<CapabilityReport> RunAsync(bool openclStarts, string? lowPowerDropped = null, bool nodeDenied = false, bool openFails = false, IProgress<ProbeProgress>? progress = null)
+    private async Task<CapabilityReport> RunAsync(bool openclStarts, string? lowPowerDropped = null, bool nodeDenied = false, bool openFails = false, IProgress<ProbeProgress>? progress = null, string? enableGuc = null)
     {
         _runner.Probe = invocation => invocation.Arguments switch
         {
@@ -140,6 +157,11 @@ public sealed class ProbeEngineIntelTests : IDisposable
         if (nodeDenied)
         {
             host.DeniedFiles.Add(Node);
+        }
+
+        if (enableGuc is not null)
+        {
+            host.Files[LowPowerAdvice.EnableGucPath] = enableGuc + "\n";
         }
 
         var options = new EngineOptions(

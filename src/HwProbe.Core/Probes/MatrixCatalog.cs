@@ -91,7 +91,7 @@ public static class MatrixCatalog
             {
                 var lowPower = Encode(FixtureCatalog.H264, output, hardwareDecode: true);
 
-                // With the bitrate Jellyfin encodes to: on a Gen 9 NAS, low power held without one and was dropped with it (qsvenc falls back, jellyfin-ffmpeg patch 0071).
+                // With the bitrate Jellyfin encodes to: low-power bitrate control requires HuC (intel/media-driver README), so on a Gen 9 NAS without it low power held without a bitrate and was dropped with one (qsvenc falls back, jellyfin-ffmpeg patch 0071).
                 cells.Add(lowPower with { Key = output + "_lowpower", Cell = lowPower.Cell with { LowPower = true, FullQuality = true, VideoBitrate = LowPowerBitrate } });
             }
         }

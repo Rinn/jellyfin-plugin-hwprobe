@@ -799,10 +799,10 @@ texts:
   lowPowerSynologyContainer: On the NAS (not in the container), as root,
   lowPowerSynologyHost: As root,
   lowPowerEnableGuc: enable_guc is currently {value}.
-  # i915 parameters are mode 0400 on Synology DSM.
+  # enable_guc is mode 0400 (the kernel's i915_params.c), so a server not running as root can't read it.
   lowPowerEnableGucRootOnly: Only root can read enable_guc here ({path}).
-  # jellyfin-ffmpeg's qsvenc turns low power off when its parameters aren't supported (debian/patches/0071); on a Gen 9 NAS it was the bitrate target.
-  lowPowerDropped: Low power doesn't work with the bitrate Jellyfin sets, so ffmpeg uses normal mode.
+  # jellyfin-ffmpeg's qsvenc turns low power off when its parameters aren't supported (debian/patches/0071). Shown only when HuC is loaded; without it, the firmware remedy is shown, since low-power bitrate control requires HuC (intel/media-driver README).
+  lowPowerDropped: Low power doesn't support Jellyfin's encoding settings here, though HuC is loaded, so ffmpeg uses normal mode.
   # Fix links: a short action, with the flag or package in brackets.
   fixRenderGroupContainer: Add render group (--group-add render)
   fixRenderGroupHost: Add jellyfin to render group (usermod)
