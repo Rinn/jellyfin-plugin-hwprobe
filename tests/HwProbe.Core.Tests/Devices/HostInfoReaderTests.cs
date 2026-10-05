@@ -72,6 +72,20 @@ public sealed class HostInfoReaderTests
         Assert.Equal(expected, new HostInfoReader(host).Read().Container);
     }
 
+    /// <summary>Synology DSM is detected from its kernel's syno_hw_version sysctl, on Linux only.</summary>
+    /// <param name="os">The OS family.</param>
+    /// <param name="expected">Whether Synology is reported.</param>
+    [Theory]
+    [InlineData(HostOs.Linux, true)]
+    [InlineData(HostOs.Windows, false)]
+    public void SynologyDetection(HostOs os, bool expected)
+    {
+        var host = new FakeHostPlatform(os);
+        host.Files["/proc/sys/kernel/syno_hw_version"] = "DS1019+\n";
+
+        Assert.Equal(expected, new HostInfoReader(host).Read().Synology);
+    }
+
     /// <summary>The real host reads without throwing.</summary>
     [Fact]
     public void RealHostDoesNotThrow() =>

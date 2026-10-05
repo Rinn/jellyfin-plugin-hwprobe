@@ -15,7 +15,13 @@ public sealed class HostInfoReader
 
     /// <summary>Reads the host facts.</summary>
     /// <returns>The host info; unreadable fields are <c>unknown</c>, never an exception.</returns>
-    public HostInfo Read() => new(_platform.Os, ReadKernel(), _platform.Os == HostOs.Linux ? DetectContainer() : null) { Architecture = _platform.Architecture };
+    public HostInfo Read() => new(_platform.Os, ReadKernel(), _platform.Os == HostOs.Linux ? DetectContainer() : null)
+    {
+        Architecture = _platform.Architecture,
+
+        // Synology's kernel adds syno_* sysctls; /proc/sys is the host's, so this works in a container too.
+        Synology = _platform.Os == HostOs.Linux && _platform.FileExists("/proc/sys/kernel/syno_hw_version"),
+    };
 
     /// <summary>Reads the kernel release, the equivalent of <c>uname -r</c>.</summary>
     /// <returns>The release, or <c>unknown</c>.</returns>

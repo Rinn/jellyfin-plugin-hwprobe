@@ -15,8 +15,11 @@ namespace Jellyfin.Plugin.HwProbe.Core.Verdict;
 /// </remarks>
 public static class LowPowerAdvice
 {
-    /// <summary>Path of the i915 driver's GuC/HuC loading parameter; readable without root.</summary>
+    /// <summary>Path of the i915 driver's GuC/HuC loading parameter; root-only on Synology DSM.</summary>
     public const string EnableGucPath = "/sys/module/i915/parameters/enable_guc";
+
+    /// <summary>Jellyfin's Intel guide links here for missing GuC and HuC files (<c>linuxFirmwareI915</c> in catalog.yaml).</summary>
+    public static readonly Uri FirmwareFiles = new(Data.Catalog.Default.Links["linuxFirmwareI915"]);
 
     /// <summary>Jellyfin's guide to setting up low-power mode on Linux (<c>intelLowPowerGuide</c> in catalog.yaml).</summary>
     public static readonly Uri Guide = new(Data.Catalog.Default.Links["intelLowPowerGuide"]);
@@ -27,49 +30,47 @@ public static class LowPowerAdvice
 
     /// <summary>Returns the remedy for a codec whose low-power encode fails.</summary>
     /// <param name="codec">The output codec, e.g. <c>hevc</c>.</param>
-    /// <param name="os">The host OS.</param>
-    /// <param name="inContainer">Whether the probe ran in a container.</param>
-    /// <param name="enableGuc">The i915 <c>enable_guc</c> value, or null when the i915 driver isn't loaded.</param>
+    /// <param name="host">The host facts.</param>
     /// <param name="support">The low-power encoders the device's generation has.</param>
     /// <returns>Remedy text.</returns>
     /// <remarks>From Jellyfin's Intel guide, which says Gen 9.x graphics support "non-LP and LP (H.264 only) encoding".</remarks>
-    public static string Remedy(string codec, HostOs os, bool inContainer, string? enableGuc, LowPowerSupport support) =>
+    public static string Remedy(string codec, LowPowerHost host, LowPowerSupport support) =>
         support == LowPowerSupport.None ? Catalog.Text("lowPowerNone")
         : codec == "hevc" && support == LowPowerSupport.H264Only ? Catalog.Text("lowPowerHevcGen9")
-        : codec == "hevc" ? Catalog.Text("lowPowerHevcMaybeGen9", ("remedy", Remedy(os, inContainer, enableGuc)))
-        : Remedy(os, inContainer, enableGuc);
+        : codec == "hevc" ? Catalog.Text("lowPowerHevcMaybeGen9", ("remedy", Remedy(host)))
+        : Remedy(host);
 
     /// <summary>Returns the remedy for a failed low-power encode.</summary>
-    /// <param name="os">The host OS.</param>
-    /// <param name="inContainer">Whether the probe ran in a container, where firmware and driver options belong to the host.</param>
-    /// <param name="enableGuc">The i915 <c>enable_guc</c> value, or null when the i915 driver isn't loaded.</param>
+    /// <param name="host">The host facts.</param>
     /// <returns>Remedy text.</returns>
-    public static string Remedy(HostOs os, bool inContainer, string? enableGuc)
+    public static string Remedy(LowPowerHost host)
     {
-        if (os != HostOs.Linux)
+        ArgumentNullException.ThrowIfNull(host);
+        if (host.Os != HostOs.Linux)
         {
             return Catalog.Text("lowPowerNotLinux");
         }
 
-        if (enableGuc is null)
+        if (!host.I915Loaded)
         {
             return Catalog.Text("lowPowerNoI915", ("guide", Guide.ToString()));
         }
 
-        return Catalog.Text("lowPowerFirmware", ("where", Catalog.Text(inContainer ? "lowPowerFirmwareContainer" : "lowPowerFirmwareHost")), ("enableGuc", enableGuc), ("guide", Guide.ToString()));
+        var current = host.EnableGuc is null ? Catalog.Text("lowPowerEnableGucRootOnly", ("path", EnableGucPath)) : Catalog.Text("lowPowerEnableGuc", ("value", host.EnableGuc));
+        return host.Synology
+            ? Catalog.Text("lowPowerFirmwareSynology", ("where", Catalog.Text(host.InContainer ? "lowPowerSynologyContainer" : "lowPowerSynologyHost")), ("firmware", FirmwareFiles.ToString()), ("current", current), ("guide", Guide.ToString()))
+            : Catalog.Text("lowPowerFirmware", ("where", Catalog.Text(host.InContainer ? "lowPowerFirmwareContainer" : "lowPowerFirmwareHost")), ("current", current), ("guide", Guide.ToString()));
     }
 
     /// <summary>Returns findings for the low-power encoder options of one Intel device.</summary>
     /// <param name="type">The backend (QSV or VAAPI).</param>
     /// <param name="device">The device.</param>
     /// <param name="encode">Encode results by key, including <c>h264</c>, <c>hevc</c> and their <c>_lowpower</c> cells.</param>
-    /// <param name="os">The host OS.</param>
-    /// <param name="inContainer">Whether the probe ran in a container.</param>
-    /// <param name="enableGuc">The i915 <c>enable_guc</c> value, or null.</param>
+    /// <param name="host">The host facts.</param>
     /// <param name="support">The low-power encoders the device's generation has.</param>
     /// <param name="dropped">The output codecs whose low-power encode opened and then fell back to normal mode for Jellyfin's settings, or null.</param>
     /// <returns>One finding per codec that has both results.</returns>
-    public static IEnumerable<Finding> Findings(HwType type, string device, IReadOnlyDictionary<string, ProbeOutcome> encode, HostOs os, bool inContainer, string? enableGuc, LowPowerSupport support, IReadOnlySet<string>? dropped = null)
+    public static IEnumerable<Finding> Findings(HwType type, string device, IReadOnlyDictionary<string, ProbeOutcome> encode, LowPowerHost host, LowPowerSupport support, IReadOnlySet<string>? dropped = null)
     {
         ArgumentNullException.ThrowIfNull(encode);
 
@@ -99,7 +100,7 @@ public static class LowPowerAdvice
                 var missing = support == LowPowerSupport.None || (codec == "hevc" && support == LowPowerSupport.H264Only);
                 yield return dropped?.Contains(codec) == true && !missing
                     ? new Finding(FindingSeverity.Info, $"lowpower-dropped-{codec}", prefix + Catalog.Text("findingLowPowerDropped", ("option", option), ("reason", Dropped))) { Backend = type }
-                    : new Finding(FindingSeverity.Info, $"lowpower-unavailable-{codec}", prefix + Catalog.Text("findingLowPowerUnavailable", ("option", option), ("reason", Remedy(codec, os, inContainer, enableGuc, support)))) { Backend = type };
+                    : new Finding(FindingSeverity.Info, $"lowpower-unavailable-{codec}", prefix + Catalog.Text("findingLowPowerUnavailable", ("option", option), ("reason", Remedy(codec, host, support)))) { Backend = type };
             }
         }
     }

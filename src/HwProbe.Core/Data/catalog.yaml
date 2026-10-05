@@ -604,6 +604,8 @@ links:
   # Jellyfin's hardware acceleration guides; vendor pages and anchors are added to it (checked against jellyfin.org on 2026-10-01).
   jellyfinGuides: https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/
   intelLowPowerGuide: https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/intel/#configure-and-verify-lp-mode-on-linux
+  # Where Jellyfin's Intel guide sends users for missing GuC and HuC files.
+  linuxFirmwareI915: https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/tree/i915
   # FFmpeg's FATE sample suite, where clips that can't be made are downloaded from.
   fateSuite: https://fate-suite.ffmpeg.org/
 
@@ -789,9 +791,16 @@ texts:
   lowPowerHevcMaybeGen9: "Gen 9 Intel graphics (Skylake to Comet Lake, Apollo Lake, Gemini Lake) have low-power H.264 only, so there this is expected and no firmware change helps. On newer GPUs: {remedy}"
   lowPowerNotLinux: This GPU's driver doesn't support low-power encoding here. Leave the Intel Low-Power encoder option off.
   lowPowerNoI915: "Low-power encoding failed, and the i915 driver isn't loaded (the xe driver requires no firmware option). Check the Intel firmware package is installed. Guide: {guide}"
-  lowPowerFirmware: "Low-power encoding on Linux requires Intel's HuC firmware. {where} the firmware package (firmware-intel-graphics on Debian, linux-firmware on Ubuntu and Arch). Except on DG1, 12th-gen and newer, or Arc A-series GPUs, which load HuC by default, add 'options i915 enable_guc=2' to /etc/modprobe.d/i915.conf, update the initramfs, and reboot. enable_guc is currently {enableGuc}. Guide: {guide}"
+  lowPowerFirmware: "Low-power encoding on Linux requires Intel's HuC firmware. {where} the firmware package (firmware-intel-graphics on Debian, linux-firmware on Ubuntu and Arch). Except on DG1, 12th-gen and newer, or Arc A-series GPUs, which load HuC by default, add 'options i915 enable_guc=2' to /etc/modprobe.d/i915.conf, update the initramfs, and reboot. {current} Guide: {guide}"
   lowPowerFirmwareContainer: On the host (not in the container), install
   lowPowerFirmwareHost: Install
+  # Synology DSM 7.4.1 (DS1019+, Apollo Lake): no firmware package or initramfs, no /etc/modprobe.d, only DMC files in /lib/firmware/i915, and systemd-modules-load with kmod, which reads /etc/modprobe.d.
+  lowPowerFirmwareSynology: "Low-power encoding on Linux requires Intel's HuC firmware. {where} copy the GPU's GuC and HuC files from linux-firmware ({firmware}) to /lib/firmware/i915 if they're missing, run 'mkdir -p /etc/modprobe.d', add 'options i915 enable_guc=2' to /etc/modprobe.d/i915.conf, and reboot. {current} Guide: {guide}"
+  lowPowerSynologyContainer: On the NAS (not in the container), as root,
+  lowPowerSynologyHost: As root,
+  lowPowerEnableGuc: enable_guc is currently {value}.
+  # i915 parameters are mode 0400 on Synology DSM.
+  lowPowerEnableGucRootOnly: Only root can read enable_guc here ({path}).
   # jellyfin-ffmpeg's qsvenc turns low power off when its parameters aren't supported (debian/patches/0071); on a Gen 9 NAS it was the bitrate target.
   lowPowerDropped: Low power doesn't work with the bitrate Jellyfin sets, so ffmpeg uses normal mode.
   # Fix links: a short action, with the flag or package in brackets.
