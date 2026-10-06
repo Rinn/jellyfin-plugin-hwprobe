@@ -4,13 +4,16 @@
 Reads each project's restore output (obj/project.assets.json) for the NuGet packages with runtime assemblies, and
 each package's .nuspec in the NuGet cache for its licence and home page; licences are linked, not copied. Writes THIRD-PARTY-NOTICES.md and the
 plugin's libraries.json, which the Help tab lists. --check fails when either file is out of date. Versions are left out, so a package update
-changes neither file unless its licence or home page changes.
+changes neither file unless its licence or home page changes. Licence links point at the licence file on the source repository's default
+branch, looked up through the GitHub API only for libraries the notices don't already link.
 """
 
 import argparse
 import json
 import os
+import re
 import sys
+import urllib.request
 import xml.etree.ElementTree as ElementTree
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -54,16 +57,37 @@ def nuspec(name, version):
         with open(os.path.join(folder, license_element.text.strip()), encoding="utf-8-sig") as f:
             body = f.read()
         license_name = "Apache-2.0" if "Apache License" in body and "Version 2.0" in body else "MIT" if "MIT License" in body else "Licence"
-    if license_element is not None:
-        # SPDX's page for a single identifier; NuGet's licence page for anything else, which only exists per version.
-        single = license_name != "Licence" and all(c.isalnum() or c in ".-+" for c in license_name)
-        license_url = f"https://spdx.org/licenses/{license_name}.html" if single else f"https://www.nuget.org/packages/{name}/{version}/license"
     else:
         license_name = "Licence"
-        license_url = fields["licenseUrl"].text.strip()
     # The source repository rather than projectUrl, which some packages point at a wiki or marketing page.
     url = fields["repository"].get("url") if "repository" in fields and fields["repository"].get("url") else fields["projectUrl"].text.strip()
+    url = re.sub(r"\.git$", "", url)
+    license_url = KNOWN_LICENSE_URLS.get(name) or github_license(url) or (fields["licenseUrl"].text.strip() if "licenseUrl" in fields else f"https://www.nuget.org/packages/{name}/{version}/license")
     return license_name, license_url, url
+
+
+def known_license_urls():
+    """Returns the licence link of each library the current notices file lists, so only new libraries need the network."""
+    if not os.path.exists(NOTICES):
+        return {}
+    with open(NOTICES, encoding="utf-8") as f:
+        return {name: url for name, url in re.findall(r"^\| \[([^\]]+)\]\([^)]*\) \| \[[^\]]*\]\(([^)]*)\) \|$", f.read(), re.M) if url.startswith("https://github.com/")}
+
+
+def github_license(url):
+    """Returns the link to the licence file on a GitHub repository's default branch, or None for other hosts."""
+    match = re.match(r"https://github\.com/([^/]+/[^/]+)", url)
+    if not match:
+        return None
+    request = urllib.request.Request(f"https://api.github.com/repos/{match.group(1)}/license", headers={"Accept": "application/vnd.github+json"})
+    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    if token:
+        request.add_header("Authorization", f"Bearer {token}")
+    with urllib.request.urlopen(request) as response:
+        return json.load(response)["html_url"]
+
+
+KNOWN_LICENSE_URLS = known_license_urls()
 
 
 def build():
