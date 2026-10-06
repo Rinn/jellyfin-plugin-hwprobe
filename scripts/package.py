@@ -16,7 +16,7 @@ import sys
 import time
 import zipfile
 
-# Third-party assemblies the plugin zip carries; Jellyfin provides the rest. scripts/notices.py lists their licences.
+# Third-party assemblies the plugin zip carries; Jellyfin provides the rest. scripts/notices.py writes their notices.
 PLUGIN_LIBRARIES = ["Meziantou.Framework.Win32.Jobs.dll", "YamlDotNet.dll"]
 CLI_RIDS = ["linux-x64", "linux-arm64", "osx-arm64", "win-x64", "win-arm64"]
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -114,12 +114,16 @@ def main():
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(publishes)) as pool:
         for output in pool.map(lambda command: run_captured(*command), publishes):
             print(output, end="")
+    notices_dir = os.path.join(work, "notices")
+    run(sys.executable, "scripts/notices.py", "--out", notices_dir, *[arg for rid in CLI_RIDS for arg in ("--rid", rid)])
 
     dlls = [(n, os.path.join(plugin, n)) for n in os.listdir(plugin) if (n.startswith("Jellyfin.Plugin.HwProbe") and n.endswith(".dll")) or n in PLUGIN_LIBRARIES]
-    notices = [(n, os.path.join(ROOT, n)) for n in ("LICENSE", "THIRD-PARTY-NOTICES.md")]
-    archives = [lambda: write_zip(os.path.join(out, plugin_zip), dlls + notices, epoch)]
+    license_file = [("LICENSE", os.path.join(ROOT, "LICENSE"))]
+    plugin_notices = [(n, os.path.join(notices_dir, "plugin", n)) for n in ("THIRD-PARTY-NOTICES.md", "libraries.json")]
+    archives = [lambda: write_zip(os.path.join(out, plugin_zip), dlls + license_file + plugin_notices, epoch)]
     for rid in CLI_RIDS:
         target = os.path.join(work, "cli", rid)
+        notices = license_file + [(n, os.path.join(notices_dir, f"cli-{rid}", n)) for n in ("THIRD-PARTY-NOTICES.md", "DOTNET-THIRD-PARTY-NOTICES.txt")]
         if rid.startswith("win"):
             exe = [("hwprobe.exe", os.path.join(target, "Jellyfin.Plugin.HwProbe.Cli.exe"))]
             archives.append(lambda rid=rid, exe=exe: write_zip(os.path.join(out, f"hwprobe-{rid}.zip"), exe + notices, epoch))

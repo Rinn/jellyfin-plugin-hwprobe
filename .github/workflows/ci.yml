@@ -32,7 +32,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      # Documentation-only changes skip every other job. THIRD-PARTY-NOTICES.md is packaged and checked, so it counts as source.
+      # Documentation-only changes skip every other job.
       - name: Check for source changes
         id: diff
         env:
@@ -47,7 +47,7 @@ jobs:
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
             echo "source=true" >> "$GITHUB_OUTPUT"; exit 0
           fi
-          source="$(git diff --name-only "$BASE" HEAD | grep -E -v '\.md$|^\.github/ISSUE_TEMPLATE/' ; git diff --name-only "$BASE" HEAD | grep -E '^THIRD-PARTY-NOTICES\.md$')" || true
+          source="$(git diff --name-only "$BASE" HEAD | grep -E -v '\.md$|^\.github/ISSUE_TEMPLATE/')" || true
           printf '%s\n' "$source"
           if [ -n "$source" ]; then echo "source=true"; else echo "source=false"; fi >> "$GITHUB_OUTPUT"
 
@@ -149,8 +149,6 @@ jobs:
         run: dotnet format --verify-no-changes
       - name: Check the plugin page script
         run: sh scripts/check-page.sh
-      - name: Check the third-party notices
-        run: python3 scripts/notices.py --check
 
   # Runs on documentation-only changes too, since it checks Markdown and YAML.
   editorconfig:
@@ -187,6 +185,9 @@ jobs:
         with:
           nuget-cache: package
       - name: Package
+        env:
+          # notices.py reads licence files through the GitHub API.
+          GH_TOKEN: ${{ github.token }}
         run: python3 scripts/package.py --out artifacts/dist
       - uses: actions/upload-artifact@v7
         with:

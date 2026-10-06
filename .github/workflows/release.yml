@@ -86,6 +86,8 @@ jobs:
         run: scripts/container-plugin.sh
         env:
           HWPROBE_INSTALL: ${{ matrix.install }}
+          # notices.py reads licence files through the GitHub API.
+          GH_TOKEN: ${{ github.token }}
           JELLYFIN_IMAGE: ghcr.io/jellyfin/jellyfin:${{ matrix.jellyfin }}
       - name: Upload server logs
         if: failure()
@@ -112,6 +114,9 @@ jobs:
 
       # The SDK ad-hoc signs osx-arm64 executables on Linux too (checked with codesign on macOS).
       - name: Package
+        env:
+          # notices.py reads licence files through the GitHub API.
+          GH_TOKEN: ${{ github.token }}
         run: python3 scripts/package.py --version "${{ needs.check.outputs.version }}" --out artifacts/dist
 
       # Verifiable with: gh attestation verify <file> -R Rinn/jellyfin-plugin-hwprobe

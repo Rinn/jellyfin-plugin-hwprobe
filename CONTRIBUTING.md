@@ -23,7 +23,6 @@ dotnet build -warnaserror
 dotnet format --verify-no-changes
 dotnet test
 sh scripts/check-page.sh
-python3 scripts/notices.py --check
 editorconfig-checker
 ```
 

@@ -16,9 +16,6 @@ dotnet format --verify-no-changes
 echo "pre-commit: dotnet test"
 dotnet test
 
-echo "pre-commit: third-party notices"
-python3 scripts/notices.py --check
-
 if command -v node >/dev/null 2>&1; then
     echo "pre-commit: plugin page script"
     sh scripts/check-page.sh
