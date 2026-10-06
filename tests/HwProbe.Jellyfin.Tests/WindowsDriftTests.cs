@@ -13,6 +13,7 @@ namespace Jellyfin.Plugin.HwProbe.Jellyfin.Tests;
 /// EncodingHelper only takes these branches on Windows.
 /// </remarks>
 [Trait("Category", "Unit")]
+[Trait("Category", "Platform")]
 [Collection(TestCollections.EncodingHelperEnvironment)]
 public sealed class WindowsDriftTests
 {

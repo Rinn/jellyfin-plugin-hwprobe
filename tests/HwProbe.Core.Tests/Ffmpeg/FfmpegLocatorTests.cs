@@ -5,6 +5,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Ffmpeg;
 
 /// <summary>Discovery-order and failure behaviour of <see cref="FfmpegLocator"/>.</summary>
 [Trait("Category", "Unit")]
+[Trait("Category", "Platform")]
 public sealed class FfmpegLocatorTests
 {
     /// <summary>The command-line path wins over every other source.</summary>

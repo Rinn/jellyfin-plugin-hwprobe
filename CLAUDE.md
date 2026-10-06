@@ -16,12 +16,13 @@ dotnet format --verify-no-changes  # formatting/style, non-mutating
 dotnet test                        # Unit + FakeFfmpeg traits only
 sh scripts/check-page.sh           # syntax-checks the plugin page's script
 python3 scripts/notices.py --check # third-party notices match the restored packages
+editorconfig-checker               # .editorconfig rules on files dotnet format skips
 
 HWPROBE_HW_TESTS=1 dotnet test     # adds RealFfmpeg + Hardware traits
 sh scripts/container-plugin.sh     # installs the plugin in Jellyfin 12.1 (podman) and checks it through the API
 ```
 
-The first five must pass before every commit; `scripts/pre-commit` enforces them. A test run with zero tests exits 8 and fails the gate; don't hide it with `--ignore-exit-code`.
+The first six must pass before every commit; `scripts/pre-commit` enforces them. A test run with zero tests exits 8 and fails the gate; don't hide it with `--ignore-exit-code`.
 
 Releases: run `release.yml` by hand (see `DEVELOPMENT.md`). Releases are immutable, so a used version can never be reused. The version comes only from the release tag; `Directory.Build.props` holds `0.0.0`.
 
@@ -62,6 +63,7 @@ Pull files with `gh` and grep locally. WebFetch truncates `EncodingHelper.cs` (8
 - **Async entry points**: `static async Task<int> Main` in an explicit `Program` class. No `Thread.Sleep` or blocking I/O; no `ConfigureAwait(false)` (CA2007 is off, as upstream has it).
 - **Comments only where the code isn't self-documenting**, terse, explaining why. Upstream constraints and ffmpeg quirks are the usual reason; cite the source.
 - **Gate platform- and hardware-bound tests declaratively** with `[Fact(Skip = "Requires …", SkipUnless = nameof(TestEnvironment.X), SkipType = typeof(TestEnvironment))]` from `tests/TestSupport/TestEnvironment.cs`, never an `if (OperatingSystem.Is…)` inside a test. Real ffmpeg comes from `TestEnvironment.RealFfmpeg`.
+- **Tag tests whose result can differ by OS** (processes, filesystem, environment variables, OS branches, native calls) `[Trait("Category", "Platform")]`, in classes of their own: CI runs only those on macOS and Windows, and everything on Linux.
 
 ## Plugin page conventions
 

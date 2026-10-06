@@ -10,6 +10,7 @@ namespace Jellyfin.Plugin.HwProbe.PluginTests;
 
 /// <summary>Applying advice, switching backend, history and revert.</summary>
 [Trait("Category", "Unit")]
+[Trait("Category", "Platform")]
 public sealed class SettingsServiceTests : IDisposable
 {
     private readonly SettingsHarness _harness = new();

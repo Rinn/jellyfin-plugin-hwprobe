@@ -11,6 +11,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Probes;
 
 /// <summary>Staged probing and pruning in <see cref="ProbeEngine"/>, on a fake macOS host.</summary>
 [Trait("Category", "Unit")]
+[Trait("Category", "Platform")]
 public sealed class ProbeEngineTests : IDisposable
 {
     private const string HardwareDecode = "[h264 @ 0x1] Format videotoolbox_vld chosen by get_format().\n";

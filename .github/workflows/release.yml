@@ -32,8 +32,32 @@ env:
   TAG: v${{ inputs.version }}
 
 jobs:
+  plugin-e2e:
+    name: Plugin in Jellyfin 12.1 (${{ matrix.install }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # copy: DLLs copied into the plugins folder. repository: installed from a plugin repository, as users do.
+        install: [copy, repository]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Install the plugin into jellyfin/jellyfin and probe through its API
+        run: scripts/container-plugin.sh
+        env:
+          HWPROBE_INSTALL: ${{ matrix.install }}
+      - name: Upload server logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: plugin-e2e-logs-${{ matrix.install }}
+          path: artifacts/plugin-e2e/config/log
+
   release:
     name: Build and publish
+    needs: plugin-e2e
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

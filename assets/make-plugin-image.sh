@@ -20,7 +20,7 @@ cat > "$work/plugin.html" <<HTML
 @font-face { font-family: Noto; src: url(data:font/ttf;base64,$font) format("truetype"); }
 html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; }
 body { display: flex; align-items: center; justify-content: center; gap: 70px;
-       background: radial-gradient(ellipse at center, #333 0%, #181818 75%); }
+    background: radial-gradient(ellipse at center, #333 0%, #181818 75%); }
 .word { font-family: Noto; font-size: 220px; color: #fff; }
 </style></head><body>$icon<div class="word">HwProbe</div></body></html>
 HTML

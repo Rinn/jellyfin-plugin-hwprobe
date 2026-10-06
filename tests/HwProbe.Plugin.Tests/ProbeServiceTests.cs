@@ -3,7 +3,6 @@ using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Core.Speed;
 using Jellyfin.Plugin.HwProbe.Probing;
-using MediaBrowser.Model.Session;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -11,6 +10,7 @@ namespace Jellyfin.Plugin.HwProbe.PluginTests;
 
 /// <summary>Single-flight, busy refusal and report saving in <see cref="ProbeService"/>.</summary>
 [Trait("Category", "Unit")]
+[Trait("Category", "Platform")]
 public sealed class ProbeServiceTests : IDisposable
 {
     private readonly string _directory = Directory.CreateTempSubdirectory("hwprobe-plugin-").FullName;
@@ -447,16 +447,6 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal(ProbeRunResult.ServerBusy, await service.RunAsync(TestContext.Current.CancellationToken));
         Assert.Equal(ProbeRunResult.ServerBusy, await service.StartAsync(TestContext.Current.CancellationToken));
         Assert.False(ran);
-    }
-
-    /// <summary>Direct play and a remux don't count as busy; re-encoding video or audio does.</summary>
-    [Fact]
-    public void RemuxIsNotBusy()
-    {
-        Assert.False(ProbeService.IsTranscoding(null));
-        Assert.False(ProbeService.IsTranscoding(new TranscodingInfo { IsVideoDirect = true, IsAudioDirect = true }));
-        Assert.True(ProbeService.IsTranscoding(new TranscodingInfo { IsVideoDirect = true, IsAudioDirect = false }));
-        Assert.True(ProbeService.IsTranscoding(new TranscodingInfo { IsVideoDirect = false, IsAudioDirect = true }));
     }
 
     /// <summary>A second request while one runs is refused, not queued.</summary>

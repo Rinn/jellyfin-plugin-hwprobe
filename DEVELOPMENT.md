@@ -22,10 +22,13 @@ dotnet build -warnaserror
 dotnet format --verify-no-changes
 dotnet test                        # unit and FakeFfmpeg tests
 sh scripts/check-page.sh           # syntax-checks the plugin page's script
+editorconfig-checker               # .editorconfig rules on files dotnet format skips (brew install editorconfig-checker)
 HWPROBE_HW_TESTS=1 dotnet test     # also real-ffmpeg and hardware tests
 ```
 
 `python3 scripts/notices.py` rewrites `THIRD-PARTY-NOTICES.md` and the plugin's `libraries.json` (the Help tab's list) from the restore output after a package change; `--check` runs with the others. The checks above and `notices.py --check` run before every commit through the hook; install it once per clone with `git config core.hooksPath scripts/`. After changing a package version, run `dotnet restore --force-evaluate` and commit the lock files.
+
+CI runs the whole suite on Linux and only `Category=Platform` tests on macOS and Windows.
 
 With podman:
 
@@ -76,7 +79,7 @@ A user's zip (**Download diagnostics** on the Help tab, or `--diagnostics`) is l
 gh workflow run release.yml --ref main -f version=1.2.3 -f notes="What changed"
 ```
 
-The workflow builds the plugin zip and CLI builds, publishes release `v1.2.3`, and adds it to `manifest.json` on the `manifest` branch. The notes become the plugin's changelog. `-f prerelease=true` publishes without adding it to the plugin repository. Releases are immutable, so a version can't be reused.
+The workflow runs `container-plugin.sh` in both install modes, builds the plugin zip and CLI builds, publishes release `v1.2.3`, and adds it to `manifest.json` on the `manifest` branch. The notes become the plugin's changelog. `-f prerelease=true` publishes without adding it to the plugin repository. Releases are immutable, so a version can't be reused.
 
 Builds are reproducible. To check a release, build its tag from a fresh clone and compare hashes:
 

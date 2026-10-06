@@ -7,6 +7,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Devices;
 
 /// <summary>The real host platform's file checks.</summary>
 [Trait("Category", "Unit")]
+[Trait("Category", "Platform")]
 public sealed class HostPlatformTests : IDisposable
 {
     private readonly string _directory = Directory.CreateTempSubdirectory("hwprobe-platform-").FullName;

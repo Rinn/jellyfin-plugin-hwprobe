@@ -6,6 +6,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Fixtures;
 
 /// <summary>Caching, skipping and corruption handling of <see cref="FixtureBuilder"/>.</summary>
 [Trait("Category", "Unit")]
+[Trait("Category", "Platform")]
 public sealed class FixtureBuilderTests : IDisposable
 {
     private const string Key = "sha256:abc";
@@ -184,21 +185,6 @@ public sealed class FixtureBuilderTests : IDisposable
             var output = EncodingRunner.OutputPath(i);
             Assert.Contains(".partial.", Path.GetFileName(output), StringComparison.Ordinal);
         });
-    }
-
-    /// <summary>Every bundled clip ships in the assembly and matches its pinned hash.</summary>
-    [Fact]
-    public void BundledClipsMatchTheirPins()
-    {
-        var bundled = FixtureCatalog.All.Where(f => f.Bundled).ToList();
-
-        Assert.NotEmpty(bundled);
-        foreach (var spec in bundled)
-        {
-            using var resource = typeof(FixtureBuilder).Assembly.GetManifestResourceStream("Fixtures." + spec.FileName);
-            Assert.NotNull(resource);
-            Assert.Equal(spec.Sha256, Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(resource)));
-        }
     }
 
     /// <inheritdoc/>

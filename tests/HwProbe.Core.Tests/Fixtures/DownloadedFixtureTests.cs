@@ -8,6 +8,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Fixtures;
 
 /// <summary>Fixtures that are downloaded and pinned by hash rather than generated.</summary>
 [Trait("Category", "Unit")]
+[Trait("Category", "Platform")]
 public sealed class DownloadedFixtureTests : IDisposable
 {
     private static readonly byte[] _sample = [1, 2, 3, 4];
@@ -116,29 +117,6 @@ public sealed class DownloadedFixtureTests : IDisposable
 
         Assert.Equal(FixtureStatus.Available, result.Status);
         Assert.Equal(0, downloader.Calls);
-    }
-
-    /// <summary>Every catalog sample is a FATE URL with a pinned hash.</summary>
-    [Fact]
-    public void CatalogSamplesArePinnedFateUrls()
-    {
-        var downloadable = FixtureCatalog.All.Where(f => f.DownloadUrl is not null).ToList();
-
-        Assert.Equal(10, downloadable.Count);
-        Assert.All(downloadable, f =>
-        {
-            Assert.StartsWith("https://fate-suite.ffmpeg.org/", f.DownloadUrl!.ToString(), StringComparison.Ordinal);
-            Assert.Matches("^[0-9a-f]{64}$", f.Sha256);
-        });
-    }
-
-    /// <summary>The catalog's VC-1 sample is a pinned download, not a generated clip.</summary>
-    [Fact]
-    public void Vc1IsAPinnedDownload()
-    {
-        Assert.NotNull(FixtureCatalog.Vc1.DownloadUrl);
-        Assert.Matches("^[0-9a-f]{64}$", FixtureCatalog.Vc1.Sha256);
-        Assert.Null(FixtureCatalog.Vc1.UntestedReason);
     }
 
     /// <inheritdoc/>

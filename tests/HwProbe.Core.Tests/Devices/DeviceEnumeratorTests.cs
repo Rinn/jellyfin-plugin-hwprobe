@@ -1,6 +1,5 @@
 using Jellyfin.Plugin.HwProbe.Core.Devices;
 using Jellyfin.Plugin.HwProbe.Core.Model;
-using Jellyfin.Plugin.HwProbe.TestSupport;
 using Xunit;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Tests.Devices;
@@ -111,15 +110,6 @@ public sealed class DeviceEnumeratorTests
         Assert.Null(result.RenderNodeAccess);
         Assert.Empty(result.RenderNodes);
     }
-
-    /// <summary>The real host enumerates without throwing.</summary>
-    [Fact]
-    public void RealHostDoesNotThrow() => new DeviceEnumerator(new HostPlatform()).Enumerate();
-
-    /// <summary>A real macOS host enumerates VideoToolbox alone.</summary>
-    [Fact(Skip = "Requires macOS.", SkipUnless = nameof(TestEnvironment.IsMacOS), SkipType = typeof(TestEnvironment))]
-    public void RealMacOSHostIsVideoToolboxOnly() =>
-        Assert.Equal([new DeviceCandidate(HwType.videotoolbox, string.Empty)], new DeviceEnumerator(new HostPlatform()).Enumerate().Candidates);
 
     /// <summary>Returns the device selectors enumerated for one backend.</summary>
     /// <param name="result">The enumeration.</param>

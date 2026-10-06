@@ -6,6 +6,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Fixtures;
 
 /// <summary>Listing the fixture cache in <see cref="FixtureCacheContents"/>.</summary>
 [Trait("Category", "Unit")]
+[Trait("Category", "Platform")]
 public sealed class FixtureCacheContentsTests : IDisposable
 {
     private readonly string _root = Directory.CreateTempSubdirectory("hwprobe-cache-").FullName;

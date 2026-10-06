@@ -6,6 +6,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Fixtures;
 
 /// <summary>Pinned pieces of large files: two range downloads, a hash check, then the encode reads the piece. Nothing is fetched from the network.</summary>
 [Trait("Category", "Unit")]
+[Trait("Category", "Platform")]
 public sealed class PieceFixtureTests : IDisposable
 {
     private static readonly byte[] _file = [.. Enumerable.Range(0, 1000).Select(i => (byte)i)];

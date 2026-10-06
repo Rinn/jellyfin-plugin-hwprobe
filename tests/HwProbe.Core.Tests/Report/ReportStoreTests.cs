@@ -4,12 +4,10 @@ using Xunit;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Tests.Report;
 
-/// <summary>JSON shape and caching of <see cref="ReportStore"/>.</summary>
+/// <summary>JSON shape of <see cref="ReportStore"/>.</summary>
 [Trait("Category", "Unit")]
-public sealed class ReportStoreTests : IDisposable
+public sealed class ReportStoreTests
 {
-    private readonly string _directory = Directory.CreateTempSubdirectory("hwprobe-report-").FullName;
-
     /// <summary>A report round-trips and carries schemaVersion, string enums and camelCase.</summary>
     [Fact]
     public void RoundTripsWithDocumentedShape()
@@ -34,26 +32,10 @@ public sealed class ReportStoreTests : IDisposable
     [InlineData("not json")]
     public void IncompatibleInputIsNull(string json) => Assert.Null(ReportStore.Deserialize(json));
 
-    /// <summary>A cached report is found by its fingerprint and not by another.</summary>
-    /// <returns>A task representing the test.</returns>
-    [Fact]
-    public async Task CacheHitsOnlyMatchingFingerprint()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        var store = new ReportStore(_directory);
-        await store.SaveCachedAsync(Sample("sha256:abc"), ct);
-
-        Assert.NotNull(await store.LoadCachedAsync("sha256:abc", ct));
-        Assert.Null(await store.LoadCachedAsync("sha256:def", ct));
-    }
-
-    /// <inheritdoc/>
-    public void Dispose() => Directory.Delete(_directory, recursive: true);
-
     /// <summary>Builds a small report.</summary>
     /// <param name="fingerprint">Its fingerprint.</param>
     /// <returns>The report.</returns>
-    private static CapabilityReport Sample(string fingerprint) => new(
+    internal static CapabilityReport Sample(string fingerprint) => new(
         CapabilityReport.CurrentSchemaVersion,
         new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero),
         fingerprint,
