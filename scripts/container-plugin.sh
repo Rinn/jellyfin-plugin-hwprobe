@@ -13,7 +13,7 @@ set -eu
 
 root="$(git rev-parse --show-toplevel)"
 work="$root/artifacts/plugin-e2e"
-image="${JELLYFIN_IMAGE:-docker.io/jellyfin/jellyfin:12.1}"
+image="${JELLYFIN_IMAGE:-ghcr.io/jellyfin/jellyfin:12.2}"
 name=hwprobe-e2e
 repo=hwprobe-e2e-repo
 net=hwprobe-e2e-net

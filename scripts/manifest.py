@@ -4,7 +4,7 @@
 Reads the plugin's metadata from build.yaml, hashes the zip, and writes the manifest with the new
 version first. An existing entry for the same version is replaced, so a re-run release is safe.
 
-Field names follow MediaBrowser.Model/Updates/PackageInfo.cs and VersionInfo.cs (Jellyfin 12.1).
+Field names follow MediaBrowser.Model/Updates/PackageInfo.cs and VersionInfo.cs (Jellyfin 12.2).
 The checksum is MD5, which InstallationManager compares case-insensitively when installing.
 """
 

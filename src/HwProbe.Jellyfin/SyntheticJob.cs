@@ -91,7 +91,7 @@ public static class SyntheticJob
     /// <param name="subtitle">The subtitle stream, or null.</param>
     /// <returns>The list.</returns>
     /// <remarks>
-    /// EncodingHelper.FindIndex (v12.1) maps a stream to ffmpeg's <c>[0:N]</c> by its position among streams with the same
+    /// EncodingHelper.FindIndex (v12.2) maps a stream to ffmpeg's <c>[0:N]</c> by its position among streams with the same
     /// path, not by its index, so a real file's other tracks must be there for a subtitle at index 3 to be <c>[0:3]</c>.
     /// </remarks>
     private static List<MediaStream> Streams(MediaStream video, MediaStream? audio, MediaStream? subtitle)

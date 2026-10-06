@@ -9,7 +9,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Report;
 /// Which options appear for which backend, their labels and their headings follow jellyfin-web's Transcoding page
 /// (src/apps/dashboard/routes/playback/transcoding.tsx, features/playback/constants/codecs.ts and the en-us strings),
 /// read on 2026-10-01. Trickplay options follow the Trickplay page (routes/playback/trickplay.tsx) and
-/// MediaEncoder.ExtractVideoImagesOnIntervalAccelerated, read at v12.1 on 2026-10-02.
+/// MediaEncoder.ExtractVideoImagesOnIntervalAccelerated, read at v12.2 on 2026-10-06.
 /// </remarks>
 public static class SettingsAdvisor
 {

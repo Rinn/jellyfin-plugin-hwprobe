@@ -3,10 +3,10 @@ using Jellyfin.Plugin.HwProbe.Core.Model;
 namespace Jellyfin.Plugin.HwProbe.Core.Pipeline;
 
 /// <summary>Predicts whether upstream keeps an NVENC job on the GPU.</summary>
-/// <remarks>Mirrors <c>GetNvidiaVidFilterChain</c> in Jellyfin 12.1 <c>EncodingHelper</c>.</remarks>
+/// <remarks>Mirrors <c>GetNvidiaVidFilterChain</c> in Jellyfin 12.2 <c>EncodingHelper</c>.</remarks>
 public static class CudaTier
 {
-    // EncodingHelper.IsCudaFullSupported (v12.1, L313) in its check order, then the alphasrc check in
+    // EncodingHelper.IsCudaFullSupported (v12.2, L314) in its check order, then the alphasrc check in
     // GetNvidiaVidFilterChain. Only alphasrc can be missing on a working device: without the rest,
     // GetInputVideoHwaccelArgs gives NVENC no hardware arguments, so its smoke test never passes.
     private static readonly (string Name, bool IsOption)[] _required =

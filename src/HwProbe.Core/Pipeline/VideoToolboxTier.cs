@@ -5,7 +5,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Pipeline;
 /// <summary>Resolves the VideoToolbox filter-pipeline tier the way upstream selects it.</summary>
 public static class VideoToolboxTier
 {
-    // EncodingHelper.IsVideoToolboxFullSupported (v12.1, L335) plus the alphasrc check in GetAppleVidFilterChain.
+    // EncodingHelper.IsVideoToolboxFullSupported (v12.2, L336) plus the alphasrc check in GetAppleVidFilterChain.
     private static readonly string[] _requiredFilters = ["yadif_videotoolbox", "overlay_videotoolbox", "tonemap_videotoolbox", "scale_vt", "alphasrc"];
 
     /// <summary>Returns the tier.</summary>

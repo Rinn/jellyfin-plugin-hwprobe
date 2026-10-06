@@ -4,7 +4,7 @@ using Jellyfin.Plugin.HwProbe.Core.Probes;
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 
 /// <summary>Assembles a speed run's command line around upstream's input, filter, encoder and audio arguments.</summary>
-/// <remarks>The wrapper (looping, duration, progress, null output) is synthesized, as the probe's is; <c>-threads</c> sits before the filters, as in DynamicHlsController's command line (v12.1).</remarks>
+/// <remarks>The wrapper (looping, duration, progress, null output) is synthesized, as the probe's is; <c>-threads</c> sits before the filters, as in DynamicHlsController's command line (v12.2).</remarks>
 public static class SpeedCommandLine
 {
     /// <summary>Builds the argument string.</summary>

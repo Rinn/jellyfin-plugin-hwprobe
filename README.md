@@ -2,7 +2,7 @@
 
 [![ci](https://img.shields.io/github/actions/workflow/status/Rinn/jellyfin-plugin-hwprobe/ci.yml?branch=main&label=ci&logo=github)](https://github.com/Rinn/jellyfin-plugin-hwprobe/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/Rinn/jellyfin-plugin-hwprobe?label=release)](https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/latest)
-[![jellyfin](https://img.shields.io/static/v1?label=jellyfin&message=12.1%2B&color=00A4DC&logo=jellyfin)](https://jellyfin.org)
+[![jellyfin](https://img.shields.io/static/v1?label=jellyfin&message=12.2%2B&color=00A4DC&logo=jellyfin)](https://jellyfin.org)
 [![license](https://img.shields.io/github/license/Rinn/jellyfin-plugin-hwprobe)](LICENSE)
 [![downloads](https://img.shields.io/github/downloads/Rinn/jellyfin-plugin-hwprobe/total)](https://github.com/Rinn/jellyfin-plugin-hwprobe/releases)
 
@@ -14,7 +14,7 @@ AI-generated with Claude Code.
 
 ## Install
 
-Requires Jellyfin 12.1 or newer.
+Requires Jellyfin 12.2 or newer.
 
 1. In **Dashboard > Plugins > Manage Repositories**, add:
 

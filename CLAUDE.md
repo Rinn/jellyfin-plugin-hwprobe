@@ -19,7 +19,7 @@ python3 scripts/notices.py --check # third-party notices match the restored pack
 editorconfig-checker               # .editorconfig rules on files dotnet format skips
 
 HWPROBE_HW_TESTS=1 dotnet test     # adds RealFfmpeg + Hardware traits
-sh scripts/container-plugin.sh     # installs the plugin in Jellyfin 12.1 (podman) and checks it through the API
+sh scripts/container-plugin.sh     # installs the plugin in Jellyfin 12.2 (podman) and checks it through the API
 ```
 
 The first six must pass before every commit; `scripts/pre-commit` enforces them. A test run with zero tests exits 8 and fails the gate; don't hide it with `--ignore-exit-code`.
@@ -36,7 +36,7 @@ Releases: run `release.yml` by hand (see `DEVELOPMENT.md`). Releases are immutab
 ## Consulting upstream Jellyfin source
 
 ```sh
-gh api 'repos/jellyfin/jellyfin/contents/<path>?ref=v12.1' --jq '.content' | base64 -d > /tmp/x.cs
+gh api 'repos/jellyfin/jellyfin/contents/<path>?ref=v12.2' --jq '.content' | base64 -d > /tmp/x.cs
 ```
 
 Pull files with `gh` and grep locally. WebFetch truncates `EncodingHelper.cs` (8000+ lines) and summarises the part it saw as if it were the whole file. Quote the URL in zsh. jellyfin-web works the same way (`repos/jellyfin/jellyfin-web`, e.g. `src/apps/dashboard/routes/playback/transcoding.tsx`, `src/strings/en-us.json`).

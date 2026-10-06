@@ -66,7 +66,7 @@ public static class StderrMarkers
     /// <remarks>libavcodec/decode.c, hwaccel_init. Observed with jellyfin-ffmpeg 8.1.2 for AV1 on a GPU without AV1 decode.</remarks>
     public static readonly IReadOnlyList<string> HwaccelSetupFailed = ["Failed setup for format"];
 
-    /// <summary>Driver names upstream matches in that line (MediaEncoder.cs, v12.1, L246-248).</summary>
+    /// <summary>Driver names upstream matches in that line (MediaEncoder.cs, v12.2, L246-248).</summary>
     public static readonly IReadOnlyList<(string Name, VaapiDriver Driver)> VaapiDrivers =
     [
         ("Intel iHD driver", VaapiDriver.IntelIhd),

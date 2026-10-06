@@ -502,7 +502,7 @@ public sealed class SpeedEngine : IDisposable
                     return runs;
                 }
 
-                // Double-rate deinterlacing makes a frame per field, so real time is twice the source rate (EncodingHelper.GetSwDeinterlaceFilter and the hardware deinterlace filters, v12.1: interlaced sources of 30 fps or less).
+                // Double-rate deinterlacing makes a frame per field, so real time is twice the source rate (EncodingHelper.GetSwDeinterlaceFilter and the hardware deinterlace filters, v12.2: interlaced sources of 30 fps or less).
                 var outputRate = cell.DoubleRate && test.Interlaced && !test.DecodeOnly && test.FrameRate <= 30 ? test.FrameRate * 2 : test.FrameRate;
                 var measured = await SpeedMeter.MeasureAsync(LaunchAsync, method, outputRate, !test.DecodeOnly, ct, timeUp);
                 note = lowPowerDropped ? Data.Catalog.Text("noteLowPowerDropped") : note;

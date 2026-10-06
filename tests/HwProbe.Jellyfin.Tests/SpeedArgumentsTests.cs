@@ -4,7 +4,7 @@ using Xunit;
 
 namespace Jellyfin.Plugin.HwProbe.Jellyfin.Tests;
 
-/// <summary>Full-quality arguments for speed runs, from EncodingHelper 12.1.0's software path, which every OS takes.</summary>
+/// <summary>Full-quality arguments for speed runs, from EncodingHelper 12.2.0's software path, which every OS takes.</summary>
 [Trait("Category", "Unit")]
 [Collection(TestCollections.EncodingHelperEnvironment)]
 public sealed class SpeedArgumentsTests

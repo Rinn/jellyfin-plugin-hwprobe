@@ -1,7 +1,7 @@
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 
 /// <summary>The Jellyfin settings a speed run starts from; comparisons change one at a time.</summary>
-/// <remarks>The defaults are Jellyfin's own (EncodingOptions, v12.1); the plugin passes the server's.</remarks>
+/// <remarks>The defaults are Jellyfin's own (EncodingOptions, v12.2); the plugin passes the server's.</remarks>
 public sealed record SpeedSettings
 {
     /// <summary>Gets the encoder preset name, or null for <c>auto</c>.</summary>

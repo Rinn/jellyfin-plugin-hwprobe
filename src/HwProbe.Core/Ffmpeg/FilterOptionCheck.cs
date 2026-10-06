@@ -6,7 +6,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
 /// <param name="RequiredText">Text in the help that proves the option exists.</param>
 public sealed record FilterOptionCheck(string Key, string Filter, string RequiredText)
 {
-    /// <summary>Gets every check upstream runs; <c>EncoderValidator._filterOptionsDict</c> (v12.1).</summary>
+    /// <summary>Gets every check upstream runs; <c>EncoderValidator._filterOptionsDict</c> (v12.2).</summary>
     public static IReadOnlyList<FilterOptionCheck> All { get; } =
     [
         new("ScaleCudaFormat", "scale_cuda", "format"),

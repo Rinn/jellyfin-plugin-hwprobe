@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
 
-/// <summary>Parses <c>ffmpeg -version</c> output the way upstream <c>EncoderValidator</c> (v12.1) does.</summary>
+/// <summary>Parses <c>ffmpeg -version</c> output the way upstream <c>EncoderValidator</c> (v12.2) does.</summary>
 public static partial class FfmpegVersionParser
 {
     // Library versions matching ffmpeg 4.4; EncoderValidator._ffmpegMinimumLibraryVersions.

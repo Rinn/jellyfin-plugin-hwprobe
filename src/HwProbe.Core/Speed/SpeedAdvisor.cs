@@ -269,7 +269,7 @@ public static class SpeedAdvisor
     /// <param name="configured">The configured backend's measured results.</param>
     /// <param name="settings">The run's settings, for the outputs' labels.</param>
     /// <returns>The suggestion, or null when every quality keeps up or fewer than two were measured.</returns>
-    /// <remarks>H.264 decides, as the codec Jellyfin encodes to unless HEVC encoding is allowed (EncodingOptions.AllowHevcEncoding, off by default, v12.1).</remarks>
+    /// <remarks>H.264 decides, as the codec Jellyfin encodes to unless HEVC encoding is allowed (EncodingOptions.AllowHevcEncoding, off by default, v12.2).</remarks>
     private static SpeedSuggestion? BitrateLimit(List<SpeedResult> configured, SpeedSettings? settings)
     {
         var ladder = configured
@@ -308,7 +308,7 @@ public static class SpeedAdvisor
     /// <returns>True when the setting trades speed for quality and the value is the better-quality one.</returns>
     private static bool IsBetterQuality(string key, string value, string other)
     {
-        // Auto is veryfast for libx264 and libx265 (EncodingHelper.GetEncoderParam, v12.1); other encoders map it to their fastest setting, near enough for ordering.
+        // Auto is veryfast for libx264 and libx265 (EncodingHelper.GetEncoderParam, v12.2); other encoders map it to their fastest setting, near enough for ordering.
         static string Preset(string v) => v == "auto" ? "veryfast" : v;
         return Catalog.Default.Options.FirstOrDefault(o => o.Key == key) is { } option && option.IsBetterQuality(Preset(value), Preset(other));
     }

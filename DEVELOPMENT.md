@@ -33,12 +33,12 @@ CI runs the whole suite on Linux and only `Category=Platform` tests on macOS and
 With podman:
 
 ```sh
-scripts/container-plugin.sh    # installs the plugin into Jellyfin 12.1 and checks it through the API
+scripts/container-plugin.sh    # installs the plugin into Jellyfin 12.2 and checks it through the API
 scripts/container-linux.sh     # test suite on Linux, then hwprobe against jellyfin-ffmpeg (no GPU)
 scripts/container-windows.sh   # win-x64 build under Wine (no GPU)
 ```
 
-`container-plugin.sh` also takes `JELLYFIN_IMAGE=docker.io/jellyfin/jellyfin:12.2` (another server version, 12.1 by default), `HWPROBE_LOCALE=de_DE.UTF-8` (run the server under another locale) and `HWPROBE_INSTALL=repository` (install through a plugin repository, as users do) or `HWPROBE_INSTALL=existing HWPROBE_BASE=http://host:port` (check a running server).
+`container-plugin.sh` also takes `JELLYFIN_IMAGE=ghcr.io/jellyfin/jellyfin:latest` (another server version, 12.2 by default), `HWPROBE_LOCALE=de_DE.UTF-8` (run the server under another locale) and `HWPROBE_INSTALL=repository` (install through a plugin repository, as users do) or `HWPROBE_INSTALL=existing HWPROBE_BASE=http://host:port` (check a running server).
 
 ## Command-line tool
 

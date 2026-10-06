@@ -24,14 +24,14 @@ public static class ProbeMediaEncoder
             ["SupportsDecoder"] = a => capabilities.Decoders.Contains((string)a[0]!),
             ["SupportsFilter"] = a => capabilities.Filters.Contains((string)a[0]!),
 
-            // Same escaping as MediaEncoder.EscapeSubtitleFilterPath (v12.1, L1224); the server uses the real one.
+            // Same escaping as MediaEncoder.EscapeSubtitleFilterPath (v12.2, L1224); the server uses the real one.
             ["EscapeSubtitleFilterPath"] = a => ((string)a[0]!)
                 .Replace('\\', '/')
                 .Replace(":", "\\:", StringComparison.Ordinal)
                 .Replace("'", @"'\\\''", StringComparison.Ordinal)
                 .Replace("\"", "\\\"", StringComparison.Ordinal),
 
-            // MediaEncoder.GetInputPathArgument through EncodingUtils.GetFileInputArgument (v12.1): a library path is escaped, so its quotes can't end the argument.
+            // MediaEncoder.GetInputPathArgument through EncodingUtils.GetFileInputArgument (v12.2): a library path is escaped, so its quotes can't end the argument.
             ["GetInputPathArgument"] = a => InputPath(a.Length == 1 ? ((EncodingJobInfo)a[0]!).MediaPath : (string)a[0]!),
             ["SupportsFilterWithOption"] = a => capabilities.FilterOptions.Contains((FilterOptionType)a[0]!),
             ["get_IsVaapiDeviceInteliHD"] = _ => capabilities.IsVaapiDeviceInteliHD,
@@ -45,7 +45,7 @@ public static class ProbeMediaEncoder
         return RecordingProxy.Create<IMediaEncoder>(recorder, handlers);
     }
 
-    /// <summary>Quotes a source path for ffmpeg as EncodingUtils.GetFileInputArgument does (v12.1).</summary>
+    /// <summary>Quotes a source path for ffmpeg as EncodingUtils.GetFileInputArgument does (v12.2).</summary>
     /// <param name="path">The path or URL.</param>
     /// <returns>The input argument.</returns>
     private static string InputPath(string path) =>

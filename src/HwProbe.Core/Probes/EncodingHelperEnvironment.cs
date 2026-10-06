@@ -5,7 +5,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Probes;
 /// <summary>Process environment variables that EncodingHelper sets while generating arguments.</summary>
 public static class EncodingHelperEnvironment
 {
-    /// <summary>Gets every variable <c>GetInputVideoHwaccelArgs</c> sets (EncodingHelper.cs, v12.1, L1058-1077).</summary>
+    /// <summary>Gets every variable <c>GetInputVideoHwaccelArgs</c> sets (EncodingHelper.cs, v12.2, L1059-1078).</summary>
     public static IReadOnlyList<string> Variables { get; } = ["LIBVA_DRIVER_NAME", "LIBVA_DRIVER_NAME_JELLYFIN", "AMD_DEBUG"];
 
     /// <summary>Reads the current values of <see cref="Variables"/>.</summary>
@@ -20,7 +20,7 @@ public static class EncodingHelperEnvironment
     /// <param name="amd">Whether the device reports the AMD Mesa driver.</param>
     /// <returns>Variables and values; empty when nothing is set.</returns>
     /// <remarks>
-    /// Mirrors the VAAPI branch of GetInputVideoHwaccelArgs (v12.1, L1051-1077): iHD wins over i965, and
+    /// Mirrors the VAAPI branch of GetInputVideoHwaccelArgs (v12.2, L1052-1078): iHD wins over i965, and
     /// AMD only applies when neither Intel driver matched. May over-predict; it must never under-predict,
     /// and ArgumentSource fails if it does.
     /// </remarks>

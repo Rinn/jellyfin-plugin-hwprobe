@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Jellyfin.Plugin.HwProbe.Jellyfin.Tests;
 
-/// <summary>Drift oracle and construction rules for <see cref="ArgumentSource"/> over EncodingHelper 12.1.0.</summary>
+/// <summary>Drift oracle and construction rules for <see cref="ArgumentSource"/> over EncodingHelper 12.2.0.</summary>
 /// <remarks>Generation mutates process env, so every class that generates args joins <see cref="TestCollections.EncodingHelperEnvironment"/>.</remarks>
 [Trait("Category", "Unit")]
 [Collection(TestCollections.EncodingHelperEnvironment)]
