@@ -2,13 +2,13 @@
   {
     "Name": "Meziantou.Framework.Win32.Jobs",
     "License": "MIT",
-    "LicenseUrl": "https://github.com/meziantou/Meziantou.Framework/blob/main/LICENSE.txt",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
     "Url": "https://github.com/meziantou/Meziantou.Framework"
   },
   {
     "Name": "YamlDotNet",
     "License": "MIT",
-    "LicenseUrl": "https://github.com/aaubry/YamlDotNet/blob/master/LICENSE.txt",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
     "Url": "https://github.com/aaubry/YamlDotNet"
   }
 ]
