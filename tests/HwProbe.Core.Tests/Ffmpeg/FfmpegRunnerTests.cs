@@ -7,6 +7,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Ffmpeg;
 
 /// <summary>Process-handling behaviour of <see cref="FfmpegRunner"/>, against FakeFfmpeg.</summary>
 [Trait("Category", "FakeFfmpeg")]
+[Trait("Category", "Platform")]
 public sealed class FfmpegRunnerTests : IDisposable
 {
     private static readonly TimeSpan _generous = TimeSpan.FromSeconds(30);

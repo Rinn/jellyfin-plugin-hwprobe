@@ -1,0 +1,19 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directories: ["/", "/.github/actions/*"]
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    # The minimum Jellyfin version is chosen by hand; a newer Jellyfin.Controller would raise it.
+    ignore:
+      - dependency-name: "Jellyfin.*"
+    groups:
+      nuget:
+        patterns: ["*"]

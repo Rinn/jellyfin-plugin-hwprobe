@@ -4,7 +4,7 @@ using Jellyfin.Plugin.HwProbe.Core.Model;
 namespace Jellyfin.Plugin.HwProbe.Core.Pipeline;
 
 /// <summary>Predicts which filter pipeline upstream selects for a VAAPI or QSV job.</summary>
-/// <remarks>Mirrors <c>GetVaapiVidFilterChain</c> and <c>GetIntelVidFilterChain</c> in Jellyfin 12.1 <c>EncodingHelper</c>.</remarks>
+/// <remarks>Mirrors <c>GetVaapiVidFilterChain</c> and <c>GetIntelVidFilterChain</c> in Jellyfin 12.2 <c>EncodingHelper</c>.</remarks>
 public static class TierResolver
 {
     /// <summary>Upstream's <c>_minKernelVersionAmdVkFmtModifier</c>.</summary>

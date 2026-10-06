@@ -23,7 +23,14 @@ if command -v node >/dev/null 2>&1; then
     echo "pre-commit: plugin page script"
     sh scripts/check-page.sh
 else
-    echo "pre-commit: node not found, plugin page script not checked (CI checks it)"
+    echo "pre-commit: node not found, plugin page script not checked"
+fi
+
+if command -v editorconfig-checker >/dev/null 2>&1; then
+    echo "pre-commit: editorconfig-checker"
+    editorconfig-checker
+else
+    echo "pre-commit: editorconfig-checker not found, .editorconfig rules not checked"
 fi
 
 echo "pre-commit: all checks passed"

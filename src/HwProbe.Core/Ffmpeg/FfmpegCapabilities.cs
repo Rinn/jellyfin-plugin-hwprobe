@@ -30,7 +30,7 @@ public sealed record FfmpegCapabilities(
     /// <summary>Gets the first line of <c>-version</c>, used in the fingerprint.</summary>
     public string VersionLine => VersionOutput.Split('\n', 2)[0].TrimEnd('\r');
 
-    /// <summary>Gets a value indicating whether OpenCL filtering is fully supported; <c>EncodingHelper.IsOpenclFullSupported</c> (v12.1).</summary>
+    /// <summary>Gets a value indicating whether OpenCL filtering is fully supported; <c>EncodingHelper.IsOpenclFullSupported</c> (v12.2).</summary>
     public bool IsOpenclFullSupported =>
         SupportsHwaccel("opencl")
         && SupportsFilter("scale_opencl")

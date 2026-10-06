@@ -17,7 +17,7 @@ public static class BuildStatusResolver
         ArgumentNullException.ThrowIfNull(encoders);
 
         // Each gate is the SupportsHwaccel check guarding that backend in
-        // EncodingHelper.GetInputVideoHwaccelArgs (v12.1); v4l2m2m has no branch there, only an encoder.
+        // EncodingHelper.GetInputVideoHwaccelArgs (v12.2); v4l2m2m has no branch there, only an encoder.
         return new Dictionary<HwType, BuildStatus>
         {
             [HwType.vaapi] = Status(hwaccels.Contains("vaapi")),

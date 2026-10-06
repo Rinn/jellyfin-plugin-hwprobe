@@ -28,7 +28,7 @@ internal static class SpeedVariants
             FullQuality = true,
             Tonemap = cell.Tonemap && settings.Tonemap,
 
-            // EncodingHelper.IsIntelVppTonemapAvailable and IsVideoToolboxTonemapAvailable don't check EnableTonemapping (v12.1).
+            // EncodingHelper.IsIntelVppTonemapAvailable and IsVideoToolboxTonemapAvailable don't check EnableTonemapping (v12.2).
             VppTonemap = test.Tonemap && settings.VppTonemap,
             EncoderPreset = settings.EncoderPreset,
             H264Crf = settings.H264Crf,

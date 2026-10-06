@@ -71,9 +71,4 @@ public sealed class HostInfoReaderTests
 
         Assert.Equal(expected, new HostInfoReader(host).Read().Container);
     }
-
-    /// <summary>The real host reads without throwing.</summary>
-    [Fact]
-    public void RealHostDoesNotThrow() =>
-        Assert.False(string.IsNullOrEmpty(new HostInfoReader(new HostPlatform()).Read().Kernel));
 }

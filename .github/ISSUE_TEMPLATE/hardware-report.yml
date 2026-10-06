@@ -22,7 +22,7 @@ body:
     id: jellyfin
     attributes:
       label: Jellyfin version
-      placeholder: 12.1.0
+      placeholder: 12.2.0
   - type: input
     id: hwprobe
     attributes:

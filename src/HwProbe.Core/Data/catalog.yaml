@@ -391,13 +391,13 @@ videos:
 defaultVideos: [drama]
 
 # Outputs are every codec at every quality, as a player asks for them, plus decoding alone; keys are codec-quality, e.g. hevc-8mbps.
-# Every video codec Jellyfin transcodes to (EncodingHelper.GetVideoEncoder, v12.1).
+# Every video codec Jellyfin transcodes to (EncodingHelper.GetVideoEncoder, v12.2).
 codecs:
   - { key: h264, name: H.264 }
   - { key: hevc, name: HEVC }
   - { key: av1, name: AV1 }
 
-# jellyfin-web's player quality choices (qualityOptions.js getVideoQualityOptions, v12.1). The server picks the output size from the bitrate and codec (StreamingHelpers.GetStreamingState, ResolutionNormalizer).
+# jellyfin-web's player quality choices (qualityOptions.js getVideoQualityOptions, v12.2). The server picks the output size from the bitrate and codec (StreamingHelpers.GetStreamingState, ResolutionNormalizer).
 qualities:
   - { key: 120mbps, name: 120 Mbps, bitrate: 120000000 }
   - { key: 80mbps, name: 80 Mbps, bitrate: 80000000 }
@@ -437,7 +437,7 @@ repeats:
   - { value: 2, label: "Measure each twice, report the median" }
   - { value: 3, label: "Measure each three times, report the median" }
 
-# The run's settings, in the order of Jellyfin's Transcoding page (transcoding.tsx, v12.1), then the client's choices. Labels are jellyfin-web's (en-us.json).
+# The run's settings, in the order of Jellyfin's Transcoding page (transcoding.tsx, v12.2), then the client's choices. Labels are jellyfin-web's (en-us.json).
 # server: the EncodingOptions property a setting defaults to; switch: on or off; range: whole numbers from low to high; choices: keyed values. Keys are applied by SpeedSettingsOptions.
 options:
   # Shown with the backends when QSV works and its probe found the encoder; applied to QSV alone, so VAAPI keeps the server's.
@@ -446,7 +446,7 @@ options:
   - { key: EnhancedNvdec, label: Enable enhanced NVDEC decoder, server: EnableEnhancedNvdecDecoder, switch: true }
   - { key: PreferNativeDecoder, label: Prefer OS native DXVA or VA-API hardware decoders, server: PreferSystemNativeHwDecoder, switch: true }
   - { key: VppTonemap, label: Enable VPP Tone mapping, server: EnableVppTonemapping, switch: true }
-  # Tone mapping only changes HDR inputs; the labels and choices are the Transcoding page's (jellyfin-web transcoding.tsx, en-us.json, v12.1).
+  # Tone mapping only changes HDR inputs; the labels and choices are the Transcoding page's (jellyfin-web transcoding.tsx, en-us.json, v12.2).
   - { key: VideoToolboxTonemap, label: Enable VideoToolbox Tone mapping, server: EnableVideoToolboxTonemapping, switch: true, help: Only HDR inputs are tone mapped. }
   - { key: Tonemap, label: Enable Tone mapping, server: EnableTonemapping, switch: true }
   - key: TonemapAlgorithm
@@ -500,7 +500,7 @@ options:
       - { key: "0", label: "0" }
       - { key: "0.5", label: "0.5" }
       - { key: "1", label: "1" }
-  # EncodingHelper.GetNumberOfThreads treats Auto (-1) and Max (0) alike: ffmpeg picks (v12.1).
+  # EncodingHelper.GetNumberOfThreads treats Auto (-1) and Max (0) alike: ffmpeg picks (v12.2).
   - key: EncodingThreadCount
     label: Transcoding thread count
     server: EncodingThreadCount
@@ -545,7 +545,7 @@ options:
       - { key: NightmodeDialogue, label: NightmodeDialogue }
       - { key: Rfc7845, label: RFC7845 }
       - { key: Ac4, label: AC-4 }
-  # Auto, per encoder (EncodingHelper.GetEncoderParam, v12.1).
+  # Auto, per encoder (EncodingHelper.GetEncoderParam, v12.2).
   - key: EncoderPreset
     label: Encoding preset
     server: EncoderPreset
@@ -654,7 +654,7 @@ suites:
     videos: [digital-animation-4k]
     outputs: [h264-8mbps]
     options: { Audio: copy }
-    # Jellyfin uses VPP tone mapping on Intel and VideoToolbox tone mapping on Apple when they're on, else the general method (OpenCL, CUDA, Metal, Vulkan, or software); EncodingHelper, v12.1. Each method step leaves the general one on, so software still tone maps.
+    # Jellyfin uses VPP tone mapping on Intel and VideoToolbox tone mapping on Apple when they're on, else the general method (OpenCL, CUDA, Metal, Vulkan, or software); EncodingHelper, v12.2. Each method step leaves the general one on, so software still tone maps.
     steps:
       - { label: Tone mapping, options: { Tonemap: "true", VppTonemap: "false", VideoToolboxTonemap: "false" } }
       - { label: VPP tone mapping, backends: [qsv, vaapi], options: { Tonemap: "true", VppTonemap: "true", VideoToolboxTonemap: "false" } }

@@ -6,6 +6,7 @@ using Xunit;
 namespace Jellyfin.Plugin.HwProbe.Core.Tests.Probes;
 
 /// <summary>The serial-execution invariant of <see cref="SerialProbeGate"/>.</summary>
+[Trait("Category", "Platform")]
 public sealed class SerialProbeGateTests : IDisposable
 {
     // Unique names: these tests mutate real process env while other tests run in parallel.

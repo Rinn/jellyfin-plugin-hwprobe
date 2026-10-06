@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Jellyfin.Plugin.HwProbe.Jellyfin.Tests;
 
-/// <summary>Exact Linux args from EncodingHelper 12.1.0 over recorded jellyfin-ffmpeg 8.1.2 capabilities.</summary>
+/// <summary>Exact Linux args from EncodingHelper 12.2.0 over recorded jellyfin-ffmpeg 8.1.2 capabilities.</summary>
 /// <remarks>
 /// Blessed from a run in the dotnet SDK container. A failure means upstream changed what it emits: review the
 /// diff, then re-bless. EncodingHelper only takes these branches on Linux.

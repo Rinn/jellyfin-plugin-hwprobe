@@ -6,13 +6,14 @@ using Xunit;
 
 namespace Jellyfin.Plugin.HwProbe.Jellyfin.Tests;
 
-/// <summary>Exact Windows args from EncodingHelper 12.1.0 over recorded jellyfin-ffmpeg 8.1.3 capabilities.</summary>
+/// <summary>Exact Windows args from EncodingHelper 12.2.0 over recorded jellyfin-ffmpeg 8.1.3 capabilities.</summary>
 /// <remarks>
 /// A failure means upstream changed what it emits: review the diff, then re-bless on Windows by setting
 /// HWPROBE_BLESS to a file path, which writes the actual args there instead of asserting.
 /// EncodingHelper only takes these branches on Windows.
 /// </remarks>
 [Trait("Category", "Unit")]
+[Trait("Category", "Platform")]
 [Collection(TestCollections.EncodingHelperEnvironment)]
 public sealed class WindowsDriftTests
 {

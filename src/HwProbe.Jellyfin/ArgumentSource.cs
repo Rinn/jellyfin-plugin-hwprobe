@@ -13,7 +13,7 @@ namespace Jellyfin.Plugin.HwProbe.Jellyfin;
 /// <summary><see cref="IArgumentSource"/> over upstream's own <see cref="EncodingHelper"/>.</summary>
 public sealed class ArgumentSource : IArgumentSource
 {
-    // Emitted by EncodingHelper.GetVideoQualityParam (v12.1, L2166) when it allows low-power encoding.
+    // Emitted by EncodingHelper.GetVideoQualityParam (v12.2, L2185) when it allows low-power encoding.
     private const string LowPowerArg = "-low_power 1";
 
     private static readonly Dictionary<string, Func<object?[], object?>> _noHandlers = [];
@@ -21,10 +21,10 @@ public sealed class ArgumentSource : IArgumentSource
     // No font attachments to extract: the burn-in filter then omits fontsdir (EncodingHelper.GetTextSubtitlesFilter).
     private static readonly Dictionary<string, Func<object?[], object?>> _pathHandlers = new() { ["GetAttachmentFolderPath"] = _ => null };
 
-    // Unset, as on a server without them: GetInputArgument reads the analyse duration and probe size (ConfigurationExtensions, v12.1).
+    // Unset, as on a server without them: GetInputArgument reads the analyse duration and probe size (ConfigurationExtensions, v12.2).
     private static readonly Dictionary<string, Func<object?[], object?>> _configurationHandlers = new() { ["get_Item"] = _ => null };
 
-    // Every suffix the filter chains pass to GetHwDeinterlaceFilter (EncodingHelper.cs, v12.1, L4093-5878).
+    // Every suffix the filter chains pass to GetHwDeinterlaceFilter (EncodingHelper.cs, v12.2, L4135-5920).
     private static readonly string[] _deinterlaceFamilies = ["vaapi", "qsv", "cuda", "videotoolbox", "opencl"];
 
     private readonly ProbeEncodingHelper _helper;
@@ -139,11 +139,11 @@ public sealed class ArgumentSource : IArgumentSource
         int? outputWidth = null;
         if (cell.FullQuality)
         {
-            // As StreamingHelpers.GetStreamingState sets them for a real request (v12.1).
+            // As StreamingHelpers.GetStreamingState sets them for a real request (v12.2).
             state.OutputVideoBitrate = _helper.GetVideoBitrateParamValue(state.BaseRequest, state.VideoStream, state.OutputVideoCodec);
             state.OutputAudioBitrate = _helper.GetAudioBitrateParam(null, state.OutputAudioCodec, state.AudioStream, state.OutputAudioChannels);
 
-            // The server picks the size from the bitrate and codec, as StreamingHelpers.GetStreamingState does (v12.1).
+            // The server picks the size from the bitrate and codec, as StreamingHelpers.GetStreamingState does (v12.2).
             if (state.OutputVideoBitrate is { } bitrate)
             {
                 var request = state.BaseRequest;

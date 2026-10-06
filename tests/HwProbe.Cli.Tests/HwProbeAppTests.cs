@@ -9,6 +9,7 @@ namespace Jellyfin.Plugin.HwProbe.Cli.Tests;
 
 /// <summary>Exit codes and output of a full CLI run against FakeFfmpeg.</summary>
 [Trait("Category", "FakeFfmpeg")]
+[Trait("Category", "Platform")]
 public sealed class HwProbeAppTests : IDisposable
 {
     private readonly FakeFfmpegHost _host = new();

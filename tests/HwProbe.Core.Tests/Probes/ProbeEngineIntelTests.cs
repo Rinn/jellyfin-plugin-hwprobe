@@ -13,6 +13,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Probes;
 
 /// <summary>An Intel VAAPI host with an OpenCL-enabled jellyfin-ffmpeg build.</summary>
 [Trait("Category", "FakeFfmpeg")]
+[Trait("Category", "Platform")]
 public sealed class ProbeEngineIntelTests : IDisposable
 {
     private const string Node = "/dev/dri/renderD128";

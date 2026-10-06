@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
 
-/// <summary>Parses the build enumerations with upstream's <c>EncoderValidator</c> (v12.1) rules.</summary>
+/// <summary>Parses the build enumerations with upstream's <c>EncoderValidator</c> (v12.2) rules.</summary>
 public static partial class CapabilityParser
 {
     /// <summary>Parses <c>-encoders</c> or <c>-decoders</c> output.</summary>

@@ -13,7 +13,7 @@ set -eu
 
 root="$(git rev-parse --show-toplevel)"
 work="$root/artifacts/plugin-e2e"
-image="${JELLYFIN_IMAGE:-docker.io/jellyfin/jellyfin:12.1}"
+image="${JELLYFIN_IMAGE:-ghcr.io/jellyfin/jellyfin:12.2}"
 name=hwprobe-e2e
 repo=hwprobe-e2e-repo
 net=hwprobe-e2e-net
@@ -53,7 +53,8 @@ if [ "$install" = existing ]; then
 else
 
 rm -rf "$work" && mkdir -p "$work/config/plugins" "$work/cache" "$work/repo"
-dotnet publish "$root/src/HwProbe.Plugin" -c Release -o "$work/publish" -v q --nologo
+# Analyzers are skipped: the build already enforces them and they don't change the output.
+dotnet publish "$root/src/HwProbe.Plugin" -c Release -p:RunAnalyzers=false -o "$work/publish" -v q --nologo
 
 # --ignore: without it, a missing container (repo, in copy mode) stops podman removing the others.
 podman rm -f --ignore "$name" "$repo" >/dev/null

@@ -175,11 +175,11 @@ public sealed class ProbeEngine : IDisposable
             .Where(c => run.Options.Device is null || c.Device == run.Options.Device || c.Device.Length == 0)
             .Where(c => run.Caps.BuildStatus.GetValueOrDefault(c.Type) == BuildStatus.Selectable)
 
-            // EncodingHelper hard-codes CUDA device 0 (v12.1, L1162); other indices are unusable by Jellyfin.
+            // EncodingHelper hard-codes CUDA device 0 (v12.2, L1163); other indices are unusable by Jellyfin.
             .Where(c => c.Type != HwType.nvenc || c.Device == "0")
 
-            // Jellyfin picks the adapter by vendor: QSV any Intel one (vendor=0x8086 unless QsvDevice names an index, L964-970),
-            // AMF always the first AMD one (vendor=0x1002, L1180; there's no AMF device setting).
+            // Jellyfin picks the adapter by vendor: QSV any Intel one (vendor=0x8086 unless QsvDevice names an index, L965-971),
+            // AMF always the first AMD one (vendor=0x1002, L1181; there's no AMF device setting).
             .Where(c => run.Adapters.Count == 0 || c.Type is not (HwType.qsv or HwType.amf) || IsAdapterJellyfinUses(run, c));
 
     /// <summary>Reports whether Jellyfin could use a Windows adapter index for QSV or AMF.</summary>

@@ -19,7 +19,7 @@ on:
         default: false
 
 permissions:
-  contents: write
+  contents: read
 
 # Two releases at once would race on the manifest branch.
 concurrency:
@@ -32,16 +32,21 @@ env:
   TAG: v${{ inputs.version }}
 
 jobs:
-  release:
-    name: Build and publish
+  check:
+    name: Check the inputs
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      checks: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup
-
-      - name: Check the version
+      # The commit's CI covered build, lint, and tests, so the release only packages.
+      - name: Check the version, branch, tag, and CI
         id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           version="${TAG#v}"
           if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
@@ -50,19 +55,69 @@ jobs:
           if [ "$GITHUB_REF" != refs/heads/main ]; then
             echo "::error::Run this on main"; exit 1
           fi
-          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+          tag="$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/$TAG" --jq "map(select(.ref == \"refs/tags/$TAG\")) | length")"
+          if [ "$tag" != 0 ]; then
             echo "::error::Tag $TAG already exists"; exit 1
+          fi
+          ci="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?check_name=CI" --jq '.check_runs[0] | if . == null then "missing" elif .status != "completed" then .status else .conclusion end')"
+          if [ "$ci" != success ]; then
+            echo "::error::CI on $GITHUB_SHA is $ci, not success"; exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Build and test
-        run: |
-          dotnet build -warnaserror
-          dotnet test
+  plugin-e2e:
+    name: Plugin in Jellyfin ${{ matrix.jellyfin }} (${{ matrix.install }})
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        # The minimum supported version (Jellyfin.Controller in Directory.Packages.props), and the newest release when it differs.
+        jellyfin: ["12.2"]
+        # copy: DLLs copied into the plugins folder. repository: installed from a plugin repository, as users do.
+        install: [copy, repository]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Install the plugin into Jellyfin and probe through its API
+        run: scripts/container-plugin.sh
+        env:
+          HWPROBE_INSTALL: ${{ matrix.install }}
+          JELLYFIN_IMAGE: ghcr.io/jellyfin/jellyfin:${{ matrix.jellyfin }}
+      - name: Upload server logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: plugin-e2e-logs-${{ matrix.jellyfin }}-${{ matrix.install }}
+          path: artifacts/plugin-e2e/config/log
+
+  release:
+    name: Build and publish
+    needs: [check, plugin-e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      # Sign and store the build provenance attestation.
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          nuget-cache: package
 
       # The SDK ad-hoc signs osx-arm64 executables on Linux too (checked with codesign on macOS).
       - name: Package
-        run: python3 scripts/package.py --version "${{ steps.version.outputs.version }}" --out artifacts/dist
+        run: python3 scripts/package.py --version "${{ needs.check.outputs.version }}" --out artifacts/dist
+
+      # Verifiable with: gh attestation verify <file> -R Rinn/jellyfin-plugin-hwprobe
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: artifacts/dist/*
 
       # A draft left by an earlier failed run is replaced.
       - name: Publish the release
@@ -84,7 +139,7 @@ jobs:
         env:
           CHANGELOG: ${{ inputs.notes }}
         run: |
-          version="${{ steps.version.outputs.version }}.0"
+          version="${{ needs.check.outputs.version }}.0"
           zip="hwprobe-plugin_$version.zip"
           dir="$RUNNER_TEMP/manifest"
           if git fetch --depth 1 origin manifest; then

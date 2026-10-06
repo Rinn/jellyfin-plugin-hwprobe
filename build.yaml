@@ -1,7 +1,7 @@
 ---
 name: "HwProbe"
 guid: "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93"
-targetAbi: "12.1.0.0"
+targetAbi: "12.2.0.0"
 framework: "net10.0"
 overview: "Tests which hardware transcoding backends work on a Jellyfin server, and how fast each one transcodes"
 description: >

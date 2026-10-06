@@ -20,132 +20,190 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
-  build-test:
-    name: Build and test (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+  changes:
+    name: Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      source: ${{ steps.diff.outputs.source }}
+      os: ${{ steps.diff.outputs.os }}
     steps:
       - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup
-      - name: Build
-        run: dotnet build -warnaserror
-      - name: Check formatting
-        if: runner.os == 'Linux'
-        run: dotnet format --verify-no-changes
-      - name: Check the plugin page script
-        if: runner.os == 'Linux'
-        run: sh scripts/check-page.sh
-      - name: Check the third-party notices
-        if: runner.os == 'Linux'
-        run: python3 scripts/notices.py --check
-      - name: Test
-        run: dotnet test --no-build
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # Documentation-only changes skip every other job. THIRD-PARTY-NOTICES.md is packaged and checked, so it counts as source.
+      - name: Check for source changes
+        id: diff
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          # macOS and Windows ran in the pull request; Linux keeps the badge current.
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            echo 'os=["ubuntu-latest"]' >> "$GITHUB_OUTPUT"
+          else
+            echo 'os=["ubuntu-latest","macos-latest","windows-latest"]' >> "$GITHUB_OUTPUT"
+          fi
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "source=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          source="$(git diff --name-only "$BASE" HEAD | grep -E -v '\.md$|^\.github/ISSUE_TEMPLATE/' ; git diff --name-only "$BASE" HEAD | grep -E '^THIRD-PARTY-NOTICES\.md$')" || true
+          printf '%s\n' "$source"
+          if [ -n "$source" ]; then echo "source=true"; else echo "source=false"; fi >> "$GITHUB_OUTPUT"
 
-  real-ffmpeg:
-    name: jellyfin-ffmpeg (${{ matrix.os }})
+  build-test:
+    name: Build and test (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.source == 'true'
     strategy:
       fail-fast: false
       matrix:
-        # Portable builds from jellyfin/jellyfin-ffmpeg releases.
-        include:
-          - os: ubuntu-latest
-            platform: portable_linux64-gpl.tar.xz
-            binary: ffmpeg
-            fixtures: ~/.cache/hwprobe/fixtures
-          - os: macos-latest
-            platform: portable_macarm64-gpl.tar.xz
-            binary: ffmpeg
-            fixtures: ~/Library/Caches/hwprobe/fixtures
-          - os: windows-latest
-            platform: portable_win64-clang-gpl.zip
-            binary: ffmpeg.exe
-            fixtures: ~/AppData/Local/hwprobe/fixtures
+        os: ${{ fromJSON(needs.changes.outputs.os) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     env:
       JELLYFIN_FFMPEG_VERSION: 8.1.3-1
-      HWPROBE_HW_TESTS: "1"
-      # Tests never fetch samples; a fixture that only downloads is reported as untested.
-      HWPROBE_NO_DOWNLOADS: "1"
     defaults:
       run:
         shell: bash
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/setup
+      # Portable builds from jellyfin/jellyfin-ffmpeg releases, and where hwprobe caches its fixtures.
+      - name: Select the jellyfin-ffmpeg build
+        run: |
+          case "$RUNNER_OS" in
+            Linux) echo "FFMPEG_PLATFORM=portable_linux64-gpl.tar.xz FFMPEG_BINARY=ffmpeg FIXTURES=~/.cache/hwprobe/fixtures" ;;
+            macOS) echo "FFMPEG_PLATFORM=portable_macarm64-gpl.tar.xz FFMPEG_BINARY=ffmpeg FIXTURES=~/Library/Caches/hwprobe/fixtures" ;;
+            Windows) echo "FFMPEG_PLATFORM=portable_win64-clang-gpl.zip FFMPEG_BINARY=ffmpeg.exe FIXTURES=~/AppData/Local/hwprobe/fixtures" ;;
+          esac | tr ' ' '\n' >> "$GITHUB_ENV"
+      - name: Build
+        run: dotnet build -warnaserror
+      - name: Test
+        if: runner.os == 'Linux'
+        run: dotnet test --no-build
+      # macOS and Windows runners are scarcer; there only tests whose result can differ by OS run.
+      - name: Test platform-dependent code
+        if: runner.os != 'Linux'
+        run: dotnet test --no-build -- --filter-trait "Category=Platform"
       - uses: actions/cache@v6
         id: ffmpeg-cache
         with:
           path: .ffmpeg
-          key: jellyfin-ffmpeg_${{ env.JELLYFIN_FFMPEG_VERSION }}_${{ matrix.platform }}
+          key: jellyfin-ffmpeg_${{ env.JELLYFIN_FFMPEG_VERSION }}_${{ env.FFMPEG_PLATFORM }}
       - name: Download jellyfin-ffmpeg
         if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release download "v$JELLYFIN_FFMPEG_VERSION" -R jellyfin/jellyfin-ffmpeg -p "jellyfin-ffmpeg_${JELLYFIN_FFMPEG_VERSION}_${{ matrix.platform }}" -O "${{ matrix.platform }}"
+        run: gh release download "v$JELLYFIN_FFMPEG_VERSION" -R jellyfin/jellyfin-ffmpeg -p "jellyfin-ffmpeg_${JELLYFIN_FFMPEG_VERSION}_${{ env.FFMPEG_PLATFORM }}" -O "${{ env.FFMPEG_PLATFORM }}"
       - name: Extract (tar)
         if: steps.ffmpeg-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
-        run: mkdir -p .ffmpeg && tar -xf "${{ matrix.platform }}" -C .ffmpeg
+        run: mkdir -p .ffmpeg && tar -xf "${{ env.FFMPEG_PLATFORM }}" -C .ffmpeg
       - name: Extract (zip)
         if: steps.ffmpeg-cache.outputs.cache-hit != 'true' && runner.os == 'Windows'
         shell: pwsh
-        run: Expand-Archive -Path "${{ matrix.platform }}" -DestinationPath .ffmpeg
+        run: Expand-Archive -Path "${{ env.FFMPEG_PLATFORM }}" -DestinationPath .ffmpeg
       - name: Point the tests at it
         run: |
           dir="$PWD/.ffmpeg"
           if [ "$RUNNER_OS" = Windows ]; then dir="$(cygpath -w "$dir")"; fi
-          echo "HWPROBE_TEST_FFMPEG=$dir/${{ matrix.binary }}" >> "$GITHUB_ENV"
+          echo "HWPROBE_TEST_FFMPEG=$dir/${{ env.FFMPEG_BINARY }}" >> "$GITHUB_ENV"
       # Keyed on the fixture catalog too: GitHub caches never update under an existing key, so a new or
       # changed fixture would otherwise be rebuilt every run.
       - uses: actions/cache@v6
         with:
-          path: ${{ matrix.fixtures }}
-          key: fixtures-${{ env.JELLYFIN_FFMPEG_VERSION }}-${{ matrix.platform }}-${{ hashFiles('src/HwProbe.Core/Fixtures/FixtureCatalog.cs') }}
-          restore-keys: fixtures-${{ env.JELLYFIN_FFMPEG_VERSION }}-${{ matrix.platform }}-
-      # The rest of the suite already ran in build-test; only Core.Tests has RealFfmpeg tests.
+          path: ${{ env.FIXTURES }}
+          key: fixtures-${{ env.JELLYFIN_FFMPEG_VERSION }}-${{ env.FFMPEG_PLATFORM }}-${{ hashFiles('src/HwProbe.Core/Fixtures/FixtureCatalog.cs', 'src/HwProbe.Core/Data/catalog.yaml') }}
+          restore-keys: fixtures-${{ env.JELLYFIN_FFMPEG_VERSION }}-${{ env.FFMPEG_PLATFORM }}-
+      # Only Core.Tests has RealFfmpeg tests.
       - name: Test with jellyfin-ffmpeg
-        run: dotnet test --project tests/HwProbe.Core.Tests -- --filter-trait "Category=RealFfmpeg"
+        env:
+          HWPROBE_HW_TESTS: "1"
+          # Tests never fetch samples; a fixture that only downloads is reported as untested.
+          HWPROBE_NO_DOWNLOADS: "1"
+        run: dotnet test --no-build --project tests/HwProbe.Core.Tests -- --filter-trait "Category=RealFfmpeg"
       - name: Run hwprobe
-        run: dotnet run --project src/HwProbe.Cli -- --ffmpeg "$HWPROBE_TEST_FFMPEG" --json hwprobe-report.json --verbose
+        env:
+          HWPROBE_NO_DOWNLOADS: "1"
+        run: dotnet run --no-build --project src/HwProbe.Cli -- --ffmpeg "$HWPROBE_TEST_FFMPEG" --json hwprobe-report.json --verbose
       - uses: actions/upload-artifact@v7
         with:
           name: hwprobe-report-${{ matrix.os }}
           path: hwprobe-report.json
 
-  plugin-e2e:
-    name: Plugin in Jellyfin 12.1
+  # Separate from build-test so the format check's own compile runs in parallel with the build.
+  lint:
+    name: Lint
+    needs: changes
+    if: needs.changes.outputs.source == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup
-      - name: Install the plugin into jellyfin/jellyfin and probe through its API
-        run: scripts/container-plugin.sh
-      - name: Install the plugin from a plugin repository, as users do
-        run: scripts/container-plugin.sh
-        env:
-          HWPROBE_INSTALL: repository
-      - name: Upload server logs
-        if: failure()
-        uses: actions/upload-artifact@v7
         with:
-          name: plugin-e2e-logs
-          path: artifacts/plugin-e2e/config/log
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Check formatting
+        run: dotnet format --verify-no-changes
+      - name: Check the plugin page script
+        run: sh scripts/check-page.sh
+      - name: Check the third-party notices
+        run: python3 scripts/notices.py --check
+
+  # Runs on documentation-only changes too, since it checks Markdown and YAML.
+  editorconfig:
+    name: Editorconfig
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # Enforces .editorconfig on everything dotnet format doesn't cover; exclusions are in .editorconfig-checker.json.
+      - name: Check .editorconfig rules
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EC_VERSION: 4.0.2
+          EC_SHA256: 44efaef3ed14c6ab52eb87481d78e5e5c204796dccf26e2f4598a61ba17f8003
+        run: |
+          gh release download "v$EC_VERSION" -R editorconfig-checker/editorconfig-checker -p editorconfig-checker-linux-amd64.tar.gz -D "$RUNNER_TEMP"
+          echo "$EC_SHA256  $RUNNER_TEMP/editorconfig-checker-linux-amd64.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/editorconfig-checker-linux-amd64.tar.gz" -C "$RUNNER_TEMP" editorconfig-checker
+          "$RUNNER_TEMP/editorconfig-checker"
 
   package:
     name: Package
+    needs: changes
+    if: needs.changes.outputs.source == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/setup
+        with:
+          nuget-cache: package
       - name: Package
         run: python3 scripts/package.py --out artifacts/dist
       - uses: actions/upload-artifact@v7
         with:
           name: hwprobe-dist
           path: artifacts/dist
+
+  # The one check branch rules require: it passes when every job passed or was skipped for a documentation-only change.
+  ci:
+    name: CI
+    needs: [changes, build-test, lint, editorconfig, package]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check the job results
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "$RESULTS"
+          case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac

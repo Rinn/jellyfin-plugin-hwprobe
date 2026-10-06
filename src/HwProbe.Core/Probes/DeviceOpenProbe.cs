@@ -37,7 +37,7 @@ public static class DeviceOpenProbe
     /// <param name="device">Render node.</param>
     /// <param name="os">The host OS.</param>
     /// <returns>The arguments, or null outside VAAPI and QSV on Linux.</returns>
-    /// <remarks>EncodingHelper derives <c>opencl=ocl@va</c> from the VAAPI device for both (v12.1, L1070 and L1136).</remarks>
+    /// <remarks>EncodingHelper derives <c>opencl=ocl@va</c> from the VAAPI device for both (v12.2, L1071 and L1137).</remarks>
     public static string? OpenclArguments(HwType type, string device, HostOs os) =>
         os == HostOs.Linux && type is HwType.vaapi or HwType.qsv
             ? Arguments(HwType.vaapi, device, os) + " -init_hw_device opencl=ocl@va"
