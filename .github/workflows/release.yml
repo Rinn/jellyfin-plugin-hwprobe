@@ -40,9 +40,9 @@ jobs:
       contents: read
       checks: read
     outputs:
-      version: ${{ needs.check.outputs.version }}
+      version: ${{ steps.version.outputs.version }}
     steps:
-      # The commit's CI covered build, lint, and tests on every OS, so the release only packages.
+      # The commit's CI covered build, lint, and tests, so the release only packages.
       - name: Check the version, branch, tag, and CI
         id: version
         env:
@@ -55,10 +55,11 @@ jobs:
           if [ "$GITHUB_REF" != refs/heads/main ]; then
             echo "::error::Run this on main"; exit 1
           fi
-          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
+          tag="$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/$TAG" --jq "map(select(.ref == \"refs/tags/$TAG\")) | length")"
+          if [ "$tag" != 0 ]; then
             echo "::error::Tag $TAG already exists"; exit 1
           fi
-          ci="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?check_name=CI" --jq '.check_runs[0].conclusion // "missing"')"
+          ci="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?check_name=CI" --jq '.check_runs[0] | if . == null then "missing" elif .status != "completed" then .status else .conclusion end')"
           if [ "$ci" != success ]; then
             echo "::error::CI on $GITHUB_SHA is $ci, not success"; exit 1
           fi

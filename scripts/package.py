@@ -94,7 +94,7 @@ def main():
     work = os.path.abspath(args.work)
     os.makedirs(out, exist_ok=True)
     epoch = source_date_epoch()
-    version = args.version or default_version()
+    version = default_version() if args.version is None else args.version
     if not re.fullmatch(r"\d+\.\d+\.\d+", version):
         sys.exit(f"version {version!r} must look like 1.2.3")
     stamp = f"-p:Version={version}"

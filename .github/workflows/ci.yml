@@ -38,7 +38,7 @@ jobs:
         env:
           BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: |
-          # A push to main already passed on every OS in its pull request; Linux keeps the badge current.
+          # macOS and Windows ran in the pull request; Linux keeps the badge current.
           if [ "$GITHUB_EVENT_NAME" = push ]; then
             echo 'os=["ubuntu-latest"]' >> "$GITHUB_OUTPUT"
           else
@@ -151,6 +151,16 @@ jobs:
         run: sh scripts/check-page.sh
       - name: Check the third-party notices
         run: python3 scripts/notices.py --check
+
+  # Runs on documentation-only changes too, since it checks Markdown and YAML.
+  editorconfig:
+    name: Editorconfig
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       # Enforces .editorconfig on everything dotnet format doesn't cover; exclusions are in .editorconfig-checker.json.
       - name: Check .editorconfig rules
         env:
@@ -186,7 +196,7 @@ jobs:
   # The one check branch rules require: it passes when every job passed or was skipped for a documentation-only change.
   ci:
     name: CI
-    needs: [changes, build-test, lint, package]
+    needs: [changes, build-test, lint, editorconfig, package]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
