@@ -1232,7 +1232,7 @@
                         if (entries.length) {
                             buttons.appendChild(confirmAction('Delete clips', 'Delete all ' + entries.length + ' files', () => {
                                 ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('HwProbe/Cache') })
-                                    .then(refresh, () => { setMessage('Could not delete: a probe or performance test is using the cache.'); refresh(); });
+                                    .then(refresh, () => { setMessage('Could not delete: a probe or performance test is using the cache.'); redraw(); });
                             }, 'raised button-delete'));
                         }
                         // Reports, performance test results, and the settings history go too, so everything reloads.
@@ -1264,7 +1264,7 @@
                             const remove = el('td', null, 'hwprobe-end-cell');
                             remove.appendChild(iconAction('delete', 'Delete', () => {
                                 ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl(url) })
-                                    .then(after, () => { setMessage('Could not delete: a probe or performance test is running.'); after(); });
+                                    .then(after, () => { setMessage('Could not delete: a probe or performance test is running.'); redraw(); });
                             }));
                             row(table, [el('td', name), el('td', x.Files + ' ' + unit + (x.Files === 1 ? '' : 's'), 'secondaryText hwprobe-small'), size, written, remove]);
                         }
@@ -1289,7 +1289,7 @@
                             const remove = el('td', null, 'hwprobe-end-cell');
                             remove.appendChild(iconAction('delete', 'Delete', () => {
                                 ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('HwProbe/Cache/File', { folder: e.Folder, file: e.File }) })
-                                    .then(refresh, () => { setMessage('Could not delete: a probe or performance test is using the cache.'); refresh(); });
+                                    .then(refresh, () => { setMessage('Could not delete: a probe or performance test is using the cache.'); redraw(); });
                             }));
                             row(table, [el('td', e.Description || 'Not used by this version', e.Description ? '' : 'secondaryText'), file, size, written, remove]);
                         }
@@ -1301,6 +1301,11 @@
                         const contents = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Cache/Contents'), dataType: 'json' });
                         const saved = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SavedData'), dataType: 'json' }).then(d => d, () => null);
                         return Promise.all([contents, saved]).then(draw, () => {});
+                    };
+                    // After a refused delete the contents are unchanged, but the disabled buttons are drawn again.
+                    const redraw = () => {
+                        drawn = null;
+                        return refresh();
                     };
                     if (cacheShown) {
                         draw(cacheShown);
@@ -1786,7 +1791,7 @@
                                 members.some(m => m.TestVideosOnly) ? testVideos : '',
                             ]);
                         };
-                        // Outputs no backend keeps real time on: one table, as no setting here fixes them.
+                        // Outputs none of the backends measured keeps real time on, in one table.
                         const tooSlow = list.filter(s => s.Kind === 'TooSlowEverywhere');
                         if (tooSlow.length) {
                             const rows = tooSlow.map(s => ({ text: s.Outputs[0], backend: backendName(s.Type), speed: s.Speed, streams: s.Streams, capped: s.StreamsCapped, savings: [], lower: null, current: false, action: null, glyph: '\u274c', glyphTitle: 'Too slow' }));

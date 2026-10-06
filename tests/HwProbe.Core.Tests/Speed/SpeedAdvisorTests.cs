@@ -274,23 +274,23 @@ public sealed class SpeedAdvisorTests
         Assert.Equal("medium", quality.Value);
     }
 
-    /// <summary>Outputs below real time on the configured backend are flagged where another backend kept real time, and marked when only test videos showed it.</summary>
+    /// <summary>Outputs below real time on the configured backend are flagged, unless every backend measured fell behind too, and marked when only test videos showed it.</summary>
     [Fact]
     public void FlagsOutputsThatFallBehind()
     {
-        var run = Run(new SpeedSettings(), Result(HwType.qsv, "pattern|h264-8mbps", 20), Result(HwType.none, "pattern|h264-8mbps", 50), Result(HwType.qsv, "pattern|hevc-8mbps", 20), Result(HwType.none, "pattern|hevc-8mbps", 10), Result(HwType.qsv, "pattern|av1-8mbps", 50));
+        var run = Run(new SpeedSettings(), Result(HwType.qsv, "pattern|h264-8mbps", 20), Result(HwType.none, "pattern|h264-8mbps", 50), Result(HwType.qsv, "pattern|hevc-8mbps", 20), Result(HwType.none, "pattern|hevc-8mbps", 10), Result(HwType.qsv, "pattern|av1-8mbps", 50), Result(HwType.qsv, "pattern|vp9-8mbps", 20));
 
         var behind = Assert.Single(SpeedAdvisor.Advise(run, [run], HwType.qsv, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.FallsBehind);
 
-        Assert.Equal(["pattern|h264-8mbps"], behind.Outputs);
+        Assert.Equal(["pattern|h264-8mbps", "pattern|vp9-8mbps"], behind.Outputs);
         Assert.True(behind.TestVideosOnly);
     }
 
-    /// <summary>An output no backend keeps real time on is reported once, with the fastest backend.</summary>
+    /// <summary>An output none of several backends keeps real time on is reported once, with the fastest backend; one measured on a single backend isn't.</summary>
     [Fact]
     public void ReportsOutputsTooSlowOnEveryBackend()
     {
-        var run = Run(new SpeedSettings(), Result(HwType.qsv, "pattern|h264-8mbps", 20), Result(HwType.none, "pattern|h264-8mbps", 10), Result(HwType.qsv, "pattern|hevc-8mbps", 20), Result(HwType.none, "pattern|hevc-8mbps", 50));
+        var run = Run(new SpeedSettings(), Result(HwType.qsv, "pattern|h264-8mbps", 20), Result(HwType.none, "pattern|h264-8mbps", 10), Result(HwType.qsv, "pattern|hevc-8mbps", 20), Result(HwType.none, "pattern|hevc-8mbps", 50), Result(HwType.qsv, "pattern|av1-8mbps", 20));
 
         var slow = Assert.Single(SpeedAdvisor.Advise(run, [run], HwType.qsv, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.TooSlowEverywhere);
 

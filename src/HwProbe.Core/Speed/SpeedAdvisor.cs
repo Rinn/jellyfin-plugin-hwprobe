@@ -149,17 +149,18 @@ public static class SpeedAdvisor
             suggestions.Add(limit.NoLimit with { Type = type, Device = device });
         }
 
-        // A test video that falls behind means real video will too: test videos encode faster.
-        // Flagged only where another backend kept real time on the same output; when every backend falls behind, there is nothing to change to.
+        // Outputs that two or more backends measured and none kept real time on; one backend alone, as suites measure, doesn't show the others would fall behind.
         bool KeepsUp(SpeedResult r) => Speed(r) >= 1 && r.Streams != 0;
-        var behind = measured.Where(r => Configured(r) && !KeepsUp(r) && measured.Any(o => o.Test == r.Test && !Configured(o) && KeepsUp(o))).ToList();
+        var tooSlow = measured.GroupBy(r => r.Test, StringComparer.Ordinal).Where(g => !g.Any(KeepsUp) && g.Select(r => (r.Type, r.Device)).Distinct().Count() > 1).ToList();
+
+        // A test video that falls behind means real video will too: test videos encode faster. Outputs every backend falls behind on are reported on their own instead.
+        var behind = measured.Where(r => Configured(r) && !KeepsUp(r) && !tooSlow.Any(g => g.Key == r.Test)).ToList();
         if (behind.Count > 0)
         {
             suggestions.Add(new SpeedSuggestion(SpeedSuggestionKind.FallsBehind, [.. behind.Select(r => Label(r, shown.Settings))]) { Type = type, Device = device, Speed = behind.Min(Speed), Streams = Fewest(behind), StreamsCapped = FewestCapped(behind), TestVideosOnly = behind.All(IsGenerated) });
         }
 
-        // No setting change fixes these, so they're reported apart from the backends.
-        foreach (var fastest in measured.GroupBy(r => r.Test, StringComparer.Ordinal).Where(g => !g.Any(KeepsUp)).Select(g => g.Aggregate(Better)))
+        foreach (var fastest in tooSlow.Select(g => g.Aggregate(Better)))
         {
             suggestions.Add(new SpeedSuggestion(SpeedSuggestionKind.TooSlowEverywhere, [Label(fastest, shown.Settings)]) { Type = fastest.Type, Device = fastest.Device, Speed = Speed(fastest), Streams = fastest.Streams, StreamsCapped = fastest.Capped, TestVideosOnly = IsGenerated(fastest) });
         }

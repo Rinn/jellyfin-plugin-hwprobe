@@ -610,10 +610,18 @@ public sealed partial class ProbeService : IDisposable
     /// <returns>Each one's files, size, and newest write.</returns>
     public SavedData SavedDataSize()
     {
+        // Read without the gate, so a run or delete can remove files meanwhile; the next read counts them right.
         static SavedFilesSize Size(string? directory)
         {
-            var files = directory is not null && Directory.Exists(directory) ? new DirectoryInfo(directory).EnumerateFiles("*.json").ToList() : [];
-            return new SavedFilesSize(files.Count, files.Sum(f => f.Length), files.Count > 0 ? files.Max(f => new DateTimeOffset(f.LastWriteTimeUtc, TimeSpan.Zero)) : null);
+            try
+            {
+                var files = directory is not null && Directory.Exists(directory) ? new DirectoryInfo(directory).EnumerateFiles("*.json").ToList() : [];
+                return new SavedFilesSize(files.Count, files.Sum(f => f.Length), files.Count > 0 ? files.Max(f => new DateTimeOffset(f.LastWriteTimeUtc, TimeSpan.Zero)) : null);
+            }
+            catch (IOException)
+            {
+                return new SavedFilesSize(0, 0, null);
+            }
         }
 
         return new SavedData(Size(SpeedHistoryDirectory), Size(SpeedResultsDirectory));
