@@ -40,28 +40,25 @@ public sealed class DeviceEnumeratorTests
         Assert.Empty(DevicesOf(result, HwType.none));
     }
 
-    /// <summary>No /dev/dri means no render-node candidates, reported as Missing.</summary>
-    [Fact]
-    public void LinuxWithoutDri()
-    {
-        var result = new DeviceEnumerator(new FakeHostPlatform(HostOs.Linux)).Enumerate();
-
-        Assert.Empty(DevicesOf(result, HwType.vaapi));
-        Assert.Equal(DirectoryAccess.Missing, result.RenderNodeAccess);
-        Assert.Empty(result.RenderNodes);
-    }
-
-    /// <summary>An unreadable /dev/dri is reported as Denied, not thrown.</summary>
-    [Fact]
-    public void LinuxUnreadableDri()
+    /// <summary>No /dev/dri, or an unreadable one, means no render-node candidates, reported as Missing or Denied rather than thrown.</summary>
+    /// <param name="denied">Whether /dev/dri exists but can't be read.</param>
+    /// <param name="expected">The access reported.</param>
+    [Theory]
+    [InlineData(false, DirectoryAccess.Missing)]
+    [InlineData(true, DirectoryAccess.Denied)]
+    public void LinuxWithoutReadableDri(bool denied, DirectoryAccess expected)
     {
         var host = new FakeHostPlatform(HostOs.Linux);
-        host.DeniedDirectories.Add("/dev/dri");
+        if (denied)
+        {
+            host.DeniedDirectories.Add("/dev/dri");
+        }
 
         var result = new DeviceEnumerator(host).Enumerate();
 
-        Assert.Equal(DirectoryAccess.Denied, result.RenderNodeAccess);
         Assert.Empty(DevicesOf(result, HwType.vaapi));
+        Assert.Equal(expected, result.RenderNodeAccess);
+        Assert.Empty(result.RenderNodes);
     }
 
     /// <summary>sysfs vendor/device are trimmed; missing, unreadable or blank fields become unknown.</summary>

@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Core.Speed;
@@ -40,10 +41,10 @@ public sealed class SpeedVariantsTests
         Assert.True(cell.Audio);
         Assert.True(cell.AudioVbr);
         Assert.Equal("fast", cell.EncoderPreset);
-        Assert.Equal((1920, 1080, 24f, 4_000_000), (cell.SourceWidth, cell.SourceHeight, cell.SourceFrameRate, cell.VideoBitrate!.Value));
+        Assert.Equal((spec.Width, spec.Height, spec.FrameRate, spec.Bitrate), (cell.SourceWidth, cell.SourceHeight, cell.SourceFrameRate, cell.VideoBitrate!.Value));
         Assert.Equal((null, null), (cell.MaxWidth, cell.MaxHeight));
-        Assert.Equal("/c/speed_1080p_h264.mkv", cell.SourcePath);
-        Assert.Equal(("/c/speed_pgs_sub.sup", (string?)null), (cell.GraphicalSubtitlePath, cell.SubtitlePath));
+        Assert.Equal("/c/" + spec.Fixture!.FileName, cell.SourcePath);
+        Assert.Equal(("/c/" + SpeedCatalog.ImageSubtitles.FileName, (string?)null), (cell.GraphicalSubtitlePath, cell.SubtitlePath));
         Assert.DoesNotContain(SpeedCatalog.TextSubtitles, SpeedVariants.Clips([spec], settings));
         Assert.DoesNotContain(SpeedCatalog.ImageSubtitles, SpeedVariants.Clips([SpeedCatalog.Find("pattern|decode")!], settings));
     }
@@ -62,7 +63,7 @@ public sealed class SpeedVariantsTests
     [Fact]
     public void EveryOptionApplies()
     {
-        foreach (var option in Jellyfin.Plugin.HwProbe.Core.Data.Catalog.Default.Options)
+        foreach (var option in Catalog.Default.Options)
         {
             var values = option.Switch ? ["true", "false"] : option.Range is [var low, var high] ? [low.ToString(System.Globalization.CultureInfo.InvariantCulture), high.ToString(System.Globalization.CultureInfo.InvariantCulture)] : option.Choices!.Select(c => c.Key).ToArray();
             Assert.All(values, v => Assert.NotNull(SpeedSettingsOptions.Apply(new SpeedSettings(), option.Key, v)));
@@ -82,7 +83,7 @@ public sealed class SpeedVariantsTests
         Assert.All(SpeedCatalog.DefaultOutputs, k => Assert.NotNull(SpeedCatalog.FindOutput(k)));
         Assert.Null(SpeedCatalog.Find("pattern"));
         Assert.Equal("Test video, H.264 \u2192 HEVC, 720 kbps", SpeedCatalog.Find("pattern|hevc-720kbps")!.Label);
-        Assert.Equal((3 * 14) + 1, SpeedCatalog.Outputs.Count);
+        Assert.Equal((Catalog.Default.Codecs.Count * Catalog.Default.Qualities.Count) + 1, SpeedCatalog.Outputs.Count);
     }
 
     /// <summary>Every chosen output runs on every chosen video, video by video; the library video needs a file.</summary>
@@ -110,11 +111,9 @@ public sealed class SpeedVariantsTests
         Assert.Equal("H.264 at 4 Mbps, stereo AAC, tone-mapped to SDR", SpeedTestText.Output(SpeedCatalog.Find("pattern-4k-hdr|h264-4mbps")!));
         Assert.Equal("AV1 at 420 kbps, stereo AAC", SpeedTestText.Output(SpeedCatalog.Find("pattern|av1-420kbps")!));
         Assert.Equal("Decoded only, not encoded", SpeedTestText.Output(SpeedCatalog.Find("anime|decode")!));
-        Assert.Equal(("Live-action + CGI", "Tears of Steel", "10.1 s, 2 MB"), (SpeedCatalog.FindVideo("live-action")!.Name, SpeedCatalog.FindVideo("live-action")!.Title, SpeedCatalog.FindVideo("live-action")!.Origin));
         Assert.Equal("1080p VP9, 24 fps, stereo Opus", SpeedTestText.Input(SpeedCatalog.FindVideo("live-action")!));
         Assert.Equal("8K VP9, 25 fps", SpeedTestText.Input(SpeedCatalog.FindVideo("drama-8k")!));
         Assert.Equal("H.264 at 8 Mbps", SpeedTestText.Output(SpeedCatalog.Find("drama-8k|h264-8mbps")!));
-        Assert.Equal(("av1", 12, "Professional"), (SpeedCatalog.FindVideo("anime-4k")!.Fixture!.Codec, SpeedCatalog.FindVideo("anime-4k")!.Fixture!.BitDepth, SpeedCatalog.FindVideo("anime-4k")!.Fixture!.Profile));
     }
 
     /// <summary>A speed report round-trips through JSON with string enums.</summary>

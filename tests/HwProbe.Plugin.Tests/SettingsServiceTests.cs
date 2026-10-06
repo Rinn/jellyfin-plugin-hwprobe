@@ -1,8 +1,10 @@
+using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Devices;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Core.Speed;
 using Jellyfin.Plugin.HwProbe.Settings;
+using Jellyfin.Plugin.HwProbe.TestSupport;
 using MediaBrowser.Model.Entities;
 using Xunit;
 
@@ -28,7 +30,7 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.Equal(ApplyOutcome.Rejected, refused.Outcome);
         Assert.Equal(ApplyOutcome.Applied, applied.Outcome);
         Assert.Equal(EncoderPreset.medium, _harness.Saved.EncoderPreset);
-        Assert.Equal([new AppliedChange("EncoderPreset", "auto", "medium") { Label = "Encoding preset" }], applied.Changes);
+        Assert.Equal([new AppliedChange("EncoderPreset", "auto", "medium") { Label = Catalog.Default.Options.Single(o => o.Key == "EncoderPreset").Label }], applied.Changes);
     }
 
     /// <summary>A suggested bitrate limit is saved to the streaming settings and reverted from there; one at or above a stricter limit already set is refused, as is a suggestion that only confirms the server's value.</summary>
@@ -46,7 +48,7 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange("EncoderPreset", "fast"), "admin", ct)).Outcome);
         var applied = await _harness.Service.ApplyMeasuredAsync(new MeasuredChange(SpeedAdvisor.BitrateLimitKey, "20000000"), "admin", ct);
         Assert.Equal((ApplyOutcome.Applied, 20000000), (applied.Outcome, _harness.SavedBitrateLimit));
-        Assert.Equal("Internet streaming bitrate limit", Assert.Single(applied.Changes).Label);
+        Assert.Equal(Catalog.Default.Labels[SpeedAdvisor.BitrateLimitKey], Assert.Single(applied.Changes).Label);
 
         await _harness.Service.RevertAsync("admin", ct);
         Assert.Equal(0, _harness.SavedBitrateLimit);
@@ -74,8 +76,8 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.False(_harness.Service.RestartRequired);
         Assert.Equal(
             [
-                new AppliedChange("HardwareDecodingCodecs:hevc", "false", "true") { Label = "Hardware decoding: HEVC" },
-                new AppliedChange("AllowAv1Encoding", "true", "false") { Label = "Allow encoding in AV1 format" },
+                new AppliedChange("HardwareDecodingCodecs:hevc", "false", "true") { Label = SettingsAdvisor.LabelFor("HardwareDecodingCodecs:hevc") },
+                new AppliedChange("AllowAv1Encoding", "true", "false") { Label = SettingsAdvisor.LabelFor("AllowAv1Encoding") },
             ],
             result.Changes);
     }
@@ -89,7 +91,7 @@ public sealed class SettingsServiceTests : IDisposable
         _harness.Saved.EnableSubtitleExtraction = false;
         Assert.Equal(ApplyOutcome.Rejected, (await ApplyAsync(("EnableSubtitleExtraction", true))).Outcome);
 
-        var software = new BackendReport(HwType.none, string.Empty, BackendVerdict.Viable, PipelineTier.Unknown, new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), string.Empty);
+        var software = Reports.Backend(HwType.none);
         _harness.Report = _harness.Report! with { Software = software with { Settings = SettingsAdvisor.For(software, new AdviceContext(HostOs.Linux, InContainer: true, OpenclUnavailable: false)) } };
         var result = await ApplyAsync(("EnableSubtitleExtraction", true), ("AllowAv1Encoding", false));
 
@@ -222,7 +224,7 @@ public sealed class SettingsServiceTests : IDisposable
     {
         var result = await ApplyAsync(("Trickplay:EnableHwAcceleration", true));
 
-        Assert.Equal([new AppliedChange("Trickplay:EnableHwAcceleration", "false", "true") { Label = "Trickplay: Enable hardware decoding" }], result.Changes);
+        Assert.Equal([new AppliedChange("Trickplay:EnableHwAcceleration", "false", "true") { Label = SettingsAdvisor.LabelFor("Trickplay:EnableHwAcceleration") }], result.Changes);
         Assert.True(_harness.SavedTrickplay.EnableHwAcceleration);
         Assert.Equal(0, _harness.Saves);
         Assert.False(result.RestartRequired);
@@ -265,7 +267,7 @@ public sealed class SettingsServiceTests : IDisposable
 
         var history = await _harness.Service.HistoryAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(["Enable Tone mapping", "QSV device", null], history[0].Changes.Select(c => c.Label));
+        Assert.Equal([SettingsAdvisor.LabelFor("EnableTonemapping"), SettingsAdvisor.LabelFor("QsvDevice"), null], history[0].Changes.Select(c => c.Label));
     }
 
     /// <summary>When every setting was changed since, Revert changes and saves nothing but still clears the entry, naming the settings.</summary>
@@ -282,7 +284,7 @@ public sealed class SettingsServiceTests : IDisposable
 
         Assert.Equal(ApplyOutcome.Applied, revert.Outcome);
         Assert.Empty(revert.Changes);
-        Assert.Equal("Changed since, left as is: Hardware decoding: HEVC", revert.Reason);
+        Assert.Equal("Changed since, left as is: " + SettingsAdvisor.LabelFor("HardwareDecodingCodecs:hevc"), revert.Reason);
         Assert.Equal(saves, _harness.Saves);
         var history = await _harness.Service.HistoryAsync(ct);
         Assert.NotNull(Assert.Single(history).RevertedUtc);
@@ -302,14 +304,14 @@ public sealed class SettingsServiceTests : IDisposable
 
         Assert.Equal(ApplyOutcome.Applied, revert.Outcome);
         Assert.Equal(["h264"], _harness.Saved.HardwareDecodingCodecs);
-        Assert.Equal("Changed since, left as is: Allow encoding in AV1 format", revert.Reason);
+        Assert.Equal("Changed since, left as is: " + SettingsAdvisor.LabelFor("AllowAv1Encoding"), revert.Reason);
         Assert.Equal(ApplyOutcome.NothingToRevert, (await _harness.Service.RevertAsync("admin", ct)).Outcome);
 
         var history = await _harness.Service.HistoryAsync(ct);
         Assert.Equal([HistoryKind.Apply, HistoryKind.Revert], history.Select(e => e.Kind));
         Assert.NotNull(history[0].RevertedUtc);
         Assert.Equal("admin", history[0].User);
-        Assert.Equal("Hardware decoding: HEVC", history[0].Changes[0].Label);
+        Assert.Equal(SettingsAdvisor.LabelFor("HardwareDecodingCodecs:hevc"), history[0].Changes[0].Label);
     }
 
     /// <inheritdoc/>

@@ -55,7 +55,7 @@ public sealed class FixtureBuilderTests : IDisposable
         var results = await BuildAsync(withoutX265);
 
         var hevc = results.Where(r => r.Spec.RequiredEncoder == "libx265").ToList();
-        Assert.Equal(7, hevc.Count);
+        Assert.Equal(FixtureCatalog.All.Count(f => f.RequiredEncoder == "libx265"), hevc.Count);
         Assert.All(hevc.Where(r => !r.Spec.Bundled), r => Assert.Equal(FixtureStatus.Skipped, r.Status));
         Assert.All(hevc.Where(r => r.Spec.Bundled), r => Assert.Equal(FixtureStatus.Available, r.Status));
         Assert.DoesNotContain(_runner.Invocations, i => i.Arguments.Contains("libx265", StringComparison.Ordinal));
@@ -75,51 +75,41 @@ public sealed class FixtureBuilderTests : IDisposable
         Assert.All(results.Where(r => r.Spec.UntestedReason is null && r.Spec.RequiredEncoder is not null), r => Assert.Equal(FixtureStatus.Available, r.Status));
     }
 
-    /// <summary>A truncated cached fixture fails its manifest check and is regenerated.</summary>
+    /// <summary>A damaged cache entry is regenerated, and only that fixture: a truncated clip fails its manifest check, a manifest from different encode arguments (an older catalog) is stale, and a missing manifest (a run killed mid-way) is incomplete.</summary>
+    /// <param name="fileName">The fixture damaged.</param>
+    /// <param name="damage">How it is damaged: <c>truncate</c>, <c>recipe</c> or <c>manifest</c>.</param>
+    /// <param name="argument">Text in that fixture's encode arguments.</param>
     /// <returns>A task representing the test.</returns>
-    [Fact]
-    public async Task CorruptFixtureIsRegenerated()
+    [Theory]
+    [InlineData("h264_8bit.mp4", "truncate", "libx264")]
+    [InlineData("hevc_10bit.mp4", "recipe", "yuv420p10le")]
+    [InlineData("mpeg2.mpg", "manifest", "mpeg2video")]
+    public async Task DamagedFixtureIsRegenerated(string fileName, string damage, string argument)
     {
         var first = await BuildAsync(_allEncoders);
-        var h264 = first.Single(r => r.Spec.FileName == "h264_8bit.mp4").Path!;
-        await File.WriteAllTextAsync(h264, "trunc", TestContext.Current.CancellationToken);
+        var path = first.Single(r => r.Spec.FileName == fileName).Path!;
+        var manifest = path + ".sha256";
+        var token = TestContext.Current.CancellationToken;
+        switch (damage)
+        {
+            case "truncate":
+                await File.WriteAllTextAsync(path, "trunc", token);
+                break;
+            case "recipe":
+                var fields = (await File.ReadAllTextAsync(manifest, token)).Split(' ');
+                await File.WriteAllTextAsync(manifest, $"{fields[0]} {fields[1]} {new string('0', 64)}", token);
+                break;
+            default:
+                File.Delete(manifest);
+                break;
+        }
+
         _runner.Invocations.Clear();
 
         var second = await BuildAsync(_allEncoders);
 
-        var invocation = Assert.Single(_runner.Invocations);
-        Assert.Contains("libx264", invocation.Arguments, StringComparison.Ordinal);
-        Assert.Equal(FixtureStatus.Available, second.Single(r => r.Spec.FileName == "h264_8bit.mp4").Status);
-    }
-
-    /// <summary>A fixture made from different encode arguments (an older catalog) is regenerated.</summary>
-    /// <returns>A task representing the test.</returns>
-    [Fact]
-    public async Task ChangedRecipeIsRegenerated()
-    {
-        var first = await BuildAsync(_allEncoders);
-        var manifest = first.Single(r => r.Spec.FileName == "hevc_10bit.mp4").Path! + ".sha256";
-        var fields = (await File.ReadAllTextAsync(manifest, TestContext.Current.CancellationToken)).Split(' ');
-        await File.WriteAllTextAsync(manifest, $"{fields[0]} {fields[1]} {new string('0', 64)}", TestContext.Current.CancellationToken);
-        _runner.Invocations.Clear();
-
-        await BuildAsync(_allEncoders);
-
-        Assert.Contains("yuv420p10le", Assert.Single(_runner.Invocations).Arguments, StringComparison.Ordinal);
-    }
-
-    /// <summary>A fixture with no manifest (e.g. a run killed mid-way) is regenerated.</summary>
-    /// <returns>A task representing the test.</returns>
-    [Fact]
-    public async Task MissingManifestIsRegenerated()
-    {
-        var first = await BuildAsync(_allEncoders);
-        File.Delete(first.Single(r => r.Spec.FileName == "mpeg2.mpg").Path! + ".sha256");
-        _runner.Invocations.Clear();
-
-        await BuildAsync(_allEncoders);
-
-        Assert.Contains("mpeg2video", Assert.Single(_runner.Invocations).Arguments, StringComparison.Ordinal);
+        Assert.Contains(argument, Assert.Single(_runner.Invocations).Arguments, StringComparison.Ordinal);
+        Assert.Equal(FixtureStatus.Available, second.Single(r => r.Spec.FileName == fileName).Status);
     }
 
     /// <summary>A failed encode is reported and leaves nothing cached, so the next run retries.</summary>
@@ -155,7 +145,7 @@ public sealed class FixtureBuilderTests : IDisposable
         var results = await BuildAsync(_allEncoders);
 
         Assert.All(results.Where(r => r.Spec.Codec == "av1"), r => Assert.Equal(FixtureStatus.Available, r.Status));
-        Assert.Equal(4, _runner.Invocations.Count(i => i.Arguments.Contains("libsvtav1", StringComparison.Ordinal)));
+        Assert.Equal(2 * FixtureCatalog.All.Count(f => f.RequiredEncoder == "libsvtav1"), _runner.Invocations.Count(i => i.Arguments.Contains("libsvtav1", StringComparison.Ordinal)));
     }
 
     /// <summary>When the retry also fails, both reasons are reported and nothing is cached.</summary>

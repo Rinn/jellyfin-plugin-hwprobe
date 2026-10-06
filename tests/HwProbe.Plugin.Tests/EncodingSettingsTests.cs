@@ -74,15 +74,9 @@ public sealed class EncodingSettingsTests
     [Fact]
     public void KnowsTheAdvisorKeysOnly()
     {
-        string[] advisorKeys =
-        [
-            "HardwareDecodingCodecs:h264", "EnableDecodingColorDepth10Hevc", "EnableDecodingColorDepth10Vp9", "EnableDecodingColorDepth10HevcRext",
-            "EnableDecodingColorDepth12HevcRext", "PreferSystemNativeHwDecoder", "EnableHardwareEncoding", "EnableIntelLowPowerH264HwEncoder",
-            "EnableIntelLowPowerHevcHwEncoder", "AllowHevcEncoding", "AllowAv1Encoding", "EnableTonemapping", "EnableVppTonemapping", "EnableVideoToolboxTonemapping",
-            "EnableEnhancedNvdecDecoder", "DeinterlaceMethod:bwdif",
-            "Trickplay:EnableHwAcceleration", "Trickplay:EnableHwEncoding", "Trickplay:EnableKeyFrameOnlyExtraction",
-        ];
+        var advisorKeys = Reports.AdvisedSettings();
 
+        Assert.NotEmpty(advisorKeys);
         Assert.All(advisorKeys, k => Assert.True(ServerSettings.IsKnown(k), k));
         Assert.False(ServerSettings.IsKnown("Trickplay:Interval"));
         Assert.False(EncodingSettings.IsKnown("EncoderAppPath"));

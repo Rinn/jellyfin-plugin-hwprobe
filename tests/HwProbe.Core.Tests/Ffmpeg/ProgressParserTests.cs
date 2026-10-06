@@ -7,22 +7,15 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Ffmpeg;
 [Trait("Category", "Unit")]
 public sealed class ProgressParserTests
 {
-    /// <summary>The last frame value across multiple progress blocks wins.</summary>
-    [Fact]
-    public void LastBlockWins() =>
-        Assert.Equal(25, ProgressParser.LastFrame("frame=3\nprogress=continue\nframe=25\nprogress=end\n"));
-
-    /// <summary>CRLF line endings and surrounding spaces still parse.</summary>
-    [Fact]
-    public void ToleratesCrlfAndSpaces() =>
-        Assert.Equal(7, ProgressParser.LastFrame("frame= 7 \r\nprogress=end\r\n"));
-
-    /// <summary>No frame line, or an unparseable one, yields null rather than zero.</summary>
+    /// <summary>The last frame value across progress blocks wins; CRLF and surrounding spaces still parse; no frame line, or an unparseable one, yields null rather than zero.</summary>
     /// <param name="progress">Captured stdout.</param>
+    /// <param name="expected">The frame count, or null.</param>
     [Theory]
-    [InlineData("")]
-    [InlineData("progress=end\n")]
-    [InlineData("frame=N/A\n")]
-    [InlineData("keyframe=3\n")]
-    public void NoFrameIsNull(string progress) => Assert.Null(ProgressParser.LastFrame(progress));
+    [InlineData("frame=3\nprogress=continue\nframe=25\nprogress=end\n", 25L)]
+    [InlineData("frame= 7 \r\nprogress=end\r\n", 7L)]
+    [InlineData("", null)]
+    [InlineData("progress=end\n", null)]
+    [InlineData("frame=N/A\n", null)]
+    [InlineData("keyframe=3\n", null)]
+    public void LastFrame(string progress, long? expected) => Assert.Equal(expected, ProgressParser.LastFrame(progress));
 }

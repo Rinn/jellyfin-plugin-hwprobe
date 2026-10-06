@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Devices;
 using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
 using Jellyfin.Plugin.HwProbe.Core.Model;
@@ -43,7 +44,7 @@ public sealed class ProbeEngineTests : IDisposable
         Assert.Equal(ProbeOutcome.Pass, backend.Deinterlace["videotoolbox"]);
         Assert.Equal(ProbeOutcome.Pass, backend.Subtitles["text"]);
         var copyBack = Assert.Single(report.Findings, f => f.Code == "legacy-copyback");
-        Assert.Contains("lacks overlay_videotoolbox, tonemap_videotoolbox, alphasrc; use jellyfin-ffmpeg for the Metal pipeline", copyBack.Message, StringComparison.Ordinal);
+        Assert.EndsWith(Catalog.Text("legacyCopyBackFfmpeg", ("filters", "overlay_videotoolbox, tonemap_videotoolbox, alphasrc"), ("pipeline", "Metal")), copyBack.Message, StringComparison.Ordinal);
         Assert.Equal(CapabilityReport.CurrentSchemaVersion, report.SchemaVersion);
     }
 
@@ -95,8 +96,8 @@ public sealed class ProbeEngineTests : IDisposable
         Assert.Equal(dropAlphasrc, copyBack is not null);
         if (copyBack is not null)
         {
-            Assert.Contains("lacks alphasrc; use jellyfin-ffmpeg for the CUDA pipeline", copyBack.Message, StringComparison.Ordinal);
-            Assert.Equal("Use jellyfin-ffmpeg", copyBack.Fix?.Action);
+            Assert.EndsWith(Catalog.Text("legacyCopyBackFfmpeg", ("filters", "alphasrc"), ("pipeline", "CUDA")), copyBack.Message, StringComparison.Ordinal);
+            Assert.Equal(Catalog.Text("fixJellyfinFfmpeg"), copyBack.Fix?.Action);
         }
     }
 
@@ -122,7 +123,7 @@ public sealed class ProbeEngineTests : IDisposable
         // The listing stops at index 3, the first with no adapter, below its cap of five.
         Assert.Equal(4, runner.Calls.Count(c => c.Contains("-init_hw_device d3d11va=dx11:", StringComparison.Ordinal) && !c.Contains("qsv", StringComparison.Ordinal)));
         var amf = Assert.Single(report.Backends, b => b.Type == HwType.amf);
-        Assert.Equal((BackendVerdict.NotPresent, "No AMD adapter found. Check the AMD graphics driver is installed."), (amf.Verdict, amf.Hint));
+        Assert.Equal((BackendVerdict.NotPresent, Catalog.Text("noVendorAdapter", ("maker", "AMD"))), (amf.Verdict, amf.Hint));
     }
 
     /// <summary>With the adapters listed, a failed Intel adapter doesn't hide the next, and AMF tests only the first AMD adapter.</summary>

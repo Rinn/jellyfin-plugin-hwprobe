@@ -30,26 +30,25 @@ public sealed class FfmpegLocatorTests
         Assert.Equal(new FfmpegLocation(Full("/env/ffmpeg"), FfmpegSource.EnvironmentVariable), locator.Locate(null));
     }
 
-    /// <summary>A missing command-line binary throws instead of falling through.</summary>
-    [Fact]
-    public void MissingExplicitPathThrows()
+    /// <summary>A missing command-line or environment-variable binary throws instead of falling through to a binary that exists.</summary>
+    /// <param name="explicitPath">The command-line path, or null.</param>
+    /// <param name="environmentPath">The environment variable's path, or null.</param>
+    /// <param name="source">The source the error names.</param>
+    [Theory]
+    [InlineData("/nope/ffmpeg", null, "CommandLine")]
+    [InlineData(null, "/nope/ffmpeg", "EnvironmentVariable")]
+    public void MissingNamedPathThrows(string? explicitPath, string? environmentPath, string source)
     {
-        var locator = Create(env: new() { ["PATH"] = "/bin" }, files: ["/bin/ffmpeg"]);
+        var env = new Dictionary<string, string> { ["PATH"] = "/bin" };
+        if (environmentPath is not null)
+        {
+            env["JELLYFIN_FFMPEG"] = environmentPath;
+        }
 
-        var ex = Assert.Throws<FileNotFoundException>(() => locator.Locate("/nope/ffmpeg"));
-        Assert.Contains("CommandLine", ex.Message, StringComparison.Ordinal);
-    }
+        var locator = Create(env, files: ["/bin/ffmpeg", "/usr/lib/jellyfin-ffmpeg/ffmpeg"]);
 
-    /// <summary>A missing environment-variable binary throws instead of falling through.</summary>
-    [Fact]
-    public void MissingEnvironmentPathThrows()
-    {
-        var locator = Create(
-            env: new() { ["JELLYFIN_FFMPEG"] = "/nope/ffmpeg" },
-            files: ["/usr/lib/jellyfin-ffmpeg/ffmpeg"]);
-
-        var ex = Assert.Throws<FileNotFoundException>(() => locator.Locate(null));
-        Assert.Contains("EnvironmentVariable", ex.Message, StringComparison.Ordinal);
+        var ex = Assert.Throws<FileNotFoundException>(() => locator.Locate(explicitPath));
+        Assert.Contains(source, ex.Message, StringComparison.Ordinal);
     }
 
     /// <summary>Known install locations are tried in the documented order.</summary>

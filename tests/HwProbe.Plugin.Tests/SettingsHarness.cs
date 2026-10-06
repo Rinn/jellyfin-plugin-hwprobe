@@ -1,7 +1,9 @@
+using Jellyfin.Plugin.HwProbe.Core.Devices;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Core.Speed;
 using Jellyfin.Plugin.HwProbe.Settings;
+using Jellyfin.Plugin.HwProbe.TestSupport;
 using MediaBrowser.Model.Configuration;
 using MediaBrowser.Model.Entities;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -75,21 +77,17 @@ internal sealed class SettingsHarness : IDisposable
     /// <summary>Gets or sets the server's ffmpeg path.</summary>
     public string EncoderPath { get; set; } = Ffmpeg;
 
-    /// <summary>Builds a report: VAAPI and QSV viable on the node, NVENC not present; VAAPI advice covers four options.</summary>
+    /// <summary>Builds a report: VAAPI and QSV viable on the node, NVENC not present; VAAPI advice comes from its results, with HEVC decoding and key frames passing, AV1 encoding unsupported, and tone mapping untested.</summary>
     /// <returns>The report.</returns>
     public static CapabilityReport Sample()
     {
-        var vaapi = Row(HwType.vaapi, BackendVerdict.Viable) with
-        {
-            Settings =
-            [
-                new("Enable hardware decoding for", "HardwareDecodingCodecs:hevc", "HEVC", SettingState.TurnOn, string.Empty),
-                new("Encoding format options", "AllowAv1Encoding", "Allow encoding in AV1 format", SettingState.LeaveOff, "Not supported by this GPU"),
-                new("Tone mapping", "EnableTonemapping", "Enable Tone mapping", SettingState.NotTested, "Not tested"),
-                new("Trickplay", "Trickplay:EnableHwAcceleration", "Enable hardware decoding", SettingState.TurnOn, string.Empty),
-                new("Trickplay", "Trickplay:EnableKeyFrameOnlyExtraction", "Only generate images from key frames", SettingState.Optional, "Faster, but less accurate timing"),
-            ],
-        };
+        var vaapi = Reports.Backend(
+            HwType.vaapi,
+            Node,
+            tier: PipelineTier.FullOpencl,
+            decode: new Dictionary<string, ProbeOutcome> { ["h264"] = ProbeOutcome.Pass, ["hevc"] = ProbeOutcome.Pass, ["h264_keyframes"] = ProbeOutcome.Pass },
+            encode: new Dictionary<string, ProbeOutcome> { ["h264"] = ProbeOutcome.Pass, ["av1"] = ProbeOutcome.CodecUnsupported });
+        vaapi = vaapi with { Settings = SettingsAdvisor.For(vaapi, new AdviceContext(HostOs.Linux, InContainer: true, OpenclUnavailable: false)) };
         return Reports.Sample() with
         {
             Ffmpeg = new FfmpegSummary(Ffmpeg, "Server", "8.1.2", IsJellyfinBuild: true),
@@ -108,17 +106,7 @@ internal sealed class SettingsHarness : IDisposable
     /// <param name="type">The backend.</param>
     /// <param name="verdict">Its verdict.</param>
     /// <returns>The row.</returns>
-    private static BackendReport Row(HwType type, BackendVerdict verdict) => new(
-        type,
-        Node,
-        verdict,
-        PipelineTier.FullOpencl,
-        new Dictionary<string, ProbeOutcome>(),
-        new Dictionary<string, ProbeOutcome>(),
-        new Dictionary<string, ProbeOutcome>(),
-        new Dictionary<string, ProbeOutcome>(),
-        new Dictionary<string, ProbeOutcome>(),
-        string.Empty);
+    private static BackendReport Row(HwType type, BackendVerdict verdict) => Reports.Backend(type, Node, verdict, PipelineTier.FullOpencl);
 
     /// <summary>Copies options the way the server hands out a fresh object.</summary>
     /// <param name="options">The options.</param>

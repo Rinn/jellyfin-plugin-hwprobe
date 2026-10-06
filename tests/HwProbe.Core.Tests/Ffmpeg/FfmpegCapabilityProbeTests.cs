@@ -9,8 +9,6 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Ffmpeg;
 [Trait("Category", "Unit")]
 public sealed class FfmpegCapabilityProbeTests
 {
-    private const string OverlayEofHelpText = "Action to take when encountering EOF from secondary input";
-
     private static readonly TimeSpan _timeout = TimeSpan.FromSeconds(15);
 
     /// <summary>Homebrew on macOS: only VideoToolbox is built, and it is not a Jellyfin build.</summary>
@@ -33,26 +31,21 @@ public sealed class FfmpegCapabilityProbeTests
         Assert.False(caps.IsOpenclFullSupported);
     }
 
-    /// <summary>A cuda-built ffmpeg reports nvenc Selectable regardless of hardware — the gap this tool exists for.</summary>
+    /// <summary>jellyfin-ffmpeg on Linux: cuda, vaapi, qsv and v4l2m2m are Selectable regardless of hardware (the gap this tool exists for), amf is not without d3d11va, and OpenCL is full.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
-    public async Task CudaBuildIsSelectableWithoutDevice()
+    public async Task JellyfinLinuxBuild()
     {
-        var caps = await ProbeAsync(FullBuild());
+        var caps = await ProbeAsync(Corpus());
 
+        Assert.Equal(FfmpegValidation.Valid, caps.Validation);
+        Assert.True(caps.IsJellyfinBuild);
         Assert.Equal(BuildStatus.Selectable, caps.BuildStatus[HwType.nvenc]);
         Assert.Equal(BuildStatus.Selectable, caps.BuildStatus[HwType.vaapi]);
         Assert.Equal(BuildStatus.Selectable, caps.BuildStatus[HwType.qsv]);
+        Assert.Equal(BuildStatus.Selectable, caps.BuildStatus[HwType.v4l2m2m]);
+        Assert.Equal(BuildStatus.NotBuilt, caps.BuildStatus[HwType.amf]);
         Assert.Equal(BuildStatus.NotBuilt, caps.BuildStatus[HwType.rkmpp]);
-    }
-
-    /// <summary>OpenCL-full needs the hwaccel, scale_opencl and both filter options.</summary>
-    /// <returns>A task representing the test.</returns>
-    [Fact]
-    public async Task OpenclFullWhenAllGatesPass()
-    {
-        var caps = await ProbeAsync(FullBuild());
-
         Assert.True(caps.FilterOptions["TonemapOpenclBt2390"]);
         Assert.True(caps.FilterOptions["OverlayOpenclFrameSync"]);
         Assert.True(caps.IsOpenclFullSupported);
@@ -63,8 +56,8 @@ public sealed class FfmpegCapabilityProbeTests
     [Fact]
     public async Task OpenclNotFullWithoutBt2390()
     {
-        var script = FullBuild();
-        script["-h filter=tonemap_opencl"] = "Filter tonemap_opencl\n  tonemap: hable reinhard\n";
+        var script = Corpus();
+        script["-h filter=tonemap_opencl"] = script["-h filter=tonemap_opencl"].Replace("bt2390", string.Empty, StringComparison.Ordinal);
 
         var caps = await ProbeAsync(script);
 
@@ -77,12 +70,14 @@ public sealed class FfmpegCapabilityProbeTests
     [Fact]
     public async Task HelpFetchedOncePerPresentFilter()
     {
-        var runner = new ScriptedFfmpegRunner(FullBuild());
+        var script = Corpus();
+        script["-filters"] = WithoutLines(script["-filters"], " overlay_vulkan ");
+        var runner = new ScriptedFfmpegRunner(script);
 
         await new FfmpegCapabilityProbe(runner, _timeout).ProbeAsync("/ffmpeg", TestContext.Current.CancellationToken);
 
         var helpCalls = runner.Calls.Where(c => c.StartsWith("-h filter=", StringComparison.Ordinal)).ToList();
-        Assert.Equal(["-h filter=tonemap_opencl", "-h filter=overlay_opencl"], helpCalls);
+        Assert.Equal(["-h filter=scale_cuda", "-h filter=tonemap_cuda", "-h filter=tonemap_opencl", "-h filter=overlay_opencl", "-h filter=overlay_vaapi", "-h filter=transpose_opencl", "-h filter=overlay_cuda"], helpCalls);
     }
 
     /// <summary>amf needs an amf encoder, not just d3d11va.</summary>
@@ -94,26 +89,30 @@ public sealed class FfmpegCapabilityProbeTests
     [InlineData(" V....D h264_amf             AMD AMF H.264 Encoder (codec h264)\n", BuildStatus.Selectable)]
     public async Task AmfNeedsEncoder(string encoderRow, BuildStatus expected)
     {
-        var script = FullBuild();
+        var script = Corpus();
         script["-hwaccels"] = "Hardware acceleration methods:\nd3d11va\n";
-        script["-encoders"] += encoderRow;
+        script["-encoders"] = WithoutLines(script["-encoders"], "_amf ") + encoderRow;
 
         var caps = await ProbeAsync(script);
 
         Assert.Equal(expected, caps.BuildStatus[HwType.amf]);
     }
 
-    /// <summary>v4l2m2m is built when its encoder is, with no hwaccel involved.</summary>
+    /// <summary>v4l2m2m is built when its H.264 encoder is, with no hwaccel involved.</summary>
+    /// <param name="encoderRow">An extra encoder row, or empty.</param>
+    /// <param name="expected">The expected v4l2m2m status.</param>
     /// <returns>A task representing the test.</returns>
-    [Fact]
-    public async Task V4l2m2mFollowsEncoder()
+    [Theory]
+    [InlineData("", BuildStatus.NotBuilt)]
+    [InlineData(" V..... h264_v4l2m2m         V4L2 mem2mem H.264 encoder wrapper (codec h264)\n", BuildStatus.Selectable)]
+    public async Task V4l2m2mFollowsEncoder(string encoderRow, BuildStatus expected)
     {
-        var script = FullBuild();
-        script["-encoders"] += " V..... h264_v4l2m2m         V4L2 mem2mem H.264 encoder wrapper (codec h264)\n";
+        var script = Corpus();
+        script["-encoders"] = WithoutLines(script["-encoders"], "_v4l2m2m ") + encoderRow;
 
         var caps = await ProbeAsync(script);
 
-        Assert.Equal(BuildStatus.Selectable, caps.BuildStatus[HwType.v4l2m2m]);
+        Assert.Equal(expected, caps.BuildStatus[HwType.v4l2m2m]);
     }
 
     /// <summary>The lookups used by tier gates answer by upstream names, including FilterOptionType keys.</summary>
@@ -121,9 +120,8 @@ public sealed class FfmpegCapabilityProbeTests
     [Fact]
     public async Task LookupsAnswerTierGateQueries()
     {
-        var script = FullBuild();
-        script["-filters"] += " ... overlay_vaapi     VV->V      Overlay one video on top of another\n";
-        script["-h filter=overlay_vaapi"] = $"Filter overlay_vaapi\n  eof_action <int> {OverlayEofHelpText}\n";
+        var script = Corpus();
+        script["-filters"] = WithoutLines(script["-filters"], " overlay_vulkan ");
 
         var caps = await ProbeAsync(script);
         Func<string, bool> hwaccel = caps.SupportsHwaccel;
@@ -154,17 +152,14 @@ public sealed class FfmpegCapabilityProbeTests
     private static Task<FfmpegCapabilities> ProbeAsync(Dictionary<string, string> script) =>
         new FfmpegCapabilityProbe(new ScriptedFfmpegRunner(script), _timeout).ProbeAsync("/ffmpeg", TestContext.Current.CancellationToken);
 
-    /// <summary>A synthetic jellyfin-ffmpeg-like Linux build with cuda, vaapi, qsv and OpenCL.</summary>
+    /// <summary>Reads the recorded jellyfin-ffmpeg 8.1.2 Linux amd64 build.</summary>
     /// <returns>Stdout per argument string.</returns>
-    /// <remarks>Synthesized, not recorded: no jellyfin-ffmpeg binary was available.</remarks>
-    private static Dictionary<string, string> FullBuild() => new(StringComparer.Ordinal)
-    {
-        ["-version"] = "ffmpeg version 7.1.1-Jellyfin Copyright (c) 2000-2025 the FFmpeg developers\n",
-        ["-hwaccels"] = "Hardware acceleration methods:\ncuda\nvaapi\nqsv\ndrm\nopencl\nvulkan\n",
-        ["-encoders"] = "Encoders:\n ------\n V....D h264_nvenc           NVIDIA NVENC H.264 encoder (codec h264)\n V....D h264_vaapi           H.264/AVC (VAAPI) (codec h264)\n",
-        ["-decoders"] = "Decoders:\n ------\n V....D h264                 H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10\n",
-        ["-filters"] = "Filters:\n  ------\n ... scale_opencl      V->V       Scale the input video size through OpenCL.\n ... tonemap_opencl    V->V       Perform HDR to SDR conversion with tonemapping.\n ... overlay_opencl    VV->V      Overlay one video on top of another\n ... alphasrc          |->V       Generate a video with alpha.\n",
-        ["-h filter=tonemap_opencl"] = "Filter tonemap_opencl\n  tonemap: none linear gamma clip reinhard hable mobius bt2390\n",
-        ["-h filter=overlay_opencl"] = $"Filter overlay_opencl\n  eof_action <int> {OverlayEofHelpText}\n  alpha_format <int>\n",
-    };
+    private static Dictionary<string, string> Corpus() => ScriptedFfmpegRunner.LoadCorpus("jellyfin-8.1.2-linux-amd64");
+
+    /// <summary>Drops the lines containing a substring.</summary>
+    /// <param name="text">The recorded output.</param>
+    /// <param name="contains">The substring.</param>
+    /// <returns>The output without those lines.</returns>
+    private static string WithoutLines(string text, string contains) =>
+        string.Join('\n', text.Split('\n').Where(l => !l.Contains(contains, StringComparison.Ordinal)));
 }

@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
 using Xunit;
@@ -109,7 +110,7 @@ public sealed class MatrixCatalogTests
     {
         var cells = MatrixCatalog.For(HwType.v4l2m2m);
 
-        Assert.Equal(["h264", "hevc", "av1"], cells.Select(c => c.Key));
+        Assert.Equal(Catalog.Default.Codecs.Select(c => c.Key), cells.Select(c => c.Key));
         Assert.All(cells, c => Assert.Equal((MatrixGroup.Encode, false), (c.Group, c.Cell.HardwareDecode)));
     }
 

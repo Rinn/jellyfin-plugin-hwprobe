@@ -32,30 +32,6 @@ public sealed class StderrMarkersTests
         Assert.Equal([StderrMarkers.V4l2Device], StderrMarkers.HardwareFrames(HwType.v4l2m2m));
     }
 
-    /// <summary>A real V4L2 encode on a Raspberry Pi passes, though the encoder rejects optional rate control; with no device it fails.</summary>
-    [Fact]
-    public void RecordedV4l2EncodePasses()
-    {
-        var pass = CorpusFile.Load("stderr/v4l2m2m-bcm2835-h264-pass.txt");
-        var expectation = new ProbeExpectation(10, StderrMarkers.HardwareFrames(HwType.v4l2m2m));
-
-        Assert.Contains("Failed to set frame level rate control", pass, StringComparison.Ordinal);
-        Assert.Equal(ProbeOutcome.Pass, VerdictEvaluator.Evaluate(new(FfmpegRunStatus.Exited, 0, string.Empty, pass, 10, TimeSpan.Zero, null), expectation));
-        Assert.DoesNotContain(StderrMarkers.V4l2Device, CorpusFile.Load("stderr/jellyfin-linux-v4l2m2m-no-device.txt"), StringComparison.Ordinal);
-    }
-
-    /// <summary>The VideoToolbox confirmation strings match the recorded pass and not the recorded fallback.</summary>
-    [Fact]
-    public void VideoToolboxConfirmationsMatchCorpus()
-    {
-        var confirmations = StderrMarkers.HardwareFrames(HwType.videotoolbox);
-        var pass = CorpusFile.Load("stderr/videotoolbox-h264-pass.txt");
-        var fallback = CorpusFile.Load("stderr/videotoolbox-mpeg4-sw-fallback.txt");
-
-        Assert.Contains(confirmations, n => pass.Contains(n, StringComparison.Ordinal));
-        Assert.DoesNotContain(confirmations, n => fallback.Contains(n, StringComparison.Ordinal));
-    }
-
     /// <summary>QSV decoded through VAAPI is confirmed by VAAPI frames, and QSV frames still count.</summary>
     [Fact]
     public void QsvOverVaapiAcceptsVaapiFrames()

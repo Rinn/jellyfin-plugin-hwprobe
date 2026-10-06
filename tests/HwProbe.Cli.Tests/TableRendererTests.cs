@@ -1,5 +1,6 @@
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Report;
+using Jellyfin.Plugin.HwProbe.TestSupport;
 using Xunit;
 
 namespace Jellyfin.Plugin.HwProbe.Cli.Tests;
@@ -12,29 +13,23 @@ public sealed class TableRendererTests
     [Fact]
     public void MixedHostGolden()
     {
-        var report = new CapabilityReport(
-            CapabilityReport.CurrentSchemaVersion,
-            DateTimeOffset.UnixEpoch,
-            "sha256:x",
+        var report = Reports.With(
+            [
+                Reports.Backend(
+                    HwType.vaapi,
+                    "/dev/dri/renderD128",
+                    tier: PipelineTier.LegacyCopyBack,
+                    decode: new Dictionary<string, ProbeOutcome> { ["h264"] = ProbeOutcome.Pass, ["av1"] = ProbeOutcome.CodecUnsupported, ["vc1"] = ProbeOutcome.Untested },
+                    encode: new Dictionary<string, ProbeOutcome> { ["h264"] = ProbeOutcome.Pass },
+                    deinterlace: new Dictionary<string, ProbeOutcome> { ["vaapi"] = ProbeOutcome.Pass },
+                    subtitles: new Dictionary<string, ProbeOutcome> { ["text"] = ProbeOutcome.Pass }),
+                Reports.Backend(HwType.nvenc, "0", BackendVerdict.NotPresent, hint: "ffmpeg has CUDA but no NVIDIA device was found."),
+            ],
             new FfmpegSummary("/usr/bin/ffmpeg", "SystemPath", "7.1.1", IsJellyfinBuild: false),
             new HostSummary("linux", "6.8.0", "docker"),
             new StageASummary([], new Dictionary<HwType, BuildStatus> { [HwType.amf] = BuildStatus.NotBuilt, [HwType.qsv] = BuildStatus.Selectable }, new Dictionary<string, bool>()),
-            [
-                new BackendReport(
-                    HwType.vaapi,
-                    "/dev/dri/renderD128",
-                    BackendVerdict.Viable,
-                    PipelineTier.LegacyCopyBack,
-                    new Dictionary<string, ProbeOutcome> { ["h264"] = ProbeOutcome.Pass, ["av1"] = ProbeOutcome.CodecUnsupported, ["vc1"] = ProbeOutcome.Untested },
-                    new Dictionary<string, ProbeOutcome> { ["h264"] = ProbeOutcome.Pass },
-                    new Dictionary<string, ProbeOutcome>(),
-                    new Dictionary<string, ProbeOutcome> { ["vaapi"] = ProbeOutcome.Pass },
-                    new Dictionary<string, ProbeOutcome> { ["text"] = ProbeOutcome.Pass },
-                    string.Empty),
-                new BackendReport(HwType.nvenc, "0", BackendVerdict.NotPresent, PipelineTier.Unknown, new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), "ffmpeg has CUDA but no NVIDIA device was found."),
-            ],
             [new Finding(FindingSeverity.Warn, "legacy-copyback", "vaapi is on the copy-back path; install intel-opencl-icd.")],
-            []);
+            fingerprint: "sha256:x");
 
         var expected = """
             ffmpeg  /usr/bin/ffmpeg (7.1.1, SystemPath)
@@ -63,16 +58,7 @@ public sealed class TableRendererTests
         {
             CommandLine = "-v verbose -hide_banner -init_hw_device vaapi=va:/dev/dri/renderD128",
         };
-        var report = new CapabilityReport(
-            CapabilityReport.CurrentSchemaVersion,
-            DateTimeOffset.UnixEpoch,
-            "sha256:x",
-            new FfmpegSummary("/usr/lib/jellyfin-ffmpeg/ffmpeg", "KnownPath", "8.1.2", IsJellyfinBuild: true),
-            new HostSummary("linux", "6.8.0", null),
-            new StageASummary([], new Dictionary<HwType, BuildStatus>(), new Dictionary<string, bool>()),
-            [],
-            [],
-            [probe]);
+        var report = Reports.With([], new FfmpegSummary("/usr/lib/jellyfin-ffmpeg/ffmpeg", "KnownPath", "8.1.2", IsJellyfinBuild: true), new HostSummary("linux", "6.8.0", null), probes: [probe], fingerprint: "sha256:x");
 
         var text = TableRenderer.Render(report, verbose: true);
 

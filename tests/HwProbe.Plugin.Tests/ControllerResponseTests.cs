@@ -1,6 +1,7 @@
 using Jellyfin.Plugin.HwProbe.Api;
 using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Probing;
+using Jellyfin.Plugin.HwProbe.TestSupport;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -53,7 +54,7 @@ public sealed class ControllerResponseTests : IDisposable
         await service.RunAsync(TestContext.Current.CancellationToken);
         var content = Assert.IsType<ContentResult>(await controller.GetReportAsync(TestContext.Current.CancellationToken));
         Assert.Equal("application/json", content.ContentType);
-        Assert.Contains("\"schemaVersion\": 3", content.Content, StringComparison.Ordinal);
+        Assert.Contains($"\"schemaVersion\": {CapabilityReport.CurrentSchemaVersion}", content.Content, StringComparison.Ordinal);
     }
 
     /// <inheritdoc/>

@@ -7,33 +7,24 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Ffmpeg;
 [Trait("Category", "Unit")]
 public sealed class FfmpegVersionParserTests
 {
-    /// <summary>Banner, <c>n</c>-prefixed, library-fallback and unidentifiable forms parse as upstream does.</summary>
+    /// <summary>Banner, <c>n</c>-prefixed, library-fallback and unidentifiable forms parse as upstream does, and validate against the 4.4 minimum.</summary>
     /// <param name="sample">Corpus file under <c>Corpus/ffmpeg/version</c>.</param>
     /// <param name="expected">Expected version, or null.</param>
+    /// <param name="validation">Expected validation.</param>
     [Theory]
-    [InlineData("jellyfin-7.0.1.txt", "7.0.1")]
-    [InlineData("btbn-n6.1.1.txt", "6.1.1")]
-    [InlineData("jellyfin-4.4.txt", "4.4")]
-    [InlineData("jellyfin-n4.3.2.txt", "4.3.2")]
-    [InlineData("git-libs-only.txt", "4.4")]
-    [InlineData("git-old-libs.txt", null)]
-    public void ParsesVersionForms(string sample, string? expected)
+    [InlineData("jellyfin-7.0.1.txt", "7.0.1", FfmpegValidation.Valid)]
+    [InlineData("btbn-n6.1.1.txt", "6.1.1", FfmpegValidation.Valid)]
+    [InlineData("jellyfin-4.4.txt", "4.4", FfmpegValidation.Valid)]
+    [InlineData("jellyfin-n4.3.2.txt", "4.3.2", FfmpegValidation.TooOld)]
+    [InlineData("git-libs-only.txt", "4.4", FfmpegValidation.Valid)]
+    [InlineData("git-old-libs.txt", null, FfmpegValidation.UnknownVersion)]
+    public void ParsesAndValidates(string sample, string? expected, FfmpegValidation validation)
     {
-        var version = FfmpegVersionParser.Parse(Read(sample));
+        var text = Read(sample);
 
-        Assert.Equal(expected is null ? null : Version.Parse(expected), version);
+        Assert.Equal(expected is null ? null : Version.Parse(expected), FfmpegVersionParser.Parse(text));
+        Assert.Equal(validation, FfmpegVersionParser.Validate(text));
     }
-
-    /// <summary>4.4 is accepted, 4.3 rejected, unidentifiable rejected.</summary>
-    /// <param name="sample">Corpus file under <c>Corpus/ffmpeg/version</c>.</param>
-    /// <param name="expected">Expected validation.</param>
-    [Theory]
-    [InlineData("jellyfin-4.4.txt", FfmpegValidation.Valid)]
-    [InlineData("jellyfin-n4.3.2.txt", FfmpegValidation.TooOld)]
-    [InlineData("git-libs-only.txt", FfmpegValidation.Valid)]
-    [InlineData("git-old-libs.txt", FfmpegValidation.UnknownVersion)]
-    public void ValidatesMinimumVersion(string sample, FfmpegValidation expected) =>
-        Assert.Equal(expected, FfmpegVersionParser.Validate(Read(sample)));
 
     /// <summary>A Libav banner is rejected even if a version would parse.</summary>
     [Fact]

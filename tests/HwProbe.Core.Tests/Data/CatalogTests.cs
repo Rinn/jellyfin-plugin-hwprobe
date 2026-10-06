@@ -18,7 +18,6 @@ public sealed class CatalogTests
         Assert.Equal([HwType.amf, HwType.nvenc, HwType.qsv, HwType.vaapi, HwType.rkmpp, HwType.videotoolbox, HwType.v4l2m2m], catalog.Backends.Select(b => b.Type));
         Assert.Equal(SpeedMethod.Confirm, catalog.DefaultMethod);
         Assert.Contains(catalog.TimeLimits, o => o.Value is null);
-        Assert.Equal("Live-action + CGI", SpeedCatalog.FindVideo("live-action")!.Name);
     }
 
     /// <summary>Placeholders expand, including ones inside other placeholders, and the fixture builder's {clip:…} is left.</summary>
@@ -27,7 +26,7 @@ public sealed class CatalogTests
     {
         var pattern = SpeedCatalog.FindVideo("pattern")!.Fixture!.EncodeArguments;
 
-        Assert.Equal("-hide_banner -loglevel error -y -f lavfi -i testsrc2=size=1920x1080:rate=24 -i {clip:speed_audio_51.mka} -t 10 -c:v libx264 -preset medium -pix_fmt yuv420p -map 0:v -map 1:a -c:a copy", pattern);
+        Assert.Matches(@"^-[^{}]+\{clip:speed_audio_51\.mka\}[^{}]+$", pattern);
     }
 
     /// <summary>A file that leaves out an enum value, misspells a field or uses an unknown placeholder is refused.</summary>

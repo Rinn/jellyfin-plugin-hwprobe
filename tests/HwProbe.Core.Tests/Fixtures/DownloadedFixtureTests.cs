@@ -15,56 +15,38 @@ public sealed class DownloadedFixtureTests : IDisposable
 
     private readonly string _root = Directory.CreateTempSubdirectory("hwprobe-download-").FullName;
 
-    /// <summary>A sample matching its pinned hash is cached and not downloaded again.</summary>
+    /// <summary>A sample matching its pinned hash is cached and not downloaded again, by the same cache key or another (a different ffmpeg build).</summary>
+    /// <param name="secondKey">The cache key of the second build.</param>
     /// <returns>A task representing the test.</returns>
-    [Fact]
-    public async Task MatchingSampleIsCached()
-    {
-        var downloader = new ScriptedDownloader(_sample);
-
-        var first = await BuildAsync(downloader, Spec(Hash(_sample)));
-        var second = await BuildAsync(downloader, Spec(Hash(_sample)));
-
-        Assert.Equal(FixtureStatus.Available, first.Status);
-        Assert.Equal(FixtureStatus.Available, second.Status);
-        Assert.Equal(1, downloader.Calls);
-    }
-
-    /// <summary>A download is shared across cache keys (different ffmpeg builds), so it's fetched once.</summary>
-    /// <returns>A task representing the test.</returns>
-    [Fact]
-    public async Task DownloadIsSharedAcrossCacheKeys()
+    [Theory]
+    [InlineData("ffmpeg-a")]
+    [InlineData("ffmpeg-b")]
+    public async Task MatchingSampleIsDownloadedOnce(string secondKey)
     {
         var downloader = new ScriptedDownloader(_sample);
 
         var first = await BuildAsync(downloader, Spec(Hash(_sample)), "ffmpeg-a");
-        var second = await BuildAsync(downloader, Spec(Hash(_sample)), "ffmpeg-b");
+        var second = await BuildAsync(downloader, Spec(Hash(_sample)), secondKey);
 
+        Assert.Equal((FixtureStatus.Available, FixtureStatus.Available), (first.Status, second.Status));
         Assert.Equal(first.Path, second.Path);
         Assert.Equal(1, downloader.Calls);
     }
 
-    /// <summary>A sample that doesn't match the pinned hash is rejected as Untested and not cached.</summary>
+    /// <summary>A sample that doesn't match the pinned hash, or can't be downloaded, is Untested with the reason and not cached.</summary>
+    /// <param name="offline">Whether the host is offline, rather than served a different file.</param>
+    /// <param name="reason">Text the reason contains.</param>
     /// <returns>A task representing the test.</returns>
-    [Fact]
-    public async Task MismatchedSampleIsUntested()
+    [Theory]
+    [InlineData(false, "not the pinned")]
+    [InlineData(true, "network is unreachable")]
+    public async Task UnverifiedSampleIsUntested(bool offline, string reason)
     {
-        var result = await BuildAsync(new ScriptedDownloader(_sample), Spec(new string('0', 64)));
+        var result = await BuildAsync(offline ? ScriptedDownloader.Offline : new ScriptedDownloader(_sample), Spec(offline ? Hash(_sample) : new string('0', 64)));
 
         Assert.Equal(FixtureStatus.Untested, result.Status);
-        Assert.Contains("not the pinned", result.Reason, StringComparison.Ordinal);
+        Assert.Contains(reason, result.Reason, StringComparison.Ordinal);
         Assert.Null(result.Path);
-    }
-
-    /// <summary>An offline host reports the sample as Untested with the reason.</summary>
-    /// <returns>A task representing the test.</returns>
-    [Fact]
-    public async Task OfflineIsUntested()
-    {
-        var result = await BuildAsync(ScriptedDownloader.Offline, Spec(Hash(_sample)));
-
-        Assert.Equal(FixtureStatus.Untested, result.Status);
-        Assert.Contains("network is unreachable", result.Reason, StringComparison.Ordinal);
     }
 
     /// <summary>A clip that fails to generate falls back to its pinned sample, cached with the URL's extension.</summary>

@@ -21,25 +21,11 @@ public sealed class PluginShellTests
         Assert.Equal(Policies.RequiresElevation, authorize.Policy);
     }
 
-    /// <summary>The configuration page is embedded where GetPages points.</summary>
-    [Fact]
-    public void ConfigPageIsEmbedded()
-    {
-        var assembly = typeof(HwProbe.Plugin).Assembly;
-        var resource = $"{typeof(HwProbe.Plugin).Namespace}.Configuration.configPage.html";
-
-        using var stream = assembly.GetManifestResourceStream(resource);
-        Assert.NotNull(stream);
-    }
-
     /// <summary>The configuration page shows every per-codec column of the report, and the settings advice.</summary>
     [Fact]
     public void ConfigPageShowsEveryColumn()
     {
-        var assembly = typeof(HwProbe.Plugin).Assembly;
-        using var stream = assembly.GetManifestResourceStream($"{typeof(HwProbe.Plugin).Namespace}.Configuration.configPage.html")!;
-        using var reader = new StreamReader(stream);
-        var page = reader.ReadToEnd();
+        var page = ReadPage();
         var columns = typeof(BackendReport).GetProperties()
             .Where(p => p.PropertyType == typeof(IReadOnlyDictionary<string, ProbeOutcome>))
             .Select(p => JsonNamingPolicy.CamelCase.ConvertName(p.Name))
@@ -54,9 +40,16 @@ public sealed class PluginShellTests
     [Fact]
     public void ConfigPageHasNoTranslationPlaceholders()
     {
-        using var stream = typeof(HwProbe.Plugin).Assembly.GetManifestResourceStream($"{typeof(HwProbe.Plugin).Namespace}.Configuration.configPage.html")!;
-        using var reader = new StreamReader(stream);
+        Assert.DoesNotContain("${", ReadPage(), StringComparison.Ordinal);
+    }
 
-        Assert.DoesNotContain("${", reader.ReadToEnd(), StringComparison.Ordinal);
+    /// <summary>Reads the configuration page from where GetPages points, failing when it isn't embedded there.</summary>
+    /// <returns>The page.</returns>
+    private static string ReadPage()
+    {
+        using var stream = typeof(HwProbe.Plugin).Assembly.GetManifestResourceStream($"{typeof(HwProbe.Plugin).Namespace}.Configuration.configPage.html");
+        Assert.NotNull(stream);
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 }
