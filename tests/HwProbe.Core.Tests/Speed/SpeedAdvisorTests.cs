@@ -274,16 +274,28 @@ public sealed class SpeedAdvisorTests
         Assert.Equal("medium", quality.Value);
     }
 
-    /// <summary>Outputs below real time on the configured backend are flagged, and marked when only test videos showed it.</summary>
+    /// <summary>Outputs below real time on the configured backend are flagged where another backend kept real time, and marked when only test videos showed it.</summary>
     [Fact]
     public void FlagsOutputsThatFallBehind()
     {
-        var run = Run(new SpeedSettings(), Result(HwType.none, "pattern|h264-8mbps", 20), Result(HwType.none, "pattern|hevc-8mbps", 50));
+        var run = Run(new SpeedSettings(), Result(HwType.qsv, "pattern|h264-8mbps", 20), Result(HwType.none, "pattern|h264-8mbps", 50), Result(HwType.qsv, "pattern|hevc-8mbps", 20), Result(HwType.none, "pattern|hevc-8mbps", 10), Result(HwType.qsv, "pattern|av1-8mbps", 50));
 
-        var behind = Assert.Single(SpeedAdvisor.Advise(run, [run], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.FallsBehind);
+        var behind = Assert.Single(SpeedAdvisor.Advise(run, [run], HwType.qsv, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.FallsBehind);
 
         Assert.Equal(["pattern|h264-8mbps"], behind.Outputs);
         Assert.True(behind.TestVideosOnly);
+    }
+
+    /// <summary>An output no backend keeps real time on is reported once, with the fastest backend.</summary>
+    [Fact]
+    public void ReportsOutputsTooSlowOnEveryBackend()
+    {
+        var run = Run(new SpeedSettings(), Result(HwType.qsv, "pattern|h264-8mbps", 20), Result(HwType.none, "pattern|h264-8mbps", 10), Result(HwType.qsv, "pattern|hevc-8mbps", 20), Result(HwType.none, "pattern|hevc-8mbps", 50));
+
+        var slow = Assert.Single(SpeedAdvisor.Advise(run, [run], HwType.qsv, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.TooSlowEverywhere);
+
+        Assert.Equal(["pattern|h264-8mbps"], slow.Outputs);
+        Assert.Equal(HwType.qsv, slow.Type);
     }
 
     /// <summary>Runs differing in one setting suggest its faster value, or its better-quality value when that still keeps up.</summary>

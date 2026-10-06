@@ -83,7 +83,7 @@ public sealed class SpeedResultCache(string directory)
         System.IO.Directory.CreateDirectory(Directory);
         var path = PathFor(key);
         var temp = path + ".partial";
-        await File.WriteAllTextAsync(temp, JsonSerializer.Serialize(entry, SpeedJsonContext.Default.SpeedCacheEntry), cancellationToken);
+        await File.WriteAllTextAsync(temp, JsonSerializer.Serialize(entry, SpeedJsonContext.Files.SpeedCacheEntry), cancellationToken);
         File.Move(temp, path, overwrite: true);
     }
 

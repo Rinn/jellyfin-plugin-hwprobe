@@ -326,6 +326,35 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal(new CacheSize(0, 0), service.FixtureCacheSize());
     }
 
+    /// <summary>Saved measurements are counted and deleted apart from the clips, and only when nothing is running; deleting the clips keeps them.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task SavedMeasurementsAreDeletedApartFromClips()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var fixtures = Path.Combine(_directory, "fixtures");
+        var results = Path.Combine(_directory, "speed-results");
+        Directory.CreateDirectory(Path.Combine(fixtures, "samples"));
+        Directory.CreateDirectory(results);
+        await File.WriteAllBytesAsync(Path.Combine(fixtures, "samples", "a.mkv"), new byte[1500], ct);
+        await File.WriteAllTextAsync(Path.Combine(results, "a.json"), "{}", ct);
+        await File.WriteAllTextAsync(Path.Combine(results, "b.json"), "{}", ct);
+        using var release = new SemaphoreSlim(0);
+        using var service = CreateBlocked(release, fixtures, results);
+
+        Assert.True(await service.PurgeFixtureCacheAsync(ct));
+        Assert.Equal(2, service.SavedDataSize().Measurements.Files);
+        Assert.Equal(4, service.SavedDataSize().Measurements.Bytes);
+
+        var probe = service.RunAsync(ct);
+        Assert.False(await service.DeleteSavedMeasurementsAsync(ct));
+        release.Release();
+        await probe;
+
+        Assert.True(await service.DeleteSavedMeasurementsAsync(ct));
+        Assert.Equal(new SavedFilesSize(0, 0, null), service.SavedDataSize().Measurements);
+    }
+
     /// <summary>One cached file can be deleted, but not while a probe runs, and not one the cache doesn't list.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
@@ -502,8 +531,9 @@ public sealed class ProbeServiceTests : IDisposable
     /// <summary>Creates a service over a clip cache whose probe waits for a release, for checks made while a probe runs.</summary>
     /// <param name="release">Released to let the probe finish.</param>
     /// <param name="fixtures">The clip cache directory.</param>
+    /// <param name="results">The saved measurements directory, or null.</param>
     /// <returns>The service.</returns>
-    private ProbeService CreateBlocked(SemaphoreSlim release, string fixtures) =>
+    private ProbeService CreateBlocked(SemaphoreSlim release, string fixtures, string? results = null) =>
         new(
             async c =>
             {
@@ -517,5 +547,6 @@ public sealed class ProbeServiceTests : IDisposable
             NullLogger.Instance)
         {
             FixturesDirectory = fixtures,
+            SpeedResultsDirectory = results,
         };
 }
