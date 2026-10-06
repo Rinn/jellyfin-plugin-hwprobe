@@ -1,5 +1,9 @@
 name: Set up .NET
 description: Installs the .NET 10 SDK and restores the NuGet package cache.
+inputs:
+  nuget-cache:
+    description: build, or package for jobs that publish self-contained CLI builds, whose runtime packs the other jobs don't need.
+    default: build
 runs:
   using: composite
   steps:
@@ -9,5 +13,5 @@ runs:
     - uses: actions/cache@v6
       with:
         path: ~/.nuget/packages
-        key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', 'Directory.Build.props', '**/*.csproj', 'global.json') }}
-        restore-keys: nuget-${{ runner.os }}-
+        key: nuget-${{ inputs.nuget-cache }}-${{ runner.os }}-${{ hashFiles('**/packages.lock.json', 'global.json') }}
+        restore-keys: nuget-${{ inputs.nuget-cache }}-${{ runner.os }}-

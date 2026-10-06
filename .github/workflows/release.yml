@@ -32,8 +32,41 @@ env:
   TAG: v${{ inputs.version }}
 
 jobs:
+  check:
+    name: Check the inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      checks: read
+    outputs:
+      version: ${{ needs.check.outputs.version }}
+    steps:
+      # The commit's CI covered build, lint, and tests on every OS, so the release only packages.
+      - name: Check the version, branch, tag, and CI
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${TAG#v}"
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Version '$version' must look like 1.2.3"; exit 1
+          fi
+          if [ "$GITHUB_REF" != refs/heads/main ]; then
+            echo "::error::Run this on main"; exit 1
+          fi
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::Tag $TAG already exists"; exit 1
+          fi
+          ci="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?check_name=CI" --jq '.check_runs[0].conclusion // "missing"')"
+          if [ "$ci" != success ]; then
+            echo "::error::CI on $GITHUB_SHA is $ci, not success"; exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
   plugin-e2e:
     name: Plugin in Jellyfin 12.1 (${{ matrix.install }})
+    needs: check
     strategy:
       fail-fast: false
       matrix:
@@ -43,6 +76,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/setup
       - name: Install the plugin into jellyfin/jellyfin and probe through its API
         run: scripts/container-plugin.sh
@@ -57,7 +92,7 @@ jobs:
 
   release:
     name: Build and publish
-    needs: plugin-e2e
+    needs: [check, plugin-e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -68,30 +103,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
-
-      - name: Check the version
-        id: version
-        run: |
-          version="${TAG#v}"
-          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::Version '$version' must look like 1.2.3"; exit 1
-          fi
-          if [ "$GITHUB_REF" != refs/heads/main ]; then
-            echo "::error::Run this on main"; exit 1
-          fi
-          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
-            echo "::error::Tag $TAG already exists"; exit 1
-          fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
-      - name: Build and test
-        run: |
-          dotnet build -warnaserror
-          dotnet test
+        with:
+          nuget-cache: package
 
       # The SDK ad-hoc signs osx-arm64 executables on Linux too (checked with codesign on macOS).
       - name: Package
-        run: python3 scripts/package.py --version "${{ steps.version.outputs.version }}" --out artifacts/dist
+        run: python3 scripts/package.py --version "${{ needs.check.outputs.version }}" --out artifacts/dist
 
       # Verifiable with: gh attestation verify <file> -R Rinn/jellyfin-plugin-hwprobe
       - uses: actions/attest-build-provenance@v4
@@ -118,7 +135,7 @@ jobs:
         env:
           CHANGELOG: ${{ inputs.notes }}
         run: |
-          version="${{ steps.version.outputs.version }}.0"
+          version="${{ needs.check.outputs.version }}.0"
           zip="hwprobe-plugin_$version.zip"
           dir="$RUNNER_TEMP/manifest"
           if git fetch --depth 1 origin manifest; then

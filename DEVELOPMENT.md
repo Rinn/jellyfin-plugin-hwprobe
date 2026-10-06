@@ -28,7 +28,7 @@ HWPROBE_HW_TESTS=1 dotnet test     # also real-ffmpeg and hardware tests
 
 `python3 scripts/notices.py` rewrites `THIRD-PARTY-NOTICES.md` and the plugin's `libraries.json` (the Help tab's list) from the restore output after a package change; `--check` runs with the others. The checks above and `notices.py --check` run before every commit through the hook; install it once per clone with `git config core.hooksPath scripts/`. After changing a package version, run `dotnet restore --force-evaluate` and commit the lock files.
 
-CI runs the whole suite on Linux and only `Category=Platform` tests on macOS and Windows.
+CI runs the whole suite on Linux and only `Category=Platform` tests on macOS and Windows; pushes to main run Linux only.
 
 With podman:
 
@@ -79,7 +79,7 @@ A user's zip (**Download diagnostics** on the Help tab, or `--diagnostics`) is l
 gh workflow run release.yml --ref main -f version=1.2.3 -f notes="What changed"
 ```
 
-The workflow runs `container-plugin.sh` in both install modes, builds the plugin zip and CLI builds, publishes release `v1.2.3`, and adds it to `manifest.json` on the `manifest` branch. The notes become the plugin's changelog. `-f prerelease=true` publishes without adding it to the plugin repository. Releases are immutable, so a version can't be reused.
+The workflow requires a passing `CI` check on the commit, runs `container-plugin.sh` in both install modes, builds the plugin zip and CLI builds, publishes release `v1.2.3`, and adds it to `manifest.json` on the `manifest` branch. The notes become the plugin's changelog. `-f prerelease=true` publishes without adding it to the plugin repository. Releases are immutable, so a version can't be reused.
 
 Every release file has a build provenance attestation, checked with `gh attestation verify <file> -R Rinn/jellyfin-plugin-hwprobe`. Builds are reproducible. To check a release, build its tag from a fresh clone and compare hashes:
 
