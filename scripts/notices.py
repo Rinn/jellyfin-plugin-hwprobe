@@ -2,9 +2,9 @@
 """Writes the third-party notices for the libraries the plugin and the CLI ship.
 
 Reads each project's restore output (obj/project.assets.json) for the NuGet packages with runtime assemblies, and
-each package's .nuspec in the NuGet cache for its licence and home page; licences are linked, not copied. Writes THIRD-PARTY-NOTICES.md and the
+each package's .nuspec in the NuGet cache for its licence and source repository; licences are linked, not copied. Writes THIRD-PARTY-NOTICES.md and the
 plugin's libraries.json, which the Help tab lists. --check fails when either file is out of date. Versions are left out, so a package update
-changes neither file unless its licence or home page changes. A declared licence links to NuGet's page for it; a licence shipped as a file
+changes neither file unless its licence changes. A declared licence links to NuGet's page for it; a licence shipped as a file
 links to the source repository's copy on its default branch, looked up through the GitHub API only for libraries the notices don't already link.
 """
 
@@ -42,7 +42,7 @@ def packages(project, shipped=None):
 
 
 def nuspec(name, version):
-    """Returns the licence's name and a link to it, and the home page, from the package's .nuspec."""
+    """Returns the licence's name and a link to it, and the package's NuGet page, from the package's .nuspec."""
     folder = os.path.join(os.path.expanduser(os.environ.get("NUGET_PACKAGES", "~/.nuget/packages")), name.lower(), version.lower())
     with open(os.path.join(folder, name.lower() + ".nuspec"), encoding="utf-8") as f:
         text = f.read()
@@ -50,8 +50,8 @@ def nuspec(name, version):
     metadata = next(e for e in ElementTree.fromstring(text).iter() if e.tag.endswith("metadata"))
     fields = {e.tag.split("}")[-1]: e for e in metadata}
     # The source repository rather than projectUrl, which some packages point at a wiki or marketing page.
-    url = fields["repository"].get("url") if "repository" in fields and fields["repository"].get("url") else fields["projectUrl"].text.strip()
-    url = re.sub(r"\.git$", "", url)
+    repository = fields["repository"].get("url") if "repository" in fields and fields["repository"].get("url") else fields["projectUrl"].text.strip()
+    repository = re.sub(r"\.git$", "", repository)
     license_element = fields.get("license")
     if license_element is not None and license_element.get("type") == "expression":
         license_name = license_element.text.strip()
@@ -62,11 +62,11 @@ def nuspec(name, version):
             body = f.read()
         license_name = "Apache-2.0" if "Apache License" in body and "Version 2.0" in body else "MIT" if "MIT License" in body else "Licence"
         # NuGet shows a packaged licence file only on a per-version page, so the repository's copy is linked instead.
-        license_url = KNOWN_LICENSE_URLS.get(name) or github_license(url) or f"https://www.nuget.org/packages/{name}/{version}/license"
+        license_url = KNOWN_LICENSE_URLS.get(name) or github_license(repository) or f"https://www.nuget.org/packages/{name}/{version}/license"
     else:
         license_name = "Licence"
         license_url = fields["licenseUrl"].text.strip()
-    return license_name, license_url, url
+    return license_name, license_url, f"https://www.nuget.org/packages/{name}"
 
 
 def known_license_urls():

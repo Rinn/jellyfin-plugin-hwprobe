@@ -3,12 +3,12 @@
     "Name": "Meziantou.Framework.Win32.Jobs",
     "License": "MIT",
     "LicenseUrl": "https://licenses.nuget.org/MIT",
-    "Url": "https://github.com/meziantou/Meziantou.Framework"
+    "Url": "https://www.nuget.org/packages/Meziantou.Framework.Win32.Jobs"
   },
   {
     "Name": "YamlDotNet",
     "License": "MIT",
     "LicenseUrl": "https://licenses.nuget.org/MIT",
-    "Url": "https://github.com/aaubry/YamlDotNet"
+    "Url": "https://www.nuget.org/packages/YamlDotNet"
   }
 ]
