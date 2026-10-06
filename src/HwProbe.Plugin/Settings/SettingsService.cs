@@ -188,8 +188,13 @@ public sealed class SettingsService : IDisposable
         return LockedAsync(
             async () =>
             {
-                var measured = (await Suggestions(choice.Run, cancellationToken))
-                    .Any(s => s.Group == choice.Group && (s.Row == choice.Row || s.Compared.Any(c => c.Row == choice.Row)));
+                // Measured, and keeping real time: a choice that falls behind would make players buffer.
+                var speeds = (await Suggestions(choice.Run, cancellationToken))
+                    .Where(s => s.Group == choice.Group)
+                    .SelectMany(s => s.Compared.Where(c => c.Row == choice.Row).Select(c => (double?)c.Speed).Append(s.Row == choice.Row ? s.Speed : null))
+                    .OfType<double>()
+                    .ToList();
+                var measured = speeds.Count > 0 && speeds.Min() >= 1;
                 var options = _read();
                 var changes = measured ? SpeedAdvisor.GroupRowChanges(choice.Group, choice.Row, Probing.ProbeService.SettingsFrom(options.Encoding), Probing.ProbeService.BackendFrom(options.Encoding).Type) : null;
                 var settings = changes?.Select(c => MeasuredSettings.ToSetting(c.Key, c.Value)).ToList();

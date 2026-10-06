@@ -183,6 +183,22 @@ public sealed class SpeedAdvisorTests
         var rows = advice.Where(s => s.Group == "deinterlace").SelectMany(s => s.Compared.Select(c => c.Row).Append(s.Row)).Distinct().ToList();
         Assert.Contains("Yet Another DeInterlacing Filter (YADIF), single rate", rows);
         Assert.Equal(4, rows.Count);
+
+        // With the server on YADIF single rate, double rate off measured with BWDIF isn't the server's choice.
+        var onYadif = SpeedAdvisor.Advise(runs[3], runs, HwType.none, string.Empty, new SpeedSettings { Bwdif = false, DoubleRate = false });
+        Assert.All(onYadif.Where(s => s.Group == "deinterlace" && s.Current), s => Assert.Equal("Yet Another DeInterlacing Filter (YADIF), single rate", s.Row));
+    }
+
+    /// <summary>A codec-scoped setting is compared on a library video too, whose test key the catalog doesn't resolve.</summary>
+    [Fact]
+    public void ComparesCrfOnALibraryVideo()
+    {
+        const string Library = "library|h264-8mbps";
+        var crf23 = Run(new SpeedSettings { H264Crf = 23 }, Result(HwType.none, Library, 100) with { Command = "23" });
+        var crf28 = Run(new SpeedSettings { H264Crf = 28 }, Result(HwType.none, Library, 150) with { Command = "28" });
+
+        var faster = Assert.Single(SpeedAdvisor.Advise(crf28, [crf23, crf28], HwType.none, string.Empty, new SpeedSettings { H264Crf = 23 }), s => s.Setting == "H264Crf" && s.Kind == SpeedSuggestionKind.FasterSetting);
+        Assert.Equal("28", faster.Value);
     }
 
     /// <summary>Tone-mapping suggestions name the method each side's runs used, from the catalog's tone mapping group, so the page shows them as one table.</summary>

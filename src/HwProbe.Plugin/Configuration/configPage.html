@@ -1317,6 +1317,10 @@
                             const run = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedHistory/' + id), dataType: 'json' });
                             const suggestions = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedSuggestions', { id }), dataType: 'json' }).then(list => list, () => null);
                             Promise.all([run, suggestions]).then(([r, list]) => {
+                                // A later choice made while this one loaded wins.
+                                if (runs.value !== id) {
+                                    return;
+                                }
                                 if (list) {
                                     suggestionCache.set(id, { json: JSON.stringify(list), list });
                                 }
@@ -1598,6 +1602,8 @@
                         const marker = el('td', null, 'hwprobe-mark');
                         const glyph = el('span', r.current ? '\u2705' : '\u2796', 'hwprobe-emoji');
                         glyph.title = r.current ? 'The server\u2019s setting' : 'Not in use';
+                        glyph.setAttribute('role', 'img');
+                        glyph.setAttribute('aria-label', glyph.title);
                         marker.appendChild(glyph);
                         const name = el('td', r.text);
                         name.title = r.description || described;
@@ -1694,11 +1700,11 @@
                                     add({ text: c.Row, value: c.Value, speed: c.Speed, streams: c.Streams, capped: c.StreamsCapped, savings: [], lower: null, current: false, action: null });
                                 }
                             }
-                            // Apply on a row sets every setting the choice needs; a row without conditions can't be applied.
+                            // Apply on a row sets every setting the choice needs; a row without conditions, or one that falls behind real time, can't be applied.
                             rows.forEach(r => {
                                 r.current = r.text === serverRow;
                                 const choice = group.Rows.find(x => x.Label === r.text);
-                                r.action = !r.current && choice && choice.When
+                                r.action = !r.current && choice && choice.When && !(r.speed < 1)
                                     ? idleAction('Apply', () => post('HwProbe/ApplyMeasuredRow', { Group: key, Row: r.text, Run: speedViewing }, true), 'raised')
                                     : null;
                             });
@@ -1809,6 +1815,8 @@
                     const cached = suggestionCache.get(key);
                     if (cached) {
                         draw(cached.list);
+                        // Kept from before: its buttons wait until the server's suggestions confirm or replace it.
+                        div.querySelectorAll('button').forEach(b => { b.disabled = true; });
                     }
                     const request = ++suggestionRequest;
                     ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedSuggestions', speedViewing ? { id: speedViewing } : {}), dataType: 'json' }).then(list => {
@@ -1819,6 +1827,8 @@
                         if (!cached || cached.json !== json) {
                             suggestionCache.set(key, { json, list });
                             draw(list);
+                        } else {
+                            div.querySelectorAll('button').forEach(b => { b.disabled = running; });
                         }
                     }, () => {});
                     return div;

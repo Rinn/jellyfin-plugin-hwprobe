@@ -48,6 +48,8 @@ public sealed class SettingsServiceTests : IDisposable
 
         Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredRowAsync(new MeasuredRow("deinterlace", "Bob Weaver DeInterlacing Filter (BWDIF), single rate"), "admin", ct)).Outcome);
         Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredRowAsync(new MeasuredRow("tonemap", "VPP"), "admin", ct)).Outcome);
+        _harness.Suggestions = [.. _harness.Suggestions, new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, ["a"]) { Setting = "DeinterlaceMethod", Value = "yadif", Group = "deinterlace", Row = "Yet Another DeInterlacing Filter (YADIF), single rate", Compared = [new SpeedComparedValue("bwdif", 0.5, null, false) { Row = "Bob Weaver DeInterlacing Filter (BWDIF), single rate" }] }];
+        Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredRowAsync(new MeasuredRow("deinterlace", "Bob Weaver DeInterlacing Filter (BWDIF), single rate"), "admin", ct)).Outcome);
         var applied = await _harness.Service.ApplyMeasuredRowAsync(new MeasuredRow("deinterlace", Double), "admin", ct);
 
         Assert.Equal(ApplyOutcome.Applied, applied.Outcome);

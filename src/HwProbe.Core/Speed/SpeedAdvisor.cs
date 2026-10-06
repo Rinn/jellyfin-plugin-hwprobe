@@ -160,7 +160,7 @@ public static class SpeedAdvisor
         bool Compared(SpeedResult r) => Configured(r) || BackendPreference.StandsInFor(r, type, device);
 
         // Comparisons against several other values, or from several runs, that suggest the same value become one suggestion; in a setting group, only those in the same row, so each choice keeps its own.
-        var merged = CompareSettings(runs, Compared, server)
+        var merged = CompareSettings(runs, Compared, server, type)
             .GroupBy(s => (s.Kind, s.Setting, s.Value, s.Row))
             .Select(g => g.First() with
             {
@@ -188,8 +188,9 @@ public static class SpeedAdvisor
     /// <param name="runs">Every saved run.</param>
     /// <param name="configured">Whether a result is the configured backend's.</param>
     /// <param name="server">The server's settings now.</param>
+    /// <param name="type">The configured backend, for the server's choice in a setting group.</param>
     /// <returns>The setting suggestions.</returns>
-    private static IEnumerable<SpeedSuggestion> CompareSettings(IReadOnlyList<SpeedReport> runs, Func<SpeedResult, bool> configured, SpeedSettings server)
+    private static IEnumerable<SpeedSuggestion> CompareSettings(IReadOnlyList<SpeedReport> runs, Func<SpeedResult, bool> configured, SpeedSettings server, HwType type)
     {
         // Per setting and value: each output's speed, from every run that differs from another in that setting alone.
         List<(string Key, string Value, string Other, string Test, string Label, double Gain, double Speed, bool Generated, IReadOnlyList<ResourceSaving> Savings, int? Streams, int? OtherStreams, bool ToneMaps, bool Capped, bool OtherCapped, double OtherSpeed, string? Row, string? OtherRow)> seen = [];
@@ -214,7 +215,8 @@ public static class SpeedAdvisor
                 foreach (var mine in a.Results.Where(r => r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && !r.LowPowerDropped && configured(r)))
                 {
                     // A setting for another output codec (low power, CRF) doesn't reach this output, so the Intel low power suite, which switches both codecs at once, still compares each.
-                    var codec = SpeedCatalog.Find(mine.Test)?.OutputCodec;
+                    // The key's output part names the codec, also for a library test, which SpeedCatalog.Find doesn't resolve.
+                    var codec = SpeedCatalog.FindOutput(mine.Test.Split('|')[^1])?.Codec;
                     var relevant = differs.Where(k => Catalog.Default.Options.FirstOrDefault(o => o.Key == k)?.OutputCodec is not { } only || only == codec).ToList();
                     if (relevant.Count != 1)
                     {
@@ -244,7 +246,9 @@ public static class SpeedAdvisor
             // Only comparisons with the server's current value say what changing it would do; where the current value wins, that's said too.
             var (key, value, other) = (group.Key.Key, group.Key.Value, group.Key.Other);
             var serverValue = _values[key](server);
-            var current = value == serverValue;
+
+            // In a setting group the server's value is current only on the server's row: double rate off with BWDIF isn't the server's choice when it runs YADIF.
+            var current = value == serverValue && (group.Key.Row is null || group.Key.Row == GroupRow(key, server, type));
             if (!current && other != serverValue)
             {
                 continue;
@@ -341,27 +345,31 @@ public static class SpeedAdvisor
         foreach (var key in compared.Except(suggested, StringComparer.Ordinal))
         {
             var serverValue = _values[key](server);
-            var against = seen.Where(s => s.Key == key && s.Other == serverValue).ToList();
-            var counted = against.Where(s => s.OtherStreams is not null).ToList();
-            yield return new SpeedSuggestion(SpeedSuggestionKind.NoChange, [.. against.Select(s => s.Label).Distinct(StringComparer.Ordinal)])
+
+            // In a setting group each row of the server's value is kept on its own, so one row's speeds aren't shown as another's.
+            foreach (var against in seen.Where(s => s.Key == key && s.Other == serverValue).GroupBy(s => s.OtherRow).Select(g => g.ToList()))
             {
-                Setting = key,
-                Value = serverValue,
-                Others = [.. against.Select(s => s.Value).Distinct(StringComparer.Ordinal)],
-                Current = true,
-                Speed = against.Min(s => s.OtherSpeed),
-                Streams = counted.Count > 0 ? counted.Min(s => s.OtherStreams) : null,
-                StreamsCapped = counted.Count > 0 && counted.Where(s => s.OtherStreams == counted.Min(c => c.OtherStreams)).All(s => s.OtherCapped),
-                Group = GroupOf(key)?.Key,
-                Row = against[0].OtherRow,
-                Compared = [.. against.GroupBy(s => s.Value, StringComparer.Ordinal).Select(g =>
+                var counted = against.Where(s => s.OtherStreams is not null).ToList();
+                yield return new SpeedSuggestion(SpeedSuggestionKind.NoChange, [.. against.Select(s => s.Label).Distinct(StringComparer.Ordinal)])
+                {
+                    Setting = key,
+                    Value = serverValue,
+                    Others = [.. against.Select(s => s.Value).Distinct(StringComparer.Ordinal)],
+                    Current = against[0].OtherRow is null || against[0].OtherRow == GroupRow(key, server, type),
+                    Speed = against.Min(s => s.OtherSpeed),
+                    Streams = counted.Count > 0 ? counted.Min(s => s.OtherStreams) : null,
+                    StreamsCapped = counted.Count > 0 && counted.Where(s => s.OtherStreams == counted.Min(c => c.OtherStreams)).All(s => s.OtherCapped),
+                    Group = GroupOf(key)?.Key,
+                    Row = against[0].OtherRow,
+                    Compared = [.. against.GroupBy(s => (s.Value, s.Row)).Select(g =>
                 {
                     var streams = g.Where(s => s.Streams is not null).ToList();
                     var fewest = streams.Count > 0 ? streams.Min(s => s.Streams) : null;
-                    return new SpeedComparedValue(g.Key, g.Min(s => s.Speed), fewest, streams.Count > 0 && streams.Where(s => s.Streams == fewest).All(s => s.Capped)) { Row = g.First().Row };
+                    return new SpeedComparedValue(g.Key.Value, g.Min(s => s.Speed), fewest, streams.Count > 0 && streams.Where(s => s.Streams == fewest).All(s => s.Capped)) { Row = g.Key.Row };
                 })],
-                TestVideosOnly = against.All(s => s.Generated),
-            };
+                    TestVideosOnly = against.All(s => s.Generated),
+                };
+            }
         }
     }
 

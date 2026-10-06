@@ -306,15 +306,17 @@ public sealed partial class Catalog
         {
             var known = group.Settings.All(k => Options.Any(o => o.Key == k));
             var conditions = group.Rows.SelectMany(r => r.When ?? new Dictionary<string, string>()).ToList();
-            var valid = conditions.All(c => group.Settings.Contains(c.Key) && Options.First(o => o.Key == c.Key).Takes(c.Value))
-                && group.Rows.All(r => r.Describes is null || group.Settings.Contains(r.Describes));
+            var valid = known
+                && conditions.All(c => group.Settings.Contains(c.Key) && Options.First(o => o.Key == c.Key).Takes(c.Value))
+                && group.Rows.All(r => r.Describes is null || group.Settings.Contains(r.Describes))
+                && group.Rows.Select(r => r.Label).Distinct(StringComparer.Ordinal).Count() == group.Rows.Count;
             if (!known || !valid || group.Rows.Count == 0 || SettingGroups.Count(g => g.Settings.Intersect(group.Settings).Any()) > 1)
             {
-                throw new InvalidDataException($"catalog.yaml: setting group {group.Key} requires rows, options the catalog has, in no other group, and conditions on its own settings.");
+                throw new InvalidDataException($"catalog.yaml: setting group {group.Key} requires rows with distinct labels, options the catalog has, in no other group, and conditions on its own settings.");
             }
         }
 
-        if (TestDelay is < 0 or double.NaN)
+        if (!double.IsFinite(TestDelay) || TestDelay < 0)
         {
             throw new InvalidDataException("catalog.yaml: testDelay requires a number of seconds, zero or more.");
         }
