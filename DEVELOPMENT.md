@@ -81,7 +81,7 @@ gh workflow run release.yml --ref main -f version=1.2.3 -f notes="What changed"
 
 The workflow runs `container-plugin.sh` in both install modes, builds the plugin zip and CLI builds, publishes release `v1.2.3`, and adds it to `manifest.json` on the `manifest` branch. The notes become the plugin's changelog. `-f prerelease=true` publishes without adding it to the plugin repository. Releases are immutable, so a version can't be reused.
 
-Builds are reproducible. To check a release, build its tag from a fresh clone and compare hashes:
+Every release file has a build provenance attestation, checked with `gh attestation verify <file> -R Rinn/jellyfin-plugin-hwprobe`. Builds are reproducible. To check a release, build its tag from a fresh clone and compare hashes:
 
 ```sh
 GITHUB_ACTIONS=true python3 scripts/package.py --version 1.2.3 --out dist

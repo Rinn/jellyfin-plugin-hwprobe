@@ -19,7 +19,7 @@ on:
         default: false
 
 permissions:
-  contents: write
+  contents: read
 
 # Two releases at once would race on the manifest branch.
 concurrency:
@@ -60,6 +60,11 @@ jobs:
     needs: plugin-e2e
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: write
+      # Sign and store the build provenance attestation.
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
@@ -87,6 +92,11 @@ jobs:
       # The SDK ad-hoc signs osx-arm64 executables on Linux too (checked with codesign on macOS).
       - name: Package
         run: python3 scripts/package.py --version "${{ steps.version.outputs.version }}" --out artifacts/dist
+
+      # Verifiable with: gh attestation verify <file> -R Rinn/jellyfin-plugin-hwprobe
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: artifacts/dist/*
 
       # A draft left by an earlier failed run is replaced.
       - name: Publish the release
