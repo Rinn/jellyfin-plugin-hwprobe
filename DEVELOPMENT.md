@@ -26,7 +26,7 @@ editorconfig-checker               # .editorconfig rules on files dotnet format 
 HWPROBE_HW_TESTS=1 dotnet test     # also real-ffmpeg and hardware tests
 ```
 
-`python3 scripts/notices.py` rewrites `THIRD-PARTY-NOTICES.md` and the plugin's `libraries.json` (the Help tab's list) from the restore output after a package change; `--check` runs with the others. The checks above and `notices.py --check` run before every commit through the hook; install it once per clone with `git config core.hooksPath scripts/`. After changing a package version, run `dotnet restore --force-evaluate` and commit the lock files.
+`python3 scripts/notices.py` rewrites `THIRD-PARTY-NOTICES.md` and the plugin's `libraries.json` (the Help tab's list) from the restore output when a package is added or removed or its licence changes (versions aren't listed); `--check` runs with the others. The checks above and `notices.py --check` run before every commit through the hook; install it once per clone with `git config core.hooksPath scripts/`. After changing a package version, run `dotnet restore --force-evaluate` and commit the lock files.
 
 CI runs the whole suite on Linux and only `Category=Platform` tests on macOS and Windows; pushes to main run Linux only.
 

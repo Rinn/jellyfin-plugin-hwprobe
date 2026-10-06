@@ -35,7 +35,7 @@ Open **HwProbe** in the dashboard sidebar.
 - **Test Results**: speed and resource use (CPU, memory, GPU, and power) per run, with suggested settings that can be applied and reverted.
 - **Help**: a diagnostics zip for [hardware reports](../../issues/new?template=hardware-report.yml) (includes file paths and host names) and the cached test clips.
 
-No data leaves the server. Real videos are Creative Commons or public domain, and test videos are generated locally or taken from FFmpeg's test suite. Downloads occur only when requested and are verified against pinned hashes.
+No data leaves the server. Real videos are Creative Commons or public domain, and only a short clip of each is downloaded. Test videos are generated locally or taken from FFmpeg's test suite. Downloads occur only when requested and are verified against pinned hashes.
 
 ## Backend Verification
 

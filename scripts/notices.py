@@ -3,7 +3,8 @@
 
 Reads each project's restore output (obj/project.assets.json) for the NuGet packages with runtime assemblies, and
 each package's .nuspec in the NuGet cache for its licence and home page; licences are linked, not copied. Writes THIRD-PARTY-NOTICES.md and the
-plugin's libraries.json, which the Help tab lists. --check fails when either file is out of date.
+plugin's libraries.json, which the Help tab lists. --check fails when either file is out of date. Versions are left out, so a package update
+changes neither file unless its licence or home page changes.
 """
 
 import argparse
@@ -48,13 +49,15 @@ def nuspec(name, version):
     license_element = fields.get("license")
     if license_element is not None and license_element.get("type") == "expression":
         license_name = license_element.text.strip()
-        license_url = f"https://www.nuget.org/packages/{name}/{version}/license"
     elif license_element is not None:
         # A licence shipped as a file: named from its text when it's a common one.
         with open(os.path.join(folder, license_element.text.strip()), encoding="utf-8-sig") as f:
             body = f.read()
         license_name = "Apache-2.0" if "Apache License" in body and "Version 2.0" in body else "MIT" if "MIT License" in body else "Licence"
-        license_url = f"https://www.nuget.org/packages/{name}/{version}/license"
+    if license_element is not None:
+        # SPDX's page for a single identifier; NuGet's licence page for anything else, which only exists per version.
+        single = license_name != "Licence" and all(c.isalnum() or c in ".-+" for c in license_name)
+        license_url = f"https://spdx.org/licenses/{license_name}.html" if single else f"https://www.nuget.org/packages/{name}/{version}/license"
     else:
         license_name = "Licence"
         license_url = fields["licenseUrl"].text.strip()
@@ -72,12 +75,12 @@ def build():
     ]
     libraries = []
     for product, project in PRODUCTS:
-        lines += ["", f"## {product}", "", "| Library | Version | Licence |", "|---|---|---|"]
+        lines += ["", f"## {product}", "", "| Library | Licence |", "|---|---|"]
         for name, version in packages(project, PLUGIN_LIBRARIES if product == "Plugin" else None):
             license_name, license_url, url = nuspec(name, version)
-            lines.append(f"| [{name}]({url}) | {version} | [{license_name}]({license_url}) |")
+            lines.append(f"| [{name}]({url}) | [{license_name}]({license_url}) |")
             if product == "Plugin":
-                libraries.append({"Name": name, "Version": version, "License": license_name, "LicenseUrl": license_url, "Url": url})
+                libraries.append({"Name": name, "License": license_name, "LicenseUrl": license_url, "Url": url})
     return "\n".join(lines) + "\n", json.dumps(libraries, indent=2) + "\n"
 
 
