@@ -126,7 +126,7 @@ def main():
     help_list = [{k: lib[k] for k in ("Name", "Version", "Url", "License", "LicenseUrl")} for lib in plugin]
     write(os.path.join(args.out, "plugin", "libraries.json"), json.dumps(help_list, indent=2) + "\n")
 
-    cli = [library(name, version) for name, version in packages("src/HwProbe.Cli")]
+    cli = [library(name, version) for name, version in packages("src/HwProbe.Cli")] if args.rid else []
     for rid in args.rid:
         pack = runtime_pack("src/HwProbe.Cli", rid)
         version = os.path.basename(pack)

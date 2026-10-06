@@ -86,6 +86,8 @@ jobs:
         run: scripts/container-plugin.sh
         env:
           HWPROBE_INSTALL: ${{ matrix.install }}
+          # notices.py reads licence files through the GitHub API.
+          GH_TOKEN: ${{ github.token }}
           JELLYFIN_IMAGE: ghcr.io/jellyfin/jellyfin:${{ matrix.jellyfin }}
       - name: Upload server logs
         if: failure()
