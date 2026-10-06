@@ -1320,19 +1320,16 @@
                     const div = el('div');
                     ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Libraries'), dataType: 'json' }).then(libraries => {
                         const table = el('table', null, 'hwprobe-full');
-                        row(table, [el('th', 'Library'), el('th', 'Licence')]);
+                        row(table, [el('th', 'Library'), el('th', 'Version'), el('th', 'Licence')]);
                         for (const library of libraries) {
                             const name = el('td');
                             name.appendChild(externalLink(library.Name, library.Url));
                             const license = el('td');
                             license.appendChild(externalLink(library.License, library.LicenseUrl));
-                            row(table, [name, license]);
+                            row(table, [name, el('td', library.Version, 'secondaryText'), license]);
                         }
                         div.appendChild(sortable(table, 'libraries'));
-                        const more = el('div', 'The command-line tool\u2019s libraries are listed in ', 'fieldDescription');
-                        more.appendChild(externalLink('THIRD-PARTY-NOTICES.md', links.notices));
-                        more.appendChild(document.createTextNode('.'));
-                        div.appendChild(more);
+                        div.appendChild(el('div', 'Each library\u2019s licence text is in THIRD-PARTY-NOTICES.md in the plugin\u2019s folder; the command-line tool\u2019s are in its archive.', 'fieldDescription'));
                     }, () => div.appendChild(el('div', 'The library list didn\u2019t load.', 'secondaryText')));
                     return div;
                 }

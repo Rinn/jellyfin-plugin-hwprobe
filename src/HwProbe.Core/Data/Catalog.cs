@@ -242,7 +242,7 @@ public sealed partial class Catalog
     {
         RequireAll("methods", Methods.Select(m => m.Key));
         RequireAll("whenTranscoding", WhenTranscoding.Select(w => w.Key));
-        string[] links = ["repository", "issueForm", "notices", "jellyfinGuides", "intelLowPowerGuide", "fateSuite"];
+        string[] links = ["repository", "issueForm", "jellyfinGuides", "intelLowPowerGuide", "fateSuite"];
         if (links.Any(l => !Links.TryGetValue(l, out var url) || !Uri.TryCreate(url, UriKind.Absolute, out _)))
         {
             throw new InvalidDataException($"catalog.yaml: links requires an absolute URL for each of {string.Join(", ", links)}.");

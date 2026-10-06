@@ -15,14 +15,13 @@ dotnet build -warnaserror          # must be clean
 dotnet format --verify-no-changes  # formatting/style, non-mutating
 dotnet test                        # Unit + FakeFfmpeg traits only
 sh scripts/check-page.sh           # syntax-checks the plugin page's script
-python3 scripts/notices.py --check # third-party notices match the restored packages
 editorconfig-checker               # .editorconfig rules on files dotnet format skips
 
 HWPROBE_HW_TESTS=1 dotnet test     # adds RealFfmpeg + Hardware traits
 sh scripts/container-plugin.sh     # installs the plugin in Jellyfin 12.2 (podman) and checks it through the API
 ```
 
-The first six must pass before every commit; `scripts/pre-commit` enforces them, skipping the page and editorconfig checks when node or editorconfig-checker isn't installed. A test run with zero tests exits 8 and fails the gate; don't hide it with `--ignore-exit-code`.
+The first five must pass before every commit; `scripts/pre-commit` enforces them, skipping the page and editorconfig checks when node or editorconfig-checker isn't installed. A test run with zero tests exits 8 and fails the gate; don't hide it with `--ignore-exit-code`.
 
 Releases: run `release.yml` by hand (see `DEVELOPMENT.md`). Releases are immutable, so a used version can never be reused. The version comes only from the release tag; `Directory.Build.props` holds `0.0.0`.
 

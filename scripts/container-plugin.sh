@@ -55,6 +55,8 @@ else
 rm -rf "$work" && mkdir -p "$work/config/plugins" "$work/cache" "$work/repo"
 # Analyzers are skipped: the build already enforces them and they don't change the output.
 dotnet publish "$root/src/HwProbe.Plugin" -c Release -p:RunAnalyzers=false -o "$work/publish" -v q --nologo
+python3 "$root/scripts/notices.py" --out "$work/notices"
+cp "$work"/notices/plugin/* "$work/publish/"
 
 # --ignore: without it, a missing container (repo, in copy mode) stops podman removing the others.
 podman rm -f --ignore "$name" "$repo" >/dev/null
@@ -63,11 +65,11 @@ trap 'podman rm -f --ignore "$name" "$repo" >/dev/null; podman network rm "$net"
 case "$install" in
     copy)
         mkdir -p "$work/config/plugins/HwProbe_$version"
-        cp "$work"/publish/Jellyfin.Plugin.HwProbe*.dll "$work"/publish/YamlDotNet.dll "$work"/publish/Meziantou.Framework.Win32.Jobs.dll "$work/config/plugins/HwProbe_$version/"
+        cp "$work"/publish/Jellyfin.Plugin.HwProbe*.dll "$work"/publish/YamlDotNet.dll "$work"/publish/Meziantou.Framework.Win32.Jobs.dll "$work"/publish/THIRD-PARTY-NOTICES.md "$work"/publish/libraries.json "$work/config/plugins/HwProbe_$version/"
         ;;
     repository)
         zip="hwprobe-plugin_$version.zip"
-        (cd "$work/publish" && zip -q "$work/repo/$zip" Jellyfin.Plugin.HwProbe*.dll YamlDotNet.dll Meziantou.Framework.Win32.Jobs.dll)
+        (cd "$work/publish" && zip -q "$work/repo/$zip" Jellyfin.Plugin.HwProbe*.dll YamlDotNet.dll Meziantou.Framework.Win32.Jobs.dll THIRD-PARTY-NOTICES.md libraries.json)
         python3 "$root/scripts/manifest.py" --build-yaml "$root/build.yaml" --zip "$work/repo/$zip" \
             --version "$version" --source-url "http://$repo:8000/$zip" --out "$work/repo/manifest.json"
         podman network create "$net" >/dev/null

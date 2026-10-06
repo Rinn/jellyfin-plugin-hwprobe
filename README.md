@@ -50,4 +50,4 @@ No data leaves the server. Real videos are Creative Commons or public domain, an
 - ✅ Apple VideoToolBox
 - ❔ Video4Linux2 (V4L2)
 
-[Contributing](CONTRIBUTING.md) · [Building from source](DEVELOPMENT.md) · [GPL-3.0](LICENSE) · [Third-party notices](THIRD-PARTY-NOTICES.md)
+[Contributing](CONTRIBUTING.md) · [Building from source](DEVELOPMENT.md) · [GPL-3.0](LICENSE)

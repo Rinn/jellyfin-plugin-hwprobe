@@ -145,15 +145,16 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
             ? IssueLink.For(report, jellyfin)
             : IssueLink.Form;
 
-    /// <summary>Returns the third-party libraries the plugin ships, with their licences, as <c>scripts/notices.py</c> lists them.</summary>
-    /// <returns>The list, as JSON.</returns>
+    /// <summary>Returns the third-party libraries the plugin ships, with their licences, from the libraries.json that <c>scripts/package.py</c> puts beside the plugin's assemblies.</summary>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The list, as JSON; 404 for a build that wasn't packaged.</returns>
     [HttpGet("Libraries")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public ContentResult Libraries()
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> LibrariesAsync(CancellationToken cancellationToken)
     {
-        using var stream = typeof(HwProbeController).Assembly.GetManifestResourceStream("libraries.json")!;
-        using var reader = new StreamReader(stream);
-        return Content(reader.ReadToEnd(), "application/json");
+        var path = Path.Combine(Path.GetDirectoryName(typeof(HwProbeController).Assembly.Location)!, "libraries.json");
+        return System.IO.File.Exists(path) ? Content(await System.IO.File.ReadAllTextAsync(path, cancellationToken), "application/json") : NotFound();
     }
 
     /// <summary>Describes a library item's file as a speed run video.</summary>
