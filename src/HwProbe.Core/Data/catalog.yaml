@@ -228,6 +228,7 @@ videos:
       keepAcrossBuilds: true
       download: "https://upload.wikimedia.org/wikipedia/commons/b/bb/2014-02-14_-_Bolshoy_Ice_Dome_during_XXII_Winter_Olympics.mpg"
       sha256: 137265646230688007039c8a9bfd46bd1452d217404b5fa119a9bbd5c2f87a98
+      size: 11042816
   - key: theora-240p
     name: Compact camera, Theora
     legacy: true
@@ -303,6 +304,7 @@ videos:
       keepAcrossBuilds: true
       download: "https://archive.org/download/sincomplejosmalecon/malecon.flv"
       sha256: 633ad92483f0b9561e5c0682b41104704abad424189618b2c95486fce55b1201
+      size: 1719794
   - key: realvideo-240p
     name: Public access TV, RealVideo
     legacy: true
@@ -328,6 +330,7 @@ videos:
       keepAcrossBuilds: true
       download: "https://archive.org/download/ForumderNichtarbeit_keinGespraech/keinInterviewimOKB.rm"
       sha256: a9fb0fbbe373bcbe3b167730f05d7caae60a568c46c4fa92c61c6cc90958edf6
+      size: 2324650
   - key: wmv-480p
     name: City square, WMV
     legacy: true
@@ -354,6 +357,7 @@ videos:
       keepAcrossBuilds: true
       download: "https://archive.org/download/DamSquare2/DamSquare2.wmv"
       sha256: 6031b1b6ef150b856fd2b310cfd84263e2fa074eb62c11f69e3b8ab062d947c6
+      size: 3493910
   - <<: *testVideo
     key: pattern
     name: Test video, H.264
@@ -441,15 +445,16 @@ repeats:
 # server: the EncodingOptions property a setting defaults to; switch: on or off; range: whole numbers from low to high; choices: keyed values. Keys are applied by SpeedSettingsOptions.
 options:
   # Shown with the backends when QSV works and its probe found the encoder; applied to QSV alone, so VAAPI keeps the server's.
-  - { key: QsvLowPowerH264, label: Enable Intel Low-Power H.264 hardware encoder, server: EnableIntelLowPowerH264HwEncoder, backend: qsv, report: EnableIntelLowPowerH264HwEncoder, switch: true }
-  - { key: QsvLowPowerHevc, label: Enable Intel Low-Power HEVC hardware encoder, server: EnableIntelLowPowerHevcHwEncoder, backend: qsv, report: EnableIntelLowPowerHevcHwEncoder, switch: true }
-  - { key: EnhancedNvdec, label: Enable enhanced NVDEC decoder, server: EnableEnhancedNvdecDecoder, switch: true }
+  - { key: QsvLowPowerH264, label: Enable Intel Low-Power H.264 hardware encoder, server: EnableIntelLowPowerH264HwEncoder, outputCodec: h264, backend: qsv, report: EnableIntelLowPowerH264HwEncoder, switch: true, description: "Low-Power Encoding can keep unnecessary CPU-GPU sync. On Linux they must be disabled if the i915 HuC firmware is not configured." }
+  - { key: QsvLowPowerHevc, label: Enable Intel Low-Power HEVC hardware encoder, server: EnableIntelLowPowerHevcHwEncoder, outputCodec: hevc, backend: qsv, report: EnableIntelLowPowerHevcHwEncoder, switch: true, description: "Low-Power Encoding can keep unnecessary CPU-GPU sync. On Linux they must be disabled if the i915 HuC firmware is not configured." }
+  - { key: EnhancedNvdec, label: Enable enhanced NVDEC decoder, server: EnableEnhancedNvdecDecoder, switch: true, description: "Enhanced NVDEC implementation, disable this option to use CUVID if you encounter decoding errors." }
   - { key: PreferNativeDecoder, label: Prefer OS native DXVA or VA-API hardware decoders, server: PreferSystemNativeHwDecoder, switch: true }
-  - { key: VppTonemap, label: Enable VPP Tone mapping, server: EnableVppTonemapping, switch: true }
+  - { key: VppTonemap, label: Enable VPP Tone mapping, server: EnableVppTonemapping, switch: true, description: "Full Intel driver based tone-mapping. Currently works only on certain hardware with HDR10 videos. This has a higher priority compared to another OpenCL implementation." }
   # Tone mapping only changes HDR inputs; the labels and choices are the Transcoding page's (jellyfin-web transcoding.tsx, en-us.json, v12.2).
-  - { key: VideoToolboxTonemap, label: Enable VideoToolbox Tone mapping, server: EnableVideoToolboxTonemapping, switch: true, help: Only HDR inputs are tone mapped. }
-  - { key: Tonemap, label: Enable Tone mapping, server: EnableTonemapping, switch: true }
+  - { key: VideoToolboxTonemap, label: Enable VideoToolbox Tone mapping, server: EnableVideoToolboxTonemapping, switch: true, help: Only HDR inputs are tone mapped., description: "Hardware-accelerated tone-mapping provided by VideoToolbox. It works with most HDR formats, including HDR10, HDR10+, and HLG, but does not work with Dolby Vision Profile 5. This has a higher priority compared to another Metal implementation." }
+  - { key: Tonemap, label: Enable Tone mapping, server: EnableTonemapping, switch: true, description: "Tone-mapping can transform the dynamic range of a video from HDR to SDR while maintaining image details and colors, which are very important information for representing the original scene. Currently works only with 10bit HDR10, HLG and DoVi videos. This requires the corresponding GPGPU runtime." }
   - key: TonemapAlgorithm
+    description: "Tone mapping can be fine-tuned. If you are not familiar with these options, just keep the default. The recommended value is 'BT.2390'."
     label: Tone mapping algorithm
     server: TonemappingAlgorithm
     choices:
@@ -462,6 +467,7 @@ options:
       - { key: mobius, label: Mobius }
       - { key: bt2390, label: BT.2390 }
   - key: TonemapMode
+    description: "Select the tone mapping mode. If you experience blown out highlights try switching to the RGB mode."
     label: Tone mapping mode
     server: TonemappingMode
     choices:
@@ -471,6 +477,7 @@ options:
       - { key: lum, label: LUM }
       - { key: itp, label: ITP }
   - key: TonemapRange
+    description: "Select the output color range. Auto is the same as the input range."
     label: Tone mapping range
     server: TonemappingRange
     choices:
@@ -479,6 +486,7 @@ options:
       - { key: pc, label: PC }
   # The page takes any number for these three; the choices are the default and a few others.
   - key: TonemapDesat
+    description: "Apply desaturation for highlights that exceed this level of brightness. The recommended value is 0 (disable)."
     label: Tone mapping desat
     server: TonemappingDesat
     choices:
@@ -487,6 +495,7 @@ options:
       - { key: "1", label: "1" }
       - { key: "2", label: "2" }
   - key: TonemapPeak
+    description: "Override the embedded metadata value for the input signal with this peak value instead. The default value is 100 (1000nit)."
     label: Tone mapping peak
     server: TonemappingPeak
     choices:
@@ -494,6 +503,7 @@ options:
       - { key: "400", label: "400" }
       - { key: "1000", label: "1000" }
   - key: TonemapParam
+    description: "Tune the tone mapping algorithm. Generally leave it blank."
     label: Tone mapping param
     server: TonemappingParam
     choices:
@@ -502,6 +512,7 @@ options:
       - { key: "1", label: "1" }
   # EncodingHelper.GetNumberOfThreads treats Auto (-1) and Max (0) alike: ffmpeg picks (v12.2).
   - key: EncodingThreadCount
+    description: "Select the maximum number of threads to use when transcoding. Reducing the thread count will lower CPU usage but may not convert fast enough for a smooth playback experience."
     label: Transcoding thread count
     server: EncodingThreadCount
     help: The most CPU threads each transcode uses.
@@ -524,10 +535,11 @@ options:
       - { key: "15", label: "15" }
       - { key: "16", label: "16" }
       - { key: "0", label: Max }
-  # caveat: jellyfin-web's own warning (LabelEnableAudioVbrHelp), shown with any suggestion to change it.
-  - { key: AudioVbr, label: Enable VBR audio encoding, server: EnableAudioVbr, switch: true, qualityOrder: ["true", "false"], caveat: "In some rare cases VBR may cause buffering and compatibility issues." }
+  # caveat: jellyfin-web's own warning (LabelEnableAudioVbrHelp), shown with any suggestion to change it; compatibleValue: the value without it, suggested beside the better-quality one.
+  - { key: AudioVbr, label: Enable VBR audio encoding, server: EnableAudioVbr, switch: true, qualityOrder: ["true", "false"], caveat: "In some rare cases VBR may cause buffering and compatibility issues.", compatibleValue: "false", description: "Variable bitrate offers better quality to average bitrate ratio, but in some rare cases may cause buffering and compatibility issues." }
   # Downmixing only changes transcoded 5.1 audio.
   - key: DownmixBoost
+    description: "Boost audio when downmixing. A value of one will preserve the original volume."
     label: Audio boost when downmixing
     server: DownMixAudioBoost
     choices:
@@ -536,6 +548,7 @@ options:
       - { key: "2", label: "2" }
       - { key: "3", label: "3" }
   - key: DownmixAlgorithm
+    description: "Algorithm used to downmix multi-channel audio to stereo."
     label: Stereo Downmix Algorithm
     server: DownMixStereoAlgorithm
     help: Only transcoded 5.1 audio is downmixed.
@@ -547,6 +560,7 @@ options:
       - { key: Ac4, label: AC-4 }
   # Auto, per encoder (EncodingHelper.GetEncoderParam, v12.2).
   - key: EncoderPreset
+    description: "Pick a faster value to improve performance, or a slower value to improve quality."
     label: Encoding preset
     server: EncoderPreset
     backendNotes:
@@ -570,17 +584,19 @@ options:
       - { key: superfast, label: superfast }
       - { key: ultrafast, label: ultrafast }
     qualityOrder: [veryslow, slower, slow, medium, fast, faster, veryfast, superfast, ultrafast]
-  - { key: H265Crf, label: H.265 encoding CRF, server: H265Crf, range: [0, 51], lowerIsBetter: true }
-  - { key: H264Crf, label: H.264 encoding CRF, server: H264Crf, range: [0, 51], lowerIsBetter: true, help: CRF only applies to software encoders. }
+  - { key: H265Crf, label: H.265 encoding CRF, server: H265Crf, outputCodec: hevc, range: [0, 51], lowerIsBetter: true, description: "The 'Constant Rate Factor' (CRF) is the default quality setting for the x264 and x265 software encoders. You can set the values between 0 and 51, where lower values would result in better quality (at the expense of higher file sizes). Sane values are between 18 and 28. The default for x264 is 23, and for x265 is 28, so you can use this as a starting point. Hardware encoders do not use these settings." }
+  - { key: H264Crf, label: H.264 encoding CRF, server: H264Crf, outputCodec: h264, range: [0, 51], lowerIsBetter: true, help: CRF only applies to software encoders., description: "The 'Constant Rate Factor' (CRF) is the default quality setting for the x264 and x265 software encoders. You can set the values between 0 and 51, where lower values would result in better quality (at the expense of higher file sizes). Sane values are between 18 and 28. The default for x264 is 23, and for x265 is 28, so you can use this as a starting point. Hardware encoders do not use these settings." }
   - key: DeinterlaceMethod
+    description: "Select the deinterlacing method to use when software transcoding interlaced content. When hardware acceleration supporting hardware deinterlacing is enabled the hardware deinterlacer will be used instead of this setting."
     label: Deinterlacing method
     server: DeinterlaceMethod
     help: Only interlaced inputs are deinterlaced.
     choices:
       - { key: yadif, label: Yet Another DeInterlacing Filter (YADIF) }
       - { key: bwdif, label: Bob Weaver DeInterlacing Filter (BWDIF) }
+    # Neither Jellyfin nor ffmpeg claims either gives the better picture; ffmpeg's filter docs describe BWDIF as motion adaptive deinterlacing based on YADIF with W3FDIF and cubic interpolation (doc/filters.texi, bwdif), so it's ranked above.
     qualityOrder: [bwdif, yadif]
-  - { key: DoubleRate, label: Double the frame rate when deinterlacing, server: DeinterlaceDoubleRate, switch: true, qualityOrder: ["true", "false"] }
+  - { key: DoubleRate, label: Double the frame rate when deinterlacing, server: DeinterlaceDoubleRate, switch: true, qualityOrder: ["true", "false"], description: "This setting uses the field rate when deinterlacing, often referred to as bob deinterlacing, which doubles the frame rate of the video to provide full motion like what you would see when viewing interlaced video on a TV." }
   - key: Audio
     label: Audio
     help: Copying passes the source's audio through, as for a client that plays it, so only the video is transcoded.
@@ -639,6 +655,15 @@ suites:
     outputs: [decode]
     steps:
       - { label: "H.264, HEVC, HEVC 10-bit, VP9, AV1, and 4K HDR HEVC" }
+  - key: 4k
+    name: 4K
+    description: Decodes 4K inputs and transcodes them to 4K output.
+    # 40 Mbps is past ResolutionNormalizer's 2560-wide band (28 Mbps H.264-equivalent at 30 fps), and ScaleBitrate leaves 30 Mbps and up unscaled, so every codec keeps 4K (v12.2).
+    videos: [drama-4k, digital-animation-4k, anime-4k]
+    outputs: [decode, h264-40mbps, hevc-40mbps, av1-40mbps]
+    options: { Audio: copy }
+    steps:
+      - { label: "Decode only, H.264, HEVC, and AV1" }
   - key: legacy
     name: Legacy formats
     description: Transcodes legacy, low-quality inputs to H.264.
@@ -698,9 +723,11 @@ suites:
     videos: [sports-576i]
     outputs: [h264-8mbps]
     options: { Audio: copy }
+    # Every step sets both settings, so none takes the server's double rate and turns into another step.
     steps:
-      - { label: YADIF, options: { DeinterlaceMethod: yadif } }
-      - { label: BWDIF, options: { DeinterlaceMethod: bwdif } }
+      - { label: YADIF, options: { DeinterlaceMethod: yadif, DoubleRate: "false" } }
+      - { label: YADIF double rate, options: { DeinterlaceMethod: yadif, DoubleRate: "true" } }
+      - { label: BWDIF, options: { DeinterlaceMethod: bwdif, DoubleRate: "false" } }
       - { label: BWDIF double rate, options: { DeinterlaceMethod: bwdif, DoubleRate: "true" } }
   - key: audio
     name: VBR audio
@@ -722,6 +749,31 @@ defaultWhenTranscoding: Pause
 # Whether runs measure resource usage when the page or CLI doesn't say. Only the single copy is sampled, every 200 ms.
 defaultMeasureResources: true
 
+# description: jellyfin-web's own help text for an option (src/strings/en-us.json, v12.2), shown when hovering its name in a suggestion.
+# Settings that together pick one thing, suggested as one table with a row per choice the runs used, in this order; a run is the first row whose backends and conditions it meets.
+# Tone mapping: VPP on Intel and VideoToolbox on Apple take precedence over the general method when on, and work with Enable Tone mapping off (EncodingHelper IsIntelVppTonemapAvailable, IsVideoToolboxTonemapAvailable, v12.2).
+settingGroups:
+  - key: deinterlace
+    label: Deinterlacing
+    settings: [DeinterlaceMethod, DoubleRate]
+    rows:
+      - { label: "Yet Another DeInterlacing Filter (YADIF), single rate", describes: DeinterlaceMethod, when: { DeinterlaceMethod: yadif, DoubleRate: "false" } }
+      - { label: "Yet Another DeInterlacing Filter (YADIF), double rate", describes: DoubleRate, when: { DeinterlaceMethod: yadif, DoubleRate: "true" } }
+      - { label: "Bob Weaver DeInterlacing Filter (BWDIF), single rate", describes: DeinterlaceMethod, when: { DeinterlaceMethod: bwdif, DoubleRate: "false" } }
+      - { label: "Bob Weaver DeInterlacing Filter (BWDIF), double rate", describes: DoubleRate, when: { DeinterlaceMethod: bwdif, DoubleRate: "true" } }
+  - key: tonemap
+    label: Tone mapping
+    settings: [Tonemap, VppTonemap, VideoToolboxTonemap]
+    note: "VPP and VideoToolbox: the backend's own tone mapping. General: Enable Tone mapping, with the tone-mapping settings."
+    rows:
+      - { label: VPP, describes: VppTonemap, backends: [qsv, vaapi], when: { VppTonemap: "true" } }
+      - { label: VideoToolbox, describes: VideoToolboxTonemap, backends: [videotoolbox], when: { VideoToolboxTonemap: "true" } }
+      - { label: General, describes: Tonemap, when: { Tonemap: "true" } }
+      - { label: "Off", describes: Tonemap, when: { Tonemap: "false" }, caveat: "Off: HDR video reaches SDR players unconverted, so colours and brightness look wrong." }
+
+# Seconds between one measurement ending and the next starting, so the system winds down from the last; a result reused from an earlier run doesn't wait.
+testDelay: 1
+
 # Thresholds the suggestions, the page, and the CLI judge measurements by.
 advice:
   # Runs of the same command vary by a few percent, so smaller differences count as alike.
@@ -729,7 +781,7 @@ advice:
   # A better-quality value is suggested only while it keeps this multiple of real time on real video,
   headroom: 1.5
   # and loses no more than this share of concurrent streams.
-  maxStreamLoss: 0.25
+  maxStreamLoss: 0.5
   # A resource counts as saved, or as costing more, from this share's difference.
   resourceMargin: 0.10
 
@@ -753,6 +805,7 @@ labels:
   ServerSetting: Server setting
   ServerSettingAfter: server setting
   RemoteClientBitrateLimit: Internet streaming bitrate limit
+  RemoteClientBitrateLimitDescription: An optional per-stream bitrate limit for all out of network devices. This is useful to prevent devices from requesting a higher bitrate than your internet connection can handle. This may result in increased CPU load on your server in order to transcode videos on the fly to a lower bitrate.
   RemoteClientBitrateLimitCaveat: Applies to devices outside the network only, lowering their picture quality; Jellyfin notes it can raise the server's load by transcoding streams that could otherwise play directly.
 
 # The report's remedies, fix links, and findings, by key; {name} is filled in by the code that picks the text.

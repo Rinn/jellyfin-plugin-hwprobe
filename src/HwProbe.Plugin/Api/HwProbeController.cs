@@ -231,6 +231,17 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     public async Task<ActionResult<ApplyResult>> ApplyMeasuredAsync([FromBody] MeasuredChange change, CancellationToken cancellationToken) =>
         ToResponse(await settings.ApplyMeasuredAsync(change, UserName(), cancellationToken));
 
+    /// <summary>Applies a measured choice in a setting group, such as a deinterlacing method and rate, changing every setting it needs.</summary>
+    /// <param name="choice">The group and row.</param>
+    /// <param name="cancellationToken">Cancels the write.</param>
+    /// <returns>200 with what changed; 400 when it wasn't measured or can't be reached; 409 while a change is running.</returns>
+    [HttpPost("ApplyMeasuredRow")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ApplyResult>> ApplyMeasuredRowAsync([FromBody] MeasuredRow choice, CancellationToken cancellationToken) =>
+        ToResponse(await settings.ApplyMeasuredRowAsync(choice, UserName(), cancellationToken));
+
     /// <summary>Returns the size of the cached test clips and samples.</summary>
     /// <returns>Bytes and files.</returns>
     [HttpGet("Cache")]

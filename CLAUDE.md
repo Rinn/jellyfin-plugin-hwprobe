@@ -96,6 +96,7 @@ The page should look and behave like a native Jellyfin dashboard page, stay calm
 - Vulkan DRM interop isn't probed, so AMD never resolves to `FullVulkan` (a finding says so).
 - A second i965/AMD GPU (not the configured device) is reported `Untested` by the plugin, since probing it would change the server's environment; the CLI can test it.
 - CUDA is probed at index 0 only; `EncodingHelper` hard-codes device 0.
+- Intel low power is untested on real hardware: the Intel NAS has no HuC firmware, so the Intel low power suite and its per-codec comparisons rest on unit tests alone.
 - v4l2m2m is confirmed from a recorded Raspberry Pi run (`Using device /dev/videoN`), not yet through Jellyfin.
 - Page and CLI text are English only. Behaviour doesn't depend on locale: ffmpeg runs with `LC_ALL=C`, numbers are formatted and parsed invariantly, and the page reads structured fields rather than message text. `CultureScope` tests and `HWPROBE_LOCALE` in `container-plugin.sh` check it.
 - The busy check (`ProbeService.IsTranscoding`) skips direct play and remux, but a transcode that finished ahead of playback still blocks until playback stops: `TranscodeManager.OnFfMpegProcessExited` leaves the session's `TranscodingInfo` set, and Jellyfin has no API to list running jobs by session.

@@ -157,7 +157,7 @@ public sealed class SettingsService : IDisposable
             async () =>
             {
                 var suggested = (await Suggestions(change.Run, cancellationToken))
-                    .Any(s => s.Kind is SpeedSuggestionKind.FasterSetting or SpeedSuggestionKind.HigherQuality or SpeedSuggestionKind.EfficientSetting or SpeedSuggestionKind.BitrateLimit && !s.Current && s.Setting == change.Setting && s.Value == change.Value);
+                    .Any(s => s.Kind is SpeedSuggestionKind.FasterSetting or SpeedSuggestionKind.HigherQuality or SpeedSuggestionKind.Compatible or SpeedSuggestionKind.EfficientSetting or SpeedSuggestionKind.BitrateLimit && !s.Current && s.Setting == change.Setting && s.Value == change.Value);
                 if (!suggested || MeasuredSettings.ToSetting(change.Setting, change.Value) is not { } setting)
                 {
                     return Refuse($"{change.Setting} = {change.Value} isn't suggested by the performance tests.");
@@ -173,6 +173,37 @@ public sealed class SettingsService : IDisposable
                 }
 
                 return await WriteAsync(options, [setting], HistoryKind.Apply, user, cancellationToken);
+            },
+            cancellationToken);
+    }
+
+    /// <summary>Applies a choice in a setting group that a performance test measured, changing every setting the choice needs at once.</summary>
+    /// <param name="choice">The group and row; a suggestion for the run must show the row.</param>
+    /// <param name="user">The admin making the change.</param>
+    /// <param name="cancellationToken">Cancels the write.</param>
+    /// <returns>The result.</returns>
+    public Task<ApplyResult> ApplyMeasuredRowAsync(MeasuredRow choice, string user, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(choice);
+        return LockedAsync(
+            async () =>
+            {
+                // Measured, and keeping real time: a choice that falls behind would make players buffer.
+                var speeds = (await Suggestions(choice.Run, cancellationToken))
+                    .Where(s => s.Group == choice.Group)
+                    .SelectMany(s => s.Compared.Where(c => c.Row == choice.Row).Select(c => (double?)c.Speed).Append(s.Row == choice.Row ? s.Speed : null))
+                    .OfType<double>()
+                    .ToList();
+                var measured = speeds.Count > 0 && speeds.Min() >= 1;
+                var options = _read();
+                var changes = measured ? SpeedAdvisor.GroupRowChanges(choice.Group, choice.Row, Probing.ProbeService.SettingsFrom(options.Encoding), Probing.ProbeService.BackendFrom(options.Encoding).Type) : null;
+                var settings = changes?.Select(c => MeasuredSettings.ToSetting(c.Key, c.Value)).ToList();
+                if (settings is null || settings.Count == 0 || settings.Any(s => s is null))
+                {
+                    return Refuse($"{choice.Row} isn't a measured choice the server can switch to.");
+                }
+
+                return await WriteAsync(options, [.. settings.Select(s => s!.Value)], HistoryKind.Apply, user, cancellationToken);
             },
             cancellationToken);
     }

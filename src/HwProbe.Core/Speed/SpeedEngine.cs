@@ -30,6 +30,9 @@ public sealed class SpeedEngine : IDisposable
     private readonly EnvironmentRules _environment;
     private readonly SerialProbeGate _gate;
 
+    /// <summary>When the last measurement ended, for the delay before the next; runs are serial, so one value serves them all.</summary>
+    private DateTimeOffset? _lastMeasured;
+
     /// <summary>Initializes a new instance of the <see cref="SpeedEngine"/> class.</summary>
     /// <param name="runner">Launches ffmpeg.</param>
     /// <param name="arguments">Generates arguments per device.</param>
@@ -391,7 +394,20 @@ public sealed class SpeedEngine : IDisposable
             return earlier.Result with { ReusedFromUtc = earlier.MeasuredUtc };
         }
 
-        var result = await MeasureDeferringAsync(speed.Pause, ct => MeasureRepeatedAsync(options, speed, source, type, device, test, cell, ct), cancellationToken);
+        if (_lastMeasured is { } last && speed.TestDelay - (_time.GetUtcNow() - last) is { Ticks: > 0 } wait)
+        {
+            await Task.Delay(wait, _time, cancellationToken);
+        }
+
+        SpeedResult result;
+        try
+        {
+            result = await MeasureDeferringAsync(speed.Pause, ct => MeasureRepeatedAsync(options, speed, source, type, device, test, cell, ct), cancellationToken);
+        }
+        finally
+        {
+            _lastMeasured = _time.GetUtcNow();
+        }
 
         // Only a full measurement is worth reusing: a failure may be fixed by the next run, and a run cut off by a timeout or the time limit is short of what a full one measures.
         if (key is not null && result.Fps is not null && !result.Interrupted)

@@ -59,6 +59,16 @@ public sealed class SpeedSuitesTests
         Assert.Equal(("veryfast", "copy"), (steps["presets"][^1].Options["EncoderPreset"], steps["presets"][^1].Options["Audio"]));
     }
 
+    /// <summary>Every deinterlacing step runs whatever the server's double rate is: none takes it and turns into another step.</summary>
+    [Fact]
+    public void DeinterlacingStepsDontTakeTheServersRate()
+    {
+        var suite = Suite("deinterlace");
+
+        Assert.Equal(suite.Steps.Select(s => s.Label), SpeedSuites.Steps(suite, 8, new SpeedSettings { DoubleRate = true }).Select(s => s.Label));
+        Assert.Equal(suite.Steps.Select(s => s.Label), SpeedSuites.Steps(suite, 8, new SpeedSettings { Bwdif = true }).Select(s => s.Label));
+    }
+
     /// <summary>Steps for another backend are left out: tone mapping offers VPP on Intel and VideoToolbox's on Apple.</summary>
     [Fact]
     public void StepsFollowTheBackend()

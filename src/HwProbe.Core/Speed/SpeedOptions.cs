@@ -13,6 +13,9 @@ public sealed record SpeedOptions(SpeedMethod Method, IReadOnlyList<string> Vide
     /// <summary>Gets how many times each measurement runs; more than once reports the median.</summary>
     public int Repeats { get; init; } = 1;
 
+    /// <summary>Gets the time between one measurement ending and the next starting.</summary>
+    public TimeSpan TestDelay { get; init; } = TimeSpan.FromSeconds(Data.Catalog.Default.TestDelay);
+
     /// <summary>Gets how long each measurement, repeats included, may take before it reports what it has, or null for no limit.</summary>
     public TimeSpan? TimeLimit { get; init; }
 

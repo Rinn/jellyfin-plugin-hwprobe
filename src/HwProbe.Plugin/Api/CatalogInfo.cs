@@ -30,6 +30,7 @@ namespace Jellyfin.Plugin.HwProbe.Api;
 /// <param name="Verdicts">The descriptions of backends that don't work.</param>
 /// <param name="Findings">The descriptions of findings, by code.</param>
 /// <param name="Settings">The names of a speed run's starting settings.</param>
+/// <param name="SettingGroups">The settings that together pick one thing, each suggested as one table.</param>
 public sealed record CatalogInfo(
     IReadOnlyList<SpeedVideoInfo> Videos,
     IReadOnlyList<SpeedOutputInfo> Outputs,
@@ -55,7 +56,8 @@ public sealed record CatalogInfo(
     IReadOnlyDictionary<PipelineTier, string> Tiers,
     IReadOnlyDictionary<BackendVerdict, string> Verdicts,
     IReadOnlyDictionary<string, string> Findings,
-    IReadOnlyDictionary<string, string> Settings)
+    IReadOnlyDictionary<string, string> Settings,
+    IReadOnlyList<CatalogSettingGroup> SettingGroups)
 {
     /// <summary>Returns the page's view of a catalog.</summary>
     /// <param name="catalog">The catalog.</param>
@@ -88,6 +90,7 @@ public sealed record CatalogInfo(
             catalog.Tiers,
             catalog.Verdicts,
             catalog.Findings,
-            catalog.Settings);
+            catalog.Settings,
+            catalog.SettingGroups);
     }
 }

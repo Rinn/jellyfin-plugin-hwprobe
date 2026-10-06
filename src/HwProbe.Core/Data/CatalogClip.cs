@@ -36,6 +36,9 @@ internal sealed class CatalogClip
     /// <summary>Gets the SHA-256 a downloaded clip must match, or null.</summary>
     public string? Sha256 { get; init; }
 
+    /// <summary>Gets a downloaded clip's size in bytes, for the page, or null.</summary>
+    public long? Size { get; init; }
+
     /// <summary>Gets a longer time limit for making the clip, in minutes, or null.</summary>
     public int? GenerateMinutes { get; init; }
 

@@ -46,6 +46,9 @@ public sealed partial class Catalog
     /// <summary>Gets a value indicating whether a run measures resource usage when the request doesn't say.</summary>
     public bool DefaultMeasureResources { get; init; }
 
+    /// <summary>Gets the seconds between one measurement ending and the next starting, so the system winds down from the last; reused results don't wait.</summary>
+    public double TestDelay { get; init; }
+
     /// <summary>Gets the thresholds measurements are judged by.</summary>
     public required CatalogAdvice Advice { get; init; }
 
@@ -78,6 +81,9 @@ public sealed partial class Catalog
 
     /// <summary>Gets the test suites, in the page's order.</summary>
     public required IReadOnlyList<CatalogSuite> Suites { get; init; }
+
+    /// <summary>Gets the settings that together pick one thing, each suggested as one table.</summary>
+    public IReadOnlyList<CatalogSettingGroup> SettingGroups { get; init; } = [];
 
     /// <summary>Gets the links the page, the CLI, and the advice point to, by name: <c>repository</c>, <c>issueForm</c>, <c>notices</c>, <c>jellyfinGuides</c>, <c>intelLowPowerGuide</c>, <c>fateSuite</c>.</summary>
     public required IReadOnlyDictionary<string, string> Links { get; init; }
@@ -276,6 +282,16 @@ public sealed partial class Catalog
             {
                 throw new InvalidDataException($"catalog.yaml: option {option.Key}'s qualityOrder lists values it doesn't take, or lowerIsBetter is set without a range.");
             }
+
+            if (option.OutputCodec is { } codec && !Codecs.Any(c => c.Key == codec))
+            {
+                throw new InvalidDataException($"catalog.yaml: option {option.Key}'s outputCodec {codec} isn't a codec the catalog lists.");
+            }
+
+            if (option.CompatibleValue is { } compatible && (!option.Takes(compatible) || option.Caveat is null))
+            {
+                throw new InvalidDataException($"catalog.yaml: option {option.Key}'s compatibleValue requires a caveat and a value it takes.");
+            }
         }
 
         if (Videos.Select(v => v.Sample).FirstOrDefault(s => s?.HolderUrl is { } site && !Uri.TryCreate(site, UriKind.Absolute, out _)) is { } unlinked)
@@ -286,9 +302,33 @@ public sealed partial class Catalog
         CheckAdvice();
         CheckSuites();
 
+        foreach (var group in SettingGroups)
+        {
+            var known = group.Settings.All(k => Options.Any(o => o.Key == k));
+            var conditions = group.Rows.SelectMany(r => r.When ?? new Dictionary<string, string>()).ToList();
+            var valid = known
+                && conditions.All(c => group.Settings.Contains(c.Key) && Options.First(o => o.Key == c.Key).Takes(c.Value))
+                && group.Rows.All(r => r.Describes is null || group.Settings.Contains(r.Describes))
+                && group.Rows.Select(r => r.Label).Distinct(StringComparer.Ordinal).Count() == group.Rows.Count;
+            if (!known || !valid || group.Rows.Count == 0 || SettingGroups.Count(g => g.Settings.Intersect(group.Settings).Any()) > 1)
+            {
+                throw new InvalidDataException($"catalog.yaml: setting group {group.Key} requires rows with distinct labels, options the catalog has, in no other group, and conditions on its own settings.");
+            }
+        }
+
+        if (!double.IsFinite(TestDelay) || TestDelay < 0)
+        {
+            throw new InvalidDataException("catalog.yaml: testDelay requires a number of seconds, zero or more.");
+        }
+
         if (Subtitles is null || TestAudio is null)
         {
             throw new InvalidDataException("catalog.yaml: subtitles or testAudio are missing.");
+        }
+
+        if (Videos.FirstOrDefault(v => v.Clip.Download is not null && v.Clip.Size is not > 0) is { } unsized)
+        {
+            throw new InvalidDataException($"catalog.yaml: {unsized.Key} is downloaded whole and requires its size.");
         }
 
         foreach (var clip in Videos.Select(v => v.Clip).Append(Subtitles.Text).Append(Subtitles.Image).Append(TestAudio))
