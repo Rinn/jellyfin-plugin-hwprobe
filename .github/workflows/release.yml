@@ -65,11 +65,13 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
   plugin-e2e:
-    name: Plugin in Jellyfin 12.1 (${{ matrix.install }})
+    name: Plugin in Jellyfin ${{ matrix.jellyfin }} (${{ matrix.install }})
     needs: check
     strategy:
       fail-fast: false
       matrix:
+        # The minimum supported version (Jellyfin.Controller in Directory.Packages.props) and the newest release.
+        jellyfin: ["12.1", "12.2"]
         # copy: DLLs copied into the plugins folder. repository: installed from a plugin repository, as users do.
         install: [copy, repository]
     runs-on: ubuntu-latest
@@ -79,15 +81,16 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
-      - name: Install the plugin into jellyfin/jellyfin and probe through its API
+      - name: Install the plugin into Jellyfin and probe through its API
         run: scripts/container-plugin.sh
         env:
           HWPROBE_INSTALL: ${{ matrix.install }}
+          JELLYFIN_IMAGE: docker.io/jellyfin/jellyfin:${{ matrix.jellyfin }}
       - name: Upload server logs
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: plugin-e2e-logs-${{ matrix.install }}
+          name: plugin-e2e-logs-${{ matrix.jellyfin }}-${{ matrix.install }}
           path: artifacts/plugin-e2e/config/log
 
   release:

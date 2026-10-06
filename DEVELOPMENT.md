@@ -38,7 +38,7 @@ scripts/container-linux.sh     # test suite on Linux, then hwprobe against jelly
 scripts/container-windows.sh   # win-x64 build under Wine (no GPU)
 ```
 
-`container-plugin.sh` also takes `HWPROBE_LOCALE=de_DE.UTF-8` (run the server under another locale) and `HWPROBE_INSTALL=repository` (install through a plugin repository, as users do) or `HWPROBE_INSTALL=existing HWPROBE_BASE=http://host:port` (check a running server).
+`container-plugin.sh` also takes `JELLYFIN_IMAGE=docker.io/jellyfin/jellyfin:12.2` (another server version, 12.1 by default), `HWPROBE_LOCALE=de_DE.UTF-8` (run the server under another locale) and `HWPROBE_INSTALL=repository` (install through a plugin repository, as users do) or `HWPROBE_INSTALL=existing HWPROBE_BASE=http://host:port` (check a running server).
 
 ## Command-line tool
 
@@ -79,7 +79,7 @@ A user's zip (**Download diagnostics** on the Help tab, or `--diagnostics`) is l
 gh workflow run release.yml --ref main -f version=1.2.3 -f notes="What changed"
 ```
 
-The workflow requires a passing `CI` check on the commit, runs `container-plugin.sh` in both install modes, builds the plugin zip and CLI builds, publishes release `v1.2.3`, and adds it to `manifest.json` on the `manifest` branch. The notes become the plugin's changelog. `-f prerelease=true` publishes without adding it to the plugin repository. Releases are immutable, so a version can't be reused.
+The workflow requires a passing `CI` check on the commit, runs `container-plugin.sh` in both install modes against each Jellyfin version in its matrix, builds the plugin zip and CLI builds, publishes release `v1.2.3`, and adds it to `manifest.json` on the `manifest` branch. The notes become the plugin's changelog. `-f prerelease=true` publishes without adding it to the plugin repository. Releases are immutable, so a version can't be reused.
 
 Every release file has a build provenance attestation, checked with `gh attestation verify <file> -R Rinn/jellyfin-plugin-hwprobe`. Builds are reproducible. To check a release, build its tag from a fresh clone and compare hashes:
 
