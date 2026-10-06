@@ -598,10 +598,50 @@ public sealed partial class ProbeService : IDisposable
                 Directory.Delete(directory, recursive: true);
             }
 
-            // Saved measurements go with the clips they were measured on.
-            if (SpeedResultsDirectory is { } results && Directory.Exists(results))
+            return true;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>Sizes the saved runs and the measurements saved for reuse.</summary>
+    /// <returns>Each one's files, size, and newest write.</returns>
+    public SavedData SavedDataSize()
+    {
+        // Read without the gate, so a run or delete can remove files meanwhile; the next read counts them right.
+        static SavedFilesSize Size(string? directory)
+        {
+            try
             {
-                Directory.Delete(results, recursive: true);
+                var files = directory is not null && Directory.Exists(directory) ? new DirectoryInfo(directory).EnumerateFiles("*.json").ToList() : [];
+                return new SavedFilesSize(files.Count, files.Sum(f => f.Length), files.Count > 0 ? files.Max(f => new DateTimeOffset(f.LastWriteTimeUtc, TimeSpan.Zero)) : null);
+            }
+            catch (IOException)
+            {
+                return new SavedFilesSize(0, 0, null);
+            }
+        }
+
+        return new SavedData(Size(SpeedHistoryDirectory), Size(SpeedResultsDirectory));
+    }
+
+    /// <summary>Deletes the measurements saved for reuse, keeping the cached clips; the next run measures everything again.</summary>
+    /// <param name="cancellationToken">Cancels waiting.</param>
+    /// <returns>False when a probe or speed run is running.</returns>
+    public async Task<bool> DeleteSavedMeasurementsAsync(CancellationToken cancellationToken)
+    {
+        if (!await _gate.WaitAsync(0, cancellationToken))
+        {
+            return false;
+        }
+
+        try
+        {
+            if (SpeedResultsDirectory is { } directory && Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
             }
 
             return true;

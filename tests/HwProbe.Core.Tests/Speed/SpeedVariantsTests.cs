@@ -116,15 +116,19 @@ public sealed class SpeedVariantsTests
         Assert.Equal("H.264 at 8 Mbps", SpeedTestText.Output(SpeedCatalog.Find("drama-8k|h264-8mbps")!));
     }
 
-    /// <summary>A speed report round-trips through JSON with string enums.</summary>
+    /// <summary>A speed report round-trips through compact JSON with string enums, nulls left out and text unescaped; indented JSON saved before still reads.</summary>
     [Fact]
     public void ReportRoundTrips()
     {
-        var report = new SpeedReport(DateTimeOffset.UnixEpoch, new FfmpegSummary("/f", "Server", "8.1.2", true), SpeedMethod.Full, [new SpeedResult(HwType.qsv, "/dev/dri/renderD128", "1080p-h264", string.Empty, 410.5, 9, false, null)]);
+        var report = new SpeedReport(DateTimeOffset.UnixEpoch, new FfmpegSummary("/f", "Server", "8.1.2", true), SpeedMethod.Full, [new SpeedResult(HwType.qsv, "/dev/dri/renderD128", "1080p-h264", string.Empty, 410.5, 9, false, null) { Label = "Live action \u2192 H.264" }]);
 
         var json = SpeedReportStore.Serialize(report);
 
-        Assert.Contains("\"method\": \"Full\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"method\":\"Full\"", json, StringComparison.Ordinal);
+        Assert.Contains("Live action \u2192 H.264", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("\n", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"note\"", json, StringComparison.Ordinal);
+        Assert.Equal(410.5, SpeedReportStore.Deserialize("{\n  \"method\": \"Full\",\n  \"results\": [ { \"type\": \"qsv\", \"test\": \"a\", \"fps\": 410.5, \"note\": null } ]\n}")!.Results[0].Fps);
         Assert.Equal(json, SpeedReportStore.Serialize(SpeedReportStore.Deserialize(json)!));
         Assert.Null(SpeedReportStore.Deserialize("not json"));
     }

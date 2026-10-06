@@ -7,8 +7,8 @@ public static class SpeedReportStore
 {
     /// <summary>Serializes a report to JSON.</summary>
     /// <param name="report">The report.</param>
-    /// <returns>Indented JSON.</returns>
-    public static string Serialize(SpeedReport report) => JsonSerializer.Serialize(report, SpeedJsonContext.Default.SpeedReport);
+    /// <returns>Compact JSON.</returns>
+    public static string Serialize(SpeedReport report) => JsonSerializer.Serialize(report, SpeedJsonContext.Files.SpeedReport);
 
     /// <summary>Parses a report, returning null for unreadable JSON.</summary>
     /// <param name="json">The JSON text.</param>

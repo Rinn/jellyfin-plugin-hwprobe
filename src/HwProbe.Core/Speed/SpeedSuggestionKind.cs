@@ -9,6 +9,9 @@ public enum SpeedSuggestionKind
     /// <summary>The configured backend fell behind real time.</summary>
     FallsBehind,
 
+    /// <summary>None of two or more backends measured kept real time on an output; the fastest one is given.</summary>
+    TooSlowEverywhere,
+
     /// <summary>A setting's other value measured faster.</summary>
     FasterSetting,
 

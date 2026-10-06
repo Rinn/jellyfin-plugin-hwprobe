@@ -163,11 +163,11 @@ for _ in $(seq 1 150); do
     [ "$(curl -sf "$base/HwProbe/Status" -H "$h" | json 'j["State"]')" = Idle ] && break
     sleep 2
 done
-check "earlier measurement reused" True "$(curl -sf "$base/HwProbe/Speed" -H "$h" | json 'all(r.get("reusedFromUtc") for r in j["results"] if r["fps"])')"
+check "earlier measurement reused" True "$(curl -sf "$base/HwProbe/Speed" -H "$h" | json 'all(r.get("reusedFromUtc") for r in j["results"] if r.get("fps"))')"
 check "delete an unknown run" 404 "$(code -X DELETE "$base/HwProbe/SpeedHistory/20000101T000000Z" -H "$h")"
 check "cache size" True "$(curl -sf "$base/HwProbe/Cache" -H "$h" | json 'j["Files"] > 0')"
 check "cache contents named" True "$(curl -sf "$base/HwProbe/Cache/Contents" -H "$h" | json 'len(j) > 0 and any(e["Description"] for e in j)')"
-check "software decode measured" True "$(curl -sf "$base/HwProbe/Speed" -H "$h" | json 'any(r["type"] == "none" and r["test"] == "pattern|decode" and (r["fps"] or 0) > 0 for r in j["results"])')"
+check "software decode measured" True "$(curl -sf "$base/HwProbe/Speed" -H "$h" | json 'any(r["type"] == "none" and r["test"] == "pattern|decode" and (r.get("fps") or 0) > 0 for r in j["results"])')"
 check "every failure has a remedy" True "$(printf "%s" "$report" | json 'all(b["hint"] for b in j["backends"] if b["verdict"] != "Viable")')"
 
 before="$(curl -sf "$base/System/Configuration/encoding" -H "$h")"
