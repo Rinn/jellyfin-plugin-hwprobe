@@ -29,13 +29,23 @@ public sealed class CatalogTests
         Assert.Matches(@"^-[^{}]+\{clip:speed_audio_51\.mka\}[^{}]+$", pattern);
     }
 
+    /// <summary>A sample downloaded whole shows its length and size, not as generated; a generated test video says so.</summary>
+    [Fact]
+    public void OriginNamesDownloadsAndGeneratedVideos()
+    {
+        Assert.Equal("30.3 s, 2 MB", SpeedCatalog.FindVideo("flv-280p")!.Origin);
+        Assert.Equal("Generated, 10 s", SpeedCatalog.FindVideo("pattern")!.Origin);
+    }
+
     /// <summary>A file that leaves out an enum value, misspells a field or uses an unknown placeholder is refused.</summary>
     /// <param name="find">Text in the compiled-in file.</param>
     /// <param name="replace">What to put instead.</param>
     [Theory]
     [InlineData("  - { key: QsvLowPowerH264,", "  - { key: QsvLowPower264,")]
-    [InlineData("  - { key: DoubleRate, label: Double the frame rate when deinterlacing, server: DeinterlaceDoubleRate, switch: true, qualityOrder: [\"true\", \"false\"] }", "  - { key: DoubleRate2, label: x, switch: true }")]
-    [InlineData("  - { key: H265Crf, label: H.265 encoding CRF, server: H265Crf, range: [0, 51], lowerIsBetter: true }", "  - { key: H265Crf, label: x, range: [0, 51], switch: true }")]
+    [InlineData("  - { key: DoubleRate, label: Double the frame rate when deinterlacing, server: DeinterlaceDoubleRate, switch: true, qualityOrder: [\"true\", \"false\"],", "  - { key: DoubleRate2, label: x, switch: true,")]
+    [InlineData("  - { key: H265Crf, label: H.265 encoding CRF, server: H265Crf, outputCodec: hevc, range: [0, 51], lowerIsBetter: true,", "  - { key: H265Crf, label: x, range: [0, 51], switch: true,")]
+    [InlineData("outputCodec: hevc, range", "outputCodec: h265, range")]
+    [InlineData("settings: [DeinterlaceMethod, DoubleRate]", "settings: [DeinterlaceMethod, DoubleRate, Tonemap]")]
     [InlineData("    qualityOrder: [bwdif, yadif]", "    qualityOrder: [bwdif, nnedi]")]
     [InlineData("defaultWhenTranscoding: Pause", "defaultWhenTranscoding: Wait")]
     [InlineData("{ label: medium, options: { EncoderPreset: medium } }", "{ label: medium, options: { EncoderPreset: placebo } }")]
@@ -48,6 +58,8 @@ public sealed class CatalogTests
     [InlineData("{testSource} -c:v libx264", "{testSourc} -c:v libx264")]
     [InlineData("    name: Test video, H.264", "    nmae: Test video, H.264")]
     [InlineData("sha256: 0da88a6b", "sha256: 0DA88A6B")]
+    [InlineData("      size: 1719794\n", "")]
+    [InlineData("testDelay: 1\n", "testDelay: -1\n")]
     public void BrokenFileIsRefused(string find, string replace)
     {
         using var reader = new StreamReader(typeof(Catalog).Assembly.GetManifestResourceStream("catalog.yaml")!);

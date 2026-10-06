@@ -15,6 +15,9 @@ public enum SpeedSuggestionKind
     /// <summary>A setting's higher-quality value still keeps up with real time.</summary>
     HigherQuality,
 
+    /// <summary>The value that avoids a known drawback of the value suggested beside it: VBR audio off, or no Internet streaming bitrate limit.</summary>
+    Compatible,
+
     /// <summary>A setting's other value measured as fast and is more efficient: less CPU, memory, or GPU.</summary>
     EfficientSetting,
 

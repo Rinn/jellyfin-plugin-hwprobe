@@ -160,7 +160,7 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal(DeleteOutcome.Deleted, await service.DeleteSpeedHistoryAsync(null, ct));
     }
 
-    /// <summary>A suite runs each step with its settings on the suite's backends and labels each saved run; unknown and unavailable suites are refused.</summary>
+    /// <summary>A suite runs each step with its settings on the suite's backends and labels each saved run, steps finishing within one second included; unknown and unavailable suites are refused.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
     public async Task SuiteRunsEachStep()
@@ -173,7 +173,7 @@ public sealed class ProbeServiceTests : IDisposable
             MeasureSpeed = (speed, backends, progress, _) =>
             {
                 asked.Add(speed);
-                time = time.AddMinutes(1);
+                time = time.AddMilliseconds(100);
                 return Task.FromResult(new SpeedReport(time, Reports.Sample().Ffmpeg, speed.Method, [new SpeedResult(HwType.none, string.Empty, "drama|h264-8mbps", string.Empty, 300, 12, false, null)]));
             },
             ServerBackend = () => (HwType.vaapi, "/dev/dri/renderD128"),

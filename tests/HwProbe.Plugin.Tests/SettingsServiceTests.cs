@@ -33,6 +33,32 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.Equal([new AppliedChange("EncoderPreset", "auto", "medium") { Label = Catalog.Default.Options.Single(o => o.Key == "EncoderPreset").Label }], applied.Changes);
     }
 
+    /// <summary>A measured choice in a setting group sets every setting it needs in one change; a row no suggestion shows is refused, and tone mapping off can be applied.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task AppliesAGroupChoice()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        const string Double = "Bob Weaver DeInterlacing Filter (BWDIF), double rate";
+        _harness.Suggestions =
+        [
+            new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, ["a"]) { Setting = "DoubleRate", Value = "false", Current = true, Group = "deinterlace", Row = "Yet Another DeInterlacing Filter (YADIF), single rate", Compared = [new SpeedComparedValue("true", 2, null, false) { Row = Double }] },
+            new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, ["a"]) { Setting = "Tonemap", Value = "true", Current = true, Group = "tonemap", Row = "General", Compared = [new SpeedComparedValue("false", 2, null, false) { Row = "Off" }] },
+        ];
+
+        Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredRowAsync(new MeasuredRow("deinterlace", "Bob Weaver DeInterlacing Filter (BWDIF), single rate"), "admin", ct)).Outcome);
+        Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredRowAsync(new MeasuredRow("tonemap", "VPP"), "admin", ct)).Outcome);
+        var applied = await _harness.Service.ApplyMeasuredRowAsync(new MeasuredRow("deinterlace", Double), "admin", ct);
+
+        Assert.Equal(ApplyOutcome.Applied, applied.Outcome);
+        Assert.Equal((DeinterlaceMethod.bwdif, true), (_harness.Saved.DeinterlaceMethod, _harness.Saved.DeinterlaceDoubleRate));
+        Assert.Equal(2, applied.Changes.Count);
+
+        _harness.Saved.EnableTonemapping = true;
+        Assert.Equal(ApplyOutcome.Applied, (await _harness.Service.ApplyMeasuredRowAsync(new MeasuredRow("tonemap", "Off"), "admin", ct)).Outcome);
+        Assert.False(_harness.Saved.EnableTonemapping);
+    }
+
     /// <summary>A suggested bitrate limit is saved to the streaming settings and reverted from there; one at or above a stricter limit already set is refused, as is a suggestion that only confirms the server's value.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

@@ -26,7 +26,7 @@ public sealed record SpeedSuggestion(SpeedSuggestionKind Kind, IReadOnlyList<str
     /// <summary>Gets the slowest measured speed with the suggestion, as a multiple of real time.</summary>
     public double? Speed { get; init; }
 
-    /// <summary>Gets a value indicating whether the faster value gives a worse picture, e.g. a faster preset.</summary>
+    /// <summary>Gets a value indicating whether the value gives a worse picture than the values it was compared with, e.g. a faster preset or a bitrate limit.</summary>
     public bool LowerQuality { get; init; }
 
     /// <summary>Gets a value indicating whether a suggested backend measured alike with the configured one and is suggested as the one Jellyfin prefers, QSV over VAAPI.</summary>
@@ -43,6 +43,21 @@ public sealed record SpeedSuggestion(SpeedSuggestionKind Kind, IReadOnlyList<str
 
     /// <summary>Gets the fewest concurrent streams kept with the values it was compared with, when counted.</summary>
     public int? OtherStreams { get; init; }
+
+    /// <summary>Gets a value indicating whether <see cref="Streams"/> hit the count's cap, so it's a lower bound.</summary>
+    public bool StreamsCapped { get; init; }
+
+    /// <summary>Gets a value indicating whether <see cref="OtherStreams"/> hit the count's cap, so it's a lower bound.</summary>
+    public bool OtherStreamsCapped { get; init; }
+
+    /// <summary>Gets the key of the catalog setting group the setting is in, or null, so the page shows the group's suggestions as one table.</summary>
+    public string? Group { get; init; }
+
+    /// <summary>Gets the choice the runs with the value made in that group, as the catalog labels it, or null.</summary>
+    public string? Row { get; init; }
+
+    /// <summary>Gets the values it was compared with, each with its own speed and streams, for the page to show beside it; empty when nothing was.</summary>
+    public IReadOnlyList<SpeedComparedValue> Compared { get; init; } = [];
 
     /// <summary>Gets a value indicating whether it rests on generated test videos alone, which encode faster than real video.</summary>
     public bool TestVideosOnly { get; init; }

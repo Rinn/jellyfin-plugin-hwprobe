@@ -17,8 +17,14 @@ public sealed class CatalogSetting
     /// <summary>Gets the backend it applies to alone, shown with the backends when that one works, or null for every backend.</summary>
     public string? Backend { get; init; }
 
+    /// <summary>Gets the output codec it applies to alone, e.g. <c>h264</c> for H.264 low power or CRF, or null for every output.</summary>
+    public string? OutputCodec { get; init; }
+
     /// <summary>Gets the report setting that says whether the backend supports it, or null.</summary>
     public string? Report { get; init; }
+
+    /// <summary>Gets jellyfin-web's description of it, shown when hovering its name in a suggestion, or null when jellyfin-web has none.</summary>
+    public string? Description { get; init; }
 
     /// <summary>Gets a line shown under it, or null.</summary>
     public string? Help { get; init; }
@@ -40,6 +46,9 @@ public sealed class CatalogSetting
 
     /// <summary>Gets a known drawback, shown with any suggestion to change it, or null.</summary>
     public string? Caveat { get; init; }
+
+    /// <summary>Gets the value without the caveat's drawback, suggested beside a better-quality value that has it, or null.</summary>
+    public string? CompatibleValue { get; init; }
 
     /// <summary>Gets a value indicating whether a lower number in its range gives a better picture.</summary>
     public bool LowerIsBetter { get; init; }

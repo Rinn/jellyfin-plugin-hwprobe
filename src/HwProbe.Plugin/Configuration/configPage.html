@@ -45,6 +45,7 @@
             #HwProbeConfigPage .hwprobe-matrix td:first-child { white-space: nowrap; }
             #HwProbeConfigPage .hwprobe-backends td:nth-child(2), #HwProbeConfigPage .hwprobe-backends th:nth-child(2) { width: 18em; }
             #HwProbeConfigPage .hwprobe-backends td:nth-child(3), #HwProbeConfigPage .hwprobe-backends th:nth-child(3) { width: 12em; }
+            #HwProbeConfigPage .hwprobe-divide { border-left: 1px solid var(--jf-palette-divider, rgba(255, 255, 255, 0.12)); }
             #HwProbeConfigPage .hwprobe-group td { padding-top: 1em; font-weight: 600; color: var(--jf-palette-primary-main, #00a4dc); border-bottom: 2px solid var(--jf-palette-divider, rgba(255, 255, 255, 0.12)); }
             #HwProbeConfigPage tr.hwprobe-group:hover > td, #HwProbeConfigPage tr:has(> th):hover > td { background: none; }
             #HwProbeConfigPage .hwprobe-mark { width: 1.5em; }
@@ -75,6 +76,7 @@
             #HwProbeConfigPage .hwprobe-fold > summary .sectionTitle { margin-top: 0.5em; margin-bottom: 0.5em; }
             #HwProbeConfigPage .hwprobe-fold[open] > summary .material-icons { transform: rotate(90deg); }
             #HwProbeConfigPage .hwprobe-num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+            #HwProbeConfigPage .hwprobe-action { width: 11em; text-align: right; white-space: nowrap; }
             #HwProbeConfigPage .hwprobe-best { background: color-mix(in srgb, var(--jf-palette-primary-main, #00a4dc) 22%, transparent); }
             #HwProbeConfigPage .hwprobe-bar { display: inline-block; width: 6em; height: 0.6em; margin-right: 0.5em; border-radius: 2px; background: var(--jf-palette-action-hover, rgba(255, 255, 255, 0.08)); vertical-align: middle; }
             #HwProbeConfigPage .hwprobe-bar > span { display: block; height: 100%; border-radius: 2px; background: var(--jf-palette-primary-main, #00a4dc); }
@@ -91,8 +93,8 @@
             #HwProbeConfigPage .selectContainer .hwprobe-notes { margin: 0 14px; padding-left: 1.4em; }
             #HwProbeConfigPage .hwprobe-loadbar { position: relative; flex: 1; min-width: 0; height: 2.2em; border-radius: 0.25em; overflow: hidden; background: var(--jf-palette-action-hover, rgba(255, 255, 255, 0.08)); }
             #HwProbeConfigPage .hwprobe-loadbar > div { position: absolute; left: 0; top: 0; bottom: 0; background: var(--jf-palette-primary-main, #00a4dc); transition: width 0.25s linear, left 0.25s linear; }
-            #HwProbeConfigPage .hwprobe-loadbar > div.hwprobe-current { background: var(--jf-palette-warning-main, #ffa726); animation: hwprobe-flash 1.2s ease-in-out infinite; }
-            @keyframes hwprobe-flash { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.8; } }
+            #HwProbeConfigPage .hwprobe-loadbar > div.hwprobe-current { background: var(--jf-palette-warning-main, #ffa726); animation: hwprobe-pulse 2s ease-in-out 0.5s infinite; }
+            @keyframes hwprobe-pulse { 0%, 100% { opacity: 0.8; } 50% { opacity: 0.32; } }
             #HwProbeConfigPage .hwprobe-loadbar > span { position: relative; display: flex; gap: 1em; line-height: 2.2em; padding: 0 0.8em; font-size: 0.9em; color: var(--jf-palette-text-primary, #fff); white-space: nowrap; }
             #HwProbeConfigPage .hwprobe-loadbar > span > span:not(:nth-child(2)) { font-variant-numeric: tabular-nums; }
             #HwProbeConfigPage .hwprobe-loadbar > span > span:nth-child(2) { flex: 1; min-width: 0; text-align: center; overflow: hidden; text-overflow: ellipsis; }
@@ -233,6 +235,7 @@
                 let methodSeconds = {};
                 let repeatOptions = [];
                 let runOptions = [];
+                let settingGroups = [];
                 let timeLimitOptions = [];
                 let whenTranscodingOptions = [];
                 let defaultMethod = null;
@@ -263,6 +266,7 @@
                     methodSeconds = Object.fromEntries(c.Methods.map(m => [m.Key, m.Seconds]));
                     repeatOptions = c.Repeats.map(o => [o.Value, o.Label]);
                     runOptions = c.Options;
+                    settingGroups = c.SettingGroups;
                     timeLimitOptions = c.TimeLimits.map(o => [o.Value === undefined || o.Value === null ? '' : o.Value, o.Label]);
                     // Software is the none backend, named for results; the dropdown keeps its own "None (software)".
                     names = Object.fromEntries([['none', c.SoftwareName]].concat(c.Backends.map(b => [b.Type, b.Name])));
@@ -482,6 +486,22 @@
 
                 // Working and not, in one layout: backend, device, status. Green works, red failed, grey doesn't apply here.
                 const sortState = {};
+
+                // A line before each group of columns under one heading (a backend, or a suite step), so its figures read together.
+                // first: the columns before the groups; size: columns per group. A row of one spanning cell is left alone, and the heading row's spanning cells each start a group.
+                function divideGroups(table, first, size) {
+                    for (const tr of table.rows) {
+                        const cells = [...tr.cells];
+                        if (cells.length === 1) {
+                            continue;
+                        }
+                        const step = cells.some(c => c.colSpan > 1) ? 1 : size;
+                        for (let i = first; i < cells.length; i += step) {
+                            cells[i].classList.add('hwprobe-divide');
+                        }
+                    }
+                    return table;
+                }
 
                 function sortable(table, name) {
                     const header = [...table.rows].filter(r => r.querySelector('th')).pop();
@@ -759,7 +779,7 @@
                     return !device || device === backend.device;
                 }
 
-                function post(path, body) {
+                function post(path, body, keepView) {
                     setMessage('');
                     const request = { type: 'POST', url: ApiClient.getUrl(path), dataType: 'json' };
                     if (body) {
@@ -770,7 +790,7 @@
                         setMessage(result.Reason || '');
                     }, response => (response && response.json ? response.json() : Promise.resolve({})).then(
                         result => { setMessage((result && result.Reason) || 'The change was refused.'); },
-                        () => { setMessage('The change was refused.'); })).then(loadReport);
+                        () => { setMessage('The change was refused.'); })).then(() => loadReport(keepView));
                 }
 
                 function apply(advice) {
@@ -1168,14 +1188,14 @@
                     return speedBackends(viable) * allVideos().filter(v => chosenVideos.has(v.Key)).length * selectedOutputs().length;
                 }
 
-                function sizeText(bytes) {
+                function sizeText(bytes, decimals) {
                     const units = ['bytes', 'KB', 'MB', 'GB'];
                     let i = 0;
                     while (bytes >= 1000 && i < units.length - 1) {
                         bytes /= 1000;
                         i++;
                     }
-                    return (i === 0 ? bytes : bytes.toFixed(bytes < 10 ? 1 : 0)) + ' ' + units[i];
+                    return (i === 0 ? bytes : bytes.toFixed(decimals === undefined ? bytes < 10 ? 1 : 0 : decimals)) + ' ' + units[i];
                 }
 
                 function cacheFolderName(folder) {
@@ -1262,32 +1282,28 @@
                     }
                 }
 
-                // The Run select on Test Results, or null when there are no saved runs.
+                // The Run select on Test Results and the box holding it with its Delete buttons, or null when there are no saved runs.
                 let runPicker = null;
+                let runControls = null;
 
-                // While a run goes, the Run select shows it and can't be changed.
+                // Past runs can't be viewed or deleted while one runs, so their controls go away until it ends.
+                // The box is hidden by its style: the buttons' row sets display, which the hidden attribute can't override.
                 function syncRunPicker() {
-                    if (!runPicker) {
+                    if (!runControls) {
                         return;
                     }
-                    const live = runPicker.querySelector('option[value=""]');
-                    runPicker.disabled = !!speedProgress;
-                    if (speedProgress && !live) {
-                        const option = el('option', 'In progress');
-                        option.value = '';
-                        runPicker.prepend(option);
-                        runPicker.value = '';
-                    } else if (!speedProgress && live) {
-                        live.remove();
+                    runControls.style.display = speedProgress ? 'none' : '';
+                    if (!speedProgress) {
                         runPicker.value = speedViewing || speedHistory[0].Id;
                     }
                 }
 
-                function renderResultsTab(tab) {
-                    const container = fold(tab, 'Results', true);
+                function renderResultsTab(container) {
                     runPicker = null;
+                    runControls = null;
                     if (speedHistory.length) {
-                        const runs = themedSelect(container, 'Run');
+                        runControls = container.appendChild(el('div'));
+                        const runs = themedSelect(runControls, 'Run');
                         runPicker = runs;
                         for (const h of speedHistory) {
                             const option = el('option', new Date(h.GeneratedUtc).toLocaleString() + (h.Suite ? ' \u00b7 ' + h.Suite + ': ' + h.SuiteStep : '') + ' \u00b7 ' + methodName(h.Method) + ' \u00b7 ' + h.Tests + ' test' + (h.Tests === 1 ? '' : 's') + (h.Current ? '' : ' (another version or ffmpeg)'));
@@ -1295,17 +1311,23 @@
                             option.selected = speedViewing ? h.Id === speedViewing : h === speedHistory[0];
                             runs.appendChild(option);
                         }
+                        // The run and its suggestions load together, so the page redraws once rather than shifting when the suggestions arrive.
                         runs.addEventListener('change', () => {
-                            ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedHistory/' + runs.value), dataType: 'json' }).then(r => {
+                            const id = runs.value;
+                            const run = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedHistory/' + id), dataType: 'json' });
+                            const suggestions = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedSuggestions', { id }), dataType: 'json' }).then(list => list, () => null);
+                            Promise.all([run, suggestions]).then(([r, list]) => {
+                                if (list) {
+                                    suggestionCache.set(id, { json: JSON.stringify(list), list });
+                                }
                                 speedReport = r;
-                                speedViewing = runs.value;
+                                speedViewing = id;
                                 renderSpeedResults();
                             });
                         });
                         const remove = url => ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl(url) })
                             .then(loadReport, () => { setMessage('Could not delete: a probe or performance test is running.'); loadReport(); });
-                        const actions = el('div', null, 'hwprobe-row hwprobe-end');
-                        container.appendChild(actions);
+                        const actions = runControls.appendChild(el('div', null, 'hwprobe-row hwprobe-end'));
                         actions.appendChild(idleAction('Delete', () => remove('HwProbe/SpeedHistory/' + runs.value), 'raised hwprobe-danger'));
                         if (speedHistory.length > 1) {
                             actions.appendChild(confirmAction('Delete all', 'Delete all ' + speedHistory.length + ' runs', () => remove('HwProbe/SpeedHistory'), 'raised button-delete'));
@@ -1345,7 +1367,7 @@
                 let speedProgressParts = null;
 
                 // The loading bar a running probe or performance test shows: done / total on the left, what's running in the middle,
-                // and how long it has run on the right; the item in progress flashes after the finished ones. update() takes
+                // and how long it has run on the right; the item in progress pulses after the finished ones. update() takes
                 // { done, total, text, elapsedSeconds, working }, so a poll changes the bar without rebuilding it.
                 function loadBar() {
                     const bar = el('div', null, 'hwprobe-loadbar');
@@ -1434,16 +1456,16 @@
                         speedProgressParts = bar;
                     }
                     const shown = speedLive || speedReport;
-                    if (shown && shown.suiteStartedUtc && !speedProgress) {
-                        speedResults.appendChild(renderSuiteComparison(shown));
+                    if (shown && !speedProgress) {
+                        speedResults.appendChild(renderSuggestions());
                     }
                     if (shown && shown.results.length) {
                         speedResults.appendChild(speedMatrix(shown));
                     } else if (!speedProgress) {
                         speedResults.appendChild(el('p', 'No performance tests available.', 'secondaryText'));
                     }
-                    if (shown && !speedProgress) {
-                        speedResults.appendChild(renderSuggestions());
+                    if (shown && shown.suiteStartedUtc && !speedProgress) {
+                        speedResults.appendChild(renderSuiteComparison(shown));
                     }
                 }
 
@@ -1458,7 +1480,7 @@
                     const load = h => savedRuns.has(h.Id) ? Promise.resolve(savedRuns.get(h.Id))
                         : ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedHistory/' + h.Id), dataType: 'json' }).then(r => { savedRuns.set(h.Id, r); return r; });
                     Promise.all(steps.map(load)).then(reports => {
-                        const section = fold(div, shown.suite, true, null, 'suite');
+                        const section = fold(div, 'Detailed statistics', true, null, 'suite');
                         const listed = suiteList.find(x => x.Name === shown.suite);
                         if (listed && listed.Note) {
                             section.appendChild(el('div', listed.Note, 'infoBanner'));
@@ -1474,7 +1496,21 @@
                         const backendName = x => (names[x.type] || x.type) + (x.type !== 'none' && sameType(x.type) ? ' ' + x.device : '');
                         const counted = reports.every(r => r.method !== 'Quick');
                         const table = el('table', null, 'hwprobe-full');
-                        row(table, [el('th', 'Backend'), el('th', 'Input'), el('th', 'Output')].concat(steps.map(h => el('th', h.SuiteStep, 'hwprobe-num'))));
+                        // Each step gets its measured resources beside its speed, under a heading naming the step.
+                        const kinds = measuredResources(reports.flatMap(r => r.results));
+                        if (kinds.length) {
+                            const top = el('tr');
+                            [0, 1, 2].forEach(() => top.appendChild(el('th')));
+                            for (const h of steps) {
+                                const th = el('th', h.SuiteStep, 'hwprobe-num');
+                                th.colSpan = kinds.length + 1;
+                                top.appendChild(th);
+                            }
+                            table.appendChild(top);
+                            row(table, [el('th', 'Backend'), el('th', 'Input'), el('th', 'Output')].concat(steps.flatMap(() => [el('th', 'Speed', 'hwprobe-num secondaryText')].concat(kinds.map(k => el('th', resourceHeaders[k] || k, 'hwprobe-num secondaryText'))))));
+                        } else {
+                            row(table, [el('th', 'Backend'), el('th', 'Input'), el('th', 'Output')].concat(steps.map(h => el('th', h.SuiteStep, 'hwprobe-num'))));
+                        }
                         for (const key of rows) {
                             const found = reports.map(r => r.results.find(x => keyOf(x) === keyOf(key)));
                             const speeds = found.map(x => x && x.fps && x.frameRate ? x.fps / x.frameRate : null);
@@ -1486,21 +1522,27 @@
                                 if (speeds[i] && counted) {
                                     td.appendChild(el('span', ' ' + streamsText(x), 'hwprobe-small secondaryText'));
                                 }
-                                td.title = [speeds[i] ? speeds[i].toFixed(1) + '\u00d7 real time' : '', speeds[i] && counted ? streamsText(x) + ' concurrent streams' : '', x && x.note ? x.note : ''].filter(t => t).join('\n');
-                                return td;
-                            });
+                                td.title = [speeds[i] ? speeds[i].toFixed(2) + '\u00d7 real time' : '', speeds[i] && counted ? streamsText(x) + ' concurrent streams' : '', x && x.note ? x.note : ''].filter(t => t).join('\n');
+                                return [td].concat(resourceCells(x, false, kinds));
+                            }).flat();
                             row(table, [el('td', backendName(key)), el('td', key.video || key.label || key.test), el('td', (key.output || '') + (key.variant ? ' (' + key.variant + ')' : ''))].concat(cells));
                         }
                         const scroll = el('div', null, 'hwprobe-scroll');
+                        if (kinds.length) {
+                            divideGroups(table, 3, kinds.length + 1);
+                        }
                         scroll.appendChild(sortable(table, 'suite'));
                         section.appendChild(scroll);
                     }, () => {});
                     return div;
                 }
 
-                // A catalog option's value as its field shows it.
+                // A catalog option's value as its field shows it; the Internet streaming bitrate limit, the one server setting suggestions change that isn't an option, in Mbps.
                 function optionValueText(key, value) {
                     const option = runOptions.find(o => o.Key === key);
+                    if (!option && serverLabels[key]) {
+                        return value === '0' ? 'No limit' : Number(value) / 1e6 + ' Mbps';
+                    }
                     const choice = option && option.Choices ? option.Choices.find(c => c.Key === value) : null;
                     return choice ? choice.Label : value === 'true' ? 'On' : value === 'false' ? 'Off' : value;
                 }
@@ -1511,93 +1553,273 @@
                     return parts.length > 2 ? parts.slice(0, -1).join(', ') + ', and ' + parts[parts.length - 1] : parts.join(' and ');
                 }
 
+                // The suggestion shown beside a faster, more efficient, or more compatible one for the same setting, each compared with the other's value:
+                // a better-quality one, or for the value that avoids a drawback, the suggestion for the value that has it.
+                function suggestionCounterpart(list, s) {
+                    const mutual = o => o.Setting === s.Setting && s.Others.includes(o.Value) && o.Others.includes(s.Value);
+                    const kinds = s.Kind === 'Compatible' ? ['FasterSetting', 'EfficientSetting', 'HigherQuality', 'BitrateLimit'] : s.Kind === 'FasterSetting' || s.Kind === 'EfficientSetting' ? ['HigherQuality'] : [];
+                    return list.find(o => kinds.includes(o.Kind) && mutual(o)) || null;
+                }
+
+                // A suggestion as a table with a row per value: the suggested one, then what it was compared with, or a pair of suggestions for one setting.
+                // Each row is { text, value, speed, streams, capped, savings, lower, current, action, description, best }; lower is null where quality wasn't compared, and best tints the recommended row.
+                // Hovering the heading or a row's name shows Jellyfin's own description of the setting.
+                function suggestionTable(label, rows, option, notes, description) {
+                    const div = el('div');
+                    const counted = v => v !== null && v !== undefined;
+                    const columns = [];
+                    if (rows.every(r => counted(r.speed))) {
+                        columns.push(['Speed', r => r.speed.toFixed(2) + '\u00d7 real time', 'hwprobe-num']);
+                    }
+                    if (rows.every(r => counted(r.streams))) {
+                        columns.push(['Concurrent streams', r => r.streams + (r.capped ? '+' : ''), 'hwprobe-num']);
+                    }
+                    if (rows.some(r => r.savings.length)) {
+                        columns.push(['Resources', r => r.savings.length ? savingsText(r.savings) : '\u2013']);
+                    }
+                    if (rows.some(r => counted(r.lower))) {
+                        columns.push(['Quality', r => !counted(r.lower) ? '\u2013' : r.lower ? 'Lower' : 'Higher']);
+                    }
+                    if (option && option.CompatibleValue) {
+                        columns.push(['Compatibility', r => r.value === option.CompatibleValue ? 'Higher' : 'Lower']);
+                    }
+                    const table = el('table', null, 'hwprobe-full');
+                    // The action column keeps one width, with or without a button, so it lines up from one suggestion's table to the next.
+                    const described = description || (option ? option.Description : null) || '';
+                    const heading = el('th', label);
+                    heading.title = described;
+                    // The first column marks the server's own value, as Recommended Settings marks its advice: on, or not in use.
+                    row(table, [el('th', null, 'hwprobe-mark'), heading].concat(columns.map(([name, , kind]) => el('th', name, kind)), [el('th', null, 'hwprobe-action')]));
+                    for (const r of rows) {
+                        const cell = el('td', null, 'hwprobe-action');
+                        if (r.action) {
+                            cell.appendChild(r.action);
+                        }
+                        const marker = el('td', null, 'hwprobe-mark');
+                        const glyph = el('span', r.current ? '\u2705' : '\u2796', 'hwprobe-emoji');
+                        glyph.title = r.current ? 'The server\u2019s setting' : 'Not in use';
+                        marker.appendChild(glyph);
+                        const name = el('td', r.text);
+                        name.title = r.description || described;
+                        const tr = row(table, [marker, name].concat(columns.map(([, value, kind]) => el('td', value(r), kind)), [cell]));
+                        if (r.best) {
+                            [...tr.cells].forEach(td => td.classList.add('hwprobe-best'));
+                            name.title = 'Recommended. ' + name.title;
+                        }
+                    }
+                    // The reason, caveats, and other notes take a last row across the whole table.
+                    const lines = notes.filter(n => n);
+                    if (lines.length) {
+                        const foot = el('td');
+                        foot.colSpan = columns.length + 3;
+                        // The reason leads with its label in bold.
+                        const label = 'Recommendation: ';
+                        lines.forEach(n => {
+                            const line = foot.appendChild(el('div', null, 'secondaryText hwprobe-small'));
+                            if (n.startsWith(label)) {
+                                line.appendChild(el('strong', label.trim()));
+                                line.appendChild(document.createTextNode(' ' + n.slice(label.length)));
+                            } else {
+                                line.textContent = n;
+                            }
+                        });
+                        row(table, [foot]);
+                    }
+                    div.appendChild(table);
+                    return div;
+                }
+
+                // The last suggestions per run, drawn at once on a redraw so the section doesn't vanish and come back while they reload; replaced when the server's differ.
+                const suggestionCache = new Map();
+                // Only the latest fetch draws: an older one finishing late, from before a setting was applied, would put stale suggestions back.
+                let suggestionRequest = 0;
+
                 function renderSuggestions() {
                     const div = el('div');
-                    ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedSuggestions', speedViewing ? { id: speedViewing } : {}), dataType: 'json' }).then(list => {
+                    const key = speedViewing || '';
+                    const draw = list => {
+                        div.replaceChildren();
                         if (!list.length) {
                             return;
                         }
                         const section = fold(div, 'Suggestions', true);
-                        const table = el('table', null, 'hwprobe-full');
                         const configured = encoding && encoding.HardwareAccelerationType;
-                        for (const s of list) {
-                            const text = el('td');
-                            const option = s.Setting ? runOptions.find(o => o.Key === s.Setting) : null;
-                            const label = option ? option.Label : s.Setting;
-                            const percent = s.Gain === null || s.Gain === undefined ? '' : Math.round(Math.abs(s.Gain) * 100) + '%';
-                            let actionButton = null;
-                            let caveat = '';
-                            let title = '';
-                            let reason = '';
-                            const backendName = t => names[t] || t;
-                            if (s.Kind === 'FastestBackend') {
-                                title = 'Hardware acceleration: ' + backendName(s.Type);
-                                // Measured alike, it's suggested when it is more efficient, or as Jellyfin's preferred Intel backend.
-                                const alike = [s.Savings.length ? 'with ' + savingsText(s.Savings) : '', s.Preferred ? 'Jellyfin prefers it on mainstream Intel GPUs' : ''].filter(t => t);
-                                reason = !configured || configured === 'none'
-                                    ? 'Works on this server; a hardware backend draws less power than software for the same work.'
-                                    : alike.length ? 'As fast as ' + backendName(configured) + ' here, ' + alike.join('; ') + '.'
-                                    : 'The fastest hardware backend measured.';
-                                actionButton = idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: s.Type, Device: s.Device }));
-                            } else if (s.Kind === 'FallsBehind') {
-                                title = 'Hardware acceleration: ' + backendName(s.Type);
-                                reason = 'Falls behind real time, so a player would buffer.';
-                            } else if (s.Kind === 'FasterSetting') {
-                                title = label + ': ' + optionValueText(s.Setting, s.Value);
-                                reason = percent + ' faster than ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + (s.LowerQuality ? ', at lower quality.' : '.');
-                                actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }), 'raised');
-                            } else if (s.Kind === 'EfficientSetting') {
-                                title = label + ': ' + optionValueText(s.Setting, s.Value);
-                                reason = 'As fast as ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + ', with ' + savingsText(s.Savings) + (s.LowerQuality ? ', at lower quality.' : '.');
-                                actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }), 'raised');
-                            } else if (s.Kind === 'HigherQuality') {
-                                title = label + ': ' + optionValueText(s.Setting, s.Value);
-                                reason = 'Better quality than ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + '; at most ' + percent + ' slower, still ' + s.Speed.toFixed(1) + '\u00d7 real time.';
-                                actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }), 'raised');
-                            } else if (s.Kind === 'BitrateLimit') {
-                                const mbps = Number(s.Value) / 1e6;
-                                title = (serverLabels[s.Setting] || s.Setting) + ': ' + mbps + ' Mbps';
-                                reason = 'Higher qualities fall behind real time on ' + backendName(s.Type) + '; ' + mbps + ' Mbps keeps up at ' + s.Speed.toFixed(1) + '\u00d7.';
-                                // The server's own limit: the same one is current; a stricter one already keeps streams within it.
-                                s.Current = remoteLimit === Number(s.Value);
-                                if (remoteLimit > 0 && remoteLimit < Number(s.Value)) {
-                                    reason += ' A stricter limit of ' + remoteLimit / 1e6 + ' Mbps is already set.';
-                                } else {
-                                    actionButton = idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }), 'raised');
-                                }
-                                if (serverLabels[s.Setting + 'Caveat']) {
-                                    caveat = serverLabels[s.Setting + 'Caveat'];
-                                }
-                            } else if (s.Kind === 'NoChange') {
-                                title = label + ': ' + optionValueText(s.Setting, s.Value);
-                                reason = 'No other value measured is worth changing to (' + s.Others.map(o => optionValueText(s.Setting, o)).join(', ') + ').';
-                            }
-                            // The server's own value: it confirms the setting, with nothing to apply.
-                            if (s.Current) {
-                                title += ' (' + serverLabels.ServerSettingAfter + ')';
-                                actionButton = null;
-                            }
-                            text.appendChild(el('div', title));
-                            text.appendChild(el('div', reason, 'secondaryText'));
-                            // What a change does to concurrent streams, where they were counted.
-                            if (s.Streams !== null && s.Streams !== undefined && s.OtherStreams !== null && s.OtherStreams !== undefined && s.Streams !== s.OtherStreams) {
-                                text.appendChild(el('div', 'Concurrent streams: ' + s.OtherStreams + ' with ' + s.Others.map(o => optionValueText(s.Setting, o)).join(' or ') + ', ' + s.Streams + ' with ' + optionValueText(s.Setting, s.Value) + '.', 'secondaryText hwprobe-small'));
-                            }
-                            text.appendChild(el('div', s.Outputs.join('; '), 'secondaryText hwprobe-small'));
-                            if (option && option.Caveat || caveat) {
-                                text.appendChild(el('div', caveat || option.Caveat, 'secondaryText hwprobe-small'));
-                            }
-                            if (s.TestVideosOnly) {
-                                text.appendChild(el('div', 'Measured on test videos only, which encode faster than real video; measure a film sample or library video to confirm.', 'secondaryText hwprobe-small'));
-                            }
-                            const cell = el('td');
-                            if (actionButton) {
-                                cell.appendChild(actionButton);
-                            }
-                            row(table, [text, cell]);
+                        const backendName = t => names[t] || t;
+                        const isBitrate = s => !runOptions.some(o => o.Key === s.Setting) && !!serverLabels[s.Setting];
+                        // The server's own Internet streaming limit says which bitrate suggestion is current; the server doesn't know it when drawing them.
+                        for (const s of list.filter(isBitrate)) {
+                            s.Current = remoteLimit === Number(s.Value);
                         }
-                        section.appendChild(table);
-                        section.appendChild(el('div', 'Settings are compared between saved runs that differ in that setting alone. Software is never suggested over a working hardware backend.' + (advice.Headroom ? ' Better quality is suggested only while it keeps ' + advice.Headroom + '\u00d7 real time on real video and at least ' + Math.round((1 - advice.MaxStreamLoss) * 100) + '% of the concurrent streams.' : ''), 'fieldDescription'));
+                        // A stricter Internet streaming limit already set keeps streams within the suggested one, so it isn't offered.
+                        const stricter = s => s.Kind === 'BitrateLimit' && remoteLimit > 0 && remoteLimit < Number(s.Value);
+                        const apply = s => s.Current || stricter(s) || s.Kind === 'NoChange' ? null
+                            : idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }, true), 'raised');
+                        const quality = s => s.Kind === 'HigherQuality' ? false : s.LowerQuality ? true : null;
+                        const settingRow = s => ({ text: optionValueText(s.Setting, s.Value), value: s.Value, speed: s.Speed, streams: s.Streams, capped: s.StreamsCapped, savings: s.Savings, lower: s.LowerQuality, current: s.Current, action: apply(s) });
+                        const testVideos = 'Measured on test videos only, which encode faster than real video; measure a film sample or library video to confirm.';
+                        // Why the tinted row is recommended, the first line of the table's last row: the suggestion's name for it and for what it was compared with.
+                        const reasonFor = (x, name, others) => {
+                            const percent = x.Gain === null || x.Gain === undefined ? '' : Math.round(Math.abs(x.Gain) * 100) + '%';
+                            const versus = others.join(' or ');
+                            const quality = x.LowerQuality ? ', at lower quality.' : '.';
+                            return x.Kind === 'FasterSetting' ? 'Recommendation: ' + name + ' \u2013 ' + percent + ' faster than ' + versus + quality
+                                : x.Kind === 'EfficientSetting' ? 'Recommendation: ' + name + ' \u2013 as fast as ' + versus + ' with ' + savingsText(x.Savings) + quality
+                                : x.Kind === 'HigherQuality' ? 'Recommendation: ' + name + ' \u2013 better quality than ' + versus + ' while still ' + x.Speed.toFixed(2) + '\u00d7 real time on real video.'
+                                : x.Kind === 'Compatible' ? 'Recommendation: ' + name + ' \u2013 avoids the drawback below, at lower quality.'
+                                : x.Kind === 'BitrateLimit' ? 'Recommendation: ' + name + ' \u2013 the highest H.264 quality that keeps real time on ' + backendName(x.Type) + '.'
+                                : x.Kind === 'NoChange' ? 'Recommendation: keep ' + name + ' \u2013 no other value measured is worth changing to.'
+                                : '';
+                        };
+                        const paired = new Set(list.map(s => suggestionCounterpart(list, s)).filter(o => o));
+                        // Settings that together pick one thing: one table for the group, a row per choice the runs made, in the catalog's order.
+                        const groupTable = (key, members) => {
+                            const group = settingGroups.find(g => g.Key === key);
+                            // A row is the server's when all the group's settings match it, not just the one a suggestion is about; the catalog's server field names each in EncodingOptions.
+                            const backend = encoding ? encoding.HardwareAccelerationType : null;
+                            const rowOf = values => (group.Rows.find(r => (!r.Backends || r.Backends.includes(backend)) && Object.entries(r.When || {}).every(([k, v]) => values[k] === v)) || {}).Label;
+                            const server = Object.fromEntries(group.Settings.map(k => {
+                                const option = runOptions.find(o => o.Key === k);
+                                return [k, encoding && option && option.Server ? String(encoding[option.Server]) : null];
+                            }));
+                            const serverRow = rowOf(server);
+                            const rows = new Map();
+                            const add = r => {
+                                if (!rows.has(r.text)) {
+                                    rows.set(r.text, r);
+                                }
+                            };
+                            for (const m of members) {
+                                add({ text: m.Row, value: m.Value, speed: m.Speed, streams: m.Streams, capped: m.StreamsCapped, savings: m.Savings, lower: null, current: false, action: null });
+                                for (const c of m.Compared) {
+                                    add({ text: c.Row, value: c.Value, speed: c.Speed, streams: c.Streams, capped: c.StreamsCapped, savings: [], lower: null, current: false, action: null });
+                                }
+                            }
+                            // Apply on a row sets every setting the choice needs; a row without conditions can't be applied.
+                            rows.forEach(r => {
+                                r.current = r.text === serverRow;
+                                const choice = group.Rows.find(x => x.Label === r.text);
+                                r.action = !r.current && choice && choice.When
+                                    ? idleAction('Apply', () => post('HwProbe/ApplyMeasuredRow', { Group: key, Row: r.text, Run: speedViewing }, true), 'raised')
+                                    : null;
+                            });
+                            const describe = r => {
+                                const choice = group.Rows.find(x => x.Label === r.text);
+                                const option = choice && choice.Describes ? runOptions.find(o => o.Key === choice.Describes) : null;
+                                return option ? option.Description : null;
+                            };
+                            rows.forEach(r => { r.description = describe(r); });
+                            // Recommended: a better-quality choice no other better-quality suggestion was preferred over, otherwise a faster or more efficient one likewise.
+                            const unbeaten = kinds => {
+                                const picked = members.filter(m => kinds.includes(m.Kind));
+                                const beaten = new Set(picked.flatMap(m => m.Compared.map(c => c.Row)));
+                                return picked.map(m => m.Row).filter(r => !beaten.has(r));
+                            };
+                            const best = unbeaten(['HigherQuality'])[0] || unbeaten(['FasterSetting', 'EfficientSetting'])[0];
+                            if (rows.has(best)) {
+                                rows.get(best).best = true;
+                            }
+                            const why = members.find(m => m.Row === best && m.Kind === 'HigherQuality') || members.find(m => m.Row === best);
+                            const order = r => group.Rows.findIndex(x => x.Label === r.text);
+                            return suggestionTable(group.Label, [...rows.values()].sort((a, b) => order(a) - order(b)), null, [
+                                why ? reasonFor(why, why.Row, why.Compared.map(c => c.Row)) : '',
+                                group.Note,
+                                ...group.Rows.filter(x => x.Caveat && rows.has(x.Label)).map(x => x.Caveat),
+                                members.some(m => m.TestVideosOnly) ? testVideos : '',
+                            ]);
+                        };
+                        const drawnGroups = new Set();
+                        for (const s of list) {
+                            // A group's table takes in every suggestion for its settings, pairs included.
+                            if (s.Group && settingGroups.some(g => g.Key === s.Group)) {
+                                if (!drawnGroups.has(s.Group)) {
+                                    drawnGroups.add(s.Group);
+                                    section.appendChild(groupTable(s.Group, list.filter(x => x.Group === s.Group)));
+                                }
+                                continue;
+                            }
+                            if (paired.has(s)) {
+                                continue;
+                            }
+                            const option = s.Setting ? runOptions.find(o => o.Key === s.Setting) : null;
+                            const label = option ? option.Label : serverLabels[s.Setting] || s.Setting;
+                            const caveat = option ? option.Caveat : s.Setting ? serverLabels[s.Setting + 'Caveat'] : null;
+                            const partner = suggestionCounterpart(list, s);
+                            if (partner) {
+                                const sides = [s, partner];
+                                const rows = sides.map(settingRow);
+                                const better = sides.findIndex(x => x.Kind === 'HigherQuality');
+                                const bestSide = better >= 0 ? better : sides.findIndex(x => x.Kind !== 'Compatible');
+                                if (bestSide >= 0) {
+                                    rows[bestSide].best = true;
+                                }
+                                // Quality is shown only where the two differ in it.
+                                if (rows[0].lower === rows[1].lower) {
+                                    rows.forEach(r => { r.lower = null; });
+                                }
+                                const chosen = sides[bestSide];
+                                section.appendChild(suggestionTable(label, rows, option, [
+                                    chosen ? reasonFor(chosen, optionValueText(chosen.Setting, chosen.Value), chosen.Others.map(o => optionValueText(chosen.Setting, o))) : '',
+                                    sides.some(stricter) ? 'A stricter limit of ' + remoteLimit / 1e6 + ' Mbps is already set.' : '',
+                                    caveat,
+                                    sides.some(x => x.TestVideosOnly) ? testVideos : '',
+                                ], serverLabels[s.Setting + 'Description']));
+                                continue;
+                            }
+                            if (s.Kind === 'FastestBackend' || s.Kind === 'FallsBehind') {
+                                const rows = [{ text: backendName(s.Type), value: s.Type, speed: s.Speed, streams: s.Streams, capped: s.StreamsCapped, savings: s.Savings, lower: null, current: s.Kind === 'FallsBehind', action: null }];
+                                let reason = 'Falls behind real time, so a player would buffer.';
+                                if (s.Kind === 'FastestBackend') {
+                                    rows[0].best = true;
+                                    rows[0].action = idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: s.Type, Device: s.Device }, true));
+                                    rows.push(...s.Compared.map(c => ({ text: backendName(c.Value), value: c.Value, speed: c.Speed, streams: c.Streams, capped: c.StreamsCapped, savings: [], lower: null, current: true, action: null })));
+                                    // Measured alike, it's suggested when it is more efficient, or as Jellyfin's preferred Intel backend.
+                                    const alike = [s.Savings.length ? 'with ' + savingsText(s.Savings) : '', s.Preferred ? 'Jellyfin prefers it on mainstream Intel GPUs' : ''].filter(t => t);
+                                    reason = 'Recommendation: ' + backendName(s.Type) + (!configured || configured === 'none'
+                                        ? ' \u2013 works on this server; a hardware backend draws less power than software for the same work.'
+                                        : alike.length ? ' \u2013 as fast as ' + backendName(configured) + ' here, ' + alike.join('; ') + '.'
+                                        : ' \u2013 the fastest hardware backend measured.');
+                                }
+                                section.appendChild(suggestionTable('Hardware acceleration', rows, null, [reason, s.TestVideosOnly ? testVideos : '']));
+                                continue;
+                            }
+                            // A setting: the suggested value, then each value it was compared with; the server's value is one of them unless the suggestion is.
+                            const main = settingRow(s);
+                            main.lower = quality(s);
+                            main.best = true;
+                            const rows = [main].concat(s.Compared.map(c => ({
+                                text: optionValueText(s.Setting, c.Value),
+                                value: c.Value,
+                                speed: c.Speed,
+                                streams: c.Streams,
+                                capped: c.StreamsCapped,
+                                savings: [],
+                                lower: main.lower === null ? null : !main.lower,
+                                current: isBitrate(s) ? remoteLimit === Number(c.Value) : !s.Current,
+                                action: null,
+                            })));
+                            section.appendChild(suggestionTable(label, rows, option, [
+                                reasonFor(s, optionValueText(s.Setting, s.Value), s.Others.map(o => optionValueText(s.Setting, o))),
+                                stricter(s) ? 'A stricter limit of ' + remoteLimit / 1e6 + ' Mbps is already set.' : '',
+                                caveat,
+                                s.TestVideosOnly ? testVideos : '',
+                            ], serverLabels[s.Setting + 'Description']));
+                        }
+                        section.appendChild(el('div', 'Settings are compared between saved runs that differ in that setting alone. Software is never recommended over a working hardware backend.' + (advice.Headroom ? ' Better quality is recommended only while it keeps ' + advice.Headroom + '\u00d7 real time on real video and at least ' + Math.round((1 - advice.MaxStreamLoss) * 100) + '% of the concurrent streams.' : ''), 'fieldDescription'));
+                    };
+                    const cached = suggestionCache.get(key);
+                    if (cached) {
+                        draw(cached.list);
+                    }
+                    const request = ++suggestionRequest;
+                    ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedSuggestions', speedViewing ? { id: speedViewing } : {}), dataType: 'json' }).then(list => {
+                        if (request !== suggestionRequest) {
+                            return;
+                        }
+                        const json = JSON.stringify(list);
+                        if (!cached || cached.json !== json) {
+                            suggestionCache.set(key, { json, list });
+                            draw(list);
+                        }
                     }, () => {});
                     return div;
                 }
@@ -1942,10 +2164,10 @@
 
                 // Each resource the view can show: whether a result has it, its sort value, and its text.
                 const resourceKinds = {
-                    Cpu: { has: r => r.cpuSeconds !== null && r.cpuSeconds !== undefined, value: r => r.cpuSeconds / r.seconds, text: v => v.toFixed(1) + ' cores' },
-                    Memory: { has: r => !!r.peakMemoryBytes, value: r => r.peakMemoryBytes, text: sizeText },
+                    Cpu: { has: r => r.cpuSeconds !== null && r.cpuSeconds !== undefined, value: r => r.cpuSeconds / r.seconds, text: v => Math.round(v * 100) + '%' },
+                    Memory: { has: r => !!r.peakMemoryBytes, value: r => r.peakMemoryBytes, text: v => sizeText(v, 2) },
                     Gpu: { has: r => gpuShares(r).length > 0, value: r => gpuShares(r)[0][1], text: (v, r) => gpuShares(r)[0][0] + ' ' + Math.round(Math.min(1, v) * 100) + '%' },
-                    GpuMemory: { has: r => !!r.peakGpuMemoryBytes, value: r => r.peakGpuMemoryBytes, text: sizeText },
+                    GpuMemory: { has: r => !!r.peakGpuMemoryBytes, value: r => r.peakGpuMemoryBytes, text: v => sizeText(v, 2) },
                     Power: { has: r => !!r.joules && Object.keys(r.joules).length > 0, value: r => totalWatts(r), text: v => Math.round(v) + ' W' },
                 };
 
@@ -1991,13 +2213,14 @@
                     }
                     const facts = [];
                     if (r.cpuSeconds !== null && r.cpuSeconds !== undefined) {
-                        facts.push((r.cpuSeconds / r.seconds).toFixed(1) + ' CPU cores in use on average');
+                        // 100% per core, as top and Activity Monitor count it.
+                        facts.push(Math.round(r.cpuSeconds / r.seconds * 100) + '% CPU on average (100% per core)');
                     }
                     if (r.peakMemoryBytes) {
-                        facts.push(sizeText(r.peakMemoryBytes) + ' peak memory');
+                        facts.push(sizeText(r.peakMemoryBytes, 2) + ' peak memory');
                     }
                     if (r.peakGpuMemoryBytes) {
-                        facts.push(sizeText(r.peakGpuMemoryBytes) + ' peak GPU memory');
+                        facts.push(sizeText(r.peakGpuMemoryBytes, 2) + ' peak GPU memory');
                     }
                     for (const [name, share] of gpuShares(r)) {
                         facts.push('GPU ' + name + ' busy ' + Math.round(Math.min(1, share) * 100) + '% of the time');
@@ -2021,6 +2244,7 @@
                 // Rows grouped by video, one per output; one column per backend; comparisons fold under their row.
                 function speedMatrix(r) {
                     const div = el('div');
+                    const section = fold(div, 'Results', true);
                     const keyOf = x => x.type + ' ' + x.device;
                     const backends = [];
                     for (const x of r.results) {
@@ -2032,10 +2256,10 @@
                     const columnName = b => (names[b.type] || b.type) + (b.type !== 'none' && sameType(b) ? ' ' + b.device : '');
 
                     if (!speedHistory.length && !speedLive) {
-                        div.appendChild(el('p', 'Measured ' + new Date(r.generatedUtc).toLocaleString() + ', ' + methodName(r.method).toLowerCase() + ' accuracy', 'secondaryText'));
+                        section.appendChild(el('p', 'Measured ' + new Date(r.generatedUtc).toLocaleString() + ', ' + methodName(r.method).toLowerCase() + ' accuracy', 'secondaryText'));
                     }
                     if (r.cancelled) {
-                        div.appendChild(el('div', (r.cancelledForTranscode ? 'Cancelled when the server started transcoding' : 'Cancelled') + ': these are the measurements finished before then.', 'infoBanner'));
+                        section.appendChild(el('div', (r.cancelledForTranscode ? 'Cancelled when the server started transcoding' : 'Cancelled') + ': these are the measurements finished before then.', 'infoBanner'));
                     }
 
                     // A note shared by cells becomes one numbered footnote.
@@ -2167,7 +2391,7 @@
                         const best = bestOf(base);
                         const fastest = fastestOf(r.results.filter(x => x.test === key));
                         const sized = base.find(x => x && x.outputSize);
-                        row(table, [input, el('td', first.output || first.label || key), el('td', sized ? sized.outputSize : base.some(x => x && x.pending) ? '\u2026' : '', 'secondaryText')].concat(base.flatMap(x => cellsFor(x, best, null, fastest))));
+                        row(table, [input, el('td', first.output || first.label || key), el('td', sized ? sized.outputSize : base.some(x => x && x.pending) ? '\u2026' : '\u2013', 'secondaryText')].concat(base.flatMap(x => cellsFor(x, best, null, fastest))));
 
                         const variants = [...new Set(r.results.filter(x => x.test === key && x.variant).map(x => x.variant))];
                         if (!variants.length) {
@@ -2200,13 +2424,16 @@
                         });
                         show();
                     }
+                    if (per > 1 || resources) {
+                        divideGroups(table, 3, per);
+                    }
                     // Old reports' comparison rows belong under their row, so those tables keep their order.
                     if (!hasVariants) {
                         sortable(table, 'results-' + per);
                     }
                     const scroll = el('div', null, 'hwprobe-scroll');
                     scroll.appendChild(table);
-                    div.appendChild(scroll);
+                    section.appendChild(scroll);
                     const views = el('div', null, 'hwprobe-row hwprobe-start hwprobe-views');
                     views.setAttribute('role', 'radiogroup');
                     views.setAttribute('aria-label', 'View');
@@ -2226,13 +2453,13 @@
                         label.appendChild(document.createTextNode(' ' + text));
                         views.appendChild(label);
                     }
-                    div.appendChild(views);
+                    section.appendChild(views);
 
                     footnotes.forEach((note, i) => {
                         const line = el('div', null, 'fieldDescription');
                         line.appendChild(el('sup', String(i + 1)));
                         line.appendChild(document.createTextNode(' ' + note));
-                        div.appendChild(line);
+                        section.appendChild(line);
                     });
 
                     // The inputs a run used, listed as on Performance Tests; a sample no longer in the catalog keeps the credit it was saved with.
@@ -2251,10 +2478,10 @@
                         }
                     }
                     if (samples.childElementCount) {
-                        fold(div, 'Inputs', false, 'h3').appendChild(samples);
+                        fold(section, 'Inputs', false, 'h3').appendChild(samples);
                     }
                     if (r.settings) {
-                        const used = fold(div, 'Settings used', false, 'h3');
+                        const used = fold(section, 'Settings used', false, 'h3');
                         const table = el('table', null, 'hwprobe-full');
                         row(table, [el('th', 'Setting'), el('th', 'Value')]);
                         for (const [label, value] of settingsRows(r.settings)) {
@@ -2360,7 +2587,8 @@
                     return div;
                 }
 
-                function loadReport() {
+                // keepView: stay on the run being viewed, as after applying one of its suggestions, rather than going back to the latest.
+                function loadReport(keepView) {
                     const config = ApiClient.getNamedConfiguration('encoding').then(c => { encoding = c; }, () => { encoding = null; });
                     const server = ApiClient.getServerConfiguration().then(c => { trickplay = c.TrickplayOptions || null; remoteLimit = c.RemoteClientBitrateLimit; }, () => { trickplay = null; remoteLimit = null; });
                     const data = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Report'), dataType: 'json' })
@@ -2370,8 +2598,11 @@
                     const pending = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/RestartRequired'), dataType: 'json' })
                         .then(r => { restartRequired = r === true; }, () => { restartRequired = false; });
                     const catalog = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Catalog'), dataType: 'json' }).then(useCatalog, () => {});
-                    const speed = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Speed'), dataType: 'json' })
+                    const latest = () => ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Speed'), dataType: 'json' })
                         .then(r => { speedReport = r; speedViewing = null; }, () => { speedReport = null; speedViewing = null; });
+                    const speed = keepView === true && speedViewing
+                        ? ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedHistory/' + speedViewing), dataType: 'json' }).then(r => { speedReport = r; }, latest)
+                        : latest();
                     const runs = ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/SpeedHistory'), dataType: 'json' })
                         .then(h => { speedHistory = h || []; }, () => { speedHistory = []; });
                     return Promise.all([config, server, data, changes, pending, catalog, speed, runs]).then(() => { renderChange(); render(); });

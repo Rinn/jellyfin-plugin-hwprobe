@@ -690,6 +690,47 @@ public sealed partial class ProbeService : IDisposable
     /// <returns>False for direct play and a remux (both streams copied); true otherwise.</returns>
     internal static bool IsTranscoding(TranscodingInfo? info) => info is not null && (!info.IsVideoDirect || !info.IsAudioDirect);
 
+    /// <summary>Reads the speed run's starting settings from the server's encoding options.</summary>
+    /// <param name="options">The server's encoding options.</param>
+    /// <returns>The settings.</returns>
+    internal static SpeedSettings SettingsFrom(EncodingOptions options) => new()
+    {
+        EncoderPreset = options.EncoderPreset == EncoderPreset.auto ? null : options.EncoderPreset.ToString(),
+        AudioVbr = options.EnableAudioVbr,
+        H264Crf = options.H264Crf,
+        H265Crf = options.H265Crf,
+        LowPowerH264 = options.EnableIntelLowPowerH264HwEncoder,
+        LowPowerHevc = options.EnableIntelLowPowerHevcHwEncoder,
+        VppTonemap = options.EnableVppTonemapping,
+        PreferNativeDecoder = options.PreferSystemNativeHwDecoder,
+        EnhancedNvdec = options.EnableEnhancedNvdecDecoder,
+        DoubleRate = options.DeinterlaceDoubleRate,
+        Bwdif = options.DeinterlaceMethod == DeinterlaceMethod.bwdif,
+        Tonemap = options.EnableTonemapping,
+        EncodingThreadCount = options.EncodingThreadCount,
+        VideoToolboxTonemap = options.EnableVideoToolboxTonemapping,
+        TonemapAlgorithm = options.TonemappingAlgorithm.ToString(),
+        TonemapMode = options.TonemappingMode.ToString(),
+        TonemapRange = options.TonemappingRange.ToString(),
+        TonemapDesat = options.TonemappingDesat,
+        TonemapPeak = options.TonemappingPeak,
+        TonemapParam = options.TonemappingParam,
+        DownmixAlgorithm = options.DownMixStereoAlgorithm.ToString(),
+        DownmixBoost = options.DownMixAudioBoost,
+    };
+
+    /// <summary>Reads the configured backend and its device.</summary>
+    /// <param name="options">The server's encoding options.</param>
+    /// <returns>The backend; the device is empty for backends that don't take one.</returns>
+    internal static (HwType Type, string Device) BackendFrom(EncodingOptions options) => options.HardwareAccelerationType switch
+    {
+        HardwareAccelerationType.vaapi => (HwType.vaapi, options.VaapiDevice ?? string.Empty),
+        HardwareAccelerationType.qsv => (HwType.qsv, options.QsvDevice ?? string.Empty),
+
+        // HwType mirrors HardwareAccelerationType value-for-value.
+        var other => ((HwType)(int)other, string.Empty),
+    };
+
     /// <summary>Runs a delete, treating a file in use or not permitted as left in place.</summary>
     /// <param name="delete">The delete.</param>
     /// <returns>False when it failed.</returns>
@@ -743,47 +784,6 @@ public sealed partial class ProbeService : IDisposable
             MeasureResources = request.MeasureResources,
         };
     }
-
-    /// <summary>Reads the speed run's starting settings from the server's encoding options.</summary>
-    /// <param name="options">The server's encoding options.</param>
-    /// <returns>The settings.</returns>
-    private static SpeedSettings SettingsFrom(EncodingOptions options) => new()
-    {
-        EncoderPreset = options.EncoderPreset == EncoderPreset.auto ? null : options.EncoderPreset.ToString(),
-        AudioVbr = options.EnableAudioVbr,
-        H264Crf = options.H264Crf,
-        H265Crf = options.H265Crf,
-        LowPowerH264 = options.EnableIntelLowPowerH264HwEncoder,
-        LowPowerHevc = options.EnableIntelLowPowerHevcHwEncoder,
-        VppTonemap = options.EnableVppTonemapping,
-        PreferNativeDecoder = options.PreferSystemNativeHwDecoder,
-        EnhancedNvdec = options.EnableEnhancedNvdecDecoder,
-        DoubleRate = options.DeinterlaceDoubleRate,
-        Bwdif = options.DeinterlaceMethod == DeinterlaceMethod.bwdif,
-        Tonemap = options.EnableTonemapping,
-        EncodingThreadCount = options.EncodingThreadCount,
-        VideoToolboxTonemap = options.EnableVideoToolboxTonemapping,
-        TonemapAlgorithm = options.TonemappingAlgorithm.ToString(),
-        TonemapMode = options.TonemappingMode.ToString(),
-        TonemapRange = options.TonemappingRange.ToString(),
-        TonemapDesat = options.TonemappingDesat,
-        TonemapPeak = options.TonemappingPeak,
-        TonemapParam = options.TonemappingParam,
-        DownmixAlgorithm = options.DownMixStereoAlgorithm.ToString(),
-        DownmixBoost = options.DownMixAudioBoost,
-    };
-
-    /// <summary>Reads the configured backend and its device.</summary>
-    /// <param name="options">The server's encoding options.</param>
-    /// <returns>The backend; the device is empty for backends that don't take one.</returns>
-    private static (HwType Type, string Device) BackendFrom(EncodingOptions options) => options.HardwareAccelerationType switch
-    {
-        HardwareAccelerationType.vaapi => (HwType.vaapi, options.VaapiDevice ?? string.Empty),
-        HardwareAccelerationType.qsv => (HwType.qsv, options.QsvDevice ?? string.Empty),
-
-        // HwType mirrors HardwareAccelerationType value-for-value.
-        var other => ((HwType)(int)other, string.Empty),
-    };
 
     /// <summary>Matches a history ID: the UTC time a run finished.</summary>
     /// <returns>The pattern.</returns>
@@ -991,8 +991,15 @@ public sealed partial class ProbeService : IDisposable
     /// <returns>A task that completes when it's saved.</returns>
     private async Task SaveSpeedHistoryAsync(SpeedReport report)
     {
-        var id = report.GeneratedUtc.UtcDateTime.ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
-        await SpeedReportStore.WriteAsync(report, Path.Combine(SpeedHistoryDirectory, id + ".json"), CancellationToken.None);
+        // Names are to the second, and suite steps that reuse saved measurements finish several a second; a taken name moves on a second, so each run keeps its file and the names stay in order.
+        string PathAt(DateTime time) => Path.Combine(SpeedHistoryDirectory, time.ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture) + ".json");
+        var at = report.GeneratedUtc.UtcDateTime;
+        while (File.Exists(PathAt(at)))
+        {
+            at = at.AddSeconds(1);
+        }
+
+        await SpeedReportStore.WriteAsync(report, PathAt(at), CancellationToken.None);
         foreach (var old in Directory.EnumerateFiles(SpeedHistoryDirectory, "*.json").Order(StringComparer.Ordinal).Reverse().Skip(SpeedHistoryLimit))
         {
             File.Delete(old);

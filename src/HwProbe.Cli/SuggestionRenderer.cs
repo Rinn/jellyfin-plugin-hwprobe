@@ -5,7 +5,7 @@ using Jellyfin.Plugin.HwProbe.Core.Speed;
 
 namespace Jellyfin.Plugin.HwProbe.Cli;
 
-/// <summary>Renders what a suite's runs suggest, one line each, as the page's Suggestions list them.</summary>
+/// <summary>Renders what a suite's runs recommend, one line each, as the page's Suggestions list them.</summary>
 internal static class SuggestionRenderer
 {
     /// <summary>Renders the suggestions.</summary>
@@ -19,7 +19,7 @@ internal static class SuggestionRenderer
             return string.Empty;
         }
 
-        var text = new StringBuilder("\nsuggest\n");
+        var text = new StringBuilder("\nrecommend\n");
         foreach (var s in suggestions)
         {
             var label = s.Setting is null ? null : Catalog.Default.Options.FirstOrDefault(o => o.Key == s.Setting)?.Label ?? Catalog.Default.Labels.GetValueOrDefault(s.Setting) ?? s.Setting;
@@ -34,11 +34,13 @@ internal static class SuggestionRenderer
                 SpeedSuggestionKind.FasterSetting => string.Create(CultureInfo.InvariantCulture, $"{label}: {value}{current}, {Math.Abs(s.Gain ?? 0):0%} faster than {others}{(s.LowerQuality ? ", at lower quality" : string.Empty)}"),
                 SpeedSuggestionKind.EfficientSetting => $"{label}: {value}{current}, as fast as {others} with {savings}{(s.LowerQuality ? ", at lower quality" : string.Empty)}",
                 SpeedSuggestionKind.HigherQuality => string.Create(CultureInfo.InvariantCulture, $"{label}: {value}{current}, better quality than {others}, still {s.Speed:0.0}x real time"),
+                SpeedSuggestionKind.Compatible when s.Setting == SpeedAdvisor.BitrateLimitKey => string.Create(CultureInfo.InvariantCulture, $"{label}: no limit, the highest quality, slowest {s.Speed:0.0}x real time"),
+                SpeedSuggestionKind.Compatible => string.Create(CultureInfo.InvariantCulture, $"{label}: {value}{current}, more compatible than {others}, at lower quality, {s.Speed:0.0}x real time"),
                 SpeedSuggestionKind.BitrateLimit => string.Create(CultureInfo.InvariantCulture, $"{label}: {int.Parse(s.Value!, CultureInfo.InvariantCulture) / 1e6:0.#} Mbps, the highest H.264 quality that keeps real time"),
                 SpeedSuggestionKind.NoChange => $"{label}: {value}{current}, nothing compared is worth changing to ({others})",
                 _ => s.Kind.ToString(),
             };
-            var streams = s.Streams is { } mine && s.OtherStreams is { } theirs && mine != theirs ? string.Create(CultureInfo.InvariantCulture, $"; streams {theirs} -> {mine}") : string.Empty;
+            var streams = s.Streams is { } mine && s.OtherStreams is { } theirs && mine != theirs ? string.Create(CultureInfo.InvariantCulture, $"; streams {theirs}{(s.OtherStreamsCapped ? "+" : string.Empty)} -> {mine}{(s.StreamsCapped ? "+" : string.Empty)}") : string.Empty;
             text.Append("  ").Append(line).Append(streams).Append('\n');
         }
 

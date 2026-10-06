@@ -82,7 +82,7 @@ public sealed class SpeedAdvisorTests
         Assert.Equal(["Cpu", "Memory"], efficient.Savings.Select(x => x.Resource));
     }
 
-    /// <summary>VBR audio is suggested as the better-quality value when it still keeps up.</summary>
+    /// <summary>VBR audio is suggested as the better-quality value when it still keeps up, beside VBR off, which avoids its caveat.</summary>
     [Fact]
     public void SuggestsVbrAudio()
     {
@@ -90,8 +90,29 @@ public sealed class SpeedAdvisorTests
         var off = Run(new SpeedSettings(), Result(HwType.none, Film, 430) with { Command = "cbr" });
         var on = Run(new SpeedSettings { AudioVbr = true }, Result(HwType.none, Film, 425) with { Command = "vbr" });
 
-        var quality = Assert.Single(SpeedAdvisor.Advise(on, [off, on], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.HigherQuality);
+        var advice = SpeedAdvisor.Advise(on, [off, on], HwType.none, string.Empty, new SpeedSettings());
+
+        var quality = Assert.Single(advice, s => s.Kind == SpeedSuggestionKind.HigherQuality);
         Assert.Equal(("AudioVbr", "true"), (quality.Setting, quality.Value));
+        var compatible = Assert.Single(advice, s => s.Kind == SpeedSuggestionKind.Compatible);
+        Assert.Equal(("AudioVbr", "false", true), (compatible.Setting, compatible.Value, compatible.Current));
+    }
+
+    /// <summary>VBR audio that is current and more efficient still comes with VBR off, which avoids its caveat.</summary>
+    [Fact]
+    public void OffersVbrOffBesideEfficientVbr()
+    {
+        const string Film = "live-action|h264-8mbps";
+        static SpeedResult Used(SpeedResult r, double cpuSeconds) => r with { Resources = new Core.Resources.ResourceUsage(10, cpuSeconds, 400_000_000) };
+        var off = Run(new SpeedSettings(), Used(Result(HwType.none, Film, 430), 10) with { Command = "cbr" });
+        var on = Run(new SpeedSettings { AudioVbr = true }, Used(Result(HwType.none, Film, 430), 10 * (1 - (_advice.ResourceMargin * 2))) with { Command = "vbr" });
+
+        var advice = SpeedAdvisor.Advise(on, [off, on], HwType.none, string.Empty, new SpeedSettings { AudioVbr = true });
+
+        var efficient = Assert.Single(advice, s => s.Kind == SpeedSuggestionKind.EfficientSetting);
+        Assert.Equal(("true", true), (efficient.Value, efficient.Current));
+        var compatible = Assert.Single(advice, s => s.Kind == SpeedSuggestionKind.Compatible);
+        Assert.Equal(("false", false, efficient.Speed), (compatible.Value, compatible.Current, compatible.Speed));
     }
 
     /// <summary>A server value that wins is reported as current, and a better-quality value that costs many concurrent streams isn't suggested.</summary>
@@ -99,7 +120,7 @@ public sealed class SpeedAdvisorTests
     public void ReportsTheCurrentValueAndGuardsStreams()
     {
         const string Film = "live-action|h264-8mbps";
-        var lostStreams = (int)(12 * (1 - (_advice.MaxStreamLoss * 2)));
+        var lostStreams = (int)(12 * (1 - (_advice.MaxStreamLoss * 1.5)));
         var fast = Run(new SpeedSettings { EncoderPreset = "fast" }, Result(HwType.none, Film, 150) with { Command = "fast", Streams = 12 });
         var medium = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.none, Film, 100) with { Command = "medium", Streams = lostStreams });
 
@@ -122,7 +143,65 @@ public sealed class SpeedAdvisorTests
         Assert.Equal(("VppTonemap", "false"), (faster.Setting, faster.Value));
     }
 
-    /// <summary>When higher H.264 qualities fall behind, the highest that keeps up is suggested as the Internet streaming bitrate limit.</summary>
+    /// <summary>The Intel low power suite switches both codecs at once, and each is still compared on its own codec's outputs.</summary>
+    [Fact]
+    public void ComparesLowPowerPerCodec()
+    {
+        const string H264 = "drama|h264-8mbps";
+        const string Hevc = "drama|hevc-8mbps";
+        var off = Run(new SpeedSettings { QsvLowPowerH264 = false, QsvLowPowerHevc = false }, Result(HwType.qsv, H264, 100) with { Command = "h264" }, Result(HwType.qsv, Hevc, 100) with { Command = "hevc" });
+        var on = Run(new SpeedSettings { QsvLowPowerH264 = true, QsvLowPowerHevc = true }, Result(HwType.qsv, H264, 150) with { Command = "h264-lp" }, Result(HwType.qsv, Hevc, 150) with { Command = "hevc-lp" });
+
+        var advice = SpeedAdvisor.Advise(on, [off, on], HwType.qsv, "/dev/dri/renderD128", new SpeedSettings { QsvLowPowerH264 = false, QsvLowPowerHevc = false });
+
+        Assert.Equal(["drama|h264-8mbps"], Assert.Single(advice, s => s.Setting == "QsvLowPowerH264" && s.Value == "true").Outputs);
+        Assert.Equal(["drama|hevc-8mbps"], Assert.Single(advice, s => s.Setting == "QsvLowPowerHevc" && s.Value == "true").Outputs);
+    }
+
+    /// <summary>Switching to a group's choice sets its conditions and turns off a method that would still take precedence.</summary>
+    [Fact]
+    public void WorksOutTheChangesForAGroupChoice()
+    {
+        var server = new SpeedSettings { Tonemap = true, VideoToolboxTonemap = true };
+
+        Assert.Equal([("VideoToolboxTonemap", "false")], SpeedAdvisor.GroupRowChanges("tonemap", "General", server, HwType.videotoolbox));
+        Assert.Equal([("Tonemap", "false"), ("VideoToolboxTonemap", "false")], SpeedAdvisor.GroupRowChanges("tonemap", "Off", server, HwType.videotoolbox));
+        Assert.Null(SpeedAdvisor.GroupRowChanges("tonemap", "VPP", server, HwType.videotoolbox));
+        Assert.Equal([("DeinterlaceMethod", "yadif"), ("DoubleRate", "false")], SpeedAdvisor.GroupRowChanges("deinterlace", "Yet Another DeInterlacing Filter (YADIF), single rate", new SpeedSettings { Bwdif = true, DoubleRate = true }, HwType.none));
+    }
+
+    /// <summary>Each deinterlacing choice keeps its own row: double rate measured with YADIF and with BWDIF aren't merged into one.</summary>
+    [Fact]
+    public void KeepsEveryDeinterlacingChoice()
+    {
+        const string Film = "sports-576i|h264-8mbps";
+        SpeedReport Step(bool bwdif, bool doubled, double fps) => Run(new SpeedSettings { Bwdif = bwdif, DoubleRate = doubled }, Result(HwType.none, Film, fps) with { Command = $"{bwdif}{doubled}", FrameRate = doubled ? 50 : 25 });
+        SpeedReport[] runs = [Step(false, false, 400), Step(false, true, 500), Step(true, false, 300), Step(true, true, 400)];
+
+        var advice = SpeedAdvisor.Advise(runs[3], runs, HwType.none, string.Empty, new SpeedSettings { Bwdif = true, DoubleRate = true });
+
+        var rows = advice.Where(s => s.Group == "deinterlace").SelectMany(s => s.Compared.Select(c => c.Row).Append(s.Row)).Distinct().ToList();
+        Assert.Contains("Yet Another DeInterlacing Filter (YADIF), single rate", rows);
+        Assert.Equal(4, rows.Count);
+    }
+
+    /// <summary>Tone-mapping suggestions name the method each side's runs used, from the catalog's tone mapping group, so the page shows them as one table.</summary>
+    [Fact]
+    public void NamesTheToneMappingMethod()
+    {
+        const string Film = "live-action|h264-8mbps";
+        var general = Run(new SpeedSettings { Tonemap = true }, Result(HwType.vaapi, Film, 150) with { Command = "general" });
+        var vpp = Run(new SpeedSettings { Tonemap = true, VppTonemap = true }, Result(HwType.vaapi, Film, 100) with { Command = "vpp" });
+        var off = Run(new SpeedSettings { Tonemap = false }, Result(HwType.vaapi, Film, 100) with { Command = "off" });
+
+        var advice = SpeedAdvisor.Advise(general, [general, vpp, off], HwType.vaapi, "/dev/dri/renderD128", new SpeedSettings { Tonemap = true });
+
+        var method = Assert.Single(advice, s => s.Setting == "VppTonemap");
+        Assert.Equal(("tonemap", "General", "VPP"), (method.Group, method.Row, Assert.Single(method.Compared).Row));
+        Assert.Equal("Off", Assert.Single(Assert.Single(advice, s => s.Setting == "Tonemap").Compared).Row);
+    }
+
+    /// <summary>When higher H.264 qualities fall behind, the highest that keeps up is suggested as the Internet streaming bitrate limit, beside no limit at the slowest speed.</summary>
     [Fact]
     public void SuggestsABitrateLimit()
     {
@@ -130,7 +209,9 @@ public sealed class SpeedAdvisorTests
         var fine = Run(new SpeedSettings(), Result(HwType.none, "drama|h264-40mbps", 30), Result(HwType.none, "drama|h264-8mbps", 60));
 
         var limit = Assert.Single(SpeedAdvisor.Advise(run, [run], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.BitrateLimit);
-        Assert.Equal((SpeedAdvisor.BitrateLimitKey, "20000000"), (limit.Setting, limit.Value));
+        Assert.Equal((SpeedAdvisor.BitrateLimitKey, "20000000", true), (limit.Setting, limit.Value, limit.LowerQuality));
+        var none = Assert.Single(SpeedAdvisor.Advise(run, [run], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.Compatible);
+        Assert.Equal((SpeedAdvisor.BitrateLimitKey, "0", false, 20.0 / 25), (none.Setting, none.Value, none.LowerQuality, none.Speed));
         Assert.DoesNotContain(SpeedAdvisor.Advise(fine, [fine], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.BitrateLimit);
     }
 
@@ -146,6 +227,22 @@ public sealed class SpeedAdvisorTests
 
         Assert.DoesNotContain(advice, s => s.Setting == "DoubleRate" && s.Value == "true" && s.Kind == SpeedSuggestionKind.FasterSetting);
         Assert.Equal("false", Assert.Single(advice, s => s.Setting == "DoubleRate" && s.Kind == SpeedSuggestionKind.FasterSetting).Value);
+    }
+
+    /// <summary>With double rate off and faster, turning it on is still suggested as better quality while it keeps up and most concurrent streams.</summary>
+    [Fact]
+    public void SuggestsDoubleRateAsBetterQuality()
+    {
+        const string Film = "sports-576i|h264-8mbps";
+        var single = Run(new SpeedSettings { Bwdif = true }, Result(HwType.none, Film, 172) with { Command = "single", Streams = 16 });
+        var doubled = Run(new SpeedSettings { Bwdif = true, DoubleRate = true }, Result(HwType.none, Film, 200) with { Command = "double", FrameRate = 50, Streams = 10 });
+
+        var advice = SpeedAdvisor.Advise(single, [single, doubled], HwType.none, string.Empty, new SpeedSettings { Bwdif = true });
+
+        var faster = Assert.Single(advice, s => s.Setting == "DoubleRate" && s.Kind == SpeedSuggestionKind.FasterSetting);
+        Assert.Equal(("false", true, true), (faster.Value, faster.Current, faster.LowerQuality));
+        var quality = Assert.Single(advice, s => s.Setting == "DoubleRate" && s.Kind == SpeedSuggestionKind.HigherQuality);
+        Assert.Equal(("true", 10, 16), (quality.Value, quality.Streams, quality.OtherStreams));
     }
 
     /// <summary>Of several better-quality presets that keep up, only the best is suggested.</summary>

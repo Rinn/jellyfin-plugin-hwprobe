@@ -51,6 +51,19 @@ public sealed class SpeedArgumentsTests
         Assert.Equal(width, args.OutputWidth);
     }
 
+    /// <summary>40 Mbps keeps a 4K source at 4K in every codec, as the 4K suite relies on.</summary>
+    /// <param name="codec">The output codec.</param>
+    [Theory]
+    [InlineData("h264")]
+    [InlineData("hevc")]
+    [InlineData("av1")]
+    public void FortyMbpsKeeps4K(string codec)
+    {
+        var args = Build(_cell with { OutputCodec = codec, SourceWidth = 3840, SourceHeight = 1608, MaxWidth = null, MaxHeight = null, VideoBitrate = 40_000_000 });
+
+        Assert.True(args.OutputWidth is null or >= 3840, $"Output limited to {args.OutputWidth}.");
+    }
+
     /// <summary>A library path's quotes are escaped as upstream does, so they can't end the argument.</summary>
     [Fact]
     public void LibraryPathIsEscaped() =>
