@@ -53,7 +53,8 @@ if [ "$install" = existing ]; then
 else
 
 rm -rf "$work" && mkdir -p "$work/config/plugins" "$work/cache" "$work/repo"
-dotnet publish "$root/src/HwProbe.Plugin" -c Release -o "$work/publish" -v q --nologo
+# Analyzers are skipped: the build already enforces them and they don't change the output.
+dotnet publish "$root/src/HwProbe.Plugin" -c Release -p:RunAnalyzers=false -o "$work/publish" -v q --nologo
 
 # --ignore: without it, a missing container (repo, in copy mode) stops podman removing the others.
 podman rm -f --ignore "$name" "$repo" >/dev/null

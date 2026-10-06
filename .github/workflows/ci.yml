@@ -33,17 +33,23 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Build
         run: dotnet build -warnaserror
-      - name: Check formatting
-        if: runner.os == 'Linux'
-        run: dotnet format --verify-no-changes
-      - name: Check the plugin page script
-        if: runner.os == 'Linux'
-        run: sh scripts/check-page.sh
-      - name: Check the third-party notices
-        if: runner.os == 'Linux'
-        run: python3 scripts/notices.py --check
       - name: Test
         run: dotnet test --no-build
+
+  # Separate from build-test so the format check's own compile runs in parallel with the build.
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Check formatting
+        run: dotnet format --verify-no-changes
+      - name: Check the plugin page script
+        run: sh scripts/check-page.sh
+      - name: Check the third-party notices
+        run: python3 scripts/notices.py --check
 
   real-ffmpeg:
     name: jellyfin-ffmpeg (${{ matrix.os }})
@@ -117,7 +123,12 @@ jobs:
           path: hwprobe-report.json
 
   plugin-e2e:
-    name: Plugin in Jellyfin 12.1
+    name: Plugin in Jellyfin 12.1 (${{ matrix.install }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # copy: DLLs copied into the plugins folder. repository: installed from a plugin repository, as users do.
+        install: [copy, repository]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -125,15 +136,13 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Install the plugin into jellyfin/jellyfin and probe through its API
         run: scripts/container-plugin.sh
-      - name: Install the plugin from a plugin repository, as users do
-        run: scripts/container-plugin.sh
         env:
-          HWPROBE_INSTALL: repository
+          HWPROBE_INSTALL: ${{ matrix.install }}
       - name: Upload server logs
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: plugin-e2e-logs
+          name: plugin-e2e-logs-${{ matrix.install }}
           path: artifacts/plugin-e2e/config/log
 
   package:

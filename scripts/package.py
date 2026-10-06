@@ -104,9 +104,11 @@ def main():
     run("dotnet", "restore", "src/HwProbe.Plugin", stamp)
     run("dotnet", "restore", "src/HwProbe.Cli", "-p:SelfContained=true", stamp)
     plugin = os.path.join(work, "plugin")
-    publishes = [("dotnet", "publish", "src/HwProbe.Plugin", "-c", "Release", "--no-restore", stamp, "-o", plugin)]
+    # Analyzers don't change the output and the build already enforces them; skipping them speeds up the six parallel compiles.
+    no_analyzers = "-p:RunAnalyzers=false"
+    publishes = [("dotnet", "publish", "src/HwProbe.Plugin", "-c", "Release", "--no-restore", no_analyzers, stamp, "-o", plugin)]
     publishes += [
-        ("dotnet", "publish", "src/HwProbe.Cli", "-c", "Release", "-r", rid, "--self-contained", "--no-restore", stamp, "-o", os.path.join(work, "cli", rid))
+        ("dotnet", "publish", "src/HwProbe.Cli", "-c", "Release", "-r", rid, "--self-contained", "--no-restore", no_analyzers, stamp, "-o", os.path.join(work, "cli", rid))
         for rid in CLI_RIDS
     ]
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(publishes)) as pool:
