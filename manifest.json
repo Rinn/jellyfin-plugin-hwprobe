@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "1.0.1.0",
+        "changelog": "Suggestions show as tables comparing each choice, with the recommended one marked, Jellyfin's description of each setting, and a reason. Related settings such as deinterlacing and tone mapping are compared in one table. Adds a 4K test suite. Fixes Intel low-power and library-video comparisons, suite steps that overwrote each other, and downloaded samples labelled as generated.",
+        "targetAbi": "12.2.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v1.0.1/hwprobe-plugin_1.0.1.0.zip",
+        "checksum": "af714f7618114d37ad979cd72dcd71f6",
+        "timestamp": "2026-10-06T16:50:28Z"
+      },
+      {
         "version": "1.0.0.0",
         "changelog": "First stable release, replacing 0.19.0. Requires Jellyfin 12.2 or newer. Third-party notices ship in each release archive with exact versions and licence texts, and release files carry build provenance attestations, checked with gh attestation verify.",
         "targetAbi": "12.2.0.0",
