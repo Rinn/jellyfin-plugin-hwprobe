@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "0.19.0.0",
+        "changelog": "Requires Jellyfin 12.2 or newer; servers on 12.0 and 12.1 keep 0.18.2 (#60). Third-party notices now ship in each release archive with exact versions and licence texts, and the Help tab lists library versions again (#61). Release files carry build provenance attestations, checked with gh attestation verify (#60).",
+        "targetAbi": "12.2.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v0.19.0/hwprobe-plugin_0.19.0.0.zip",
+        "checksum": "49daa2f213dc5d0f4094d6814acc71b3",
+        "timestamp": "2026-10-06T12:04:59Z"
+      },
+      {
         "version": "0.18.2.0",
         "changelog": "Gives the right Intel low-power advice when Jellyfin doesn't run as root, and when low power is dropped because the HuC firmware isn't loaded.",
         "targetAbi": "12.1.0.0",
