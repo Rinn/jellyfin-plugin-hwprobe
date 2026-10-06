@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Devices;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Verdict;
@@ -32,7 +33,7 @@ public sealed class LowPowerAdviceTests
     [Fact]
     public void HevcRemedyNamesGen9Limit()
     {
-        Assert.StartsWith("Gen 9 Intel graphics", LowPowerAdvice.Remedy("hevc", Linux(inContainer: true, "0"), LowPowerSupport.Unknown), StringComparison.Ordinal);
+        Assert.Equal(Catalog.Text("lowPowerHevcMaybeGen9", ("remedy", LowPowerAdvice.Remedy(Linux(inContainer: true, "0")))), LowPowerAdvice.Remedy("hevc", Linux(inContainer: true, "0"), LowPowerSupport.Unknown));
         Assert.Equal(LowPowerAdvice.Remedy(Linux(inContainer: true, "0")), LowPowerAdvice.Remedy("h264", Linux(inContainer: true, "0"), LowPowerSupport.Unknown));
     }
 
@@ -43,8 +44,8 @@ public sealed class LowPowerAdviceTests
         var gen9Hevc = LowPowerAdvice.Remedy("hevc", Linux(inContainer: true, "0"), LowPowerSupport.H264Only);
         var gen8H264 = LowPowerAdvice.Remedy("h264", Linux(inContainer: true, "0"), LowPowerSupport.None);
 
-        Assert.StartsWith("This GPU is Gen 9 Intel graphics", gen9Hevc, StringComparison.Ordinal);
-        Assert.StartsWith("This GPU is Gen 8 Intel graphics or older", gen8H264, StringComparison.Ordinal);
+        Assert.Equal(Catalog.Text("lowPowerHevcGen9"), gen9Hevc);
+        Assert.Equal(Catalog.Text("lowPowerNone"), gen8H264);
         Assert.DoesNotContain("enable_guc", gen9Hevc + gen8H264, StringComparison.Ordinal);
         Assert.Equal(LowPowerAdvice.Remedy(Linux(inContainer: true, "0")), LowPowerAdvice.Remedy("h264", Linux(inContainer: true, "0"), LowPowerSupport.H264Only));
     }
@@ -55,7 +56,7 @@ public sealed class LowPowerAdviceTests
     {
         var remedy = LowPowerAdvice.Remedy(Linux(inContainer: false, "-1"));
 
-        Assert.Contains("HuC firmware", remedy, StringComparison.Ordinal);
+        Assert.Equal(Catalog.Text("lowPowerFirmware", ("where", Catalog.Text("lowPowerFirmwareHost")), ("current", Catalog.Text("lowPowerEnableGuc", ("value", "-1"))), ("guide", LowPowerAdvice.Guide.ToString())), remedy);
         Assert.Contains("enable_guc=2", remedy, StringComparison.Ordinal);
         Assert.Contains("enable_guc is currently -1", remedy, StringComparison.Ordinal);
         Assert.Contains(LowPowerAdvice.Guide.ToString(), remedy, StringComparison.Ordinal);
@@ -65,9 +66,14 @@ public sealed class LowPowerAdviceTests
     [Fact]
     public void RemedyAdaptsToEnvironment()
     {
-        Assert.Contains("On the host", LowPowerAdvice.Remedy(Linux(inContainer: true, "2")), StringComparison.Ordinal);
-        Assert.DoesNotContain("enable_guc=2", LowPowerAdvice.Remedy(new LowPowerHost(HostOs.Linux, InContainer: false, I915Loaded: false, EnableGuc: null)), StringComparison.Ordinal);
-        Assert.DoesNotContain("enable_guc", LowPowerAdvice.Remedy(new LowPowerHost(HostOs.Windows, InContainer: false, I915Loaded: false, EnableGuc: null)), StringComparison.Ordinal);
+        var noI915 = LowPowerAdvice.Remedy(new LowPowerHost(HostOs.Linux, InContainer: false, I915Loaded: false, EnableGuc: null));
+        var windows = LowPowerAdvice.Remedy(new LowPowerHost(HostOs.Windows, InContainer: false, I915Loaded: false, EnableGuc: null));
+
+        Assert.Equal(Catalog.Text("lowPowerFirmware", ("where", Catalog.Text("lowPowerFirmwareContainer")), ("current", Catalog.Text("lowPowerEnableGuc", ("value", "2"))), ("guide", LowPowerAdvice.Guide.ToString())), LowPowerAdvice.Remedy(Linux(inContainer: true, "2")));
+        Assert.Equal(Catalog.Text("lowPowerNoI915", ("guide", LowPowerAdvice.Guide.ToString())), noI915);
+        Assert.Equal(Catalog.Text("lowPowerNotLinux"), windows);
+        Assert.DoesNotContain("enable_guc=2", noI915, StringComparison.Ordinal);
+        Assert.DoesNotContain("enable_guc", windows, StringComparison.Ordinal);
     }
 
     /// <summary>A loaded i915 whose enable_guc only root can read still gets the firmware remedy, not "i915 isn't loaded".</summary>
@@ -77,8 +83,8 @@ public sealed class LowPowerAdviceTests
         var remedy = LowPowerAdvice.Remedy(Linux(inContainer: true, null));
 
         Assert.Contains("enable_guc=2", remedy, StringComparison.Ordinal);
-        Assert.Contains("Only root can read enable_guc", remedy, StringComparison.Ordinal);
-        Assert.DoesNotContain("isn't loaded", remedy, StringComparison.Ordinal);
+        Assert.Contains(Catalog.Text("lowPowerEnableGucRootOnly", ("path", LowPowerAdvice.EnableGucPath)), remedy, StringComparison.Ordinal);
+        Assert.NotEqual(Catalog.Text("lowPowerNoI915", ("guide", LowPowerAdvice.Guide.ToString())), remedy);
     }
 
     /// <summary>enable_guc's HuC bit decides when readable; -1 means off on Gen 9 and older and is unknown on newer GPUs, where the kernel's default may load HuC.</summary>

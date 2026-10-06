@@ -1,6 +1,7 @@
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Core.Speed;
+using Jellyfin.Plugin.HwProbe.TestSupport;
 using Xunit;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Tests.Speed;
@@ -14,9 +15,7 @@ public sealed class SpeedOptionsTests
     public void MissingLowPowerFollowsTheProbe()
     {
         var encode = new Dictionary<string, ProbeOutcome> { ["h264"] = ProbeOutcome.Pass, ["h264_lowpower"] = ProbeOutcome.Pass, ["hevc"] = ProbeOutcome.Pass, ["hevc_lowpower"] = ProbeOutcome.CodecUnsupported };
-        var empty = new Dictionary<string, ProbeOutcome>();
-        var qsv = new BackendReport(HwType.qsv, "/dev/dri/renderD128", BackendVerdict.Viable, PipelineTier.FullOpencl, empty, encode, empty, empty, empty, string.Empty);
-        var report = new CapabilityReport(CapabilityReport.CurrentSchemaVersion, DateTimeOffset.UnixEpoch, "f", new FfmpegSummary("/ffmpeg", "CommandLine", "8.1.2", true), new HostSummary("linux", "6.8", null), new StageASummary([], new Dictionary<HwType, BuildStatus>(), new Dictionary<string, bool>()), [qsv], [], []);
+        var report = Reports.With([Reports.Backend(HwType.qsv, "/dev/dri/renderD128", tier: PipelineTier.FullOpencl, encode: encode)]);
 
         Assert.Equal([(HwType.qsv, "/dev/dri/renderD128", "hevc")], SpeedOptions.MissingLowPower(report));
     }
@@ -26,9 +25,7 @@ public sealed class SpeedOptionsTests
     public void FailedDecodesFollowTheProbe()
     {
         var decode = new Dictionary<string, ProbeOutcome> { ["h264"] = ProbeOutcome.Pass, ["av1_10bit"] = ProbeOutcome.CodecUnsupported, ["mpeg4"] = ProbeOutcome.NotUsed };
-        var empty = new Dictionary<string, ProbeOutcome>();
-        var qsv = new BackendReport(HwType.qsv, "/dev/dri/renderD128", BackendVerdict.Viable, PipelineTier.FullOpencl, decode, empty, empty, empty, empty, string.Empty);
-        var report = new CapabilityReport(CapabilityReport.CurrentSchemaVersion, DateTimeOffset.UnixEpoch, "f", new FfmpegSummary("/ffmpeg", "CommandLine", "8.1.2", true), new HostSummary("linux", "6.8", null), new StageASummary([], new Dictionary<HwType, BuildStatus>(), new Dictionary<string, bool>()), [qsv], [], []);
+        var report = Reports.With([Reports.Backend(HwType.qsv, "/dev/dri/renderD128", tier: PipelineTier.FullOpencl, decode: decode)]);
 
         Assert.Equal([(HwType.qsv, "/dev/dri/renderD128", "av1_10bit")], new SpeedOptions(SpeedMethod.Quick, [], [], new SpeedSettings()).ForReport(report).DecodeUnsupported);
     }

@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Core.Speed;
@@ -10,6 +11,9 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Speed;
 public sealed class SpeedAdvisorTests
 {
     private static readonly DateTimeOffset _time = new(2026, 10, 3, 12, 0, 0, TimeSpan.Zero);
+
+    /// <summary>The thresholds the suggestions judge by.</summary>
+    private static readonly CatalogAdvice _advice = Catalog.Default.Advice;
 
     /// <summary>A faster hardware backend is suggested; software never is, even when it's faster; and nothing is suggested without the configured backend's result to compare.</summary>
     [Fact]
@@ -33,8 +37,8 @@ public sealed class SpeedAdvisorTests
     [Fact]
     public void PrefersQsvOverVaapi()
     {
-        var alike = Run(new SpeedSettings(), Result(HwType.vaapi, "a", 100), Result(HwType.qsv, "a", 97));
-        var vaapiFaster = Run(new SpeedSettings(), Result(HwType.vaapi, "a", 100), Result(HwType.qsv, "a", 80));
+        var alike = Run(new SpeedSettings(), Result(HwType.vaapi, "a", 100), Result(HwType.qsv, "a", 100 * (1 - (_advice.Noise / 2))));
+        var vaapiFaster = Run(new SpeedSettings(), Result(HwType.vaapi, "a", 100), Result(HwType.qsv, "a", 100 * (1 - (_advice.Noise * 4))));
 
         var preferred = Assert.Single(SpeedAdvisor.Advise(alike, [alike], HwType.vaapi, "/dev/dri/renderD128", new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.FastestBackend);
         Assert.Equal((HwType.qsv, true), (preferred.Type, preferred.Preferred));
@@ -61,18 +65,18 @@ public sealed class SpeedAdvisorTests
     {
         const string Film = "live-action|h264-8mbps";
         static SpeedResult Used(SpeedResult r, double cpuSeconds, long memory) => r with { Resources = new Core.Resources.ResourceUsage(10, cpuSeconds, memory) };
-        var run = Run(new SpeedSettings(), Used(Result(HwType.vaapi, Film, 100), 8, 400_000_000), Used(Result(HwType.nvenc, Film, 102), 4, 400_000_000) with { Device = string.Empty });
+        var run = Run(new SpeedSettings(), Used(Result(HwType.vaapi, Film, 100), 8, 400_000_000), Used(Result(HwType.nvenc, Film, 100 * (1 + (_advice.Noise / 2))), 4, 400_000_000) with { Device = string.Empty });
 
         var backend = Assert.Single(SpeedAdvisor.Advise(run, [run], HwType.vaapi, "/dev/dri/renderD128", new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.FastestBackend);
         Assert.Equal((HwType.nvenc, false), (backend.Type, backend.Preferred));
         Assert.Equal([("Cpu", 0.5)], backend.Savings.Select(x => (x.Resource, Math.Round(x.Fraction, 2))));
 
         // Using more memory cancels the saving.
-        var mixed = Run(new SpeedSettings(), Used(Result(HwType.vaapi, Film, 100), 8, 400_000_000), Used(Result(HwType.nvenc, Film, 102), 4, 800_000_000) with { Device = string.Empty });
+        var mixed = Run(new SpeedSettings(), Used(Result(HwType.vaapi, Film, 100), 8, 400_000_000), Used(Result(HwType.nvenc, Film, 100 * (1 + (_advice.Noise / 2))), 4, 800_000_000) with { Device = string.Empty });
         Assert.DoesNotContain(SpeedAdvisor.Advise(mixed, [mixed], HwType.vaapi, "/dev/dri/renderD128", new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.FastestBackend);
 
         var auto = Run(new SpeedSettings(), Used(Result(HwType.none, Film, 100), 40, 600_000_000) with { Command = "auto" });
-        var four = Run(new SpeedSettings { EncodingThreadCount = 4 }, Used(Result(HwType.none, Film, 98), 30, 500_000_000) with { Command = "four" });
+        var four = Run(new SpeedSettings { EncodingThreadCount = 4 }, Used(Result(HwType.none, Film, 100 * (1 - (_advice.Noise / 2))), 40 * (1 - (_advice.ResourceMargin * 2)), (long)(600_000_000 * (1 - (_advice.ResourceMargin * 1.5)))) with { Command = "four" });
         var efficient = Assert.Single(SpeedAdvisor.Advise(four, [auto, four], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.EfficientSetting);
         Assert.Equal(("EncodingThreadCount", "4"), (efficient.Setting, efficient.Value));
         Assert.Equal(["Cpu", "Memory"], efficient.Savings.Select(x => x.Resource));
@@ -95,13 +99,14 @@ public sealed class SpeedAdvisorTests
     public void ReportsTheCurrentValueAndGuardsStreams()
     {
         const string Film = "live-action|h264-8mbps";
+        var lostStreams = (int)(12 * (1 - (_advice.MaxStreamLoss * 2)));
         var fast = Run(new SpeedSettings { EncoderPreset = "fast" }, Result(HwType.none, Film, 150) with { Command = "fast", Streams = 12 });
-        var medium = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.none, Film, 100) with { Command = "medium", Streams = 6 });
+        var medium = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.none, Film, 100) with { Command = "medium", Streams = lostStreams });
 
         var advice = SpeedAdvisor.Advise(fast, [fast, medium], HwType.none, string.Empty, new SpeedSettings { EncoderPreset = "fast" });
 
         var current = Assert.Single(advice, s => s.Kind == SpeedSuggestionKind.FasterSetting);
-        Assert.Equal(("fast", true, 12, 6), (current.Value, current.Current, current.Streams, current.OtherStreams));
+        Assert.Equal(("fast", true, 12, lostStreams), (current.Value, current.Current, current.Streams, current.OtherStreams));
         Assert.DoesNotContain(advice, s => s.Kind == SpeedSuggestionKind.HigherQuality);
     }
 
@@ -125,7 +130,7 @@ public sealed class SpeedAdvisorTests
         var fine = Run(new SpeedSettings(), Result(HwType.none, "drama|h264-40mbps", 30), Result(HwType.none, "drama|h264-8mbps", 60));
 
         var limit = Assert.Single(SpeedAdvisor.Advise(run, [run], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.BitrateLimit);
-        Assert.Equal(("RemoteClientBitrateLimit", "20000000"), (limit.Setting, limit.Value));
+        Assert.Equal((SpeedAdvisor.BitrateLimitKey, "20000000"), (limit.Setting, limit.Value));
         Assert.DoesNotContain(SpeedAdvisor.Advise(fine, [fine], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.BitrateLimit);
     }
 
@@ -198,8 +203,9 @@ public sealed class SpeedAdvisorTests
         const string Anime = "anime|h264-8mbps";
         var medium = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.none, Film, 100));
         var mediumAnime = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.none, Anime, 100));
-        var fast = Run(new SpeedSettings { EncoderPreset = "fast" }, Result(HwType.none, Film, 101), Result(HwType.none, Anime, 101));
-        var faster = Run(new SpeedSettings { EncoderPreset = "faster" }, Result(HwType.none, Film, 102));
+        var alike = 100 * (1 + (_advice.Noise / 4));
+        var fast = Run(new SpeedSettings { EncoderPreset = "fast" }, Result(HwType.none, Film, alike), Result(HwType.none, Anime, alike));
+        var faster = Run(new SpeedSettings { EncoderPreset = "faster" }, Result(HwType.none, Film, 100 * (1 + (_advice.Noise / 2))));
 
         var advice = SpeedAdvisor.Advise(fast, [medium, mediumAnime, fast, faster], HwType.none, string.Empty, new SpeedSettings { EncoderPreset = "fast" });
 

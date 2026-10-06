@@ -48,27 +48,18 @@ public sealed class CapabilityParserTests
     public void ParsesHwaccels() =>
         Assert.Equal(["videotoolbox"], CapabilityParser.ParseHwaccels(Read("hwaccels.txt")));
 
-    /// <summary>The required text is found when the help is for the requested filter.</summary>
-    [Fact]
-    public void FilterOptionPresent() =>
-        Assert.True(CapabilityParser.HasFilterOption(
-            Read("h-filter-overlay.txt"), "overlay", "Action to take when encountering EOF from secondary input"));
-
-    /// <summary>A real filter whose help lacks the required text fails the check.</summary>
-    [Fact]
-    public void FilterOptionAbsent() =>
-        Assert.False(CapabilityParser.HasFilterOption(Read("h-filter-overlay.txt"), "overlay", "bt2390"));
-
-    /// <summary>An unknown-filter response fails the check.</summary>
-    [Fact]
-    public void UnknownFilterFails() =>
-        Assert.False(CapabilityParser.HasFilterOption(Read("h-filter-tonemap_opencl.txt"), "tonemap_opencl", "bt2390"));
-
-    /// <summary>Help for a different filter must not satisfy the check, even if it contains the required text.</summary>
-    [Fact]
-    public void WrongFilterHelpFails() =>
-        Assert.False(CapabilityParser.HasFilterOption(
-            Read("h-filter-overlay.txt"), "overlay_opencl", "Action to take when encountering EOF from secondary input"));
+    /// <summary>The required text is found only in the help for the requested filter: absent text, an unknown-filter response, and another filter's help all fail.</summary>
+    /// <param name="file">The recorded help.</param>
+    /// <param name="filter">The filter asked about.</param>
+    /// <param name="required">The required text.</param>
+    /// <param name="expected">Whether the check passes.</param>
+    [Theory]
+    [InlineData("h-filter-overlay.txt", "overlay", "Action to take when encountering EOF from secondary input", true)]
+    [InlineData("h-filter-overlay.txt", "overlay", "bt2390", false)]
+    [InlineData("h-filter-tonemap_opencl.txt", "tonemap_opencl", "bt2390", false)]
+    [InlineData("h-filter-overlay.txt", "overlay_opencl", "Action to take when encountering EOF from secondary input", false)]
+    public void HasFilterOption(string file, string filter, string required, bool expected) =>
+        Assert.Equal(expected, CapabilityParser.HasFilterOption(Read(file), filter, required));
 
     /// <summary>Reads a homebrew corpus file.</summary>
     /// <param name="name">File name.</param>

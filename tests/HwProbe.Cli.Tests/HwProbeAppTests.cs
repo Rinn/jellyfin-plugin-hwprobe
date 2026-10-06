@@ -14,25 +14,19 @@ public sealed class HwProbeAppTests : IDisposable
 {
     private readonly FakeFfmpegHost _host = new();
 
-    /// <summary>A software-only host exits 0 bare.</summary>
+    /// <summary>A software-only host prints its table and exits 0 bare, or 1 under --expect-hw.</summary>
+    /// <param name="expectHw">Whether --expect-hw is given.</param>
+    /// <param name="expected">The exit code.</param>
     /// <returns>A task representing the test.</returns>
-    [Fact(Skip = "Requires Linux or macOS: the ffmpeg wrapper is a shell script.", SkipUnless = nameof(TestEnvironment.IsPosix), SkipType = typeof(TestEnvironment))]
-    public async Task NoHardwareExitsZero()
+    [Theory(Skip = "Requires Linux or macOS: the ffmpeg wrapper is a shell script.", SkipUnless = nameof(TestEnvironment.IsPosix), SkipType = typeof(TestEnvironment))]
+    [InlineData(false, 0)]
+    [InlineData(true, 1)]
+    public async Task NoHardwareExitCode(bool expectHw, int expected)
     {
-        var (code, stdout, _) = await RunAsync(SoftwareOnly(), []);
+        var (code, stdout, _) = await RunAsync(SoftwareOnly(), expectHw ? ["--expect-hw"] : []);
 
-        Assert.Equal(0, code);
+        Assert.Equal(expected, code);
         Assert.Contains("TYPE", stdout, StringComparison.Ordinal);
-    }
-
-    /// <summary>A software-only host exits 1 under --expect-hw.</summary>
-    /// <returns>A task representing the test.</returns>
-    [Fact(Skip = "Requires Linux or macOS: the ffmpeg wrapper is a shell script.", SkipUnless = nameof(TestEnvironment.IsPosix), SkipType = typeof(TestEnvironment))]
-    public async Task NoHardwareWithExpectHwExitsOne()
-    {
-        var (code, _, _) = await RunAsync(SoftwareOnly(), ["--expect-hw"]);
-
-        Assert.Equal(1, code);
     }
 
     /// <summary>--format json round-trips and carries schemaVersion; --json writes the same report.</summary>
@@ -44,7 +38,7 @@ public sealed class HwProbeAppTests : IDisposable
         var (code, stdout, _) = await RunAsync(SoftwareOnly(), ["--format", "json", "--json", file]);
 
         Assert.Equal(0, code);
-        Assert.Contains("\"schemaVersion\": 3", stdout, StringComparison.Ordinal);
+        Assert.Contains($"\"schemaVersion\": {CapabilityReport.CurrentSchemaVersion}", stdout, StringComparison.Ordinal);
         var report = ReportStore.Deserialize(stdout);
         Assert.NotNull(report);
         Assert.Equal(report.Fingerprint, ReportStore.Deserialize(await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken))!.Fingerprint);

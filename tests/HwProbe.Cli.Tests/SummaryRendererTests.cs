@@ -1,5 +1,6 @@
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Report;
+using Jellyfin.Plugin.HwProbe.TestSupport;
 using Xunit;
 
 namespace Jellyfin.Plugin.HwProbe.Cli.Tests;
@@ -13,36 +14,30 @@ public sealed class SummaryRendererTests
     public void CompactGolden()
     {
         var stderr = "[h264 @ 0x1] Format qsv chosen by get_format().\n[vf @ 0x2] No such filter: 'subtitles'\nframe=0\nError opening output files: Filter not found\n";
-        var report = new CapabilityReport(
-            CapabilityReport.CurrentSchemaVersion,
-            DateTimeOffset.UnixEpoch,
-            "sha256:x",
+        var report = Reports.With(
+            [
+                Reports.Backend(
+                    HwType.qsv,
+                    "/dev/dri/renderD128",
+                    tier: PipelineTier.FullOpencl,
+                    decode: new Dictionary<string, ProbeOutcome> { ["h264"] = ProbeOutcome.Pass, ["av1"] = ProbeOutcome.CodecUnsupported, ["vc1"] = ProbeOutcome.Untested },
+                    encode: new Dictionary<string, ProbeOutcome> { ["h264"] = ProbeOutcome.Pass },
+                    subtitles: new Dictionary<string, ProbeOutcome> { ["text"] = ProbeOutcome.FilterUnsupported }),
+            ],
             new FfmpegSummary("/usr/lib/jellyfin-ffmpeg/ffmpeg", "EnvironmentVariable", "8.1.2", IsJellyfinBuild: true),
             new HostSummary("linux", "6.8.0", "docker"),
             new StageASummary([], new Dictionary<HwType, BuildStatus> { [HwType.qsv] = BuildStatus.Selectable, [HwType.amf] = BuildStatus.NotBuilt }, new Dictionary<string, bool>()),
-            [
-                new BackendReport(
-                    HwType.qsv,
-                    "/dev/dri/renderD128",
-                    BackendVerdict.Viable,
-                    PipelineTier.FullOpencl,
-                    new Dictionary<string, ProbeOutcome> { ["h264"] = ProbeOutcome.Pass, ["av1"] = ProbeOutcome.CodecUnsupported, ["vc1"] = ProbeOutcome.Untested },
-                    new Dictionary<string, ProbeOutcome> { ["h264"] = ProbeOutcome.Pass },
-                    new Dictionary<string, ProbeOutcome>(),
-                    new Dictionary<string, ProbeOutcome>(),
-                    new Dictionary<string, ProbeOutcome> { ["text"] = ProbeOutcome.FilterUnsupported },
-                    string.Empty),
-            ],
             [new Finding(FindingSeverity.Info, "lowpower-available-h264", "qsv /dev/dri/renderD128: low-power h264 encoding works.")],
             [
                 Probe("qsv:/dev/dri/renderD128:Matrix:Decode:av1", ProbeOutcome.CodecUnsupported, "No hardware AV1.", string.Empty),
                 Probe("qsv:/dev/dri/renderD128:Matrix:Subtitles:text", ProbeOutcome.FilterUnsupported, "A filter failed.", stderr),
                 Probe("qsv:/dev/dri/renderD128:Matrix:Decode:vc1", ProbeOutcome.Untested, "No hardware AV1.", string.Empty),
                 Probe("qsv:/dev/dri/renderD128:Matrix:Decode:h264", ProbeOutcome.Pass, string.Empty, "lots of log\n"),
-            ]);
+            ],
+            "sha256:x");
 
-        var expected = """
-            hwprobe summary (report schema 3)
+        var expected = $"""
+            hwprobe summary (report schema {CapabilityReport.CurrentSchemaVersion})
             ffmpeg  8.1.2, jellyfin-ffmpeg, /usr/lib/jellyfin-ffmpeg/ffmpeg (EnvironmentVariable)
             host    linux 6.8.0, in docker
             built   qsv; not built: amf

@@ -20,7 +20,12 @@ internal sealed class ScriptedFfmpegRunner : IFfmpegRunner
     /// <summary>Builds a runner from a recorded corpus directory.</summary>
     /// <param name="directory">Directory under <c>Corpus/ffmpeg/</c>.</param>
     /// <returns>The runner.</returns>
-    public static ScriptedFfmpegRunner FromCorpus(string directory)
+    public static ScriptedFfmpegRunner FromCorpus(string directory) => new(LoadCorpus(directory));
+
+    /// <summary>Reads a recorded corpus directory as stdout per argument string, for tests that edit a recorded build.</summary>
+    /// <param name="directory">Directory under <c>Corpus/ffmpeg/</c>.</param>
+    /// <returns>Stdout per argument string.</returns>
+    public static Dictionary<string, string> LoadCorpus(string directory)
     {
         var root = Path.Combine(AppContext.BaseDirectory, "Corpus", "ffmpeg", directory);
         var map = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -33,7 +38,7 @@ internal sealed class ScriptedFfmpegRunner : IFfmpegRunner
             map[arguments] = File.ReadAllText(file);
         }
 
-        return new ScriptedFfmpegRunner(map);
+        return map;
     }
 
     /// <inheritdoc/>

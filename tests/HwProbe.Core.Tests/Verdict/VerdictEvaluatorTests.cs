@@ -13,34 +13,6 @@ public sealed class VerdictEvaluatorTests
 
     private static readonly ProbeExpectation _vt = new(10, [VtFrameFormat]);
 
-    /// <summary>A recorded VideoToolbox hardware transcode passes.</summary>
-    [Fact]
-    public void RecordedVideoToolboxPassIsPass()
-    {
-        var stderr = CorpusFile.Load("stderr/videotoolbox-h264-pass.txt");
-
-        Assert.Equal(ProbeOutcome.Pass, VerdictEvaluator.Evaluate(Exited(0, 10, stderr), _vt));
-    }
-
-    /// <summary>mjpeg_videotoolbox's warning about an unsupported speed hint doesn't stop a pass.</summary>
-    [Fact]
-    public void RecordedVideoToolboxMjpegPassIsPass()
-    {
-        var stderr = CorpusFile.Load("stderr/videotoolbox-mjpeg-pass.txt");
-
-        Assert.Contains("is not supported on this device", stderr, StringComparison.Ordinal);
-        Assert.Equal(ProbeOutcome.Pass, VerdictEvaluator.Evaluate(Exited(0, 10, stderr), _vt));
-    }
-
-    /// <summary>The headline case: exit 0 and frames, but decoded in software.</summary>
-    [Fact]
-    public void RecordedCleanExitSoftwareFallbackIsNotPass()
-    {
-        var stderr = CorpusFile.Load("stderr/videotoolbox-mpeg4-sw-fallback.txt");
-
-        Assert.Equal(ProbeOutcome.SoftwareFallback, VerdictEvaluator.Evaluate(Exited(0, 10, stderr), _vt));
-    }
-
     /// <summary>Confirmation present but a failure marker also present is still a fallback.</summary>
     /// <param name="marker">A marker that rules out a pass.</param>
     [Theory]

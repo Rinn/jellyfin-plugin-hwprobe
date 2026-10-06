@@ -1,7 +1,9 @@
+using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Devices;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Core.Verdict;
+using Jellyfin.Plugin.HwProbe.TestSupport;
 using Xunit;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Tests.Report;
@@ -70,7 +72,7 @@ public sealed class SettingsAdvisorTests
     [Fact]
     public void SoftwareAdvisesTheOptionsShownWithNoBackend()
     {
-        var software = new BackendReport(HwType.none, string.Empty, BackendVerdict.Viable, PipelineTier.Unknown, new Dictionary<string, ProbeOutcome> { ["h264_keyframes"] = P }, new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome>(), new Dictionary<string, ProbeOutcome> { ["bwdif"] = ProbeOutcome.CodecUnsupported }, new Dictionary<string, ProbeOutcome>(), string.Empty);
+        var software = Reports.Backend(HwType.none, decode: new Dictionary<string, ProbeOutcome> { ["h264_keyframes"] = P }, deinterlace: new Dictionary<string, ProbeOutcome> { ["bwdif"] = ProbeOutcome.CodecUnsupported });
 
         var advice = SettingsAdvisor.For(software, _docker).Select(a => (a.Setting, a.State, a.Note));
 
@@ -299,23 +301,36 @@ public sealed class SettingsAdvisorTests
         Assert.Equal((state, note), (advice.State, advice.Note));
     }
 
-    /// <summary>Every option the advisor gives has a label to name it by, including ones only some backends show.</summary>
+    /// <summary>Settings named where a bare label wouldn't place them are prefixed, the backend's device settings are named, and other keys have none.</summary>
     /// <param name="setting">The setting key.</param>
-    /// <param name="label">Its label.</param>
+    /// <param name="label">The label, or null.</param>
     [Theory]
     [InlineData("HardwareDecodingCodecs:hevc", "Hardware decoding: HEVC")]
-    [InlineData("HardwareDecodingCodecs:mpeg4", "Hardware decoding: MPEG4")]
-    [InlineData("EnableDecodingColorDepth10Hevc", "Hardware decoding: HEVC 10bit")]
-    [InlineData("EnableVideoToolboxTonemapping", "Enable VideoToolbox Tone mapping")]
     [InlineData("DeinterlaceMethod:bwdif", "Deinterlacing method: BWDIF")]
     [InlineData("Trickplay:EnableHwAcceleration", "Trickplay: Enable hardware decoding")]
-    [InlineData("Trickplay:EnableKeyFrameOnlyExtraction", "Trickplay: Only generate images from key frames")]
-    [InlineData("EnableEnhancedNvdecDecoder", "Enable enhanced NVDEC decoder")]
-    [InlineData("PreferSystemNativeHwDecoder", "Prefer OS native DXVA or VA-API hardware decoders")]
     [InlineData("QsvDevice", "QSV device")]
     [InlineData("VaapiDevice", "VA-API device")]
-    [InlineData("HardwareAccelerationType", "Hardware acceleration")]
     [InlineData("EncoderAppPath", null)]
-    public void LabelForNamesEverySetting(string setting, string? label) =>
+    public void LabelForNamesSettings(string setting, string? label) =>
         Assert.Equal(label, SettingsAdvisor.LabelFor(setting));
+
+    /// <summary>A performance test option that stands for a server setting the advisor also names has the advisor's label, so the page names it alike in both places.</summary>
+    [Fact]
+    public void CatalogOptionLabelsMatchTheAdvisor()
+    {
+        var shared = Catalog.Default.Options.Where(o => o.Server is not null && SettingsAdvisor.LabelFor(o.Server) is not null).ToList();
+
+        Assert.NotEmpty(shared);
+        Assert.All(shared, o => Assert.Equal(o.Label, SettingsAdvisor.LabelFor(o.Server!)));
+    }
+
+    /// <summary>Every setting the advisor gives, for every backend, host and result, has a label for the history.</summary>
+    [Fact]
+    public void LabelForNamesEveryAdvisedSetting()
+    {
+        var settings = Reports.AdvisedSettings();
+
+        Assert.NotEmpty(settings);
+        Assert.All(settings, s => Assert.NotNull(SettingsAdvisor.LabelFor(s)));
+    }
 }

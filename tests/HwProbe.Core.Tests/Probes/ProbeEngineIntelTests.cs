@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Devices;
 using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
 using Jellyfin.Plugin.HwProbe.Core.Fixtures;
@@ -66,16 +67,18 @@ public sealed class ProbeEngineIntelTests : IDisposable
     /// <summary>Low power dropped for the bitrate gets the firmware remedy when HuC is known not to be requested, and the dropped text otherwise; -1 on this Gen 9 GPU means the kernel's default, off.</summary>
     /// <param name="enableGuc">The i915 enable_guc value, or "unreadable".</param>
     /// <param name="expectedCode">The H.264 low-power finding.</param>
-    /// <param name="expectedText">Text the finding contains.</param>
+    /// <param name="textKey">The catalog text the finding contains.</param>
+    /// <param name="value">The value the text names, or null.</param>
     /// <returns>A task representing the test.</returns>
     [Theory]
-    [InlineData("2", "lowpower-dropped-h264", "check it loaded")]
-    [InlineData("3", "lowpower-dropped-h264", "check it loaded")]
-    [InlineData("unreadable", "lowpower-dropped-h264", "check it loaded")]
-    [InlineData("0", "lowpower-unavailable-h264", "enable_guc is currently 0")]
-    [InlineData("-1", "lowpower-unavailable-h264", "enable_guc is currently -1")]
-    public async Task DroppedLowPowerBlamesFirmwareWhenHucIsOff(string enableGuc, string expectedCode, string expectedText)
+    [InlineData("2", "lowpower-dropped-h264", "lowPowerDropped", null)]
+    [InlineData("3", "lowpower-dropped-h264", "lowPowerDropped", null)]
+    [InlineData("unreadable", "lowpower-dropped-h264", "lowPowerDropped", null)]
+    [InlineData("0", "lowpower-unavailable-h264", "lowPowerEnableGuc", "0")]
+    [InlineData("-1", "lowpower-unavailable-h264", "lowPowerEnableGuc", "-1")]
+    public async Task DroppedLowPowerBlamesFirmwareWhenHucIsOff(string enableGuc, string expectedCode, string textKey, string? value)
     {
+        var expectedText = value is null ? Catalog.Text(textKey) : Catalog.Text(textKey, ("value", value));
         var report = await RunAsync(openclStarts: true, lowPowerDropped: "h264", enableGuc: enableGuc);
 
         var finding = Assert.Single(report.Findings, f => f.Code.StartsWith("lowpower-", StringComparison.Ordinal) && f.Code.EndsWith("-h264", StringComparison.Ordinal));
@@ -126,7 +129,7 @@ public sealed class ProbeEngineIntelTests : IDisposable
 
         var vaapi = Assert.Single(report.Backends);
         Assert.Equal(verdict, vaapi.Verdict);
-        Assert.Equal(denied, vaapi.Hint.Contains("render group", StringComparison.Ordinal));
+        Assert.Equal(denied, vaapi.Hint == Catalog.Text("permissionDeniedHost"));
     }
 
     /// <inheritdoc/>

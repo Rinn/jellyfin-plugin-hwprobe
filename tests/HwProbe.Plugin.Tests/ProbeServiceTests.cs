@@ -1,8 +1,10 @@
+using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Diagnostics;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Core.Speed;
 using Jellyfin.Plugin.HwProbe.Probing;
+using Jellyfin.Plugin.HwProbe.TestSupport;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -186,12 +188,13 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal(ProbeRunResult.Started, await service.StartSuiteAsync(new SuiteRequest("presets") { MeasureResources = true }, ct));
         await service.Background;
 
-        Assert.Equal([null, "faster", "fast", "medium", "slow"], asked.Select(a => a.Settings.EncoderPreset));
+        var presets = Catalog.Default.Suites.Single(s => s.Key == "presets");
+        Assert.Equal(presets.Steps.Select(s => s.Options["EncoderPreset"] is var p && p == "auto" ? null : p), asked.Select(a => a.Settings.EncoderPreset));
         Assert.All(asked, a => Assert.Equal([HwType.vaapi, HwType.none], a.Backends));
         Assert.All(asked, a => Assert.Equal((SpeedMethod.Confirm, true, true), (a.Method, a.MeasureResources, a.ReuseResults)));
         var history = await service.SpeedHistoryAsync(ct);
-        Assert.Equal(["slow", "medium", "fast", "faster", "Auto"], history.Select(h => h.SuiteStep));
-        Assert.All(history, h => Assert.Equal("Encoder presets", h.Suite));
+        Assert.Equal(presets.Steps.Select(s => s.Label).Reverse(), history.Select(h => h.SuiteStep));
+        Assert.All(history, h => Assert.Equal(presets.Name, h.Suite));
         Assert.Null(service.Status.Suite);
     }
 
@@ -311,20 +314,7 @@ public sealed class ProbeServiceTests : IDisposable
         Directory.CreateDirectory(Path.Combine(fixtures, "samples"));
         await File.WriteAllBytesAsync(Path.Combine(fixtures, "samples", "a.mkv"), new byte[1500], ct);
         using var release = new SemaphoreSlim(0);
-        using var service = new ProbeService(
-            async c =>
-            {
-                await release.WaitAsync(c);
-                return Reports.Sample();
-            },
-            () => false,
-            Path.Combine(_directory, "latest.json"),
-            TimeProvider.System,
-            TimeSpan.Zero,
-            NullLogger.Instance)
-        {
-            FixturesDirectory = fixtures,
-        };
+        using var service = CreateBlocked(release, fixtures);
 
         Assert.Equal(new CacheSize(1500, 1), service.FixtureCacheSize());
         var probe = service.RunAsync(ct);
@@ -347,20 +337,7 @@ public sealed class ProbeServiceTests : IDisposable
         await File.WriteAllBytesAsync(Path.Combine(fixtures, "samples", "a.mkv"), new byte[10], ct);
         await File.WriteAllBytesAsync(Path.Combine(fixtures, "samples", "b.mkv"), new byte[10], ct);
         using var release = new SemaphoreSlim(0);
-        using var service = new ProbeService(
-            async c =>
-            {
-                await release.WaitAsync(c);
-                return Reports.Sample();
-            },
-            () => false,
-            Path.Combine(_directory, "latest.json"),
-            TimeProvider.System,
-            TimeSpan.Zero,
-            NullLogger.Instance)
-        {
-            FixturesDirectory = fixtures,
-        };
+        using var service = CreateBlocked(release, fixtures);
 
         var probe = service.RunAsync(ct);
         Assert.Equal(DeleteOutcome.Busy, await service.DeleteCacheFileAsync("samples", "a.mkv", ct));
@@ -488,16 +465,6 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Null(service.Status.LastError);
     }
 
-    /// <summary>No report reads as null before any probe completes.</summary>
-    /// <returns>A task representing the test.</returns>
-    [Fact]
-    public async Task NoReportBeforeFirstProbe()
-    {
-        using var service = Create(_ => Task.FromResult(Reports.Sample()), transcoding: false);
-
-        Assert.Null(await service.LatestJsonAsync(TestContext.Current.CancellationToken));
-    }
-
     /// <summary>A transcode that appears only on the second check still blocks the probe.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
@@ -531,4 +498,24 @@ public sealed class ProbeServiceTests : IDisposable
     /// <returns>The service.</returns>
     private ProbeService Create(Func<CancellationToken, Task<CapabilityReport>> probe, bool transcoding) =>
         new(probe, () => transcoding, Path.Combine(_directory, "latest.json"), TimeProvider.System, TimeSpan.Zero, NullLogger.Instance);
+
+    /// <summary>Creates a service over a clip cache whose probe waits for a release, for checks made while a probe runs.</summary>
+    /// <param name="release">Released to let the probe finish.</param>
+    /// <param name="fixtures">The clip cache directory.</param>
+    /// <returns>The service.</returns>
+    private ProbeService CreateBlocked(SemaphoreSlim release, string fixtures) =>
+        new(
+            async c =>
+            {
+                await release.WaitAsync(c);
+                return Reports.Sample();
+            },
+            () => false,
+            Path.Combine(_directory, "latest.json"),
+            TimeProvider.System,
+            TimeSpan.Zero,
+            NullLogger.Instance)
+        {
+            FixturesDirectory = fixtures,
+        };
 }

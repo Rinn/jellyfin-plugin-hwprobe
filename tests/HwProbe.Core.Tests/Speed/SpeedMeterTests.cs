@@ -52,46 +52,31 @@ public sealed class SpeedMeterTests
         Assert.Equal([1, 1], host.Copies);
     }
 
-    /// <summary>Confirm starts from one copy's speed and searches up from a count that keeps up, or down from one that doesn't.</summary>
+    /// <summary>Confirm starts from one copy's speed and searches up from a count that keeps up, or down from one that doesn't; Full ramps up by doubling and searches between the last pass and the first failure. Both stop at the cap.</summary>
+    /// <param name="method">Confirm or full.</param>
     /// <param name="capacity">How many copies the scripted host keeps at real time.</param>
     /// <param name="fps">One copy's fps.</param>
     /// <param name="expected">The streams reported.</param>
     /// <returns>A task representing the test.</returns>
     [Theory]
-    [InlineData(5, 130, 5)]
-    [InlineData(3, 130, 3)]
-    [InlineData(11, 130, 11)]
-    [InlineData(40, 130, 16)]
-    [InlineData(0, 10, 0)]
-    public async Task ConfirmSearchesFromTheSpeed(int capacity, double fps, int expected)
+    [InlineData(SpeedMethod.Confirm, 5, 130, 5)]
+    [InlineData(SpeedMethod.Confirm, 3, 130, 3)]
+    [InlineData(SpeedMethod.Confirm, 11, 130, 11)]
+    [InlineData(SpeedMethod.Confirm, 40, 130, SpeedMeter.MaxStreams)]
+    [InlineData(SpeedMethod.Confirm, 0, 10, 0)]
+    [InlineData(SpeedMethod.Full, 0, 50, 0)]
+    [InlineData(SpeedMethod.Full, 1, 50, 1)]
+    [InlineData(SpeedMethod.Full, 6, 50, 6)]
+    [InlineData(SpeedMethod.Full, 11, 50, 11)]
+    [InlineData(SpeedMethod.Full, 40, 50, SpeedMeter.MaxStreams)]
+    public async Task FindsTheCapacity(SpeedMethod method, int capacity, double fps, int expected)
     {
         var host = new Host(capacity, fps);
 
-        var measured = await SpeedMeter.MeasureAsync(host.LaunchAsync, SpeedMethod.Confirm, 24, countStreams: true, TestContext.Current.CancellationToken);
+        var measured = await SpeedMeter.MeasureAsync(host.LaunchAsync, method, 24, countStreams: true, TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, measured.Streams);
         Assert.Equal(expected == SpeedMeter.MaxStreams, measured.Capped);
-    }
-
-    /// <summary>Full ramps up by doubling and searches between the last pass and the first failure.</summary>
-    /// <param name="capacity">How many copies keep real time.</param>
-    /// <param name="expected">The streams reported.</param>
-    /// <param name="capped">Whether the count hit the cap.</param>
-    /// <returns>A task representing the test.</returns>
-    [Theory]
-    [InlineData(0, 0, false)]
-    [InlineData(1, 1, false)]
-    [InlineData(6, 6, false)]
-    [InlineData(11, 11, false)]
-    [InlineData(40, 16, true)]
-    public async Task FullFindsTheCapacity(int capacity, int expected, bool capped)
-    {
-        var host = new Host(capacity, fps: 50);
-
-        var measured = await SpeedMeter.MeasureAsync(host.LaunchAsync, SpeedMethod.Full, 24, countStreams: true, TestContext.Current.CancellationToken);
-
-        Assert.Equal(expected, measured.Streams);
-        Assert.Equal(capped, measured.Capped);
     }
 
     /// <summary>At the time limit the count stops at what's confirmed, or none when nothing is; the single run always happens.</summary>

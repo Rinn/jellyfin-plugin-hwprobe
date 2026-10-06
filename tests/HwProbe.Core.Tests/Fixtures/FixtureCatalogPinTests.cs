@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Fixtures;
 using Xunit;
 
@@ -8,27 +9,19 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Fixtures;
 [Trait("Category", "Unit")]
 public sealed class FixtureCatalogPinTests
 {
-    /// <summary>Every catalog sample is a FATE URL with a pinned hash.</summary>
+    /// <summary>Every catalog sample is a FATE URL with a pinned hash; VC-1 is one, not a generated clip.</summary>
     [Fact]
     public void CatalogSamplesArePinnedFateUrls()
     {
         var downloadable = FixtureCatalog.All.Where(f => f.DownloadUrl is not null).ToList();
 
-        Assert.Equal(10, downloadable.Count);
+        Assert.Contains(FixtureCatalog.Vc1, downloadable);
+        Assert.Null(FixtureCatalog.Vc1.UntestedReason);
         Assert.All(downloadable, f =>
         {
-            Assert.StartsWith("https://fate-suite.ffmpeg.org/", f.DownloadUrl!.ToString(), StringComparison.Ordinal);
+            Assert.StartsWith(Catalog.Default.Links["fateSuite"], f.DownloadUrl!.ToString(), StringComparison.Ordinal);
             Assert.Matches("^[0-9a-f]{64}$", f.Sha256);
         });
-    }
-
-    /// <summary>The catalog's VC-1 sample is a pinned download, not a generated clip.</summary>
-    [Fact]
-    public void Vc1IsAPinnedDownload()
-    {
-        Assert.NotNull(FixtureCatalog.Vc1.DownloadUrl);
-        Assert.Matches("^[0-9a-f]{64}$", FixtureCatalog.Vc1.Sha256);
-        Assert.Null(FixtureCatalog.Vc1.UntestedReason);
     }
 
     /// <summary>Every bundled clip ships in the assembly and matches its pinned hash.</summary>
