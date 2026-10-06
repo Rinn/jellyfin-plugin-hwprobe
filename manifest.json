@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "1.0.2.0",
+        "changelog": "Says when an output is too slow on every backend tested, with the fastest one. Falls behind real time no longer appears when every backend tested falls behind too. The Help tab lists test results and measurements with their size, each with its own delete, and deleting clips keeps measurements. Deleting a clip no longer redraws the whole page. Test results take less disk space.",
+        "targetAbi": "12.2.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v1.0.2/hwprobe-plugin_1.0.2.0.zip",
+        "checksum": "4d3f76d067528edee98fc8153a6c7c83",
+        "timestamp": "2026-10-06T19:49:55Z"
+      },
+      {
         "version": "1.0.1.0",
         "changelog": "Suggestions show as tables comparing each choice, with the recommended one marked, Jellyfin's description of each setting, and a reason. Related settings such as deinterlacing and tone mapping are compared in one table. Adds a 4K test suite. Fixes Intel low-power and library-video comparisons, suite steps that overwrote each other, and downloaded samples labelled as generated.",
         "targetAbi": "12.2.0.0",
