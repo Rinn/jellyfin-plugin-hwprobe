@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "1.0.4.0",
+        "changelog": "- Starting a probe or performance test shows its progress right away.\n- A performance test set to cancel for transcodes no longer marks a later test as cancelled for one.\n- Recommended Settings and Test Results load faster with many saved test results.\n- An ffmpeg stuck in the graphics driver no longer blocks later probes until the server restarts.\n- On Windows, a finished probe or an applied setting is no longer lost when the page reads the same file at that moment.\n- Pages no longer show an error when saved results are deleted while they load.",
+        "targetAbi": "12.2.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v1.0.4/hwprobe-plugin_1.0.4.0.zip",
+        "checksum": "159590b9202b137c5c1dcbec95cec96e",
+        "timestamp": "2026-10-07T10:43:14Z"
+      },
+      {
         "version": "1.0.3.0",
         "changelog": "- Suggestions show one table per setting.\n- Auto is always the recommended encoding preset.",
         "targetAbi": "12.2.0.0",
