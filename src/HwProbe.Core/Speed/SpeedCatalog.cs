@@ -7,6 +7,9 @@ namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 /// <summary>The transcodes and decodes a speed run can measure, and their clips, from <see cref="Catalog.Default"/>.</summary>
 public static class SpeedCatalog
 {
+    /// <summary>The codec image outputs encode to, as MediaEncoder's image extraction asks EncodingHelper for it (v12.2).</summary>
+    public const string ImageCodec = "mjpeg";
+
     /// <summary>Gets every video, in the order the page lists them; the library video is added from a chosen file.</summary>
     public static IReadOnlyList<SpeedVideo> Videos { get; } = [.. Catalog.Default.Videos.Select(Video)];
 
@@ -18,7 +21,7 @@ public static class SpeedCatalog
     [
         .. Catalog.Default.Codecs.SelectMany(c => Catalog.Default.Qualities.Select(q => new SpeedOutput(Catalog.OutputKey(c, q), c.Name + ", " + q.Name, c.Key, q.Bitrate))),
         new SpeedOutput(Catalog.Default.Decode.Key, Catalog.Default.Decode.Label, null, 0),
-        .. Catalog.Default.Images.Select(i => new SpeedOutput(i.Key, i.Label, "mjpeg", 0) { Kind = SpeedOutputKind.Images }),
+        .. Catalog.Default.Images.Select(i => new SpeedOutput(i.Key, i.Label, ImageCodec, 0) { Kind = SpeedOutputKind.Images }),
         .. Catalog.Default.AudioOutputs.Select(o => new SpeedOutput(o.Key, o.Label, o.Codec, 0) { Kind = o.Codec is null ? SpeedOutputKind.AudioDecode : SpeedOutputKind.Audio, Channels = o.Channels }),
     ];
 
@@ -136,6 +139,7 @@ public static class SpeedCatalog
             Profile = clip.Profile,
             AudioCodec = clip.AudioCodec,
             AudioChannels = clip.AudioChannels,
+            Seconds = clip.Seconds,
         };
 
     /// <summary>Returns a catalog audio input.</summary>

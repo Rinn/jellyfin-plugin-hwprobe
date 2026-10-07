@@ -10,9 +10,12 @@ public sealed record MeterPace(TimeSpan Content, TimeSpan Shortest, TimeSpan Tar
     /// <summary>Gets the pace of a transcode or decode, read from its frames.</summary>
     public static MeterPace Frames { get; } = new(SpeedMeter.Content, TimeSpan.FromSeconds(5), SpeedMeter.Content, false);
 
-    /// <summary>Gets the pace of images at an interval, read from the content.</summary>
-    public static MeterPace Images { get; } = Frames with { ByContent = true };
+    /// <summary>Gets the pace of images at an interval, read from the content, which only a finished run gives: a single copy may take two minutes, so software on a slow CPU still gets a speed.</summary>
+    public static MeterPace Images { get; } = Frames with { ByContent = true, SingleTimeout = TimeSpan.FromMinutes(2) };
 
     /// <summary>Gets the pace of audio, read from the content, which has no frames: a minute of it, as audio runs hundreds of times real time, and a longer run aims for two seconds.</summary>
     public static MeterPace Audio { get; } = new(TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2), true);
+
+    /// <summary>Gets how long a single copy may take before it's killed; a transcode cut off still gives fps from the frames it reached.</summary>
+    public TimeSpan SingleTimeout { get; init; } = TimeSpan.FromSeconds(30);
 }

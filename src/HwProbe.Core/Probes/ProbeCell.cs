@@ -52,6 +52,9 @@ public sealed record ProbeCell(
     /// <summary>Gets the source colour space, e.g. <c>bt2020nc</c>.</summary>
     public string? ColorSpace { get; init; }
 
+    /// <summary>Gets the source's display aspect ratio, e.g. <c>16:9</c>, or null when not known.</summary>
+    public string? AspectRatio { get; init; }
+
     /// <summary>Gets the requested maximum output width, forcing a scale filter; null keeps the source size.</summary>
     public int? MaxWidth { get; init; }
 

@@ -49,6 +49,7 @@ public sealed class LibraryFiles(ILibraryManager library, IMediaSourceManager me
             ColorTransfer = video.ColorTransfer,
             ColorPrimaries = video.ColorPrimaries,
             ColorSpace = video.ColorSpace,
+            AspectRatio = video.AspectRatio,
         })
         {
             MediaSourceId = source.Id,

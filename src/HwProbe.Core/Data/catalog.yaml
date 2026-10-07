@@ -645,14 +645,15 @@ options:
     # Neither Jellyfin nor ffmpeg claims either gives the better picture; ffmpeg's filter docs describe BWDIF as motion adaptive deinterlacing based on YADIF with W3FDIF and cubic interpolation (doc/filters.texi, bwdif), so it's ranked above.
     qualityOrder: [bwdif, yadif]
   - { key: DoubleRate, label: Double the frame rate when deinterlacing, server: DeinterlaceDoubleRate, switch: true, qualityOrder: ["true", "false"], description: "This setting uses the field rate when deinterlacing, often referred to as bob deinterlacing, which doubles the frame rate of the video to provide full motion like what you would see when viewing interlaced video on a TV." }
-  # The Trickplay page's (trickplay.tsx, en-us.json, v12.2), named as the probe's advice names them; server values are TrickplayOptions'. Hardware backends extract images with Enable hardware decoding on, software with it off.
-  - { key: TrickplayHwEncoding, label: "Trickplay: Enable hardware accelerated MJPEG encoding", server: "Trickplay:EnableHwEncoding", switch: true, description: "Currently only available on QSV, VA-API, VideoToolbox and RKMPP, this option has no effect on other hardware acceleration methods." }
+  # The Trickplay page's (trickplay.tsx, en-us.json, v12.2), named as the probe's advice names them; server values are TrickplayOptions'. Hardware backends extract images with Enable hardware decoding on, software with it off. outputCodec mjpeg: they only reach image outputs.
+  - { key: TrickplayHwEncoding, label: "Trickplay: Enable hardware accelerated MJPEG encoding", server: "Trickplay:EnableHwEncoding", outputCodec: mjpeg, switch: true, description: "Currently only available on QSV, VA-API, VideoToolbox and RKMPP, this option has no effect on other hardware acceleration methods." }
   # Key frames are fewer and less evenly spaced than the interval, so the images' timing is less accurate.
-  - { key: TrickplayKeyFrames, label: "Trickplay: Only generate images from key frames", server: "Trickplay:EnableKeyFrameOnlyExtraction", switch: true, qualityOrder: ["false", "true"], description: "Extract key frames only for significantly faster processing with less accurate timing. If the configured hardware decoder does not support this mode, will use the software decoder instead." }
+  - { key: TrickplayKeyFrames, label: "Trickplay: Only generate images from key frames", server: "Trickplay:EnableKeyFrameOnlyExtraction", outputCodec: mjpeg, switch: true, qualityOrder: ["false", "true"], description: "Extract key frames only for significantly faster processing with less accurate timing. If the configured hardware decoder does not support this mode, will use the software decoder instead." }
   # The page takes any number from 0; the choices are the default and a few others.
   - key: TrickplayThreads
     label: "Trickplay: FFmpeg Threads"
     server: "Trickplay:ProcessThreads"
+    outputCodec: mjpeg
     description: "The number of threads to pass to the '-threads' argument of ffmpeg."
     choices:
       - { key: "0", label: "0" }
@@ -948,7 +949,8 @@ texts:
   noteSoftwareDecode: Decoded in software with this backend, then encoded on the GPU.
   noteSoftwareDecodeFailed: Decoded in software, as the probe found this GPU can't decode it, then encoded on the GPU.
   noteDecodeFailed: "Not measured: the probe found this GPU can't decode it."
-  noteImagesSoftware: "Not measured: Jellyfin extracts these images in software with this backend."
+  noteImagesSoftware: "Not measured: Jellyfin decodes in software with this backend for these images."
+  noteImagesKeyFramesRetried: "Only generate images from key frames failed, so this is Jellyfin's second try, which decodes every frame."
   noteImagesKeyFrames: "Not measured: with Only generate images from key frames on, Jellyfin extracts these images in software with this backend's decoders."
   noteLowPowerDropped: Low power was dropped (see the Hardware Probe finding); ffmpeg used normal mode, so this is the normal-mode speed.
   lowPowerOptionH264: Intel Low-Power H.264 hardware encoder

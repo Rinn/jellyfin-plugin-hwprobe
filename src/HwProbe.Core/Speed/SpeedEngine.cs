@@ -17,9 +17,6 @@ public sealed class SpeedEngine : IDisposable
     // Samples are downloads; keyed apart from the ffmpeg build so an ffmpeg update doesn't fetch them again.
     private const string SamplesCacheKey = "samples";
 
-    // A single copy is expected to take about Content; this leaves room for slow hosts, whose fps comes from the frames reached.
-    private static readonly TimeSpan _singleTimeout = TimeSpan.FromSeconds(30);
-
     // Copies that need much longer than real time have already fallen behind.
     private static readonly TimeSpan _copiesGrace = TimeSpan.FromSeconds(10);
 
@@ -321,10 +318,32 @@ public sealed class SpeedEngine : IDisposable
     /// <summary>Builds a test's command line.</summary>
     /// <param name="args">The test's arguments.</param>
     /// <param name="test">The test.</param>
-    /// <param name="content">How much of the looped source to process.</param>
+    /// <param name="cell">The cell the arguments were generated for, for the source an image test repeats.</param>
+    /// <param name="content">How much of the source to process.</param>
     /// <returns>The ffmpeg argument string.</returns>
-    private static string CommandLine(ProbeArguments args, SpeedTest test, TimeSpan content) =>
-        test.Images ? SpeedCommandLine.BuildImages(args, content, test.StartAt) : SpeedCommandLine.Build(args, content, test.DecodeOnly, test.StartAt);
+    private static string CommandLine(ProbeArguments args, SpeedTest test, ProbeCell cell, TimeSpan content) =>
+        !test.Images ? SpeedCommandLine.Build(args, content, test.DecodeOnly, test.StartAt)
+        : SpeedCommandLine.BuildImages(args, content, test.StartAt, test.File is { } file && test.StartAt + content <= file.Duration ? null : LoopPath(cell));
+
+    /// <summary>Returns where an image test's concat list for its source goes: named from the source, so the command, and the reuse key, stay the same between runs.</summary>
+    /// <param name="cell">The cell.</param>
+    /// <returns>The path in the temporary folder.</returns>
+    private static string LoopPath(ProbeCell cell) =>
+        Path.Join(Path.GetTempPath(), "hwprobe-loop-" + CommandHash(cell.SourcePath ?? string.Empty)[..16] + ".txt");
+
+    /// <summary>Writes an image test's concat list, repeating its source for as much content as a measurement reads.</summary>
+    /// <param name="test">The test.</param>
+    /// <param name="cell">The cell.</param>
+    /// <param name="cancellationToken">Cancels the write.</param>
+    /// <returns>The list's path, to delete afterwards.</returns>
+    private static async Task<string> WriteLoopAsync(SpeedTest test, ProbeCell cell, CancellationToken cancellationToken)
+    {
+        var seconds = test.File?.Duration.TotalSeconds is > 0 and var file ? file : test.Fixture?.Seconds;
+        var copies = (int)Math.Ceiling((test.StartAt + SpeedMeter.LongestContent).TotalSeconds / (seconds ?? 1)) + 1;
+        var path = LoopPath(cell);
+        await File.WriteAllTextAsync(path, SpeedCommandLine.LoopList(cell.SourcePath ?? string.Empty, copies, seconds), cancellationToken);
+        return path;
+    }
 
     /// <summary>Returns how a test is paced.</summary>
     /// <param name="test">The test.</param>
@@ -506,7 +525,7 @@ public sealed class SpeedEngine : IDisposable
                 {
                     var args = Arguments(source, type, device, cell);
                     var environment = string.Join('\n', args.Environment.OrderBy(e => e.Key, StringComparer.Ordinal).Select(e => e.Key + "=" + e.Value));
-                    return Task.FromResult<string?>(CommandLine(args, test, Pace(test).Content) + "\n" + environment);
+                    return Task.FromResult<string?>(CommandLine(args, test, cell, Pace(test).Content) + "\n" + environment);
                 }
                 catch (Exception e) when (e is ArgumentConstructionException or UnsafeProbeException or NotSupportedException)
                 {
@@ -564,7 +583,7 @@ public sealed class SpeedEngine : IDisposable
     private Func<int, TimeSpan, CancellationToken, Task<IReadOnlyList<FfmpegRunResult>>> Launcher(EngineOptions options, Func<TimeSpan, string> command, IReadOnlyDictionary<string, string?> environment, bool measureResources, MeterPace pace, Action<IReadOnlyList<FfmpegRunResult>>? inspect) =>
         async (copies, content, token) =>
         {
-            var invocation = new FfmpegInvocation(options.Ffmpeg.Path, command(content), environment, copies == 1 ? _singleTimeout : pace.Content + _copiesGrace) { MeasureResources = measureResources && copies == 1 };
+            var invocation = new FfmpegInvocation(options.Ffmpeg.Path, command(content), environment, copies == 1 ? pace.SingleTimeout : pace.Content + _copiesGrace) { MeasureResources = measureResources && copies == 1 };
             var runs = await Task.WhenAll(Enumerable.Range(0, copies).Select(_ => _runner.RunAsync(invocation, token)));
             inspect?.Invoke(runs);
             return runs;
@@ -634,7 +653,7 @@ public sealed class SpeedEngine : IDisposable
                 var size = test.DecodeOnly || test.Images ? null : SpeedTestText.Resolution(width, test.Height * width / test.Width, false);
                 var pace = Pace(test);
 
-                string Command(TimeSpan content) => CommandLine(args, test, content);
+                string Command(TimeSpan content) => CommandLine(args, test, cell, content);
 
                 // jellyfin-ffmpeg's qsvenc drops low-power mode it can't use and carries on (debian/patches/0071), so the run measures normal mode.
                 var lowPowerDropped = false;
@@ -644,7 +663,37 @@ public sealed class SpeedEngine : IDisposable
                 // Images are extracted ahead of playback, so their speed has no real time to keep up with, and no streams are counted.
                 var outputRate = cell.DoubleRate && test.Interlaced && !test.DecodeOnly && !test.Images && test.FrameRate <= 30 ? test.FrameRate * 2 : test.FrameRate;
                 CommandLog?.Invoke($"{options.Ffmpeg.Path} {Command(pace.Content)}");
-                var measured = await SpeedMeter.MeasureAsync(launch, method, outputRate, !test.DecodeOnly && !test.Images, ct, timeUp, pace);
+                var loop = test.Images ? await WriteLoopAsync(test, cell, ct) : null;
+                SpeedMeasurement measured;
+                try
+                {
+                    measured = await SpeedMeter.MeasureAsync(launch, method, outputRate, !test.DecodeOnly && !test.Images, ct, timeUp, pace);
+
+                    // MediaEncoder tries again without -skip_frame nokey when key-frame extraction fails, with the rest of the command unchanged.
+                    const string SkipFrames = "-skip_frame nokey ";
+                    if (measured.Fps is null && !measured.Interrupted && cell.Images is { KeyFramesOnly: true } && args.InputArgument is { } keyFramesInput && keyFramesInput.StartsWith(SkipFrames, StringComparison.Ordinal))
+                    {
+                        var retry = args with { InputArgument = keyFramesInput[SkipFrames.Length..] };
+                        CommandLog?.Invoke($"{options.Ffmpeg.Path} {CommandLine(retry, test, cell, pace.Content)}");
+                        var retried = await SpeedMeter.MeasureAsync(Launcher(options, content => CommandLine(retry, test, cell, content), args.Environment, measureResources, pace, null), method, outputRate, false, ct, timeUp, pace);
+                        measured = retried with { Note = retried.Note ?? Data.Catalog.Text("noteImagesKeyFramesRetried") };
+                    }
+                }
+                finally
+                {
+                    try
+                    {
+                        if (loop is not null)
+                        {
+                            File.Delete(loop);
+                        }
+                    }
+                    catch (IOException)
+                    {
+                        // A list left in the temporary folder is overwritten by the next run.
+                    }
+                }
+
                 note = lowPowerDropped ? Data.Catalog.Text("noteLowPowerDropped") : note;
                 return new SpeedResult(type, device, test.Key, string.Empty, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note) { OutputSize = size, Interrupted = measured.Interrupted, Command = CommandHash(Command(pace.Content)), Resources = measured.Resources, LowPowerDropped = lowPowerDropped, FrameRate = outputRate };
             },

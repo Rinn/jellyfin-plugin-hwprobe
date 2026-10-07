@@ -91,6 +91,7 @@ The page should look and behave like a native Jellyfin dashboard page, stay calm
 6. **The pipeline tier comes from OpenCL/Vulkan/`alphasrc`, not codec support.** A host can pass every codec probe and still be on the slow copy-back path; reporting that is the headline feature.
 7. **Replacing plugin DLLs under the same version and using Jellyfin's in-process restart marks the plugin NotSupported.** Stop and start the server instead, and reset `status` in the plugin's `meta.json` if it already happened.
 8. **Never rename the package** (build.yaml `name`, `Plugin.Name`). Jellyfin removes an updated plugin's old folder by name, not GUID (`PluginManager.DiscoverPlugins`), so after an update both versions load and every `HwProbe/` route returns 500 (AmbiguousMatchException). Reproduced 2026-10-03 updating 0.10.2 to a renamed build.
+9. **Image runs can't loop with `-stream_loop`.** Looping restarts NVIDIA's decoder, ffmpeg rebuilds the filter graph, upstream's `setpts=N/…` count starts again, and MJPEG refuses the repeated timestamp (RTX 5080, H.264). They repeat the source through a concat list instead, with each clip's length from the catalog: a downloaded piece's own header gives the whole film's.
 
 ## Known limits
 

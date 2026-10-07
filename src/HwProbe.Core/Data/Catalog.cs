@@ -331,7 +331,7 @@ public sealed partial class Catalog
                 throw new InvalidDataException($"catalog.yaml: option {option.Key}'s qualityOrder lists values it doesn't take, or lowerIsBetter is set without a range.");
             }
 
-            if (option.OutputCodec is { } codec && !Codecs.Any(c => c.Key == codec))
+            if (option.OutputCodec is { } codec && !Codecs.Any(c => c.Key == codec) && codec != SpeedCatalog.ImageCodec)
             {
                 throw new InvalidDataException($"catalog.yaml: option {option.Key}'s outputCodec {codec} isn't a codec the catalog lists.");
             }

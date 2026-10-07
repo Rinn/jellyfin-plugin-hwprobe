@@ -223,9 +223,10 @@ public sealed class ArgumentSource : IArgumentSource
 
     /// <inheritdoc/>
     /// <remarks>
-    /// A pinned copy of what MediaEncoder.ExtractVideoImagesOnIntervalAccelerated and ExtractVideoImagesOnIntervalInternal
-    /// add around EncodingHelper's input, filter and encoder (v12.2): the key-frame check, the job, the input threads and
-    /// low priority, the stream map, setpts, and the quality per encoder. The output is left to the caller.
+    /// A pinned copy of what TrickplayManager, MediaEncoder.ExtractVideoImagesOnIntervalAccelerated, and ExtractVideoImagesOnIntervalInternal
+    /// add around EncodingHelper's input, filter and encoder (v12.2): the width, the key-frame check, the height of stretched frames, the job,
+    /// the input threads and low priority, the stream map, setpts, and the quality per encoder. The output, and the retry without
+    /// key frames only when that fails, are left to the caller.
     /// </remarks>
     public ProbeArguments BuildImages(HwType type, string? device, ProbeCell cell, ImageJob job)
     {
@@ -249,12 +250,24 @@ public sealed class ArgumentSource : IArgumentSource
 
         var source = SyntheticJob.Create(cell with { Audio = false }, path);
         var stream = source.VideoStream ?? throw new InvalidOperationException("The synthetic job has no video stream.");
+
+        // TrickplayManager evens the width, and uses the video's own when it's narrower.
+        var width = stream.Width is { } videoWidth && videoWidth < job.Width ? 2 * (videoWidth / 2) : 2 * (job.Width / 2);
+
+        // Frames stored stretched (the size's ratio isn't the display aspect ratio) get the height they're shown at, as fixed-size hardware scalers need it.
+        if (stream is { Width: { } w, Height: { } h, AspectRatio: { Length: > 0 } aspect } && aspect.Split(':') is [var a, var b]
+            && double.TryParse(a, NumberStyles.Float, CultureInfo.InvariantCulture, out var wa) && double.TryParse(b, NumberStyles.Float, CultureInfo.InvariantCulture, out var ha) && wa > 0
+            && Math.Abs((w * ha) - (h * wa)) > .05)
+        {
+            stream.Height = Convert.ToInt32(w * ha / wa);
+        }
+
         var state = new EncodingJobInfo(TranscodingJobType.Progressive)
         {
             IsVideoRequest = true,
             MediaSource = source.MediaSource,
             VideoStream = stream,
-            BaseRequest = new BaseEncodingJobOptions { MaxWidth = job.Width, MaxFramerate = (float)(1.0 / TimeSpan.FromMilliseconds(job.IntervalMilliseconds).TotalSeconds) },
+            BaseRequest = new BaseEncodingJobOptions { MaxWidth = width, MaxFramerate = (float)(1.0 / TimeSpan.FromMilliseconds(job.IntervalMilliseconds).TotalSeconds) },
             MediaPath = path,
             OutputVideoCodec = "mjpeg",
         };
@@ -278,10 +291,15 @@ public sealed class ArgumentSource : IArgumentSource
 
         input += " -map 0:" + EncodingHelper.FindIndex(source.MediaSource.MediaStreams, stream).ToString(CultureInfo.InvariantCulture);
         var filter = _helper.GetVideoProcessingFilterParam(state, options, encoder).Trim();
+        if (string.IsNullOrWhiteSpace(filter))
+        {
+            throw new InvalidOperationException("EncodingHelper returned empty or invalid filter parameters.");
+        }
+
         if (!job.KeyFramesOnly)
         {
             var fps = filter.IndexOf("fps=", StringComparison.Ordinal);
-            if (string.IsNullOrWhiteSpace(filter) || fps < 0)
+            if (fps < 0)
             {
                 throw new InvalidOperationException("EncodingHelper returned invalid filter parameters.");
             }

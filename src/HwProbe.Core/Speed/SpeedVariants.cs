@@ -187,6 +187,7 @@ internal static class SpeedVariants
             ColorPrimaries = video.ColorPrimaries,
             ColorTransfer = video.ColorTransfer,
             ColorSpace = video.ColorSpace,
+            AspectRatio = video.AspectRatio,
             Tonemap = test.Tonemap && settings.Tonemap,
             VideoIndex = video.Index,
             Audio = file.Audio is not null,

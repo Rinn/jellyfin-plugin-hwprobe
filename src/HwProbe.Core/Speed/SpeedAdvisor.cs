@@ -114,7 +114,9 @@ public static class SpeedAdvisor
         List<SpeedSuggestion> suggestions = [];
 
         var measured = shown.Results.Where(r => r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && !r.Pending).ToList();
-        var hardware = measured.Where(r => r.Type != HwType.none).ToList();
+
+        // Images reach the backend only with trickplay's own Enable hardware decoding on, so they don't pick it.
+        var hardware = measured.Where(r => r.Type != HwType.none && r.Kind != SpeedOutputKind.Images).ToList();
         if (hardware.Count > 0)
         {
             var winners = hardware.GroupBy(r => r.Test, StringComparer.Ordinal).Select(g => g.Aggregate(Better)).ToList();
@@ -234,7 +236,9 @@ public static class SpeedAdvisor
                     continue;
                 }
 
-                foreach (var mine in a.Run.Results.Where(r => r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && !r.LowPowerDropped && configured(r)))
+                // The trickplay width, interval, and quality scale change image commands without being options.
+                var sameImages = (a.Settings.TrickplayWidth, a.Settings.TrickplayInterval, a.Settings.TrickplayQscale) == (b.Settings.TrickplayWidth, b.Settings.TrickplayInterval, b.Settings.TrickplayQscale);
+                foreach (var mine in a.Run.Results.Where(r => r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && !r.LowPowerDropped && configured(r) && (sameImages || r.Kind != SpeedOutputKind.Images)))
                 {
                     // A setting for another output codec (low power, CRF) doesn't reach this output, so the Intel low power suite, which switches both codecs at once, still compares each.
                     // The key's output part names the codec, also for a library test, which SpeedCatalog.Find doesn't resolve.

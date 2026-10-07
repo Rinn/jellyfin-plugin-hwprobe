@@ -70,6 +70,24 @@ public sealed class ImageArgumentsTests
     public void KeyFramesOnlyNeedsADecoderThatSkips(HwType type) =>
         Assert.Throws<ArgumentConstructionException>(() => Build(type, _job with { KeyFramesOnly = true }, _cell with { EnhancedNvdec = false, PreferNativeDecoder = false }));
 
+    /// <summary>The width is evened, as TrickplayManager does, and capped at a narrower video's own.</summary>
+    [Fact]
+    public void WidthIsEvenAndFitsTheVideo()
+    {
+        Assert.Contains("\\,320)", Build(HwType.none, _job with { Width = 321 }).FilterArgs, StringComparison.Ordinal);
+        Assert.Contains("\\,200)", Build(HwType.none, _job, _cell with { SourceWidth = 201, SourceHeight = 113 }).FilterArgs, StringComparison.Ordinal);
+    }
+
+    /// <summary>Frames stored stretched get the height they're shown at, which a fixed-size hardware scaler is given.</summary>
+    [Fact(Skip = "Requires macOS: EncodingHelper only takes its VideoToolbox branch there.", SkipUnless = nameof(TestEnvironment.IsMacOS), SkipType = typeof(TestEnvironment))]
+    public void StretchedFramesGetTheirShownHeight()
+    {
+        var anamorphic = _cell with { SourceWidth = 720, SourceHeight = 576 };
+
+        Assert.Contains("scale_vt=w=320:h=256", Build(HwType.videotoolbox, _job, anamorphic).FilterArgs, StringComparison.Ordinal);
+        Assert.Contains("scale_vt=w=320:h=180", Build(HwType.videotoolbox, _job, anamorphic with { AspectRatio = "16:9" }).FilterArgs, StringComparison.Ordinal);
+    }
+
     /// <summary>VideoToolbox decodes on the GPU, at low priority when the build takes the flag, and encodes with its MJPEG encoder when asked, allowing its software fallback.</summary>
     [Fact(Skip = "Requires macOS: EncodingHelper only takes its VideoToolbox branch there.", SkipUnless = nameof(TestEnvironment.IsMacOS), SkipType = typeof(TestEnvironment))]
     public void VideoToolboxDecodesAndEncodes()
