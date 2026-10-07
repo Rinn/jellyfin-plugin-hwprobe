@@ -1343,7 +1343,7 @@
                     if (!chosenVideos) {
                         chosenVideos = new Set(speedVideos.filter(v => v.Default).map(v => v.Key));
                         chosenAudios = new Set();
-                        chosenAudioOutputs = new Set(speedOutputs.filter(audioOutput).map(o => o.Key));
+                        chosenAudioOutputs = new Set();
                         const defaults = speedOutputs.filter(o => o.Default).map(o => o.Key);
                         chosenCodecs = new Set(speedCodecs.filter(c => defaults.some(k => k.startsWith(c.Key + '-'))).map(c => c.Key).concat(defaults.filter(k => speedOutputs.some(o => o.Key === k && standalone(o)))));
                         chosenQualities = new Set(speedQualities.filter(q => defaults.some(k => k.endsWith('-' + q.Key))).map(q => q.Key));
