@@ -136,7 +136,7 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Backends = [] }, ct));
         Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Audios = ["dsd"] }, ct));
 
-        Assert.Equal(ProbeRunResult.Started, await service.StartSpeedAsync(request with { Audios = ["flac"] }, ct));
+        Assert.Equal(ProbeRunResult.Started, await service.StartSpeedAsync(request with { Audios = ["flac"], Outputs = ["h264-8mbps", "audio-aac"] }, ct));
         await service.Background;
 
         Assert.Equal(Reports.Sample().Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device)), measured);
@@ -144,7 +144,10 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal((SpeedMethod.Full, "fast", 4), (asked.Method, asked.Settings.EncoderPreset, asked.Settings.EncodingThreadCount));
         Assert.Equal([HwType.none], asked.Backends);
         Assert.True(asked.MeasureResources);
-        Assert.Equal((SpeedCatalog.DefaultVideos, SpeedCatalog.DefaultOutputs), (asked.Videos, asked.Outputs));
+
+        // Audio inputs alone measure no default video.
+        Assert.Empty(asked.Videos);
+        Assert.Equal(["h264-8mbps", "audio-aac"], asked.Outputs);
         Assert.Equal(["flac"], asked.Audios);
         Assert.Equal((20, 28, true), (asked.Settings.H264Crf, asked.Settings.H265Crf, asked.Settings.AudioCopy));
         Assert.Equal((2, TimeSpan.FromMinutes(1)), (asked.Repeats, Assert.NotNull(asked.TimeLimit)));

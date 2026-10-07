@@ -790,7 +790,8 @@ public sealed partial class ProbeService : IDisposable
             return null;
         }
 
-        var videos = request.Videos.Count == 0 ? SpeedCatalog.DefaultVideos : request.Videos;
+        // A run of audio inputs alone measures no video.
+        var videos = request.Videos.Count == 0 && request.Audios.Count == 0 ? SpeedCatalog.DefaultVideos : request.Videos;
         var outputs = request.Outputs.Count == 0 ? SpeedCatalog.DefaultOutputs : request.Outputs;
         if (videos.Any(v => SpeedCatalog.FindVideo(v) is null && !(v == SpeedCatalog.LibraryKey && file is not null))
             || outputs.Any(o => SpeedCatalog.FindOutput(o) is null)

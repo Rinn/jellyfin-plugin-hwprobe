@@ -673,11 +673,13 @@ public static class SpeedAdvisor
             .OrderByDescending(s => s.Fraction)];
     }
 
-    /// <summary>Reports whether a result is from a generated test video rather than a film sample or library file.</summary>
+    /// <summary>Reports whether a result is from a generated test clip rather than a film sample, library file, or downloaded recording.</summary>
     /// <param name="r">The result.</param>
-    /// <returns>True for a generated video.</returns>
+    /// <returns>True for a generated clip.</returns>
     private static bool IsGenerated(SpeedResult r) =>
-        SpeedCatalog.FindVideo(r.Test.Split('|')[0]) is { Title: null, File: null };
+        r.Kind is SpeedOutputKind.Audio or SpeedOutputKind.AudioDecode
+            ? SpeedCatalog.FindAudio(r.Test.Split('|')[0]) is { Fixture.DownloadUrl: null }
+            : SpeedCatalog.FindVideo(r.Test.Split('|')[0]) is { Title: null, File: null };
 
     /// <summary>Returns how much faster one result is than another, as a fraction.</summary>
     /// <param name="a">The result.</param>

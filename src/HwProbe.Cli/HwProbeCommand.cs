@@ -40,7 +40,7 @@ internal sealed class HwProbeCommand
 
     private readonly Option<IReadOnlyList<string>> _speedAudio = new("--speed-audio")
     {
-        Description = $"Audio inputs to measure in software, comma-separated, with the audio outputs in --speed-outputs. Default: none. All: {string.Join(',', SpeedCatalog.Audios.Select(a => a.Key))}.",
+        Description = $"Audio inputs to measure in software, comma-separated, with the audio outputs in --speed-outputs (every one when it isn't given); with no --speed-videos, no video is measured. Default: none. All: {string.Join(',', SpeedCatalog.Audios.Select(a => a.Key))}.",
         CustomParser = r => ParseKeys(r, k => SpeedCatalog.FindAudio(k) is not null, "audio input", SpeedCatalog.Audios.Select(a => a.Key)),
         DefaultValueFactory = _ => [],
     };
@@ -136,6 +136,17 @@ internal sealed class HwProbeCommand
         {
             _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _speed, _suite, _speedVideos, _speedAudio, _speedOutputs, _speedBackends, _speedFile, _speedRepeats, _speedOption, _speedTimeLimit, _speedResources, _speedJson, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
         };
+
+        // Audio is measured in software alone, so backends without it would measure none of it.
+        Root.Validators.Add(r =>
+        {
+            // Read from the tokens: a value that didn't parse already has its error, and reading it would throw.
+            var backends = (r.GetResult(_speedBackends)?.Tokens ?? []).SelectMany(t => t.Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).ToList();
+            if (r.GetResult(_speedAudio)?.Tokens.Count > 0 && backends.Count > 0 && !backends.Contains(nameof(HwType.none)))
+            {
+                r.AddError("--speed-audio is measured in software: add none to --speed-backends.");
+            }
+        });
     }
 
     /// <summary>Gets the root command.</summary>
@@ -257,9 +268,15 @@ internal sealed class HwProbeCommand
             settings = SpeedSettingsOptions.Apply(settings, parts[0], parts[1]) ?? settings;
         }
 
-        return new(method, result.GetRequiredValue(_speedVideos), result.GetRequiredValue(_speedOutputs), settings)
+        // Audio inputs alone measure no default video, and every audio output unless outputs are named.
+        var audios = result.GetRequiredValue(_speedAudio);
+        var videos = audios.Count > 0 && result.GetResult(_speedVideos) is null or { Implicit: true } ? [] : result.GetRequiredValue(_speedVideos);
+        var outputs = audios.Count > 0 && result.GetResult(_speedOutputs) is null or { Implicit: true }
+            ? [.. SpeedCatalog.Outputs.Where(o => o.Audio).Select(o => o.Key)]
+            : result.GetRequiredValue(_speedOutputs);
+        return new(method, videos, outputs, settings)
         {
-            Audios = result.GetRequiredValue(_speedAudio),
+            Audios = audios,
             Backends = result.GetValue(_speedBackends) is { Length: > 0 } names ? [.. names.SelectMany(n => n.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).Select(Enum.Parse<HwType>)] : null,
             Repeats = result.GetValue(_speedRepeats),
             TimeLimit = result.GetValue(_speedTimeLimit) is { } seconds ? TimeSpan.FromSeconds(seconds) : null,

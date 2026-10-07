@@ -484,7 +484,7 @@ public sealed class SpeedEngine : IDisposable
             return earlier.Result with { ReusedFromUtc = earlier.MeasuredUtc };
         }
 
-        // Audio keeps one CPU core busy for a second or two, so it doesn't wait for the system to wind down.
+        // Audio is one copy on one CPU core for a second or two, so it doesn't wait for the system to wind down.
         if (!test.AudioOnly && _lastMeasured is { } last && speed.TestDelay - (_time.GetUtcNow() - last) is { Ticks: > 0 } wait)
         {
             await Task.Delay(wait, _time, cancellationToken);
@@ -567,7 +567,9 @@ public sealed class SpeedEngine : IDisposable
                 var pace = MeterPace.Audio;
                 string Command(TimeSpan content) => SpeedCommandLine.BuildAudio(args, content);
                 CommandLog?.Invoke($"{options.Ffmpeg.Path} {Command(pace.Content)}");
-                var measured = await SpeedMeter.MeasureAsync(Launcher(options, Command, args.Environment, measureResources, pace, null), method, test.FrameRate, !test.DecodeOnly, ct, timeUp, pace);
+
+                // Streams aren't counted: audio runs hundreds of times real time, so every count would be the cap.
+                var measured = await SpeedMeter.MeasureAsync(Launcher(options, Command, args.Environment, measureResources, pace, null), method, test.FrameRate, false, ct, timeUp, pace);
                 return new SpeedResult(HwType.none, string.Empty, test.Key, string.Empty, measured.Fps, measured.Streams, measured.Capped, measured.Note) { Interrupted = measured.Interrupted, Command = CommandHash(Command(pace.Content)), Resources = measured.Resources, FrameRate = test.FrameRate };
             },
             cancellationToken);

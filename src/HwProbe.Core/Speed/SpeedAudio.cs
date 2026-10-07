@@ -16,7 +16,4 @@ public sealed record SpeedAudio(string Key, string Name, FixtureSpec Fixture, st
 
     /// <summary>Gets a value indicating whether it's an old format, listed last.</summary>
     public bool Legacy { get; init; }
-
-    /// <summary>Gets where it comes from, e.g. <c>Generated, 10 s</c> or <c>Downloaded, 0.3 MB</c>.</summary>
-    public string Origin { get; init; } = string.Empty;
 }

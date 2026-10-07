@@ -2196,7 +2196,7 @@
                         button.disabled = videoRuns + audioRuns === 0 || running;
                     };
                     button = action('Measure performance', () => {
-                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, ReuseResults: speedReuse, MeasureResources: speedResources, WhenTranscoding: speedWhenTranscoding, Options: speedSettings, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Audios: speedAudios.filter(a => chosenAudios.has(a.Key)).map(a => a.Key), Outputs: selectedOutputs().concat(selectedAudioOutputs()).map(o => o.Key), Backends: [...chosenBackends], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
+                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, ReuseResults: speedReuse, MeasureResources: speedResources, WhenTranscoding: speedWhenTranscoding, Options: speedSettings, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Audios: speedAudios.filter(a => chosenAudios.has(a.Key)).map(a => a.Key), Outputs: (allVideos().some(v => chosenVideos.has(v.Key)) ? selectedOutputs() : []).concat(selectedAudioOutputs()).map(o => o.Key), Backends: [...chosenBackends], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
                         ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed'), data: JSON.stringify(body), contentType: 'application/json' })
                             .then(() => {
                                 showTab(tabs[3][0]);
@@ -2279,7 +2279,7 @@
                     multiSelect(form, 'Input', inputOrder().map(v => v === 'library' ? { key: 'library', text: 'Library video', secondary: 'A movie or episode from a library' } : { key: v.Key, text: v.Title ? v.Name + ': ' + v.Title : v.Name, secondary: v.Input }), chosenVideos, () => { sourceLines(sources, update); update(); })
                         .appendChild(sources);
                     sourceLines(sources, update);
-                    multiSelect(form, 'Audio', speedAudios.map(a => ({ key: a.Key, text: a.Name, secondary: a.Input })), chosenAudios, () => update())
+                    multiSelect(form, 'Audio input', speedAudios.map(a => ({ key: a.Key, text: a.Name, secondary: a.Input })), chosenAudios, () => update())
                         .appendChild(el('div', 'Measured in software alone: no backend decodes or encodes audio on the GPU.', 'fieldDescription'));
                     form.appendChild(el('h3', 'Output', 'sectionTitle'));
                     multiSelect(form, 'Codec', speedCodecs.map(c => ({ key: c.Key, text: c.Name })).concat(speedOutputs.filter(standalone).map(o => ({ key: o.Key, text: o.Label }))), chosenCodecs, () => update())

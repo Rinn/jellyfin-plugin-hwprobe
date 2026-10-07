@@ -144,12 +144,11 @@ public static class SpeedCatalog
 
     /// <summary>Returns a catalog audio input.</summary>
     /// <param name="audio">The audio input.</param>
-    /// <returns>The audio input, with its clip and where it comes from.</returns>
+    /// <returns>The audio input, with its clip.</returns>
     private static SpeedAudio Audio(CatalogAudio audio)
     {
         var fixture = Fixture(audio.Clip) with { AudioCodec = audio.Codec, AudioChannels = audio.Channels };
-        var origin = audio.Clip.Size is { } bytes ? string.Create(CultureInfo.InvariantCulture, $"Downloaded, {Math.Max(1, Math.Round(bytes / 1000.0)):0} KB") : "Generated";
-        return new SpeedAudio(audio.Key, audio.Name, fixture, audio.Codec, audio.Channels, audio.SampleRate) { Description = audio.Description, Legacy = audio.Legacy, Origin = origin };
+        return new SpeedAudio(audio.Key, audio.Name, fixture, audio.Codec, audio.Channels, audio.SampleRate) { Description = audio.Description, Legacy = audio.Legacy };
     }
 
     /// <summary>Returns a catalog video.</summary>
