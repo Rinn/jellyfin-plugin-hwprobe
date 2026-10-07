@@ -33,6 +33,38 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.Equal([new AppliedChange("EncoderPreset", "auto", "medium") { Label = Catalog.Default.Options.Single(o => o.Key == "EncoderPreset").Label }], applied.Changes);
     }
 
+    /// <summary>Any value a setting's table lists can be applied but the server's own, unless it falls behind real time on an output.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task AppliesAnyListedValueThatKeepsUp()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        static IReadOnlyList<OutputSpeed> Speeds(double h264, double hevc) => [new("a", "Live action", "H.264, 8 Mbps", h264, null, false), new("b", "Live action", "HEVC, 8 Mbps", hevc, null, false)];
+        _harness.Saved.EncoderPreset = EncoderPreset.faster;
+        _harness.Suggestions =
+        [
+            new SpeedSuggestion(SpeedSuggestionKind.RecommendedValue, ["a", "b"])
+            {
+                Setting = "EncoderPreset",
+                Value = "auto",
+                Speeds = Speeds(8.3, 3.97),
+                Compared =
+                [
+                    new SpeedComparedValue("faster", 4.47, null, false) { Speeds = Speeds(6.9, 4.47), Current = true },
+                    new SpeedComparedValue("medium", 1.19, null, false) { Speeds = Speeds(5.3, 1.19) },
+                    new SpeedComparedValue("veryslow", 0.6, null, false) { Speeds = Speeds(2.1, 0.6) },
+                ],
+            },
+        ];
+
+        Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange("EncoderPreset", "faster"), "admin", ct)).Outcome);
+        Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange("EncoderPreset", "veryslow"), "admin", ct)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange("EncoderPreset", "medium"), "admin", ct)).Outcome);
+        Assert.Equal(EncoderPreset.medium, _harness.Saved.EncoderPreset);
+        Assert.Equal(ApplyOutcome.Applied, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange("EncoderPreset", "auto"), "admin", ct)).Outcome);
+        Assert.Equal(EncoderPreset.auto, _harness.Saved.EncoderPreset);
+    }
+
     /// <summary>A measured choice in a setting group sets every setting it needs in one change; a row no suggestion shows is refused, and tone mapping off can be applied.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

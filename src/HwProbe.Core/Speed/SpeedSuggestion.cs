@@ -20,7 +20,7 @@ public sealed record SpeedSuggestion(SpeedSuggestionKind Kind, IReadOnlyList<str
     /// <summary>Gets the values it was compared with.</summary>
     public IReadOnlyList<string> Others { get; init; } = [];
 
-    /// <summary>Gets how much faster the suggestion measured, as a fraction; negative when slower.</summary>
+    /// <summary>Gets how much faster the suggestion measured than the values it was compared with: the smallest gain any output showed, as a fraction; negative when slower.</summary>
     public double? Gain { get; init; }
 
     /// <summary>Gets the slowest measured speed with the suggestion, as a multiple of real time.</summary>
@@ -56,8 +56,11 @@ public sealed record SpeedSuggestion(SpeedSuggestionKind Kind, IReadOnlyList<str
     /// <summary>Gets the choice the runs with the value made in that group, as the catalog labels it, or null.</summary>
     public string? Row { get; init; }
 
-    /// <summary>Gets the values it was compared with, each with its own speed and streams, for the page to show beside it; empty when nothing was.</summary>
+    /// <summary>Gets the values the page shows beside it, each with its own speed and streams: for a setting outside a group, every value compared with the server's; empty when nothing was.</summary>
     public IReadOnlyList<SpeedComparedValue> Compared { get; init; } = [];
+
+    /// <summary>Gets the value's slowest speed on each output, for the page's column per output; empty when the suggestion isn't about a setting's value.</summary>
+    public IReadOnlyList<OutputSpeed> Speeds { get; init; } = [];
 
     /// <summary>Gets a value indicating whether it rests on generated test videos alone, which encode faster than real video.</summary>
     public bool TestVideosOnly { get; init; }

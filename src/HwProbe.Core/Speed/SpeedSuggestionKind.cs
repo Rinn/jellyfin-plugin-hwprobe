@@ -29,4 +29,7 @@ public enum SpeedSuggestionKind
 
     /// <summary>Nothing compared with the server's value is worth changing to, so it's kept.</summary>
     NoChange,
+
+    /// <summary>The value the catalog recommends for a setting whatever the measurements, such as Auto for the encoding preset.</summary>
+    RecommendedValue,
 }

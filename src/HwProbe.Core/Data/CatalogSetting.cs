@@ -53,6 +53,12 @@ public sealed class CatalogSetting
     /// <summary>Gets a value indicating whether a lower number in its range gives a better picture.</summary>
     public bool LowerIsBetter { get; init; }
 
+    /// <summary>Gets the value recommended whenever it was measured, whatever the measurements, or null to recommend by them.</summary>
+    public string? Recommended { get; init; }
+
+    /// <summary>Gets why <see cref="Recommended"/> is, shown as the recommendation's reason, or null.</summary>
+    public string? RecommendedReason { get; init; }
+
     /// <summary>Returns whether one value gives a better picture than another.</summary>
     /// <param name="value">The value.</param>
     /// <param name="other">The other value.</param>

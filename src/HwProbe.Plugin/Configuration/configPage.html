@@ -1612,46 +1612,97 @@
                     return parts.length > 2 ? parts.slice(0, -1).join(', ') + ', and ' + parts[parts.length - 1] : parts.join(' and ');
                 }
 
-                // The suggestion shown beside a faster, more efficient, or more compatible one for the same setting, each compared with the other's value:
-                // a better-quality one, or for the value that avoids a drawback, the suggestion for the value that has it.
-                function suggestionCounterpart(list, s) {
-                    const mutual = o => o.Setting === s.Setting && s.Others.includes(o.Value) && o.Others.includes(s.Value);
-                    const kinds = s.Kind === 'Compatible' ? ['FasterSetting', 'EfficientSetting', 'HigherQuality', 'BitrateLimit'] : s.Kind === 'FasterSetting' || s.Kind === 'EfficientSetting' ? ['HigherQuality'] : [];
-                    return list.find(o => kinds.includes(o.Kind) && mutual(o)) || null;
+                // Alternatives with a serial comma: "a", "a or b", "a, b, or c".
+                function orList(items) {
+                    return items.length > 2 ? items.slice(0, -1).join(', ') + ', or ' + items[items.length - 1] : items.join(' or ');
                 }
 
-                // A suggestion as a table with a row per value: the suggested one, then what it was compared with, or a pair of suggestions for one setting.
-                // Each row is { text, value, speed, streams, capped, savings, lower, current, action, description, best }; lower is null where quality wasn't compared, and best tints the recommended row.
+                // For the value that avoids a drawback, the suggestion for the value that has it, each compared with the other's value.
+                function suggestionCounterpart(list, s) {
+                    const kinds = ['FasterSetting', 'EfficientSetting', 'HigherQuality', 'BitrateLimit'];
+                    return s.Kind === 'Compatible' ? list.find(o => kinds.includes(o.Kind) && o.Setting === s.Setting && s.Others.includes(o.Value) && o.Others.includes(s.Value)) || null : null;
+                }
+
+                // A suggestion as a table with a row per value, backend, or output.
+                // Each row is { text, value, speed, streams, capped, speeds, savings, lower, current, action, description, best }; speeds holds the speed per output, lower is null where quality wasn't compared, and best tints the recommended row.
                 // Hovering the heading or a row's name shows Jellyfin's own description of the setting.
                 function suggestionTable(label, rows, option, notes, description) {
                     const div = el('div');
                     const counted = v => v !== null && v !== undefined;
+                    // Each column is { name, value, kind, group, title }; adjacent columns of one group share a heading above them.
                     const columns = [];
                     if (rows.some(r => r.backend)) {
-                        columns.push(['Fastest backend', r => r.backend]);
+                        columns.push({ name: 'Fastest backend', value: r => r.backend });
                     }
-                    if (rows.every(r => counted(r.speed))) {
-                        columns.push(['Speed', r => r.speed.toFixed(2) + '\u00d7 real time', 'hwprobe-num']);
-                    }
-                    if (rows.every(r => counted(r.streams))) {
-                        columns.push(['Concurrent streams', r => r.streams + (r.capped ? '+' : ''), 'hwprobe-num']);
+                    // A column per output where the rows were measured on more than one, so a value that wins on one output and loses on another shows both.
+                    const outputs = [];
+                    rows.forEach(r => (r.speeds || []).forEach(x => {
+                        if (!outputs.some(o => o.Label === x.Label)) {
+                            outputs.push(x);
+                        }
+                    }));
+                    const perOutput = outputs.length > 1 && rows.every(r => r.speeds && r.speeds.length);
+                    if (perOutput) {
+                        const oneVideo = outputs.every(o => o.Video === outputs[0].Video);
+                        const streamsCounted = rows.some(r => r.speeds.some(x => counted(x.Streams)));
+                        // The output names the column; two that would read alike, measured with other audio or inputs, take their full labels.
+                        const short = o => (oneVideo || !o.Video ? '' : o.Video + ' \u2192 ') + (o.Output || o.Label);
+                        for (const o of outputs) {
+                            const at = r => r.speeds.find(x => x.Label === o.Label);
+                            const group = outputs.filter(x => short(x) === short(o)).length > 1 ? o.Label : short(o);
+                            columns.push({ name: 'Speed', value: r => at(r) ? at(r).Speed.toFixed(2) + '\u00d7 real time' : '\u2013', kind: 'hwprobe-num hwprobe-divide', group, title: o.Label });
+                            if (streamsCounted) {
+                                columns.push({ name: 'Concurrent streams', value: r => at(r) && counted(at(r).Streams) ? at(r).Streams + (at(r).StreamsCapped ? '+' : '') : '\u2013', kind: 'hwprobe-num', group, title: o.Label });
+                            }
+                        }
+                    } else {
+                        if (rows.every(r => counted(r.speed))) {
+                            columns.push({ name: 'Speed', value: r => r.speed.toFixed(2) + '\u00d7 real time', kind: 'hwprobe-num' });
+                        }
+                        if (rows.every(r => counted(r.streams))) {
+                            columns.push({ name: 'Concurrent streams', value: r => r.streams + (r.capped ? '+' : ''), kind: 'hwprobe-num' });
+                        }
                     }
                     if (rows.some(r => r.savings.length)) {
-                        columns.push(['Resources', r => r.savings.length ? savingsText(r.savings) : '\u2013']);
+                        columns.push({ name: 'Resources', value: r => r.savings.length ? savingsText(r.savings) : '\u2013' });
                     }
                     if (rows.some(r => counted(r.lower))) {
-                        columns.push(['Quality', r => !counted(r.lower) ? '\u2013' : r.lower ? 'Lower' : 'Higher']);
+                        columns.push({ name: 'Quality', value: r => !counted(r.lower) ? '\u2013' : r.lower ? 'Lower' : 'Higher' });
                     }
                     if (option && option.CompatibleValue) {
-                        columns.push(['Compatibility', r => r.value === option.CompatibleValue ? 'Higher' : 'Lower']);
+                        columns.push({ name: 'Compatibility', value: r => r.value === option.CompatibleValue ? 'Higher' : 'Lower' });
+                    }
+                    // The columns after the outputs' start with a divider too.
+                    const after = columns.findIndex((c, i) => !c.group && i > 0 && columns[i - 1].group);
+                    if (after >= 0) {
+                        columns[after].kind = ((columns[after].kind || '') + ' hwprobe-divide').trim();
                     }
                     const table = el('table', null, 'hwprobe-full');
                     // The action column keeps one width, with or without a button, so it lines up from one suggestion's table to the next.
                     const described = description || (option ? option.Description : null) || '';
                     const heading = el('th', label);
                     heading.title = described;
+                    if (perOutput) {
+                        const top = el('tr');
+                        top.appendChild(el('th', null, 'hwprobe-mark'));
+                        top.appendChild(el('th'));
+                        for (let i = 0; i < columns.length; i++) {
+                            const c = columns[i];
+                            const th = el('th', c.group || null, c.group ? 'hwprobe-num hwprobe-divide' : c.kind);
+                            if (c.group) {
+                                th.title = c.title;
+                                while (i + 1 < columns.length && columns[i + 1].group && columns[i + 1].title === c.title) {
+                                    th.colSpan += 1;
+                                    i++;
+                                }
+                            }
+                            top.appendChild(th);
+                        }
+                        top.appendChild(el('th', null, 'hwprobe-action'));
+                        table.appendChild(top);
+                    }
                     // The first column marks the server's own value, as Recommended Settings marks its advice: on, or not in use.
-                    row(table, [el('th', null, 'hwprobe-mark'), heading].concat(columns.map(([name, , kind]) => el('th', name, kind)), [el('th', null, 'hwprobe-action')]));
+                    row(table, [el('th', null, 'hwprobe-mark'), heading].concat(columns.map(c => el('th', c.name, c.group ? c.kind + ' secondaryText' : c.kind)), [el('th', null, 'hwprobe-action')]));
                     for (const r of rows) {
                         const cell = el('td', null, 'hwprobe-action');
                         if (r.action) {
@@ -1665,7 +1716,7 @@
                         marker.appendChild(glyph);
                         const name = el('td', r.text);
                         name.title = r.description || described;
-                        const tr = row(table, [marker, name].concat(columns.map(([, value, kind]) => el('td', value(r), kind)), [cell]));
+                        const tr = row(table, [marker, name].concat(columns.map(c => el('td', c.value(r), c.kind)), [cell]));
                         if (r.best) {
                             [...tr.cells].forEach(td => td.classList.add('hwprobe-best'));
                             name.title = 'Recommended. ' + name.title;
@@ -1716,17 +1767,24 @@
                         }
                         // A stricter Internet streaming limit already set keeps streams within the suggested one, so it isn't offered.
                         const stricter = s => s.Kind === 'BitrateLimit' && remoteLimit > 0 && remoteLimit < Number(s.Value);
-                        const apply = s => s.Current || stricter(s) || s.Kind === 'NoChange' ? null
-                            : idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: s.Value, Run: speedViewing }, true), 'raised');
-                        const quality = s => s.Kind === 'HigherQuality' ? false : s.LowerQuality ? true : null;
-                        const settingRow = s => ({ text: optionValueText(s.Setting, s.Value), value: s.Value, speed: s.Speed, streams: s.Streams, capped: s.StreamsCapped, savings: s.Savings, lower: s.LowerQuality, current: s.Current, action: apply(s) });
+                        // Any value but the server's own can be applied, unless it falls behind real time on an output, which the server refuses; a bitrate limit as suggested.
+                        const behind = (speeds, speed) => {
+                            const slowest = speeds && speeds.length ? Math.min(...speeds.map(x => x.Speed)) : speed;
+                            return typeof slowest === 'number' && slowest < 1;
+                        };
+                        const applyValue = (s, value, current, speeds, speed) => current || stricter(s) || (!isBitrate(s) && behind(speeds, speed)) ? null
+                            : idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: value, Run: speedViewing }, true), 'raised');
+                        const apply = s => s.Kind === 'NoChange' ? null : applyValue(s, s.Value, s.Current, s.Speeds, s.Speed);
+                        const settingRow = s => ({ text: optionValueText(s.Setting, s.Value), value: s.Value, speed: s.Speed, streams: s.Streams, capped: s.StreamsCapped, speeds: s.Speeds, savings: s.Savings, lower: s.LowerQuality, current: s.Current, action: apply(s) });
                         const testVideos = 'Measured on test videos only, which encode faster than real video; measure a film sample or library video to confirm.';
                         // Why the tinted row is recommended, the first line of the table's last row: the suggestion's name for it and for what it was compared with.
                         const reasonFor = (x, name, others) => {
                             const percent = x.Gain === null || x.Gain === undefined ? '' : Math.round(Math.abs(x.Gain) * 100) + '%';
-                            const versus = others.join(' or ');
+                            const versus = orList(others);
                             const quality = x.LowerQuality ? ', at lower quality.' : '.';
-                            return x.Kind === 'FasterSetting' ? 'Recommendation: ' + name + ' \u2013 ' + percent + ' faster than ' + versus + quality
+                            const option = runOptions.find(o => o.Key === x.Setting);
+                            return x.Kind === 'RecommendedValue' ? 'Recommendation: ' + name + ' \u2013 ' + (option ? option.RecommendedReason : '')
+                                : x.Kind === 'FasterSetting' ? 'Recommendation: ' + name + ' \u2013 ' + percent + ' faster than ' + versus + quality
                                 : x.Kind === 'EfficientSetting' ? 'Recommendation: ' + name + ' \u2013 as fast as ' + versus + ' with ' + savingsText(x.Savings) + quality
                                 : x.Kind === 'HigherQuality' ? 'Recommendation: ' + name + ' \u2013 better quality than ' + versus + ' while still ' + x.Speed.toFixed(2) + '\u00d7 real time on real video.'
                                 : x.Kind === 'Compatible' ? 'Recommendation: ' + name + ' \u2013 avoids the drawback below, at lower quality.'
@@ -1753,9 +1811,9 @@
                                 }
                             };
                             for (const m of members) {
-                                add({ text: m.Row, value: m.Value, speed: m.Speed, streams: m.Streams, capped: m.StreamsCapped, savings: m.Savings, lower: null, current: false, action: null });
+                                add({ text: m.Row, value: m.Value, speed: m.Speed, streams: m.Streams, capped: m.StreamsCapped, speeds: m.Speeds, savings: m.Savings, lower: null, current: false, action: null });
                                 for (const c of m.Compared) {
-                                    add({ text: c.Row, value: c.Value, speed: c.Speed, streams: c.Streams, capped: c.StreamsCapped, savings: [], lower: null, current: false, action: null });
+                                    add({ text: c.Row, value: c.Value, speed: c.Speed, streams: c.Streams, capped: c.StreamsCapped, speeds: c.Speeds, savings: [], lower: null, current: false, action: null });
                                 }
                             }
                             // Apply on a row sets every setting the choice needs; a row without conditions, or one that falls behind real time, can't be applied.
@@ -1853,21 +1911,19 @@
                                 section.appendChild(suggestionTable('Hardware acceleration', rows, null, [reason, s.TestVideosOnly ? testVideos : '']));
                                 continue;
                             }
-                            // A setting: the suggested value, then each value it was compared with; the server's value is one of them unless the suggestion is.
+                            // A setting: the recommended value and every other value compared with the server's, in Jellyfin's order.
                             const main = settingRow(s);
-                            main.lower = quality(s);
                             main.best = true;
-                            const rows = [main].concat(s.Compared.map(c => ({
-                                text: optionValueText(s.Setting, c.Value),
-                                value: c.Value,
-                                speed: c.Speed,
-                                streams: c.Streams,
-                                capped: c.StreamsCapped,
-                                savings: [],
-                                lower: main.lower === null ? null : !main.lower,
-                                current: isBitrate(s) ? remoteLimit === Number(c.Value) : !s.Current,
-                                action: null,
-                            })));
+                            const others = s.Compared.map(c => {
+                                const current = isBitrate(s) ? remoteLimit === Number(c.Value) : c.Current;
+                                return { text: optionValueText(s.Setting, c.Value), value: c.Value, speed: c.Speed, streams: c.Streams, capped: c.StreamsCapped, speeds: c.Speeds, savings: [], lower: c.LowerQuality, current, action: applyValue(s, c.Value, current, c.Speeds, c.Speed) };
+                            });
+                            // The recommended value's quality is shown where every other value is better, or every other worse.
+                            const lowers = others.map(r => r.lower);
+                            main.lower = lowers.length && lowers.every(l => l === true) ? false : lowers.length && lowers.every(l => l === false) ? true : null;
+                            // A choice's place in the option's dropdown, a number's value; a switch keeps the recommended value first.
+                            const order = r => option && option.Choices ? option.Choices.findIndex(c => c.Key === r.value) : option && option.Range ? Number(r.value) : 0;
+                            const rows = [main].concat(others).sort((a, b) => order(a) - order(b));
                             section.appendChild(suggestionTable(label, rows, option, [
                                 reasonFor(s, optionValueText(s.Setting, s.Value), s.Others.map(o => optionValueText(s.Setting, o))),
                                 stricter(s) ? 'A stricter limit of ' + remoteLimit / 1e6 + ' Mbps is already set.' : '',
