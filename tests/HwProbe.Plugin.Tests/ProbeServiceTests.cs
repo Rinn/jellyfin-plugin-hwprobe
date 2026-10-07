@@ -236,6 +236,65 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.True(SpeedReportStore.Deserialize((await service.LatestSpeedJsonAsync(ct))!)!.CancelledForTranscode);
     }
 
+    /// <summary>A run set to cancel for transcodes stops checking for them when it ends.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task TranscodeWatchEndsWithTheRun()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var checks = 0;
+        using var service = new ProbeService(_ => Task.FromResult(Reports.Sample()), () => Interlocked.Increment(ref checks) < 0, Path.Combine(_directory, "latest.json"), new QuickTimeProvider(), TimeSpan.Zero, NullLogger.Instance)
+        {
+            MeasureSpeed = (speed, backends, progress, token) => Task.FromResult(new SpeedReport(DateTimeOffset.UnixEpoch, Reports.Sample().Ffmpeg, speed.Method, [])),
+        };
+        await service.RunAsync(ct);
+
+        Assert.Equal(ProbeRunResult.Started, await service.StartSpeedAsync(new SpeedRequest("quick", [], []) { WhenTranscoding = TranscodeAction.Cancel }, ct));
+        await service.Background;
+        await Task.Delay(100, ct);
+        var settled = Volatile.Read(ref checks);
+        await Task.Delay(100, ct);
+
+        Assert.Equal(settled, Volatile.Read(ref checks));
+    }
+
+    /// <summary>A probe or speed run reads as running as soon as it's started, so the page's next poll follows it.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task StartedRunReadsAsRunningAtOnce()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var release = new SemaphoreSlim(0);
+        using var service = new ProbeService(
+            async c =>
+            {
+                await release.WaitAsync(c);
+                return Reports.Sample();
+            },
+            () => false,
+            Path.Combine(_directory, "latest.json"),
+            TimeProvider.System,
+            TimeSpan.Zero,
+            NullLogger.Instance)
+        {
+            MeasureSpeed = async (speed, backends, progress, token) =>
+            {
+                await release.WaitAsync(token);
+                return new SpeedReport(DateTimeOffset.UnixEpoch, Reports.Sample().Ffmpeg, speed.Method, []);
+            },
+        };
+
+        Assert.Equal(ProbeRunResult.Started, await service.StartAsync(ct));
+        Assert.Equal((ProbeState.Running, ProbeActivity.Probe), (service.Status.State, service.Status.Activity));
+        release.Release();
+        await service.Background;
+
+        Assert.Equal(ProbeRunResult.Started, await service.StartSpeedAsync(new SpeedRequest("quick", [], []), ct));
+        Assert.Equal((ProbeState.Running, ProbeActivity.Speed), (service.Status.State, service.Status.Activity));
+        release.Release();
+        await service.Background;
+    }
+
     /// <summary>A running speed run shows its plan as it fills in, pauses after the current measurement, and keeps what's finished when cancelled.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
