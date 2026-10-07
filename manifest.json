@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "1.1.2.0",
+        "changelog": "- Performance test failures say what went wrong, and the same failure is listed once.",
+        "targetAbi": "12.2.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v1.1.2/hwprobe-plugin_1.1.2.0.zip",
+        "checksum": "d94390ef161796c1df0df0d5c65607d1",
+        "timestamp": "2026-10-07T18:57:06Z"
+      },
+      {
         "version": "1.1.1.0",
         "changelog": "- Custom Test no longer selects audio codecs before an audio input is chosen.",
         "targetAbi": "12.2.0.0",
