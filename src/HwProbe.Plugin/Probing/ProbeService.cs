@@ -1064,7 +1064,14 @@ public sealed partial class ProbeService : IDisposable
         await SpeedReportStore.WriteAsync(report, PathAt(at), CancellationToken.None);
         foreach (var old in Directory.EnumerateFiles(SpeedHistoryDirectory, "*.json").Order(StringComparer.Ordinal).Reverse().Skip(SpeedHistoryLimit))
         {
-            File.Delete(old);
+            try
+            {
+                File.Delete(old);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Open in another request on Windows; the next run deletes it.
+            }
         }
     }
 

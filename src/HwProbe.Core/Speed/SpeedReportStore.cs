@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Jellyfin.Plugin.HwProbe.Core.Storage;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 
@@ -30,14 +31,9 @@ public static class SpeedReportStore
     /// <param name="path">Destination file.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>A task that completes when the file is in place.</returns>
-    public static async Task WriteAsync(SpeedReport report, string path, CancellationToken cancellationToken)
+    public static Task WriteAsync(SpeedReport report, string path, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(report);
-        ArgumentException.ThrowIfNullOrEmpty(path);
-        var directory = Path.GetDirectoryName(Path.GetFullPath(path))!;
-        Directory.CreateDirectory(directory);
-        var temp = Path.Combine(directory, $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
-        await File.WriteAllTextAsync(temp, Serialize(report), cancellationToken);
-        File.Move(temp, path, overwrite: true);
+        return AtomicFile.WriteAllTextAsync(path, Serialize(report), cancellationToken);
     }
 }
