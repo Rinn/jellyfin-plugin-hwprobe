@@ -25,6 +25,9 @@ public sealed partial class FixtureBuilder
     private readonly IReadOnlyList<FixtureSpec> _catalog;
     private readonly string _downloadDirectory;
 
+    // Files whose hash matched, so BuildAsync doesn't hash again what PendingAsync just checked.
+    private readonly HashSet<string> _verified = new(StringComparer.Ordinal);
+
     /// <summary>Initializes a new instance of the <see cref="FixtureBuilder"/> class.</summary>
     /// <param name="runner">Launches ffmpeg.</param>
     /// <param name="ffmpegPath">The ffmpeg under test; fixtures must come from the same binary.</param>
@@ -208,7 +211,14 @@ public sealed partial class FixtureBuilder
             return !spec.Bundled && spec.DownloadUrl is { } fallback && !await IsDownloadedAsync(spec, fallback, cancellationToken);
         }
 
-        return !await IsValidAsync(Path.Combine(directory, spec.FileName), spec, cancellationToken);
+        var path = Path.Combine(directory, spec.FileName);
+        if (!await IsValidAsync(path, spec, cancellationToken))
+        {
+            return true;
+        }
+
+        _verified.Add(path);
+        return false;
     }
 
     /// <summary>Returns where a download is cached.</summary>
@@ -225,7 +235,12 @@ public sealed partial class FixtureBuilder
     private async Task<bool> IsDownloadedAsync(FixtureSpec spec, Uri url, CancellationToken cancellationToken)
     {
         var path = DownloadPath(spec, url);
-        return File.Exists(path) && Convert.ToHexStringLower(SHA256.HashData(await File.ReadAllBytesAsync(path, cancellationToken))) == spec.Sha256;
+        if (!_verified.Contains(path) && File.Exists(path) && Convert.ToHexStringLower(SHA256.HashData(await File.ReadAllBytesAsync(path, cancellationToken))) == spec.Sha256)
+        {
+            _verified.Add(path);
+        }
+
+        return _verified.Contains(path);
     }
 
     /// <summary>Returns a cached fixture, or generates it.</summary>
@@ -256,7 +271,7 @@ public sealed partial class FixtureBuilder
         }
 
         var path = Path.Combine(directory, spec.FileName);
-        if (await IsValidAsync(path, spec, cancellationToken))
+        if (_verified.Contains(path) || await IsValidAsync(path, spec, cancellationToken))
         {
             return new FixtureResult(spec, FixtureStatus.Available, path, null);
         }
@@ -335,7 +350,10 @@ public sealed partial class FixtureBuilder
             return new FixtureResult(spec, FixtureStatus.Untested, null, string.Create(CultureInfo.InvariantCulture, $"downloading {piece.Url} stopped for {_downloadStall.TotalSeconds:0} s"));
         }
 
-        var hash = Convert.ToHexStringLower(SHA256.HashData([.. header, .. body]));
+        using var sha256 = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        sha256.AppendData(header);
+        sha256.AppendData(body);
+        var hash = Convert.ToHexStringLower(sha256.GetHashAndReset());
         if (hash != piece.Sha256)
         {
             // The host may have re-encoded the file; a changed piece isn't used.

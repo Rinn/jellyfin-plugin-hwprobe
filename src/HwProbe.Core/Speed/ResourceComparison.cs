@@ -37,7 +37,8 @@ public static class ResourceComparison
         List<string> domains = ra.Joules is { } aj && rb.Joules is { } bj ? [.. aj.Keys.Intersect(bj.Keys, StringComparer.Ordinal)] : [];
         if (domains.Count > 0 && a.Fps is > 0 && b.Fps is > 0)
         {
-            figures.Add(("Power", domains.Sum(d => ra.WattsAboveIdle()[d]) / a.Fps.Value, domains.Sum(d => rb.WattsAboveIdle()[d]) / b.Fps.Value, MinJoulesPerFrame));
+            var (wa, wb) = (ra.WattsAboveIdle(), rb.WattsAboveIdle());
+            figures.Add(("Power", domains.Sum(d => wa[d]) / a.Fps.Value, domains.Sum(d => wb[d]) / b.Fps.Value, MinJoulesPerFrame));
         }
 
         if (sameGpu)

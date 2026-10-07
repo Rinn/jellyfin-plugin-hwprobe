@@ -16,6 +16,9 @@ public sealed class FfmpegRunner : IFfmpegRunner
     // Pipes still open after this mean a descendant escaped the tree kill.
     private static readonly TimeSpan _drainGrace = TimeSpan.FromSeconds(5);
 
+    // A killed process still running after this is stuck in the kernel.
+    private static readonly TimeSpan _killGrace = TimeSpan.FromSeconds(10);
+
     /// <summary>Gets the variables every launch starts from, before the invocation's own.</summary>
     public static IReadOnlyDictionary<string, string> BaseEnvironment { get; } = new Dictionary<string, string>(StringComparer.Ordinal) { ["LC_ALL"] = "C" };
 
@@ -73,7 +76,14 @@ public sealed class FfmpegRunner : IFfmpegRunner
         {
             // A leaked ffmpeg holding the render node breaks later probes.
             KillTree(process);
-            await process.WaitForExitAsync(CancellationToken.None);
+            try
+            {
+                await process.WaitForExitAsync(CancellationToken.None).WaitAsync(_killGrace, CancellationToken.None);
+            }
+            catch (TimeoutException)
+            {
+                // Stuck in a driver call, where a kill waits; the run ends without it rather than holding the probe gate.
+            }
         }
 
         if (monitor is not null)

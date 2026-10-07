@@ -43,6 +43,9 @@ public sealed partial class ProbeService : IDisposable
     private readonly CancellationTokenSource _shutdown = new();
     private readonly List<SpeedResult> _speedSoFar = [];
 
+    // The running speed run as JSON, until its rows change.
+    private string? _speedJson;
+
     // The latest step of a running probe; written by the probe, read by Status.
     private volatile ProbeProgress? _probeProgress;
 
@@ -125,11 +128,13 @@ public sealed partial class ProbeService : IDisposable
         {
             lock (_speedSoFar)
             {
+                // One read: the run replaces it from another thread.
+                var status = _status;
                 if (_speedRunning is null || _speedPause is not { } pause)
                 {
-                    return _status.State == ProbeState.Running && _status.Activity == ProbeActivity.Probe && _probeProgress is { } p
-                        ? _status with { Done = p.Done, Total = p.Total == 0 ? null : p.Total, Step = p.Step, ElapsedSeconds = _status.LastStartedUtc is { } probeStarted ? (int)(_time.GetUtcNow() - probeStarted).TotalSeconds : null }
-                        : _status;
+                    return status.State == ProbeState.Running && status.Activity == ProbeActivity.Probe && _probeProgress is { } p
+                        ? status with { Done = p.Done, Total = p.Total == 0 ? null : p.Total, Step = p.Step, ElapsedSeconds = status.LastStartedUtc is { } probeStarted ? (int)(_time.GetUtcNow() - probeStarted).TotalSeconds : null }
+                        : status;
                 }
 
                 var phase = _speedCancel?.IsCancellationRequested == true ? SpeedPhase.Cancelling
@@ -138,10 +143,10 @@ public sealed partial class ProbeService : IDisposable
                     : _measuringSince is null ? SpeedPhase.Preparing
                     : SpeedPhase.Measuring;
                 var now = _time.GetUtcNow();
-                return _status with
+                return status with
                 {
                     Phase = phase,
-                    ElapsedSeconds = _status.LastStartedUtc is { } started ? (int)(now - started).TotalSeconds : null,
+                    ElapsedSeconds = status.LastStartedUtc is { } started ? (int)(now - started).TotalSeconds : null,
                 };
             }
         }
@@ -202,6 +207,7 @@ public sealed partial class ProbeService : IDisposable
             return ProbeRunResult.AlreadyRunning;
         }
 
+        _status = _status with { State = ProbeState.Running, Activity = ProbeActivity.Probe, LastStartedUtc = _time.GetUtcNow(), LastError = null };
         return await RunHeldAsync(cancellationToken);
     }
 
@@ -221,6 +227,8 @@ public sealed partial class ProbeService : IDisposable
             return ProbeRunResult.AlreadyRunning;
         }
 
+        // Running before the request returns, so the page's next poll sees the run.
+        _status = _status with { State = ProbeState.Running, Activity = ProbeActivity.Probe, LastStartedUtc = _time.GetUtcNow(), LastError = null };
         _background = Task.Run(() => RunHeldAsync(_shutdown.Token), CancellationToken.None);
         return ProbeRunResult.Started;
     }
@@ -336,7 +344,8 @@ public sealed partial class ProbeService : IDisposable
                 return false;
             }
 
-            cancel.Cancel();
+            // Callbacks run on the thread pool, so the run doesn't carry on in this request inside the lock.
+            _ = cancel.CancelAsync();
             return true;
         }
     }
@@ -347,7 +356,7 @@ public sealed partial class ProbeService : IDisposable
     {
         lock (_speedSoFar)
         {
-            return _speedRunning is not { } speed ? null : SpeedReportStore.Serialize(new SpeedReport(_time.GetUtcNow(), new FfmpegSummary(string.Empty, "Server", "unknown", true), speed.Method, [.. _speedSoFar])
+            return _speedRunning is not { } speed ? null : _speedJson ??= SpeedReportStore.Serialize(new SpeedReport(_time.GetUtcNow(), new FfmpegSummary(string.Empty, "Server", "unknown", true), speed.Method, [.. _speedSoFar])
             {
                 Settings = speed.Settings,
                 Repeats = speed.Repeats,
@@ -360,23 +369,17 @@ public sealed partial class ProbeService : IDisposable
     /// <returns>The JSON, or null when none was measured with this HwProbe and ffmpeg.</returns>
     public async Task<string?> LatestSpeedJsonAsync(CancellationToken cancellationToken)
     {
-        if (!File.Exists(SpeedPath))
-        {
-            return null;
-        }
-
         string json;
         try
         {
             json = await File.ReadAllTextAsync(SpeedPath, cancellationToken);
         }
-        catch (FileNotFoundException)
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
         {
             return null;
         }
 
-        var speed = SpeedReportStore.Deserialize(json);
-        return speed?.HwProbeVersion == CapabilityReport.CurrentHwProbeVersion && IsCurrentFfmpeg(speed.Ffmpeg) ? json : null;
+        return SpeedReportStore.Deserialize(json) is { } speed && IsCurrent(speed) ? json : null;
     }
 
     /// <summary>Returns the latest saved report as JSON, unless it's from another HwProbe version or ffmpeg.</summary>
@@ -388,12 +391,16 @@ public sealed partial class ProbeService : IDisposable
     /// </remarks>
     public async Task<string?> LatestJsonAsync(CancellationToken cancellationToken)
     {
-        if (!File.Exists(_latestPath))
+        string json;
+        try
+        {
+            json = await File.ReadAllTextAsync(_latestPath, cancellationToken);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
         {
             return null;
         }
 
-        var json = await File.ReadAllTextAsync(_latestPath, cancellationToken);
         var report = ReportStore.Deserialize(json);
         return report?.HwProbeVersion == CapabilityReport.CurrentHwProbeVersion && IsCurrentFfmpeg(report.Ffmpeg) ? json : null;
     }
@@ -433,36 +440,8 @@ public sealed partial class ProbeService : IDisposable
     /// <summary>Lists the saved speed runs, newest first.</summary>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The runs; unreadable files are left out.</returns>
-    public async Task<IReadOnlyList<SpeedHistoryEntry>> SpeedHistoryAsync(CancellationToken cancellationToken)
-    {
-        if (!Directory.Exists(SpeedHistoryDirectory))
-        {
-            return [];
-        }
-
-        List<SpeedHistoryEntry> entries = [];
-        foreach (var file in Directory.EnumerateFiles(SpeedHistoryDirectory, "*.json").Order(StringComparer.Ordinal).Reverse())
-        {
-            string json;
-            try
-            {
-                json = await File.ReadAllTextAsync(file, cancellationToken);
-            }
-            catch (FileNotFoundException)
-            {
-                // A run finishing now deletes the oldest file.
-                continue;
-            }
-
-            if (SpeedReportStore.Deserialize(json) is { } report)
-            {
-                var current = report.HwProbeVersion == CapabilityReport.CurrentHwProbeVersion && IsCurrentFfmpeg(report.Ffmpeg);
-                entries.Add(new SpeedHistoryEntry(Path.GetFileNameWithoutExtension(file), report.GeneratedUtc, report.Method.ToString(), report.Results.Select(r => r.Test).Distinct(StringComparer.Ordinal).Count(), current) { Suite = report.Suite, SuiteStep = report.SuiteStep, SuiteStartedUtc = report.SuiteStartedUtc });
-            }
-        }
-
-        return entries;
-    }
+    public async Task<IReadOnlyList<SpeedHistoryEntry>> SpeedHistoryAsync(CancellationToken cancellationToken) =>
+        [.. (await ReadSpeedHistoryAsync(cancellationToken)).Select(run => new SpeedHistoryEntry(run.Id, run.Report.GeneratedUtc, run.Report.Method.ToString(), run.Report.Results.Select(r => r.Test).Distinct(StringComparer.Ordinal).Count(), IsCurrent(run.Report)) { Suite = run.Report.Suite, SuiteStep = run.Report.SuiteStep, SuiteStartedUtc = run.Report.SuiteStartedUtc })];
 
     /// <summary>Returns one saved speed run as JSON.</summary>
     /// <param name="id">The run, as <see cref="SpeedHistoryAsync"/> lists it.</param>
@@ -479,7 +458,15 @@ public sealed partial class ProbeService : IDisposable
         var path = Directory.Exists(SpeedHistoryDirectory)
             ? Directory.EnumerateFiles(SpeedHistoryDirectory, "*.json").FirstOrDefault(f => Path.GetFileNameWithoutExtension(f) == id)
             : null;
-        return path is null ? null : await File.ReadAllTextAsync(path, cancellationToken);
+        try
+        {
+            return path is null ? null : await File.ReadAllTextAsync(path, cancellationToken);
+        }
+        catch (FileNotFoundException)
+        {
+            // Deleted or pruned since it was listed.
+            return null;
+        }
     }
 
     /// <summary>Deletes one saved speed run, or every one; the latest run shown goes with the newest.</summary>
@@ -564,14 +551,7 @@ public sealed partial class ProbeService : IDisposable
         }
 
         // Runs from another version or ffmpeg aren't compared: their figures differ for reasons no setting explains.
-        List<SpeedReport> runs = [];
-        foreach (var entry in (await SpeedHistoryAsync(cancellationToken)).Where(h => h.Current))
-        {
-            if (await SpeedHistoryJsonAsync(entry.Id, cancellationToken) is { } json && SpeedReportStore.Deserialize(json) is { } run)
-            {
-                runs.Add(run);
-            }
-        }
+        List<SpeedReport> runs = [.. (await ReadSpeedHistoryAsync(cancellationToken)).Select(run => run.Report).Where(IsCurrent)];
 
         var (type, device) = ServerBackend();
         return SpeedAdvisor.Advise(shown, runs, type, device, ServerSpeedSettings());
@@ -947,6 +927,44 @@ public sealed partial class ProbeService : IDisposable
             || (tested.Major, tested.Minor, Math.Max(tested.Build, 0)) == (version.Major, version.Minor, Math.Max(version.Build, 0));
     }
 
+    /// <summary>Reports whether a speed run was measured with this HwProbe version and the server's ffmpeg.</summary>
+    /// <param name="report">The run.</param>
+    /// <returns>True when both match.</returns>
+    private bool IsCurrent(SpeedReport report) => report.HwProbeVersion == CapabilityReport.CurrentHwProbeVersion && IsCurrentFfmpeg(report.Ffmpeg);
+
+    /// <summary>Reads the saved speed runs, newest first.</summary>
+    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <returns>Each run with its ID; unreadable files are left out.</returns>
+    private async Task<List<(string Id, SpeedReport Report)>> ReadSpeedHistoryAsync(CancellationToken cancellationToken)
+    {
+        List<(string Id, SpeedReport Report)> runs = [];
+        if (!Directory.Exists(SpeedHistoryDirectory))
+        {
+            return runs;
+        }
+
+        foreach (var file in Directory.EnumerateFiles(SpeedHistoryDirectory, "*.json").Order(StringComparer.Ordinal).Reverse())
+        {
+            string json;
+            try
+            {
+                json = await File.ReadAllTextAsync(file, cancellationToken);
+            }
+            catch (FileNotFoundException)
+            {
+                // A run finishing now deletes the oldest file.
+                continue;
+            }
+
+            if (SpeedReportStore.Deserialize(json) is { } report)
+            {
+                runs.Add((Path.GetFileNameWithoutExtension(file), report));
+            }
+        }
+
+        return runs;
+    }
+
     /// <summary>Reports whether a session is transcoding, checking twice.</summary>
     /// <param name="cancellationToken">Cancels the wait.</param>
     /// <returns>True when either check finds a transcode.</returns>
@@ -970,7 +988,6 @@ public sealed partial class ProbeService : IDisposable
     /// <returns>The result.</returns>
     private async Task<ProbeRunResult> RunHeldAsync(CancellationToken cancellationToken)
     {
-        _status = _status with { State = ProbeState.Running, Activity = ProbeActivity.Probe, LastStartedUtc = _time.GetUtcNow(), LastError = null };
         try
         {
             var report = await _probe(new SynchronousProgress<ProbeProgress>(p => _probeProgress = p), cancellationToken);
@@ -1042,7 +1059,14 @@ public sealed partial class ProbeService : IDisposable
         await SpeedReportStore.WriteAsync(report, PathAt(at), CancellationToken.None);
         foreach (var old in Directory.EnumerateFiles(SpeedHistoryDirectory, "*.json").Order(StringComparer.Ordinal).Reverse().Skip(SpeedHistoryLimit))
         {
-            File.Delete(old);
+            try
+            {
+                File.Delete(old);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Open in another request on Windows; the next run deletes it.
+            }
         }
     }
 
@@ -1112,7 +1136,11 @@ public sealed partial class ProbeService : IDisposable
 
             return (suite, step, speed.ForReport(report) with { Settings = settings, Pause = _speedPause }, estimate);
         }).ToList();
-        _background = Task.Run(() => RunSpeedHeldAsync(measure, runs, backends, _speedCancel.Token), CancellationToken.None);
+
+        // Running before the request returns, so the page's next poll sees the run.
+        var started = _time.GetUtcNow();
+        _status = _status with { State = ProbeState.Running, Activity = ProbeActivity.Speed, LastStartedUtc = started, LastError = null, Done = 0, Total = null, Preparing = null, Suite = null, SuiteDone = null, SuiteTotal = null, ClipsDone = null, ClipsTotal = null };
+        _background = Task.Run(() => RunSpeedHeldAsync(measure, runs, backends, started, _speedCancel.Token), CancellationToken.None);
         return ProbeRunResult.Started;
     }
 
@@ -1120,17 +1148,16 @@ public sealed partial class ProbeService : IDisposable
     /// <param name="measure">The speed run.</param>
     /// <param name="runs">What to measure, with the suite and step each run belongs to (null for a run on its own) and, in a suite, its expected number of measurements.</param>
     /// <param name="backends">The working backends.</param>
+    /// <param name="started">When the runs started.</param>
     /// <param name="cancellationToken">Cancels the runs, from <see cref="CancelSpeed"/>.</param>
     /// <returns>The result.</returns>
     private async Task<ProbeRunResult> RunSpeedHeldAsync(
         Func<SpeedOptions, IReadOnlyCollection<(HwType Type, string Device)>, IProgress<SpeedProgress>, CancellationToken, Task<SpeedReport>> measure,
         List<(string? Suite, string? Step, SpeedOptions Speed, int Estimate)> runs,
         IReadOnlyCollection<(HwType Type, string Device)> backends,
+        DateTimeOffset started,
         CancellationToken cancellationToken)
     {
-        var started = _time.GetUtcNow();
-        _status = _status with { State = ProbeState.Running, Activity = ProbeActivity.Speed, LastStartedUtc = started, LastError = null, Done = 0, Total = null, Preparing = null, Suite = null, SuiteDone = null, SuiteTotal = null, ClipsDone = null, ClipsTotal = null };
-
         // Each step's planned count replaces its estimate once the engine plans it.
         var totals = runs.Select(r => r.Estimate).ToList();
         var doneBefore = 0;
@@ -1149,6 +1176,7 @@ public sealed partial class ProbeService : IDisposable
                 lock (_speedSoFar)
                 {
                     _speedSoFar.Clear();
+                    _speedJson = null;
                     _speedRunning = speed;
                     _measuringSince = null;
                 }
@@ -1161,6 +1189,7 @@ public sealed partial class ProbeService : IDisposable
                         {
                             _speedSoFar.Clear();
                             _speedSoFar.AddRange(planned);
+                            _speedJson = null;
                         }
                         else if (p.Result is { } result)
                         {
@@ -1174,6 +1203,8 @@ public sealed partial class ProbeService : IDisposable
                             {
                                 _speedSoFar.Add(result);
                             }
+
+                            _speedJson = null;
                         }
                         else if (p.Preparing is null)
                         {
@@ -1224,14 +1255,23 @@ public sealed partial class ProbeService : IDisposable
         }
         finally
         {
+            CancellationTokenSource? cancel;
             lock (_speedSoFar)
             {
                 _speedRunning = null;
                 _speedSoFar.Clear();
-                _speedCancel?.Dispose();
+                _speedJson = null;
+                cancel = _speedCancel;
                 _speedCancel = null;
                 _speedPause = null;
                 _measuringSince = null;
+            }
+
+            // Ends the transcode watcher, which waits on this token.
+            if (cancel is not null)
+            {
+                await cancel.CancelAsync();
+                cancel.Dispose();
             }
 
             _status = _status with { State = ProbeState.Idle, LastCompletedUtc = _time.GetUtcNow(), Done = null, Total = null, Preparing = null, Suite = null, SuiteDone = null, SuiteTotal = null, ClipsDone = null, ClipsTotal = null };

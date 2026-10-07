@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Report;
+using Jellyfin.Plugin.HwProbe.Core.Storage;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Diagnostics;
 
@@ -19,26 +20,8 @@ public static partial class DiagnosticsBundle
     /// <param name="runs">Every launch the probe made, in order.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>A task that completes when the file is in place.</returns>
-    public static async Task WriteAsync(string path, CapabilityReport report, IReadOnlyList<RecordedRun> runs, CancellationToken cancellationToken)
-    {
-        ArgumentException.ThrowIfNullOrEmpty(path);
-        var directory = Path.GetDirectoryName(Path.GetFullPath(path))!;
-        Directory.CreateDirectory(directory);
-        var temp = Path.Combine(directory, $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
-        try
-        {
-            await using (var file = File.Create(temp))
-            {
-                await WriteAsync(file, report, runs, cancellationToken);
-            }
-
-            File.Move(temp, path, overwrite: true);
-        }
-        finally
-        {
-            File.Delete(temp);
-        }
-    }
+    public static Task WriteAsync(string path, CapabilityReport report, IReadOnlyList<RecordedRun> runs, CancellationToken cancellationToken) =>
+        AtomicFile.WriteAsync(path, (file, ct) => WriteAsync(file, report, runs, ct), cancellationToken);
 
     /// <summary>Writes a bundle to a stream.</summary>
     /// <param name="destination">The stream; left open.</param>

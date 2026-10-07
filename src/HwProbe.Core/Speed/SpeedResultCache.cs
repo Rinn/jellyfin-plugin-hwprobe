@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Jellyfin.Plugin.HwProbe.Core.Model;
+using Jellyfin.Plugin.HwProbe.Core.Storage;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 
@@ -78,14 +79,8 @@ public sealed class SpeedResultCache(string directory)
     /// <param name="entry">The measurement.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>A task that completes when the file is in place.</returns>
-    public async Task SaveAsync(string key, SpeedCacheEntry entry, CancellationToken cancellationToken)
-    {
-        System.IO.Directory.CreateDirectory(Directory);
-        var path = PathFor(key);
-        var temp = path + ".partial";
-        await File.WriteAllTextAsync(temp, JsonSerializer.Serialize(entry, SpeedJsonContext.Files.SpeedCacheEntry), cancellationToken);
-        File.Move(temp, path, overwrite: true);
-    }
+    public Task SaveAsync(string key, SpeedCacheEntry entry, CancellationToken cancellationToken) =>
+        AtomicFile.WriteAllTextAsync(PathFor(key), JsonSerializer.Serialize(entry, SpeedJsonContext.Files.SpeedCacheEntry), cancellationToken);
 
     /// <summary>Deletes measurements another way of measuring or another ffmpeg made, which no key can match any more.</summary>
     /// <param name="ffmpegVersion">The current ffmpeg version line.</param>

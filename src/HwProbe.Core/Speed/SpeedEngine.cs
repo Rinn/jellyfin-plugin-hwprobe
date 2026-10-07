@@ -231,7 +231,14 @@ public sealed class SpeedEngine : IDisposable
             finally
             {
                 await interrupt.CancelAsync();
-                await watch.ContinueWith(_ => { }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                try
+                {
+                    await watch;
+                }
+                catch (OperationCanceledException)
+                {
+                    // Stopped with the measurement; a failed busy check still surfaces.
+                }
             }
         }
     }

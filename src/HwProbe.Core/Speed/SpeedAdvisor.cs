@@ -203,6 +203,7 @@ public static class SpeedAdvisor
     {
         List<SettingComparison> seen = [];
         var withSettings = runs.Where(r => r.Settings is not null).ToList();
+        var values = withSettings.Select(r => _values.ToDictionary(v => v.Key, v => v.Value(r.Settings!), StringComparer.Ordinal)).ToList();
         for (var i = 0; i < withSettings.Count; i++)
         {
             for (var j = 0; j < withSettings.Count; j++)
@@ -214,7 +215,7 @@ public static class SpeedAdvisor
                 }
 
                 // Audio and burned-in subtitles describe the client; they must match too, but aren't suggested.
-                var differs = _values.Where(v => v.Value(a.Settings!) != v.Value(b.Settings!)).Select(v => v.Key).ToList();
+                var differs = _values.Keys.Where(k => values[i][k] != values[j][k]).ToList();
                 if (differs.Count == 0 || a.Settings!.AudioCopy != b.Settings!.AudioCopy || a.Settings.BurnIn != b.Settings.BurnIn)
                 {
                     continue;
@@ -238,7 +239,7 @@ public static class SpeedAdvisor
                     if (b.Results.FirstOrDefault(r => r.Test == mine.Test && r.Type == mine.Type && r.Device == mine.Device && r.Input == mine.Input && r.Video == mine.Video && r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && !r.LowPowerDropped && configured(r)) is { } theirs
                         && (mine.Command is null || mine.Command != theirs.Command))
                     {
-                        seen.Add(new(key, _values[key](a.Settings!), _values[key](b.Settings!), mine.Test, Label(mine, a.Settings), Gain(mine, theirs), Speed(mine), IsGenerated(mine), ResourceComparison.Savings(mine, theirs), mine.Streams, theirs.Streams, a.Settings!.Tonemap || a.Settings.VppTonemap || a.Settings.VideoToolboxTonemap, mine.Capped, theirs.Capped, Speed(theirs), GroupRow(key, a.Settings, mine.Type), GroupRow(key, b.Settings!, theirs.Type), mine.Video, mine.Output));
+                        seen.Add(new(key, values[i][key], values[j][key], mine.Test, Label(mine, a.Settings), Gain(mine, theirs), Speed(mine), IsGenerated(mine), ResourceComparison.Savings(mine, theirs), mine.Streams, theirs.Streams, a.Settings!.Tonemap || a.Settings.VppTonemap || a.Settings.VideoToolboxTonemap, mine.Capped, theirs.Capped, Speed(theirs), GroupRow(key, a.Settings, mine.Type), GroupRow(key, b.Settings!, theirs.Type), mine.Video, mine.Output));
                     }
                 }
             }

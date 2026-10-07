@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Core.Speed;
+using Jellyfin.Plugin.HwProbe.Core.Storage;
 using Jellyfin.Plugin.HwProbe.Probing;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller.Configuration;
@@ -442,9 +443,10 @@ public sealed class SettingsService : IDisposable
             }
         }
 
-        await WriteHistoryAsync(history, cancellationToken);
+        // The settings are saved by now, so the restart notice doesn't depend on the history write.
         var restart = changed.Any(c => _restartKeys.Contains(c.Setting));
         _restartRequired |= restart;
+        await WriteHistoryAsync(history, cancellationToken);
         return new ApplyResult(ApplyOutcome.Applied, changed, null) { RestartRequired = restart };
     }
 
@@ -453,28 +455,22 @@ public sealed class SettingsService : IDisposable
     /// <returns>The entries, oldest first; empty when there's no file.</returns>
     private async Task<List<HistoryEntry>> ReadHistoryAsync(CancellationToken cancellationToken)
     {
-        if (!File.Exists(_historyPath))
+        try
         {
+            await using var stream = File.OpenRead(_historyPath);
+            return await JsonSerializer.DeserializeAsync<List<HistoryEntry>>(stream, _json, cancellationToken) ?? [];
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            // None yet, or cleared during the read.
             return [];
         }
-
-        await using var stream = File.OpenRead(_historyPath);
-        return await JsonSerializer.DeserializeAsync<List<HistoryEntry>>(stream, _json, cancellationToken) ?? [];
     }
 
     /// <summary>Writes the history file through a temporary file, so a crash can't leave it half written.</summary>
     /// <param name="history">The entries.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>A task that completes when the file is written.</returns>
-    private async Task WriteHistoryAsync(List<HistoryEntry> history, CancellationToken cancellationToken)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(_historyPath)!);
-        var temp = _historyPath + ".tmp";
-        await using (var stream = File.Create(temp))
-        {
-            await JsonSerializer.SerializeAsync(stream, history, _json, cancellationToken);
-        }
-
-        File.Move(temp, _historyPath, overwrite: true);
-    }
+    private Task WriteHistoryAsync(List<HistoryEntry> history, CancellationToken cancellationToken) =>
+        AtomicFile.WriteAsync(_historyPath, (stream, ct) => JsonSerializer.SerializeAsync(stream, history, _json, ct), cancellationToken);
 }
