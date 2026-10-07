@@ -23,7 +23,7 @@ sh scripts/container-plugin.sh     # installs the plugin in Jellyfin 12.2 (podma
 
 The first five must pass before every commit; `scripts/pre-commit` enforces them, skipping the page and editorconfig checks when node or editorconfig-checker isn't installed. A test run with zero tests exits 8 and fails the gate; don't hide it with `--ignore-exit-code`.
 
-Releases: run `release.yml` by hand (see `DEVELOPMENT.md`). Releases are immutable, so a used version can never be reused. The version comes only from the release tag; `Directory.Build.props` holds `0.0.0`.
+Releases: run `release.yml` by hand (see `DEVELOPMENT.md`). Releases are immutable, so a used version can never be reused. The version comes only from the release tag; `Directory.Build.props` holds `0.0.0`. Release notes become the manifest changelog: Markdown bullets, short and plain, with no version or issue numbers.
 
 ## Environment
 
