@@ -57,6 +57,9 @@ public sealed partial class Catalog
     /// <summary>Gets the accuracy test suites measure at.</summary>
     public required SpeedMethod SuiteMethod { get; init; }
 
+    /// <summary>Gets the seconds an audio measurement takes, low and high, for the page's estimate.</summary>
+    public required IReadOnlyList<double> AudioSeconds { get; init; }
+
     /// <summary>Gets what the page calls software encoding, the <c>none</c> backend.</summary>
     public required string SoftwareName { get; init; }
 
@@ -122,6 +125,15 @@ public sealed partial class Catalog
 
     /// <summary>Gets the decode-only output.</summary>
     internal CatalogOutput Decode => DecodeEntry ?? throw Missing("decode");
+
+    /// <summary>Gets the outputs that extract images at an interval, as trickplay does.</summary>
+    internal IReadOnlyList<CatalogOutput> Images { get; init; } = [];
+
+    /// <summary>Gets the audio inputs, in the page's order.</summary>
+    internal IReadOnlyList<CatalogAudio> Audios { get; init; } = [];
+
+    /// <summary>Gets the audio outputs: decoding alone, then each codec a client asks for.</summary>
+    internal IReadOnlyList<CatalogAudioOutput> AudioOutputs { get; init; } = [];
 
     /// <summary>Gets the outputs chosen when none are asked for.</summary>
     internal IReadOnlyList<string> DefaultOutputs { get; init; } = [];
@@ -288,7 +300,13 @@ public sealed partial class Catalog
             throw Missing("decode");
         }
 
-        RequireKeys("outputs", [.. Codecs.SelectMany(c => Qualities.Select(q => OutputKey(c, q))), Decode.Key], DefaultOutputs);
+        RequireKeys("outputs", OutputKeys(), DefaultOutputs);
+        List<string> inputs = [.. Videos.Select(v => v.Key), .. Audios.Select(a => a.Key), SpeedCatalog.LibraryKey];
+        if (inputs.Count != inputs.Distinct(StringComparer.Ordinal).Count() || AudioSeconds.Count != 2 || AudioOutputs.Count(o => o.Codec is null) > 1)
+        {
+            throw new InvalidDataException("catalog.yaml: video and audio keys must be unique together, audioSeconds is [low, high], and audioOutputs has at most one decode.");
+        }
+
         if (Methods.Any(m => m.Seconds.Count != 2))
         {
             throw new InvalidDataException("catalog.yaml: method seconds are [low, high].");
@@ -313,7 +331,7 @@ public sealed partial class Catalog
                 throw new InvalidDataException($"catalog.yaml: option {option.Key}'s qualityOrder lists values it doesn't take, or lowerIsBetter is set without a range.");
             }
 
-            if (option.OutputCodec is { } codec && !Codecs.Any(c => c.Key == codec))
+            if (option.OutputCodec is { } codec && !Codecs.Any(c => c.Key == codec) && codec != SpeedCatalog.ImageCodec)
             {
                 throw new InvalidDataException($"catalog.yaml: option {option.Key}'s outputCodec {codec} isn't a codec the catalog lists.");
             }
@@ -366,7 +384,7 @@ public sealed partial class Catalog
             throw new InvalidDataException($"catalog.yaml: {unsized.Key} is downloaded whole and requires its size.");
         }
 
-        foreach (var clip in Videos.Select(v => v.Clip).Append(Subtitles.Text).Append(Subtitles.Image).Append(TestAudio))
+        foreach (var clip in Videos.Select(v => v.Clip).Concat(Audios.Select(a => a.Clip)).Append(Subtitles.Text).Append(Subtitles.Image).Append(TestAudio))
         {
             var unknown = Placeholder().Matches(Expand(clip.Arguments)).Select(m => m.Groups[1].Value).Where(n => n != "piece" || clip.Piece is null).ToList();
             var hash = clip.Piece?.Sha256 ?? clip.Sha256;
@@ -378,8 +396,8 @@ public sealed partial class Catalog
         }
     }
 
-    /// <summary>Checks each suite names videos, outputs, backends, and settings the catalog has.</summary>
-    /// <exception cref="InvalidDataException">A suite names something that isn't there.</exception>
+    /// <summary>Checks the advice thresholds, and that the names and labels the page and suggestions read are there.</summary>
+    /// <exception cref="InvalidDataException">A threshold is out of range or a name is missing.</exception>
     private void CheckAdvice()
     {
         // YamlDotNet doesn't enforce required members, so a missing block is caught here.
@@ -395,11 +413,16 @@ public sealed partial class Catalog
         }
     }
 
-    /// <summary>Checks each suite names videos, outputs, backends, and settings the catalog has.</summary>
+    /// <summary>Returns every output's key: each codec at each quality, decoding alone, the image outputs, and the audio outputs.</summary>
+    /// <returns>The keys.</returns>
+    private IReadOnlyList<string> OutputKeys() => [.. Codecs.SelectMany(c => Qualities.Select(q => OutputKey(c, q))), Decode.Key, .. Images.Select(i => i.Key), .. AudioOutputs.Select(o => o.Key)];
+
+    /// <summary>Checks each suite names videos, audio inputs, outputs, backends, and settings the catalog has.</summary>
     private void CheckSuites()
     {
         var videos = Videos.Select(v => v.Key).ToHashSet(StringComparer.Ordinal);
-        var outputs = Codecs.SelectMany(c => Qualities.Select(q => OutputKey(c, q))).Append(Decode.Key).ToHashSet(StringComparer.Ordinal);
+        var audios = Audios.Select(a => a.Key).ToHashSet(StringComparer.Ordinal);
+        var outputs = OutputKeys().ToHashSet(StringComparer.Ordinal);
         string[] backends = ["configuredAndSoftware", "configured", "software"];
         foreach (var suite in Suites)
         {
@@ -410,6 +433,7 @@ public sealed partial class Catalog
                 : suite.ThreadSteps == (steps.Count > 0) ? "steps (one of steps or threadSteps)"
                 : suite.Videos.Concat(steps.SelectMany(s => s.Videos ?? [])).FirstOrDefault(v => !videos.Contains(v)) is { } video ? $"video {video}"
                 : suite.Outputs.Concat(steps.SelectMany(s => s.Outputs ?? [])).FirstOrDefault(o => !outputs.Contains(o)) is { } output ? $"output {output}"
+                : suite.Audios.FirstOrDefault(a => !audios.Contains(a)) is { } audio ? $"audio {audio}"
                 : steps.FirstOrDefault(s => s.Backends?.Contains(HwType.none) == true) is { } software ? $"backend none on step {software.Label} (steps are for hardware backends)"
                 : suite.ThreadSteps && !suite.ThreadLabel.Contains("{n}", StringComparison.Ordinal) ? "threadLabel (it requires {n})"
                 : steps.SelectMany(s => s.Options).FirstOrDefault(o => Option(o.Key) is not { } known || !known.Takes(o.Value) || SpeedSettingsOptions.Apply(new SpeedSettings(), o.Key, o.Value) is null) is { Key: not null } option ? $"option {option.Key}={option.Value}"

@@ -170,6 +170,11 @@ public static class FixtureCacheContents
             }
         }
 
+        foreach (var audio in SpeedCatalog.Audios)
+        {
+            yield return (audio.Fixture, "Audio, " + audio.Name);
+        }
+
         yield return (SpeedCatalog.TestAudio, "Test audio, 5.1 AAC");
         yield return (SpeedCatalog.TextSubtitles, "Subtitles, text");
         yield return (SpeedCatalog.ImageSubtitles, "Subtitles, PGS");

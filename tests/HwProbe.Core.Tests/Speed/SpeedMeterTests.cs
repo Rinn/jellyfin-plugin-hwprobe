@@ -183,6 +183,32 @@ public sealed class SpeedMeterTests
         Assert.Equal(240, Assert.NotNull(measured.Fps), 1);
     }
 
+    /// <summary>An image run's speed is the content it read over the time taken, whatever few frames it made; a timed-out one has none.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task ImagesAreTimedByContent()
+    {
+        List<TimeSpan> contents = [];
+        Task<IReadOnlyList<FfmpegRunResult>> ImagesAsync(int copies, TimeSpan content, CancellationToken ct)
+        {
+            contents.Add(content);
+            return Task.FromResult<IReadOnlyList<FfmpegRunResult>>([new(FfmpegRunStatus.Exited, 0, string.Empty, string.Empty, 1, TimeSpan.FromSeconds(content.TotalSeconds / 50), null)]);
+        }
+
+        Task<IReadOnlyList<FfmpegRunResult>> TimedOutAsync(int copies, TimeSpan content, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<FfmpegRunResult>>([new(FfmpegRunStatus.TimedOut, null, string.Empty, string.Empty, 2, TimeSpan.FromSeconds(30), null)]);
+
+        var measured = await SpeedMeter.MeasureAsync(ImagesAsync, SpeedMethod.Full, 24, countStreams: false, TestContext.Current.CancellationToken, pace: MeterPace.Images);
+        var slow = await SpeedMeter.MeasureAsync(TimedOutAsync, SpeedMethod.Full, 24, countStreams: false, TestContext.Current.CancellationToken, pace: MeterPace.Images);
+
+        Assert.Equal(50 * 24, Assert.NotNull(measured.Fps), 1);
+        Assert.Null(measured.Streams);
+        Assert.Equal(2, contents.Count);
+        Assert.Null(slow.Fps);
+        Assert.True(slow.Interrupted);
+        Assert.Equal("ffmpeg didn't finish before the time limit", slow.Note);
+    }
+
     /// <summary>A scripted host that keeps a fixed number of copies at real time.</summary>
     /// <param name="capacity">Copies that finish within real time at once.</param>
     /// <param name="fps">One copy's fps when alone.</param>

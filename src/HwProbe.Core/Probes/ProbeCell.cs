@@ -31,6 +31,9 @@ public sealed record ProbeCell(
     /// <summary>Gets a value indicating whether only key frames are decoded, as trickplay's key-frame-only extraction does.</summary>
     public bool KeyFramesOnly { get; init; }
 
+    /// <summary>Gets the image settings for a speed run that extracts images from the video, or null.</summary>
+    public ImageJob? Images { get; init; }
+
     /// <summary>Gets a value indicating whether the deinterlacing method is BWDIF rather than YADIF, Jellyfin's default.</summary>
     public bool Bwdif { get; init; }
 
@@ -48,6 +51,9 @@ public sealed record ProbeCell(
 
     /// <summary>Gets the source colour space, e.g. <c>bt2020nc</c>.</summary>
     public string? ColorSpace { get; init; }
+
+    /// <summary>Gets the source's display aspect ratio, e.g. <c>16:9</c>, or null when not known.</summary>
+    public string? AspectRatio { get; init; }
 
     /// <summary>Gets the requested maximum output width, forcing a scale filter; null keeps the source size.</summary>
     public int? MaxWidth { get; init; }

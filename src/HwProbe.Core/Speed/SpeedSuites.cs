@@ -77,7 +77,7 @@ public static class SpeedSuites
         }
 
         var label = option.Choices?.FirstOrDefault(c => c.Key == value)?.Label ?? value;
-        return [.. steps, new SuiteStep($"{label} ({Catalog.Default.Labels["ServerSettingAfter"]})", new Dictionary<string, string>(StringComparer.Ordinal) { [key] = value }, suite.Videos, suite.Outputs)];
+        return [.. steps, new SuiteStep($"{label} ({Catalog.Default.Labels["ServerSettingAfter"]})", new Dictionary<string, string>(StringComparer.Ordinal) { [key] = value }, suite.Videos, suite.Outputs) { Audios = suite.Audios }];
     }
 
     /// <summary>Returns a suite's runs as the catalog defines them.</summary>
@@ -92,7 +92,7 @@ public static class SpeedSuites
         {
             return [.. suite.Steps
                 .Where(s => s.Backends is null || hardware is null || s.Backends.Contains(hardware.Value))
-                .Select(s => new SuiteStep(s.Label, s.Options, s.Videos ?? suite.Videos, s.Outputs ?? suite.Outputs) { HardwareOnly = s.Backends is not null })];
+                .Select(s => new SuiteStep(s.Label, s.Options, s.Videos ?? suite.Videos, s.Outputs ?? suite.Outputs) { HardwareOnly = s.Backends is not null, Audios = suite.Audios })];
         }
 
         // Auto is the option's own first choice; limits are labelled from the suite's pattern.
@@ -111,6 +111,6 @@ public static class SpeedSuites
         limits.Add(processorCount);
         var values = limits.Select(n => n.ToString(CultureInfo.InvariantCulture)).Where(option.Takes).Distinct(StringComparer.Ordinal);
         return [.. new[] { (auto.Key, auto.Label) }.Concat(values.Select(v => (v, (v == "1" ? suite.ThreadLabelOne : suite.ThreadLabel).Replace("{n}", v, StringComparison.Ordinal))))
-            .Select(v => new SuiteStep(v.Item2, new Dictionary<string, string>(StringComparer.Ordinal) { [ThreadOption] = v.Item1 }, suite.Videos, suite.Outputs))];
+            .Select(v => new SuiteStep(v.Item2, new Dictionary<string, string>(StringComparer.Ordinal) { [ThreadOption] = v.Item1 }, suite.Videos, suite.Outputs) { Audios = suite.Audios })];
     }
 }

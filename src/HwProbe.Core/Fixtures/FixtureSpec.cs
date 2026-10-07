@@ -51,6 +51,9 @@ public sealed record FixtureSpec(
     /// <summary>Gets a pinned piece of a large file to download and check first; <see cref="EncodeArguments"/> reads it as <c>{piece}</c>, or the piece is the clip when there are none.</summary>
     public FixturePiece? Piece { get; init; }
 
+    /// <summary>Gets how long the clip plays, or null when not known; a downloaded piece's own header gives the whole film's length.</summary>
+    public double? Seconds { get; init; }
+
     /// <summary>Gets the audio codec as Jellyfin reports it, or null for 5.1 AAC.</summary>
     public string? AudioCodec { get; init; }
 

@@ -11,7 +11,7 @@ public sealed class CatalogSetting
     /// <summary>Gets jellyfin-web's label for it.</summary>
     public required string Label { get; init; }
 
-    /// <summary>Gets the <c>EncodingOptions</c> property it defaults to, or null when the first choice is the default.</summary>
+    /// <summary>Gets the <c>EncodingOptions</c> property it defaults to, or <c>Trickplay:</c> and a <c>TrickplayOptions</c> property, or null when the first choice is the default.</summary>
     public string? Server { get; init; }
 
     /// <summary>Gets the backend it applies to alone, shown with the backends when that one works, or null for every backend.</summary>

@@ -6,7 +6,7 @@ namespace Jellyfin.Plugin.HwProbe.Api;
 
 /// <summary>Everything the page lists: speed videos, outputs and choices, and the labels for backends and results.</summary>
 /// <param name="Videos">The speed videos.</param>
-/// <param name="Outputs">The speed outputs: every codec at every quality, and decoding alone.</param>
+/// <param name="Outputs">The speed outputs: every codec at every quality, decoding alone, images, and the audio outputs.</param>
 /// <param name="Codecs">The video codecs Jellyfin transcodes to.</param>
 /// <param name="Qualities">The qualities a player offers.</param>
 /// <param name="Methods">The speed accuracies.</param>
@@ -31,6 +31,8 @@ namespace Jellyfin.Plugin.HwProbe.Api;
 /// <param name="Findings">The descriptions of findings, by code.</param>
 /// <param name="Settings">The names of a speed run's starting settings.</param>
 /// <param name="SettingGroups">The settings that together pick one thing, each suggested as one table.</param>
+/// <param name="Audios">The audio inputs.</param>
+/// <param name="AudioSeconds">The seconds an audio measurement takes, low and high.</param>
 public sealed record CatalogInfo(
     IReadOnlyList<SpeedVideoInfo> Videos,
     IReadOnlyList<SpeedOutputInfo> Outputs,
@@ -57,7 +59,9 @@ public sealed record CatalogInfo(
     IReadOnlyDictionary<BackendVerdict, string> Verdicts,
     IReadOnlyDictionary<string, string> Findings,
     IReadOnlyDictionary<string, string> Settings,
-    IReadOnlyList<CatalogSettingGroup> SettingGroups)
+    IReadOnlyList<CatalogSettingGroup> SettingGroups,
+    IReadOnlyList<SpeedAudioInfo> Audios,
+    IReadOnlyList<double> AudioSeconds)
 {
     /// <summary>Returns the page's view of a catalog.</summary>
     /// <param name="catalog">The catalog.</param>
@@ -91,6 +95,8 @@ public sealed record CatalogInfo(
             catalog.Verdicts,
             catalog.Findings,
             catalog.Settings,
-            catalog.SettingGroups);
+            catalog.SettingGroups,
+            [.. SpeedCatalog.Audios.Select(SpeedAudioInfo.From)],
+            catalog.AudioSeconds);
     }
 }

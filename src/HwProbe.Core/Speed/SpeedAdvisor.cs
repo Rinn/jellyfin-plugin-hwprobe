@@ -36,6 +36,9 @@ public static class SpeedAdvisor
         ["H264Crf"] = s => s.H264Crf.ToString(CultureInfo.InvariantCulture),
         ["DeinterlaceMethod"] = s => s.Bwdif ? "bwdif" : "yadif",
         ["DoubleRate"] = s => Flag(s.DoubleRate),
+        ["TrickplayHwEncoding"] = s => Flag(s.TrickplayHwEncoding),
+        ["TrickplayKeyFrames"] = s => Flag(s.TrickplayKeyFrames),
+        ["TrickplayThreads"] = s => s.TrickplayThreads.ToString(CultureInfo.InvariantCulture),
     };
 
     /// <summary>Gets the share under which two speeds count as alike.</summary>
@@ -111,7 +114,9 @@ public static class SpeedAdvisor
         List<SpeedSuggestion> suggestions = [];
 
         var measured = shown.Results.Where(r => r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && !r.Pending).ToList();
-        var hardware = measured.Where(r => r.Type != HwType.none).ToList();
+
+        // Images reach the backend only with trickplay's own Enable hardware decoding on, so they don't pick it.
+        var hardware = measured.Where(r => r.Type != HwType.none && r.Kind != SpeedOutputKind.Images).ToList();
         if (hardware.Count > 0)
         {
             var winners = hardware.GroupBy(r => r.Test, StringComparer.Ordinal).Select(g => g.Aggregate(Better)).ToList();
@@ -150,11 +155,13 @@ public static class SpeedAdvisor
         }
 
         // Outputs that two or more backends measured and none kept real time on; one backend alone, as suites measure, doesn't show the others would fall behind.
+        // Images are extracted ahead of playback, so they have no real time to keep.
         bool KeepsUp(SpeedResult r) => Speed(r) >= 1 && r.Streams != 0;
-        var tooSlow = measured.GroupBy(r => r.Test, StringComparer.Ordinal).Where(g => !g.Any(KeepsUp) && g.Select(r => (r.Type, r.Device)).Distinct().Count() > 1).ToList();
+        var playback = measured.Where(r => r.Kind != SpeedOutputKind.Images).ToList();
+        var tooSlow = playback.GroupBy(r => r.Test, StringComparer.Ordinal).Where(g => !g.Any(KeepsUp) && g.Select(r => (r.Type, r.Device)).Distinct().Count() > 1).ToList();
 
         // A test video that falls behind means real video will too: test videos encode faster. Outputs every backend falls behind on are reported on their own instead.
-        var behind = measured.Where(r => Configured(r) && !KeepsUp(r) && !tooSlow.Any(g => g.Key == r.Test)).ToList();
+        var behind = playback.Where(r => Configured(r) && !KeepsUp(r) && !tooSlow.Any(g => g.Key == r.Test)).ToList();
         if (behind.Count > 0)
         {
             suggestions.Add(new SpeedSuggestion(SpeedSuggestionKind.FallsBehind, [.. behind.Select(r => Label(r, shown.Settings))]) { Type = type, Device = device, Speed = behind.Min(Speed), Streams = Fewest(behind), StreamsCapped = FewestCapped(behind), TestVideosOnly = behind.All(IsGenerated) });
@@ -229,7 +236,9 @@ public static class SpeedAdvisor
                     continue;
                 }
 
-                foreach (var mine in a.Run.Results.Where(r => r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && !r.LowPowerDropped && configured(r)))
+                // The trickplay width, interval, and quality scale change image commands without being options.
+                var sameImages = (a.Settings.TrickplayWidth, a.Settings.TrickplayInterval, a.Settings.TrickplayQscale) == (b.Settings.TrickplayWidth, b.Settings.TrickplayInterval, b.Settings.TrickplayQscale);
+                foreach (var mine in a.Run.Results.Where(r => r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && !r.LowPowerDropped && configured(r) && (sameImages || r.Kind != SpeedOutputKind.Images)))
                 {
                     // A setting for another output codec (low power, CRF) doesn't reach this output, so the Intel low power suite, which switches both codecs at once, still compares each.
                     // The key's output part names the codec, also for a library test, which SpeedCatalog.Find doesn't resolve.
@@ -664,11 +673,13 @@ public static class SpeedAdvisor
             .OrderByDescending(s => s.Fraction)];
     }
 
-    /// <summary>Reports whether a result is from a generated test video rather than a film sample or library file.</summary>
+    /// <summary>Reports whether a result is from a generated test clip rather than a film sample, library file, or downloaded recording.</summary>
     /// <param name="r">The result.</param>
-    /// <returns>True for a generated video.</returns>
+    /// <returns>True for a generated clip.</returns>
     private static bool IsGenerated(SpeedResult r) =>
-        SpeedCatalog.FindVideo(r.Test.Split('|')[0]) is { Title: null, File: null };
+        r.Kind is SpeedOutputKind.Audio or SpeedOutputKind.AudioDecode
+            ? SpeedCatalog.FindAudio(r.Test.Split('|')[0]) is { Fixture.DownloadUrl: null }
+            : SpeedCatalog.FindVideo(r.Test.Split('|')[0]) is { Title: null, File: null };
 
     /// <summary>Returns how much faster one result is than another, as a fraction.</summary>
     /// <param name="a">The result.</param>

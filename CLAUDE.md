@@ -4,7 +4,7 @@ Operating manual for this repo: what it is, commands, conventions, the traps tha
 
 ## What this is
 
-A device-verified hardware-transcode detector for Jellyfin, shipped as a CLI (`src/HwProbe.Cli`) and a plugin (`src/HwProbe.Plugin`) over a shared engine (`src/HwProbe.Core`, with Jellyfin's own `EncodingHelper` wired in by `src/HwProbe.Jellyfin`). Jellyfin's hardware acceleration dropdown is a fixed list in jellyfin-web, so it offers backends that fail every job; HwProbe runs small real transcodes and reports what works, with a fix for each failure. The page has five tabs: Hardware Probe, Recommended Settings (per working backend and software, with Apply, history and Revert), Performance Tests and Test Results (transcode speed per backend, single runs or test suites, driven by `src/HwProbe.Core/Data/catalog.yaml`; "speed" in code, "performance" in user-facing text), and Help (diagnostics zip with HwProbe's log lines, saved runs, measurements, and cache contents, each with its own delete, Delete clips, and Delete all data).
+A device-verified hardware-transcode detector for Jellyfin, shipped as a CLI (`src/HwProbe.Cli`) and a plugin (`src/HwProbe.Plugin`) over a shared engine (`src/HwProbe.Core`, with Jellyfin's own `EncodingHelper` wired in by `src/HwProbe.Jellyfin`). Jellyfin's hardware acceleration dropdown is a fixed list in jellyfin-web, so it offers backends that fail every job; HwProbe runs small real transcodes and reports what works, with a fix for each failure. The page has five tabs: Hardware Probe, Recommended Settings (per working backend and software, with Apply, history and Revert), Performance Tests and Test Results (transcode and trickplay speed per backend, and audio speed in software, single runs or test suites, driven by `src/HwProbe.Core/Data/catalog.yaml`; "speed" in code, "performance" in user-facing text), and Help (diagnostics zip with HwProbe's log lines, saved runs, measurements, and cache contents, each with its own delete, Delete clips, and Delete all data).
 
 Public at https://github.com/Rinn/jellyfin-plugin-hwprobe (`origin`).
 
@@ -51,7 +51,7 @@ Pull files with `gh` and grep locally. WebFetch truncates `EncodingHelper.cs` (8
 
 - **Verify against source; never describe upstream behaviour from memory.** The owner checks provenance and has caught real errors. Anything claimed about Jellyfin should trace to a file and symbol; if it rests on a summary, say so.
 - **Put catalog-like data in `catalog.yaml`, not code.** Lists, labels, defaults, orderings, thresholds, and the report's remedy, fix, and finding text (`texts`, read with `Catalog.Text`) belong in the catalog, served to the page by `HwProbe/Catalog`; the page shouldn't keep its own copy. Upstream constants and logic stay in code.
-- **Don't hardcode ffmpeg arguments.** Generate them through `EncodingHelper`. The pinned drift strings detect upstream changes; they aren't the source of truth. The one exception is the bare device-open probe, which upstream never emits.
+- **Don't hardcode ffmpeg arguments.** Generate them through `EncodingHelper`. The pinned drift strings detect upstream changes; they aren't the source of truth. The exceptions are the bare device-open probe, which upstream never emits, and the pinned copy of `MediaEncoder`'s image wrapper (`ArgumentSource.BuildImages`), checked by `ImageArgumentsTests` and against Jellyfin's own logged trickplay command in `container-plugin.sh`.
 - **Keep this file current in every PR**, along with `README.md`, `CONTRIBUTING.md`, `DEVELOPMENT.md`, `ARCHITECTURE.md`, and `build.yaml`: state, commands, traps, and the to-do list.
 - **Never auto-apply settings and never restart the server.** Apply writes only advised `EncodingOptions` values through `SaveConfiguration`, with history and Revert.
 
@@ -91,6 +91,7 @@ The page should look and behave like a native Jellyfin dashboard page, stay calm
 6. **The pipeline tier comes from OpenCL/Vulkan/`alphasrc`, not codec support.** A host can pass every codec probe and still be on the slow copy-back path; reporting that is the headline feature.
 7. **Replacing plugin DLLs under the same version and using Jellyfin's in-process restart marks the plugin NotSupported.** Stop and start the server instead, and reset `status` in the plugin's `meta.json` if it already happened.
 8. **Never rename the package** (build.yaml `name`, `Plugin.Name`). Jellyfin removes an updated plugin's old folder by name, not GUID (`PluginManager.DiscoverPlugins`), so after an update both versions load and every `HwProbe/` route returns 500 (AmbiguousMatchException). Reproduced 2026-10-03 updating 0.10.2 to a renamed build.
+9. **Image runs can't loop with `-stream_loop`.** Looping restarts NVIDIA's decoder, ffmpeg rebuilds the filter graph, upstream's `setpts=N/…` count starts again, and MJPEG refuses the repeated timestamp (RTX 5080, H.264). They repeat the source through a concat list instead, with each clip's length from the catalog: a downloaded piece's own header gives the whole film's.
 
 ## Known limits
 
@@ -98,14 +99,13 @@ The page should look and behave like a native Jellyfin dashboard page, stay calm
 - A second i965/AMD GPU (not the configured device) is reported `Untested` by the plugin, since probing it would change the server's environment; the CLI can test it.
 - CUDA is probed at index 0 only; `EncodingHelper` hard-codes device 0.
 - Intel low power is untested on real hardware: the Intel NAS has no HuC firmware, so the Intel low power suite and its per-codec comparisons rest on unit tests alone.
+- AMD GPU power (amdgpu hwmon `power1_input` or `power1_average`, sampled every 200 ms and summed by `EnergySpan`) is untested, as no AMD hardware is available. On APUs the reading includes the CPU, so it overlaps the CPU package's.
+- Audio inputs leave out DSD (ffmpeg has no DSD encoder and FATE has no `.dsf` sample) and Shorten (FATE's sample is cut mid-frame and stops instead of looping).
+- macOS has no power figures: IOReport is a private API whose CPU channels read 0 on macOS 27.
 - v4l2m2m is confirmed from a recorded Raspberry Pi run (`Using device /dev/videoN`), not yet through Jellyfin.
 - Page and CLI text are English only. Behaviour doesn't depend on locale: ffmpeg runs with `LC_ALL=C`, numbers are formatted and parsed invariantly, and the page reads structured fields rather than message text. `CultureScope` tests and `HWPROBE_LOCALE` in `container-plugin.sh` check it.
 - The busy check (`ProbeService.IsTranscoding`) skips direct play and remux, but a transcode that finished ahead of playback still blocks until playback stops: `TranscodeManager.OnFfMpegProcessExited` leaves the session's `TranscodingInfo` set, and Jellyfin has no API to list running jobs by session.
 
 ## To do
 
-- **Power draw, next steps**: AMD GPU power (amdgpu hwmon `power1_average`, watts only, to integrate over samples) and macOS (IOReport is a private API whose CPU channels read 0 on macOS 27). Intel and AMD GPU usage on Linux 5.19+ is unverified, as no such host is available.
-
-Queued by the user on 2026-10-03, in no particular order:
-
-- Trickplay generation as a Performance Tests output (researched 2026-10-04). Input, filter, and encoder come from public EncodingHelper methods; only `MediaEncoder.ExtractVideoImagesOnIntervalAccelerated`'s wrapper (skip_frame, setpts, quality per encoder, threads, image2) needs a pinned copy, guarded by drift tests and a log diff in `container-plugin.sh`. A direct call was rejected: configured backend only, no CLI, no stderr to confirm hardware, slow cancellation.
+Nothing queued.

@@ -194,7 +194,10 @@
                 let history = [];
                 let restartRequired = false;
                 let speedVideos = [];
+                let speedAudios = [];
                 let speedOutputs = [];
+                // Seconds an audio measurement takes, low and high, for the estimate.
+                let audioSeconds = [1, 4];
                 let speedReport = null;
                 // While a speed run goes, its results so far; shown in place of the saved run.
                 let speedLive = null;
@@ -216,6 +219,8 @@
                 // Run options chosen on the page, by catalog key; one left out keeps the server's setting.
                 const speedSettings = {};
                 let chosenVideos = null;
+                let chosenAudios = null;
+                let chosenAudioOutputs = null;
                 // Outputs are every chosen codec at every chosen quality; 'decode' is chosen with the codecs.
                 let chosenCodecs = null;
                 let chosenQualities = null;
@@ -285,6 +290,8 @@
                     gpuEngines = c.GpuEngines;
                     links = c.Links;
                     speedVideos = c.Videos;
+                    speedAudios = c.Audios;
+                    audioSeconds = c.AudioSeconds;
                     speedOutputs = c.Outputs;
                     speedCodecs = c.Codecs;
                     speedQualities = c.Qualities;
@@ -1169,13 +1176,24 @@
                     renderSpeedSetup(speedTab, viable);
                 }
 
-                // In codec then quality order, so a video's rows read H.264 8 Mbps, H.264 4 Mbps, HEVC 8 Mbps.
+                // Outputs made from audio inputs rather than videos.
+                function audioOutput(o) {
+                    return o.Kind === 'Audio' || o.Kind === 'AudioDecode';
+                }
+
+                // Video outputs chosen on their own rather than as a codec at a quality: decoding alone and images.
+                function standalone(o) {
+                    return (o.DecodeOnly || o.Kind === 'Images') && !audioOutput(o);
+                }
+
+                function selectedAudioOutputs() {
+                    return speedOutputs.filter(o => audioOutput(o) && chosenAudioOutputs.has(o.Key));
+                }
+
+                // In codec then quality order, so a video's rows read H.264 8 Mbps, H.264 4 Mbps, HEVC 8 Mbps, then the standalone outputs.
                 function selectedOutputs() {
                     const keys = speedCodecs.filter(c => chosenCodecs.has(c.Key)).flatMap(c => speedQualities.filter(q => chosenQualities.has(q.Key)).map(q => c.Key + '-' + q.Key));
-                    const decode = speedOutputs.find(o => o.DecodeOnly);
-                    if (decode && chosenCodecs.has(decode.Key)) {
-                        keys.push(decode.Key);
-                    }
+                    keys.push(...speedOutputs.filter(o => standalone(o) && chosenCodecs.has(o.Key)).map(o => o.Key));
                     return keys.map(k => speedOutputs.find(o => o.Key === k)).filter(o => o);
                 }
 
@@ -1324,8 +1342,10 @@
                 function chooseSpeedDefaults() {
                     if (!chosenVideos) {
                         chosenVideos = new Set(speedVideos.filter(v => v.Default).map(v => v.Key));
+                        chosenAudios = new Set();
+                        chosenAudioOutputs = new Set(speedOutputs.filter(audioOutput).map(o => o.Key));
                         const defaults = speedOutputs.filter(o => o.Default).map(o => o.Key);
-                        chosenCodecs = new Set(speedCodecs.filter(c => defaults.some(k => k.startsWith(c.Key + '-'))).map(c => c.Key).concat(defaults.filter(k => speedOutputs.some(o => o.Key === k && o.DecodeOnly))));
+                        chosenCodecs = new Set(speedCodecs.filter(c => defaults.some(k => k.startsWith(c.Key + '-'))).map(c => c.Key).concat(defaults.filter(k => speedOutputs.some(o => o.Key === k && standalone(o)))));
                         chosenQualities = new Set(speedQualities.filter(q => defaults.some(k => k.endsWith('-' + q.Key))).map(q => q.Key));
                     }
                 }
@@ -1609,12 +1629,17 @@
                 // How much more efficient a suggestion is, e.g. "30% less CPU and 20% less memory".
                 function savingsText(savings) {
                     const parts = savings.map(x => Math.round(x.Fraction * 100) + '% less ' + (resourceNames[x.Resource] || x.Resource));
-                    return parts.length > 2 ? parts.slice(0, -1).join(', ') + ', and ' + parts[parts.length - 1] : parts.join(' and ');
+                    return andList(parts);
                 }
 
                 // Alternatives with a serial comma: "a", "a or b", "a, b, or c".
                 function orList(items) {
                     return items.length > 2 ? items.slice(0, -1).join(', ') + ', or ' + items[items.length - 1] : items.join(' or ');
+                }
+
+                // Items with a serial comma: "a", "a and b", "a, b, and c".
+                function andList(items) {
+                    return items.length > 2 ? items.slice(0, -1).join(', ') + ', and ' + items[items.length - 1] : items.join(' and ');
                 }
 
                 // For the value that avoids a drawback, the suggestion for the value that has it, each compared with the other's value.
@@ -1796,12 +1821,12 @@
                         // Settings that together pick one thing: one table for the group, a row per choice the runs made, in the catalog's order.
                         const groupTable = (key, members) => {
                             const group = settingGroups.find(g => g.Key === key);
-                            // A row is the server's when all the group's settings match it, not just the one a suggestion is about; the catalog's server field names each in EncodingOptions.
+                            // A row is the server's when all the group's settings match it, not just the one a suggestion is about; the catalog's server field names each setting.
                             const backend = encoding ? encoding.HardwareAccelerationType : null;
                             const rowOf = values => (group.Rows.find(r => (!r.Backends || r.Backends.includes(backend)) && Object.entries(r.When || {}).every(([k, v]) => values[k] === v)) || {}).Label;
                             const server = Object.fromEntries(group.Settings.map(k => {
                                 const option = runOptions.find(o => o.Key === k);
-                                return [k, encoding && option && option.Server ? String(encoding[option.Server]) : null];
+                                return [k, encoding && option && option.Server ? String(current(option.Server)) : null];
                             }));
                             const serverRow = rowOf(server);
                             const rows = new Map();
@@ -2076,14 +2101,15 @@
                     }
                 }
 
-                // How many measurements, and roughly how long, from the accuracy's typical time per measurement.
-                function measurementsText(runs, method, repeats, limit) {
+                // How many measurements, and roughly how long, from the accuracy's typical time per video measurement and audio's own.
+                function measurementsText(runs, audioRuns, method, repeats, limit) {
                     const per = methodSeconds[method] || methodSeconds[defaultMethod];
                     const minutes = n => Math.max(1, Math.round(n / 60));
                     const cap = n => limit ? Math.min(n, limit) : n;
-                    const low = minutes(runs * cap(per[0] * repeats));
-                    const high = minutes(runs * cap(per[1] * repeats));
-                    return runs + ' measurement' + (runs === 1 ? '' : 's') + ', ' + (low === high ? 'about ' + low : 'about ' + low + ' to ' + high) + ' minute' + (high === 1 ? '' : 's');
+                    const low = minutes(runs * cap(per[0] * repeats) + audioRuns * cap(audioSeconds[0] * repeats));
+                    const high = minutes(runs * cap(per[1] * repeats) + audioRuns * cap(audioSeconds[1] * repeats));
+                    const total = runs + audioRuns;
+                    return total + ' measurement' + (total === 1 ? '' : 's') + ', ' + (low === high ? 'about ' + low : 'about ' + low + ' to ' + high) + ' minute' + (high === 1 ? '' : 's');
                 }
 
                 // Named sets of runs that differ in one setting, each started with one button; listed as this server would run them.
@@ -2135,7 +2161,7 @@
                             }
                             details.appendChild(list);
                             // Suites measure once each, without a time limit.
-                            estimate.textContent = suite.Offered ? measurementsText(suite.Measurements, suite.Method, 1, null) : 'Not available on this server.';
+                            estimate.textContent = suite.Offered ? measurementsText(suite.Measurements, suite.AudioMeasurements || 0, suite.Method, 1, null) : 'Not available on this server.';
                             button.dataset.unavailable = String(!suite.Offered);
                             button.disabled = running || !suite.Offered;
                         };
@@ -2156,16 +2182,21 @@
                         }
                         const videos = allVideos().filter(v => chosenVideos.has(v.Key)).length;
                         const outputs = selectedOutputs().length;
-                        const runs = speedRuns(viable);
-                        const missing = [[videos, 'an input'], [outputs, 'an output'], [speedBackends(viable), 'a backend']].filter(([n]) => !n).map(([, what]) => what);
+                        const audios = speedAudios.filter(a => chosenAudios.has(a.Key)).length;
+                        const audioOutputs = selectedAudioOutputs().length;
+                        const plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
+                        const videoRuns = videos ? speedRuns(viable) : 0;
+                        const audioRuns = chosenBackends.has('none') ? audios * audioOutputs : 0;
+                        const missing = [[videos || audios, 'an input'], [!videos || outputs, 'an output'], [!audios || audioOutputs, 'an audio output'], [speedBackends(viable), 'a backend']].filter(([n]) => !n).map(([, what]) => what);
+                        const parts = [videoRuns ? plural(videos, 'input') + ' \u00d7 ' + plural(outputs, 'output') + ' on ' + plural(speedBackends(viable), 'backend') : '', audioRuns ? plural(audios, 'audio input') + ' \u00d7 ' + plural(audioOutputs, 'audio output') + ' in software' : ''].filter(t => t);
                         estimate.textContent = missing.length
-                            ? 'Requires ' + (missing.length > 2 ? missing.slice(0, -1).join(', ') + ', and ' + missing[missing.length - 1] : missing.join(' and ')) + '.'
-                            : !runs ? 'Nothing to measure with these choices.'
-                            : videos + ' input' + (videos === 1 ? '' : 's') + ' \u00d7 ' + outputs + ' output' + (outputs === 1 ? '' : 's') + ' on ' + speedBackends(viable) + ' backend' + (speedBackends(viable) === 1 ? '' : 's') + ': ' + measurementsText(runs, speedMethod, speedRepeats, speedTimeLimit);
-                        button.disabled = runs === 0 || running;
+                            ? 'Requires ' + andList(missing) + '.'
+                            : !videoRuns && !audioRuns ? 'Nothing to measure with these choices.'
+                            : parts.join(', ') + ': ' + measurementsText(videoRuns, audioRuns, speedMethod, speedRepeats, speedTimeLimit);
+                        button.disabled = videoRuns + audioRuns === 0 || running;
                     };
                     button = action('Measure performance', () => {
-                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, ReuseResults: speedReuse, MeasureResources: speedResources, WhenTranscoding: speedWhenTranscoding, Options: speedSettings, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Outputs: selectedOutputs().map(o => o.Key), Backends: [...chosenBackends], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
+                        const body = { Method: speedMethod, Repeats: speedRepeats, TimeLimitSeconds: speedTimeLimit, ReuseResults: speedReuse, MeasureResources: speedResources, WhenTranscoding: speedWhenTranscoding, Options: speedSettings, Videos: allVideos().filter(v => chosenVideos.has(v.Key)).map(v => v.Key), Audios: speedAudios.filter(a => chosenAudios.has(a.Key)).map(a => a.Key), Outputs: (allVideos().some(v => chosenVideos.has(v.Key)) ? selectedOutputs() : []).concat(selectedAudioOutputs()).map(o => o.Key), Backends: [...chosenBackends], ItemId: libraryVideo && chosenVideos.has('library') ? speedItem.Id : null };
                         ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('HwProbe/Speed'), data: JSON.stringify(body), contentType: 'application/json' })
                             .then(() => {
                                 showTab(tabs[3][0]);
@@ -2205,7 +2236,7 @@
                             choices.push([String(n), String(n)]);
                         }
                         if (o.Server) {
-                            const value = encoding ? encoding[o.Server] : null;
+                            const value = current(o.Server);
                             const found = choices.find(([key]) => value !== null && value !== undefined && key === String(value));
                             choices = [['', serverLabels.ServerSetting + (found ? ' (' + found[1] + ')' : '')]].concat(choices);
                         }
@@ -2248,11 +2279,15 @@
                     multiSelect(form, 'Input', inputOrder().map(v => v === 'library' ? { key: 'library', text: 'Library video', secondary: 'A movie or episode from a library' } : { key: v.Key, text: v.Title ? v.Name + ': ' + v.Title : v.Name, secondary: v.Input }), chosenVideos, () => { sourceLines(sources, update); update(); })
                         .appendChild(sources);
                     sourceLines(sources, update);
+                    multiSelect(form, 'Audio input', speedAudios.map(a => ({ key: a.Key, text: a.Name, secondary: a.Input })), chosenAudios, () => update())
+                        .appendChild(el('div', 'Measured in software alone: no backend decodes or encodes audio on the GPU.', 'fieldDescription'));
                     form.appendChild(el('h3', 'Output', 'sectionTitle'));
-                    multiSelect(form, 'Codec', speedCodecs.map(c => ({ key: c.Key, text: c.Name })).concat(speedOutputs.filter(o => o.DecodeOnly).map(o => ({ key: o.Key, text: o.Label }))), chosenCodecs, () => update())
-                        .appendChild(el('div', 'Every selected codec at every selected quality is processed for every selected input.', 'fieldDescription'));
+                    multiSelect(form, 'Codec', speedCodecs.map(c => ({ key: c.Key, text: c.Name })).concat(speedOutputs.filter(standalone).map(o => ({ key: o.Key, text: o.Label }))), chosenCodecs, () => update())
+                        .appendChild(el('div', 'Every selected codec at every selected quality is processed for every selected input; ' + andList(speedOutputs.filter(standalone).map(o => o.Label)) + ' take no quality.', 'fieldDescription'));
                     multiSelect(form, 'Quality', speedQualities.map(q => ({ key: q.Key, text: q.Name })), chosenQualities, () => update())
                         .appendChild(el('div', 'Output resolution is determined by transcoded quality and codec.', 'fieldDescription'));
+                    multiSelect(form, 'Audio codec', speedOutputs.filter(audioOutput).map(o => ({ key: o.Key, text: o.Label })), chosenAudioOutputs, () => update())
+                        .appendChild(el('div', 'Every selected audio codec is processed for every selected audio input, as a client asks for music.', 'fieldDescription'));
 
                     form.appendChild(el('h3', 'Transcoding Settings', 'sectionTitle'));
                     runOptions.filter(o => !o.Backend).forEach(runOption);
@@ -2265,7 +2300,7 @@
                     // What this server's platform can measure, and whose usage it is.
                     const coverage = {
                         windows: 'CPU, memory, GPU, and GPU memory usage are measured per transcode. Power is measured for the CPU package and NVIDIA GPUs where their meters exist, covering the whole device above its idle draw.',
-                        linux: 'CPU and memory usage are measured per transcode. Intel and AMD GPU usage is measured per transcode on kernel 5.19 or newer (6.8 for Intel\u2019s xe driver). NVIDIA GPU usage covers the whole GPU, including any other work on it. Power is measured for NVIDIA GPUs, Intel Arc GPUs, and the CPU package where the server may read their meters (not usually in a container), covering the whole device above its idle draw.',
+                        linux: 'CPU and memory usage are measured per transcode. Intel and AMD GPU usage is measured per transcode on kernel 5.19 or newer (6.8 for Intel\u2019s xe driver). NVIDIA GPU usage covers the whole GPU, including any other work on it. Power is measured for NVIDIA GPUs, Intel Arc GPUs, AMD GPUs, and the CPU package where the server may read their meters (not usually in a container), covering the whole device above its idle draw.',
                         macos: 'CPU and memory usage are measured per transcode. GPU usage and power can\u2019t be measured on macOS.',
                     }[report && report.host ? report.host.os : ''];
                     // Test suites have their own Resource Usage and transcoding choices.
@@ -2466,7 +2501,8 @@
                         if (speed && !values && counted) {
                             facts.push(streamsText(x) + ' concurrent streams');
                         }
-                        if (x.fps) {
+                        // An image output's fps is the source's frames over the time taken, not frames it decoded; audio has no frames.
+                        if (x.fps && !['Images', 'Audio', 'AudioDecode'].includes(x.kind)) {
                             facts.push(Math.round(x.fps) + ' frames a second');
                         }
                         if (x.note) {
@@ -2637,9 +2673,11 @@
                         ['encoderPreset', t.encoderPreset || 'Auto (veryfast)'],
                         ['crf', 'H.265 ' + t.h265Crf + ', H.264 ' + t.h264Crf],
                         ['deinterlace', (t.bwdif ? 'BWDIF' : 'YADIF') + (t.doubleRate ? ', double rate' : '')],
+                        // Reports from before trickplay was measured have none of its settings.
+                        ['trickplay', t.trickplayWidth ? 'MJPEG hardware encoding ' + onOff(t.trickplayHwEncoding) + ', key frames only ' + onOff(t.trickplayKeyFrames) + ', ' + t.trickplayThreads + ' FFmpeg threads, ' + t.trickplayWidth + ' wide, every ' + t.trickplayInterval / 1000 + ' s, qscale ' + t.trickplayQscale : null],
                         ['audio', t.audioCopy ? 'Copied (passthrough)' : 'Transcoded to stereo AAC'],
                         ['burnIn', { text: 'Text (ASS)', image: 'Image (PGS)' }[t.burnIn] || 'None']
-                    ].map(([key, value]) => [settingLabels[key] || key, value]);
+                    ].filter(([, value]) => value !== null).map(([key, value]) => [settingLabels[key] || key, value]);
                 }
 
                 // In a suite, which step; and anything other than measuring: preparing, pausing, waiting, or cancelling.

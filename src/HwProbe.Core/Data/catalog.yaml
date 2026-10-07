@@ -10,6 +10,11 @@ vars:
   hdr10: -vf setparams=color_primaries=bt2020:color_trc=smpte2084:colorspace=bt2020nc
   testSource: "{quiet} -f lavfi -i testsrc2=size=1920x1080:rate=24 {audio} -t 10"
   x265: -c:v libx265 -preset medium -x265-params log-level=error
+  # The audio clips' sound: pink noise on each channel, spread across the frequencies as music is, independent so no channel predicts another.
+  stereo: "{quiet} -f lavfi -i anoisesrc=c=pink:r=44100:a=0.2:s=1 -f lavfi -i anoisesrc=c=pink:r=44100:a=0.2:s=2 -filter_complex [0][1]amerge=inputs=2,aformat=channel_layouts=stereo -t 10"
+  stereoHires: "{quiet} -f lavfi -i anoisesrc=c=pink:r=96000:a=0.2:s=1 -f lavfi -i anoisesrc=c=pink:r=96000:a=0.2:s=2 -filter_complex [0][1]amerge=inputs=2,aformat=channel_layouts=stereo -t 10"
+  surround: "{quiet} -f lavfi -i anoisesrc=c=pink:r=48000:a=0.2:s=1 -f lavfi -i anoisesrc=c=pink:r=48000:a=0.2:s=2 -f lavfi -i anoisesrc=c=pink:r=48000:a=0.2:s=3 -f lavfi -i anoisesrc=c=pink:r=48000:a=0.1:s=4 -f lavfi -i anoisesrc=c=pink:r=48000:a=0.2:s=5 -f lavfi -i anoisesrc=c=pink:r=48000:a=0.2:s=6 -filter_complex [0][1][2][3][4][5]amerge=inputs=6,aformat=channel_layouts=5.1 -t 10"
+  mono8k: "{quiet} -f lavfi -i anoisesrc=c=pink:r=8000:a=0.2:s=1 -t 10"
 
 # Shared fields, merged into entries below with <<.
 templates:
@@ -420,7 +425,47 @@ qualities:
 
 decode: { key: decode, label: Decode only }
 
+# Images at an interval, extracted as MediaEncoder.ExtractVideoImagesOnIntervalAccelerated does (v12.2), at the Trickplay page's settings and the server's first trickplay width, interval, and quality scale.
+images:
+  - { key: trickplay, label: Trickplay }
+
 defaultOutputs: [h264-8mbps]
+
+# Audio inputs, as a music library holds them (Jellyfin's audio file extensions, NamingOptions.AudioFileExtensions, v12.2), in the page's order: lossless, lossy, surround, then legacy.
+# description: what the page adds to the name. Each clip is made with the server's ffmpeg where it has the encoder, else downloaded from FFmpeg's FATE suite: Monkey's Audio, Musepack, RealAudio, and AMR have no encoder.
+audios:
+  - { key: wav, name: WAV, description: PCM 16-bit, codec: pcm_s16le, channels: 2, sampleRate: 44100, clip: { file: audio_wav.wav, codec: pcm_s16le, encoder: pcm_s16le, arguments: "{stereo} -c:a pcm_s16le" } }
+  - { key: aiff, name: AIFF, description: PCM 16-bit, codec: pcm_s16be, channels: 2, sampleRate: 44100, clip: { file: audio_aiff.aiff, codec: pcm_s16be, encoder: pcm_s16be, arguments: "{stereo} -c:a pcm_s16be" } }
+  - { key: flac, name: FLAC, description: 16-bit, codec: flac, channels: 2, sampleRate: 44100, clip: { file: audio_flac.flac, codec: flac, encoder: flac, arguments: "{stereo} -c:a flac -sample_fmt s16" } }
+  - { key: flac-24bit, name: FLAC 24-bit, description: 24-bit, codec: flac, channels: 2, sampleRate: 96000, clip: { file: audio_flac_24bit.flac, codec: flac, encoder: flac, arguments: "{stereoHires} -c:a flac -sample_fmt s32 -bits_per_raw_sample 24" } }
+  - { key: alac, name: ALAC, description: 16-bit, codec: alac, channels: 2, sampleRate: 44100, clip: { file: audio_alac.m4a, codec: alac, encoder: alac, arguments: "{stereo} -c:a alac -sample_fmt s16p" } }
+  - { key: wavpack, name: WavPack, description: 16-bit, codec: wavpack, channels: 2, sampleRate: 44100, clip: { file: audio_wavpack.wv, codec: wavpack, encoder: wavpack, arguments: "{stereo} -c:a wavpack -sample_fmt s16p" } }
+  # FFmpeg's cut copies of Monkey's Audio files end mid-frame, so each loop ends with a decoding error ffmpeg carries on from.
+  - { key: ape, name: Monkey's Audio, description: 16-bit, codec: ape, channels: 2, sampleRate: 44100, clip: { file: audio_ape.ape, codec: ape, download: "https://fate-suite.ffmpeg.org/lossless-audio/luckynight-mac394b1-c2000.ape", sha256: c17918e48df298a648bc3efa23e948bcd055af8cc2a631af183b10e6a198c1bc, size: 328000 } }
+  - { key: mp3, name: MP3, description: 320 kbps, codec: mp3, channels: 2, sampleRate: 44100, clip: { file: audio_mp3.mp3, codec: mp3, encoder: libmp3lame, arguments: "{stereo} -c:a libmp3lame -b:a 320k" } }
+  - { key: aac, name: AAC, description: 256 kbps, codec: aac, channels: 2, sampleRate: 44100, clip: { file: audio_aac.m4a, codec: aac, encoder: aac, arguments: "{stereo} -c:a aac -b:a 256k" } }
+  - { key: opus, name: Opus, description: 128 kbps, codec: opus, channels: 2, sampleRate: 48000, clip: { file: audio_opus.opus, codec: opus, encoder: libopus, arguments: "{stereo} -c:a libopus -b:a 128k" } }
+  - { key: vorbis, name: Vorbis, description: quality 6, codec: vorbis, channels: 2, sampleRate: 44100, clip: { file: audio_vorbis.ogg, codec: vorbis, encoder: libvorbis, arguments: "{stereo} -c:a libvorbis -q:a 6" } }
+  - { key: ac3, name: AC-3, description: 640 kbps, codec: ac3, channels: 6, sampleRate: 48000, clip: { file: audio_ac3.ac3, codec: ac3, encoder: ac3, arguments: "{surround} -c:a ac3 -b:a 640k" } }
+  - { key: eac3, name: E-AC-3, description: 640 kbps, codec: eac3, channels: 6, sampleRate: 48000, clip: { file: audio_eac3.eac3, codec: eac3, encoder: eac3, arguments: "{surround} -c:a eac3 -b:a 640k" } }
+  # ffmpeg's DTS and TrueHD encoders are experimental, so they're allowed with -strict -2.
+  - { key: dts, name: DTS, description: core, codec: dts, channels: 6, sampleRate: 48000, clip: { file: audio_dts.dts, codec: dts, encoder: dca, arguments: "{surround} -c:a dca -strict -2" } }
+  - { key: truehd, name: Dolby TrueHD, description: 24-bit, codec: truehd, channels: 6, sampleRate: 48000, clip: { file: audio_truehd.mka, codec: truehd, encoder: truehd, arguments: "{surround} -c:a truehd -strict -2" } }
+  - { key: mp2, name: MP2, description: 256 kbps, codec: mp2, channels: 2, sampleRate: 44100, legacy: true, clip: { file: audio_mp2.mp2, codec: mp2, encoder: mp2, arguments: "{stereo} -c:a mp2 -b:a 256k" } }
+  - { key: wma, name: WMA, description: "WMA 2, 192 kbps", codec: wmav2, channels: 2, sampleRate: 44100, legacy: true, clip: { file: audio_wma.wma, codec: wmav2, encoder: wmav2, arguments: "{stereo} -c:a wmav2 -b:a 192k" } }
+  - { key: musepack, name: Musepack, description: SV7, codec: musepack7, channels: 2, sampleRate: 44100, legacy: true, clip: { file: audio_musepack.mpc, codec: musepack7, download: "https://fate-suite.ffmpeg.org/musepack/inside-mp7.mpc", sha256: 0e23d692f39d3c874286ef0b479ec8d1d1586fdcf93b906dee316fc11b694301, size: 249701 } }
+  - { key: realaudio, name: RealAudio, description: Cook, codec: cook, channels: 2, sampleRate: 44100, legacy: true, clip: { file: audio_realaudio.rm, codec: cook, download: "https://fate-suite.ffmpeg.org/real/ra_cook.rm", sha256: 5c7a13412f8cf544896c11fe8bc5440ac21b830e699bd6b14817dfc3745ec577, size: 50000 } }
+  - { key: amr, name: AMR-NB, description: 12.2 kbps, codec: amr_nb, channels: 1, sampleRate: 8000, legacy: true, clip: { file: audio_amr.amr, codec: amr_nb, download: "https://fate-suite.ffmpeg.org/amrnb/12.2k.amr", sha256: 34445340325350fb5f4e15893c7b1e6bfd3a6f87cd5dc8fc95989f2c3e8164fc, size: 9094 } }
+  - { key: au, name: Sun AU, description: μ-law, codec: pcm_mulaw, channels: 1, sampleRate: 8000, legacy: true, clip: { file: audio_au.au, codec: pcm_mulaw, encoder: pcm_mulaw, arguments: "{mono8k} -c:a pcm_mulaw" } }
+
+# Audio outputs, as a client asks Jellyfin's progressive audio endpoint for them (UniversalAudioController, AudioHelper, v12.2): stereo for AAC, MP3, and Opus, 5.1 for AC-3 and E-AC-3, at the bitrate EncodingHelper.GetAudioBitrateParam picks with no limit asked. Audio is measured in software alone, as no backend uses the GPU for it.
+audioOutputs:
+  - { key: audio-decode, label: Decode only }
+  - { key: audio-aac, label: AAC stereo, codec: aac, channels: 2 }
+  - { key: audio-mp3, label: MP3 stereo, codec: mp3, channels: 2 }
+  - { key: audio-opus, label: Opus stereo, codec: opus, channels: 2 }
+  - { key: audio-ac3, label: AC-3 5.1, codec: ac3, channels: 6 }
+  - { key: audio-eac3, label: E-AC-3 5.1, codec: eac3, channels: 6 }
 
 subtitles:
   # An ASS subtitle shown for the whole of any run: "hwprobe subtitle burn-in" from 0:00 to 10:00:00, as base64 SRT.
@@ -441,8 +486,8 @@ repeats:
   - { value: 2, label: "Measure each twice, report the median" }
   - { value: 3, label: "Measure each three times, report the median" }
 
-# The run's settings, in the order of Jellyfin's Transcoding page (transcoding.tsx, v12.2), then the client's choices. Labels are jellyfin-web's (en-us.json).
-# server: the EncodingOptions property a setting defaults to; switch: on or off; range: whole numbers from low to high; choices: keyed values. Keys are applied by SpeedSettingsOptions.
+# The run's settings, in the order of Jellyfin's Transcoding page (transcoding.tsx, v12.2), then its Trickplay page, then the client's choices. Labels are jellyfin-web's (en-us.json).
+# server: the EncodingOptions property a setting defaults to, or Trickplay: and a TrickplayOptions property; switch: on or off; range: whole numbers from low to high; choices: keyed values. Keys are applied by SpeedSettingsOptions.
 options:
   # Shown with the backends when QSV works and its probe found the encoder; applied to QSV alone, so VAAPI keeps the server's.
   - { key: QsvLowPowerH264, label: Enable Intel Low-Power H.264 hardware encoder, server: EnableIntelLowPowerH264HwEncoder, outputCodec: h264, backend: qsv, report: EnableIntelLowPowerH264HwEncoder, switch: true, description: "Low-Power Encoding can keep unnecessary CPU-GPU sync. On Linux they must be disabled if the i915 HuC firmware is not configured." }
@@ -600,6 +645,22 @@ options:
     # Neither Jellyfin nor ffmpeg claims either gives the better picture; ffmpeg's filter docs describe BWDIF as motion adaptive deinterlacing based on YADIF with W3FDIF and cubic interpolation (doc/filters.texi, bwdif), so it's ranked above.
     qualityOrder: [bwdif, yadif]
   - { key: DoubleRate, label: Double the frame rate when deinterlacing, server: DeinterlaceDoubleRate, switch: true, qualityOrder: ["true", "false"], description: "This setting uses the field rate when deinterlacing, often referred to as bob deinterlacing, which doubles the frame rate of the video to provide full motion like what you would see when viewing interlaced video on a TV." }
+  # The Trickplay page's (trickplay.tsx, en-us.json, v12.2), named as the probe's advice names them; server values are TrickplayOptions'. Hardware backends extract images with Enable hardware decoding on, software with it off. outputCodec mjpeg: they only reach image outputs.
+  - { key: TrickplayHwEncoding, label: "Trickplay: Enable hardware accelerated MJPEG encoding", server: "Trickplay:EnableHwEncoding", outputCodec: mjpeg, switch: true, description: "Currently only available on QSV, VA-API, VideoToolbox and RKMPP, this option has no effect on other hardware acceleration methods." }
+  # Key frames are fewer and less evenly spaced than the interval, so the images' timing is less accurate.
+  - { key: TrickplayKeyFrames, label: "Trickplay: Only generate images from key frames", server: "Trickplay:EnableKeyFrameOnlyExtraction", outputCodec: mjpeg, switch: true, qualityOrder: ["false", "true"], description: "Extract key frames only for significantly faster processing with less accurate timing. If the configured hardware decoder does not support this mode, will use the software decoder instead." }
+  # The page takes any number from 0; the choices are the default and a few others.
+  - key: TrickplayThreads
+    label: "Trickplay: FFmpeg Threads"
+    server: "Trickplay:ProcessThreads"
+    outputCodec: mjpeg
+    description: "The number of threads to pass to the '-threads' argument of ffmpeg."
+    choices:
+      - { key: "0", label: "0" }
+      - { key: "1", label: "1" }
+      - { key: "2", label: "2" }
+      - { key: "4", label: "4" }
+      - { key: "8", label: "8" }
   - key: Audio
     label: Audio
     help: Copying passes the source's audio through, as for a client that plays it, so only the video is transcoded.
@@ -629,7 +690,8 @@ links:
 # suggestions compare them. backends: configuredAndSoftware (default), configured, or software. requires: lowPower offers
 # the suite only when the configured backend is QSV and its probe found a low-power encoder. threadSteps adds Auto, then
 # 1, 2, 4 ... and the server's logical CPU count. A step's videos or outputs replace the suite's for that step. options sets
-# settings every step shares; suites copy the audio, so only video is measured, except the VBR suite, which compares audio encoding.
+# settings every step shares; suites copy the audio, so only video is measured, except the VBR suite, which compares audio
+# encoding, and the audio suite, which has no video. method replaces suiteMethod.
 suites:
   - key: presets
     name: Encoder presets
@@ -740,6 +802,17 @@ suites:
     steps:
       - { label: VBR off, options: { Audio: transcode, AudioVbr: "false" } }
       - { label: VBR on, options: { Audio: transcode, AudioVbr: "true" } }
+  # Fast accuracy: a music listener needs one stream, and audio runs hundreds of times real time.
+  - key: audio-formats
+    name: Audio formats
+    description: Decodes each audio format and transcodes it to AAC, MP3, Opus, AC-3, and E-AC-3, as for music.
+    videos: []
+    audios: [wav, aiff, flac, flac-24bit, alac, wavpack, ape, mp3, aac, opus, vorbis, ac3, eac3, dts, truehd, mp2, wma, musepack, realaudio, amr, au]
+    outputs: [audio-decode, audio-aac, audio-mp3, audio-opus, audio-ac3, audio-eac3]
+    backends: software
+    method: Quick
+    steps:
+      - { label: "Decode only, AAC, MP3, Opus, AC-3, and E-AC-3" }
 
 # What a run does when the server starts transcoding for a player; keyed by TranscodeAction.
 whenTranscoding:
@@ -790,6 +863,9 @@ advice:
 
 # Test suites count concurrent streams, which their comparisons use, without Thorough's length.
 suiteMethod: Confirm
+
+# Seconds an audio measurement takes, low and high, for the page's estimate: audio runs hundreds of times real time, on one CPU core.
+audioSeconds: [1, 4]
 
 softwareName: Software
 
@@ -873,12 +949,15 @@ texts:
   noteSoftwareDecode: Decoded in software with this backend, then encoded on the GPU.
   noteSoftwareDecodeFailed: Decoded in software, as the probe found this GPU can't decode it, then encoded on the GPU.
   noteDecodeFailed: "Not measured: the probe found this GPU can't decode it."
+  noteImagesSoftware: "Not measured: Jellyfin decodes in software with this backend for these images."
+  noteImagesKeyFramesRetried: "Only generate images from key frames failed, so this is Jellyfin's second try, which decodes every frame."
+  noteImagesKeyFrames: "Not measured: with Only generate images from key frames on, Jellyfin extracts these images in software with this backend's decoders."
   noteLowPowerDropped: Low power was dropped (see the Hardware Probe finding); ffmpeg used normal mode, so this is the normal-mode speed.
   lowPowerOptionH264: Intel Low-Power H.264 hardware encoder
   lowPowerOptionHevc: Intel Low-Power HEVC hardware encoder
 
-# Input codecs as the page and CLI name them, keyed by ffmpeg's codec name; others are shown upper-cased.
-codecNames: { h264: H.264, hevc: HEVC, av1: AV1, vp9: VP9, vp8: VP8, mpeg2video: MPEG-2, mpeg4: MPEG-4, vc1: VC-1, theora: Theora, flv1: Sorenson Spark, rv30: RealVideo 3, rv40: RealVideo 4, wmv3: WMV 9 }
+# Codecs as the page and CLI name them, keyed by ffmpeg's codec name; others are shown upper-cased.
+codecNames: { aac: AAC, mp3: MP3, opus: Opus, ac3: AC-3, eac3: E-AC-3, h264: H.264, hevc: HEVC, av1: AV1, vp9: VP9, vp8: VP8, mpeg2video: MPEG-2, mpeg4: MPEG-4, vc1: VC-1, theora: Theora, flv1: Sorenson Spark, rv30: RealVideo 3, rv40: RealVideo 4, wmv3: WMV 9 }
 
 # Seconds per measurement; no value for no limit.
 timeLimits:
@@ -958,5 +1037,6 @@ settings:
   encoderPreset: Encoding preset
   crf: Encoding CRF
   deinterlace: Deinterlacing
+  trickplay: Trickplay
   audio: Audio
   burnIn: Burned-in subtitles

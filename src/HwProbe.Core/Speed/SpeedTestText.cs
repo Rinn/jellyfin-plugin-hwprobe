@@ -26,6 +26,11 @@ public static class SpeedTestText
     public static string Input(SpeedTest test)
     {
         ArgumentNullException.ThrowIfNull(test);
+        if (test.AudioOnly)
+        {
+            return Input(test.AudioInput);
+        }
+
         var video = test.File?.Video;
         var codec = video?.Codec ?? test.Fixture?.Codec ?? "unknown";
         var depth = video?.BitDepth ?? test.Fixture?.BitDepth ?? 8;
@@ -43,15 +48,46 @@ public static class SpeedTestText
         return string.Join(", ", parts);
     }
 
+    /// <summary>Describes an audio input.</summary>
+    /// <param name="audio">The audio input.</param>
+    /// <returns>e.g. <c>320 kbps, 44.1 kHz, stereo</c>.</returns>
+    public static string Input(SpeedAudio audio)
+    {
+        ArgumentNullException.ThrowIfNull(audio);
+        return string.Create(CultureInfo.InvariantCulture, $"{audio.Description}, {audio.SampleRate / 1000.0:0.#} kHz, {Channels(audio.Channels)}");
+    }
+
+    /// <summary>Names a channel count the way players do.</summary>
+    /// <param name="channels">The count.</param>
+    /// <returns>e.g. <c>stereo</c>, <c>5.1</c>.</returns>
+    public static string Channels(int channels) => channels switch
+    {
+        1 => "mono",
+        2 => "stereo",
+        6 => "5.1",
+        8 => "7.1",
+        var n => string.Create(CultureInfo.InvariantCulture, $"{n} channel"),
+    };
+
     /// <summary>Describes what a test makes from it.</summary>
     /// <param name="test">The test.</param>
-    /// <returns>e.g. <c>H.264 at 4 Mbps, stereo AAC</c>, or that it only decodes.</returns>
+    /// <returns>e.g. <c>H.264 at 4 Mbps, stereo AAC</c>, or that it only decodes or extracts images.</returns>
     public static string Output(SpeedTest test)
     {
         ArgumentNullException.ThrowIfNull(test);
         if (test.DecodeOnly)
         {
             return "Decoded only, not encoded";
+        }
+
+        if (test.Images)
+        {
+            return "MJPEG images at an interval";
+        }
+
+        if (test.AudioOnly)
+        {
+            return $"{CodecName(test.OutputCodec)}, {Channels(test.OutputChannels)}";
         }
 
         var rate = test.Bitrate >= 1_000_000 ? string.Create(CultureInfo.InvariantCulture, $"{test.Bitrate / 1_000_000.0:0.#} Mbps") : string.Create(CultureInfo.InvariantCulture, $"{test.Bitrate / 1000} kbps");

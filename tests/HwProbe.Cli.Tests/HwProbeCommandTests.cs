@@ -21,6 +21,24 @@ public sealed class HwProbeCommandTests
         Assert.Null(Bind([]).Suite);
     }
 
+    /// <summary>Audio inputs alone measure no default video and every audio output; named videos and outputs are kept; audio without software is an error.</summary>
+    [Fact]
+    public void AudioBinds()
+    {
+        var alone = Bind(["--speed", "quick", "--speed-audio", "flac,ac3"]).Speed;
+        var named = Bind(["--speed", "quick", "--speed-audio", "flac", "--speed-videos", "pattern", "--speed-outputs", "h264-8mbps,audio-mp3"]).Speed;
+
+        Assert.NotNull(alone);
+        Assert.NotNull(named);
+        Assert.Empty(alone.Videos);
+        Assert.Equal(["flac", "ac3"], alone.Audios);
+        Assert.Equal(Core.Speed.SpeedCatalog.Outputs.Where(o => o.Audio).Select(o => o.Key), alone.Outputs);
+        Assert.Equal(["pattern"], named.Videos);
+        Assert.Equal(["h264-8mbps", "audio-mp3"], named.Outputs);
+        Assert.NotEmpty(new HwProbeCommand().Root.Parse(["--speed", "--speed-audio", "flac", "--speed-backends", "nvenc"]).Errors);
+        Assert.NotEmpty(new HwProbeCommand().Root.Parse(["--speed", "--speed-audio", "dsd"]).Errors);
+    }
+
     /// <summary>Invalid values are parse errors, not exceptions.</summary>
     /// <param name="args">The command line.</param>
     [Theory]

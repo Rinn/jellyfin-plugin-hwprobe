@@ -27,6 +27,9 @@ public sealed record SpeedFileVideo(int Index, string Codec, int BitDepth, int W
     /// <summary>Gets the colour space, or null.</summary>
     public string? ColorSpace { get; init; }
 
+    /// <summary>Gets the display aspect ratio as Jellyfin reports it, e.g. <c>16:9</c>, or null.</summary>
+    public string? AspectRatio { get; init; }
+
     /// <summary>Gets a value indicating whether the stream is HDR10 or HLG, which Jellyfin tone-maps.</summary>
     public bool IsHdr => ColorTransfer is "smpte2084" or "arib-std-b67";
 }

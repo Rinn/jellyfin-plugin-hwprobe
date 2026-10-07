@@ -1,6 +1,6 @@
 namespace Jellyfin.Plugin.HwProbe.Core.Resources;
 
-/// <summary>Reads the whole-device energy counters readable without root: NVIDIA's through NVML, the CPU package's through Windows' Energy Meter counters or Linux's powercap, and Intel discrete GPUs' through hwmon.</summary>
+/// <summary>Reads the whole-device energy meters readable without root: NVIDIA's through NVML, the CPU package's through Windows' Energy Meter counters or Linux's powercap, Intel discrete GPUs' through hwmon, and AMD GPUs' power through hwmon.</summary>
 /// <remarks>Linux powercap is root-only on most kernels (CVE-2020-8694) and masked in containers, and Intel's integrated GPUs have no unprivileged meter, so on many servers there are none.</remarks>
 internal static class EnergyMeter
 {
@@ -10,19 +10,25 @@ internal static class EnergyMeter
     // A copy measured again right after another reads its idle while the GPU is still busy, so one reading serves a while.
     private static readonly TimeSpan _idleReuse = TimeSpan.FromSeconds(30);
 
-    private static readonly Lazy<List<IEnergySource>> _sources = new(Discover);
+    private static readonly Lazy<(List<IEnergySource> Counters, List<IPowerSource> Power)> _sources = new(Discover);
     private static readonly Lock _idleGate = new();
     private static (Dictionary<string, double>? Watts, long At) _lastIdle;
 
     /// <summary>Gets a value indicating whether any meter is readable.</summary>
-    public static bool Available => _sources.Value.Count > 0;
+    public static bool Available => _sources.Value.Counters.Count + _sources.Value.Power.Count > 0;
 
-    /// <summary>Reads every meter.</summary>
+    /// <summary>Starts measuring the energy every meter reports until the span is stopped.</summary>
+    /// <returns>The span.</returns>
+    public static EnergySpan Start() => new(_sources.Value.Counters, _sources.Value.Power);
+
+    /// <summary>Reads energy counters.</summary>
+    /// <param name="sources">The counters.</param>
     /// <returns>Joules by source, leaving out failed reads.</returns>
-    public static Dictionary<IEnergySource, double> Read()
+    public static Dictionary<IEnergySource, double> Read(IEnumerable<IEnergySource> sources)
     {
+        ArgumentNullException.ThrowIfNull(sources);
         Dictionary<IEnergySource, double> readings = [];
-        foreach (var source in _sources.Value)
+        foreach (var source in sources)
         {
             try
             {
@@ -72,9 +78,14 @@ internal static class EnergyMeter
             }
         }
 
-        var start = Read();
-        await Task.Delay(_idle, cancellationToken);
-        var watts = Used(start, Read())?.ToDictionary(d => d.Key, d => d.Value / _idle.TotalSeconds, StringComparer.Ordinal);
+        Dictionary<string, double>? watts;
+        await using (var span = Start())
+        {
+            await Task.Delay(_idle, cancellationToken);
+            var used = await span.StopAsync();
+            watts = used?.ToDictionary(d => d.Key, d => d.Value / span.Seconds, StringComparer.Ordinal);
+        }
+
         lock (_idleGate)
         {
             _lastIdle = (watts, System.Diagnostics.Stopwatch.GetTimestamp());
@@ -92,10 +103,11 @@ internal static class EnergyMeter
         end >= start ? end - start : source.WrapJoules is { } wrap ? end + wrap - start : 0;
 
     /// <summary>Finds the meters this host lets HwProbe read.</summary>
-    /// <returns>The sources.</returns>
-    private static List<IEnergySource> Discover()
+    /// <returns>The energy counters and the power meters.</returns>
+    private static (List<IEnergySource> Counters, List<IPowerSource> Power) Discover()
     {
         List<IEnergySource> sources = [];
+        List<IPowerSource> power = [];
         try
         {
             if (Nvml.Available && Nvml.TotalEnergyJoules() is not null)
@@ -110,6 +122,7 @@ internal static class EnergyMeter
             else if (OperatingSystem.IsLinux())
             {
                 sources.AddRange(LinuxEnergy.Sources());
+                power.AddRange(LinuxEnergy.PowerSources());
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DllNotFoundException or EntryPointNotFoundException)
@@ -117,6 +130,6 @@ internal static class EnergyMeter
             // Whatever was found before the failure is used.
         }
 
-        return sources;
+        return (sources, power);
     }
 }

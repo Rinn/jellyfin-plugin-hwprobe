@@ -18,6 +18,12 @@ public sealed class CatalogSuite
     /// <summary>Gets the output keys each step measures, unless the step names its own.</summary>
     public required IReadOnlyList<string> Outputs { get; init; }
 
+    /// <summary>Gets the audio input keys each step measures.</summary>
+    public IReadOnlyList<string> Audios { get; init; } = [];
+
+    /// <summary>Gets the accuracy its steps measure at, or null for the catalog's <c>suiteMethod</c>.</summary>
+    public Speed.SpeedMethod? Method { get; init; }
+
     /// <summary>Gets which backends it runs on: <c>configuredAndSoftware</c>, <c>configured</c>, or <c>software</c>.</summary>
     public string Backends { get; init; } = "configuredAndSoftware";
 

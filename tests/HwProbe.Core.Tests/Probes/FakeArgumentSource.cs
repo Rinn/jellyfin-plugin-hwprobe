@@ -16,6 +16,9 @@ internal sealed class FakeArgumentSource : IArgumentSource, IArgumentSourceFacto
     /// <summary>Gets or sets a value indicating whether deinterlacing happens on the CPU.</summary>
     public bool NoHardwareDeinterlace { get; set; }
 
+    /// <summary>Gets or sets a value indicating whether the hardware decoders don't decode key frames only, so images come from software.</summary>
+    public bool NoKeyFrameDecoding { get; set; }
+
     /// <summary>Gets environment overrides returned with every set of arguments.</summary>
     public Dictionary<string, string?> Environment { get; } = [];
 
@@ -36,7 +39,7 @@ internal sealed class FakeArgumentSource : IArgumentSource, IArgumentSourceFacto
             return new ProbeArguments(string.Empty, cell.Bwdif ? " -vf \"bwdif=0:-1:0\"" : string.Empty, "libx264", Environment);
         }
 
-        var input = cell.HardwareDecode ? "-init_hw_device videotoolbox=vt -hwaccel videotoolbox" : "-init_hw_device videotoolbox=vt";
+        var input = Hwaccel(cell);
         var filters = cell.Tonemap ? " -vf \"scale_vt=color_transfer=bt709\"" : string.Empty;
         return new ProbeArguments(input, filters, $"{cell.OutputCodec}_{type}", Environment)
         {
@@ -48,4 +51,39 @@ internal sealed class FakeArgumentSource : IArgumentSource, IArgumentSourceFacto
             HardwareDeinterlacer = cell.Interlaced && !NoHardwareDeinterlace ? "videotoolbox" : null,
         };
     }
+
+    /// <inheritdoc/>
+    public ProbeArguments BuildImages(HwType type, string? device, ProbeCell cell, ImageJob job)
+    {
+        ArgumentNullException.ThrowIfNull(cell);
+        ArgumentNullException.ThrowIfNull(job);
+        if (type != HwType.none && job.KeyFramesOnly && NoKeyFrameDecoding)
+        {
+            throw new ArgumentConstructionException($"no key-frame decoding on {type}");
+        }
+
+        var hwaccel = type == HwType.none ? string.Empty : Hwaccel(cell);
+        var threads = type == HwType.none ? $"-threads {job.Threads} " : string.Empty;
+        return new ProbeArguments(hwaccel, $"-vf \"fps=fps=0.1,scale=w={job.Width}:h=-2\"", type != HwType.none && job.HwEncoding ? "mjpeg_videotoolbox" : "mjpeg", Environment)
+        {
+            InputArgument = $"{(job.KeyFramesOnly ? "-skip_frame nokey " : string.Empty)}{threads}{hwaccel} -i file:\"{cell.SourcePath}\" -map 0:0".Replace("  ", " ", StringComparison.Ordinal),
+            EncoderArgs = $"-qscale:v {job.Qscale} -fps_mode passthrough",
+            Threads = job.Threads,
+            HardwareDecoder = type != HwType.none && cell.HardwareDecode && !SoftwareDecoded.Contains(cell.InputCodec) ? "-hwaccel videotoolbox" : null,
+            HardwareEncoder = type != HwType.none && job.HwEncoding,
+        };
+    }
+
+    /// <inheritdoc/>
+    public AudioArguments BuildAudio(AudioCell cell)
+    {
+        ArgumentNullException.ThrowIfNull(cell);
+        var output = cell.OutputCodec is { } codec ? $"-threads 0 -vn -ab 256000 -ac {cell.OutputChannels} -acodec {codec}" : string.Empty;
+        return new AudioArguments($"-i file:\"{cell.SourcePath}\"", output, Environment);
+    }
+
+    /// <summary>Returns the VideoToolbox device and decode arguments for a cell.</summary>
+    /// <param name="cell">The cell.</param>
+    /// <returns>The arguments.</returns>
+    private static string Hwaccel(ProbeCell cell) => cell.HardwareDecode ? "-init_hw_device videotoolbox=vt -hwaccel videotoolbox" : "-init_hw_device videotoolbox=vt";
 }

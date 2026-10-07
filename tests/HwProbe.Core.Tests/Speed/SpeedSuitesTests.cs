@@ -52,15 +52,31 @@ public sealed class SpeedSuitesTests
         Assert.Equal(Suite("lowpower").Steps.Count, SpeedSuites.Steps(Suite("lowpower"), 8, new SpeedSettings()).Count);
     }
 
-    /// <summary>Every suite but VBR audio copies the audio, so only video is measured, including the server's added step; VBR transcodes it.</summary>
+    /// <summary>Every video suite but VBR audio copies the audio, so only video is measured, including the server's added step; VBR transcodes it.</summary>
     [Fact]
     public void SuitesCopyAudioExceptVbr()
     {
         var steps = Catalog.Default.Suites.Where(s => s.Key != "decode").ToDictionary(s => s.Key, s => SpeedSuites.Steps(s, 8, new SpeedSettings { EncoderPreset = "veryfast" }));
 
-        Assert.All(steps.Where(s => s.Key != "audio").SelectMany(s => s.Value), step => Assert.Equal("copy", step.Options["Audio"]));
+        Assert.All(steps.Where(s => s.Key is not ("audio" or "audio-formats")).SelectMany(s => s.Value), step => Assert.Equal("copy", step.Options["Audio"]));
         Assert.All(steps["audio"], step => Assert.Equal("transcode", step.Options["Audio"]));
         Assert.Equal(("veryfast", "copy"), (steps["presets"][^1].Options["EncoderPreset"], steps["presets"][^1].Options["Audio"]));
+    }
+
+    /// <summary>The audio suite is one fast step in software: every audio input with every audio output, and no video.</summary>
+    [Fact]
+    public void AudioSuiteMeasuresEveryFormat()
+    {
+        var suite = Suite("audio-formats");
+        var step = Assert.Single(SpeedSuites.Steps(suite, 8, new SpeedSettings()));
+        var audioOutputs = SpeedCatalog.Outputs.Where(o => o.Audio).ToList();
+
+        Assert.Equal(SpeedMethod.Quick, suite.Method);
+        Assert.Equal([HwType.none], SpeedSuites.Backends(suite, HwType.qsv));
+        Assert.Equal(SpeedCatalog.Audios.Select(a => a.Key), step.Audios);
+        Assert.Equal(audioOutputs.Select(o => o.Key), step.Outputs);
+        Assert.Equal((0, SpeedCatalog.Audios.Count * audioOutputs.Count), (step.VideoMeasurements([HwType.none]), step.AudioMeasurements([HwType.none])));
+        Assert.Equal(0, step.AudioMeasurements([HwType.qsv]));
     }
 
     /// <summary>Every deinterlacing step runs whatever the server's double rate is: none takes it and turns into another step.</summary>

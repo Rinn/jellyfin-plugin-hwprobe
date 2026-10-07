@@ -7,14 +7,22 @@ namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 /// <summary>The transcodes and decodes a speed run can measure, and their clips, from <see cref="Catalog.Default"/>.</summary>
 public static class SpeedCatalog
 {
+    /// <summary>The codec image outputs encode to, as MediaEncoder's image extraction asks EncodingHelper for it (v12.2).</summary>
+    public const string ImageCodec = "mjpeg";
+
     /// <summary>Gets every video, in the order the page lists them; the library video is added from a chosen file.</summary>
     public static IReadOnlyList<SpeedVideo> Videos { get; } = [.. Catalog.Default.Videos.Select(Video)];
 
-    /// <summary>Gets every output, in the order the page lists them.</summary>
+    /// <summary>Gets every audio input, in the order the page lists them.</summary>
+    public static IReadOnlyList<SpeedAudio> Audios { get; } = [.. Catalog.Default.Audios.Select(Audio)];
+
+    /// <summary>Gets every output, in the order the page lists them: each codec at each quality, then decoding alone, the image outputs, and the audio outputs.</summary>
     public static IReadOnlyList<SpeedOutput> Outputs { get; } =
     [
         .. Catalog.Default.Codecs.SelectMany(c => Catalog.Default.Qualities.Select(q => new SpeedOutput(Catalog.OutputKey(c, q), c.Name + ", " + q.Name, c.Key, q.Bitrate))),
         new SpeedOutput(Catalog.Default.Decode.Key, Catalog.Default.Decode.Label, null, 0),
+        .. Catalog.Default.Images.Select(i => new SpeedOutput(i.Key, i.Label, ImageCodec, 0) { Kind = SpeedOutputKind.Images }),
+        .. Catalog.Default.AudioOutputs.Select(o => new SpeedOutput(o.Key, o.Label, o.Codec, 0) { Kind = o.Codec is null ? SpeedOutputKind.AudioDecode : SpeedOutputKind.Audio, Channels = o.Channels }),
     ];
 
     /// <summary>Gets the videos chosen when none are asked for.</summary>
@@ -41,7 +49,7 @@ public static class SpeedCatalog
     public static SpeedVideo LibraryVideo(SpeedFile file)
     {
         ArgumentNullException.ThrowIfNull(file);
-        var audio = file.Audio is not { } track ? null : string.Create(CultureInfo.InvariantCulture, $"{track.Channels switch { 1 => "mono", 2 => "stereo", 6 => "5.1", 8 => "7.1", var n => n + " channel" }} {track.Codec.ToUpperInvariant()}");
+        var audio = file.Audio is not { } track ? null : $"{SpeedTestText.Channels(track.Channels)} {track.Codec.ToUpperInvariant()}";
         return new SpeedVideo(LibraryKey, file.Name, null, file.Video.FrameRate, file.Video.Width, file.Video.Height) { File = file, Audio = audio, Origin = "Library" };
     }
 
@@ -63,25 +71,52 @@ public static class SpeedCatalog
             Credit = video.Credit,
             LicenseUrl = video.LicenseUrl,
             OutputCodec = output.Codec,
+            Kind = output.Kind,
             Bitrate = output.Bitrate,
             Tonemap = hdr && output.Codec is not null,
         };
     }
 
-    /// <summary>Returns the test for a <c>video|output</c> key among the catalog's videos.</summary>
+    /// <summary>Pairs an audio input with an audio output.</summary>
+    /// <param name="audio">The audio input.</param>
+    /// <param name="output">The audio output.</param>
+    /// <returns>The test, keyed <c>audio|output</c>, at a nominal one frame a second, so its fps is the seconds of audio done each second.</returns>
+    public static SpeedTest Test(SpeedAudio audio, SpeedOutput output)
+    {
+        ArgumentNullException.ThrowIfNull(audio);
+        ArgumentNullException.ThrowIfNull(output);
+        return new SpeedTest(audio.Key + "|" + output.Key, audio.Name + " \u2192 " + output.Label, audio.Fixture, 1, 0, 0)
+        {
+            Name = audio.Name,
+            OutputLabel = output.Label,
+            OutputCodec = output.Codec,
+            Kind = output.Kind,
+            OutputChannels = output.Channels,
+            AudioInput = audio,
+        };
+    }
+
+    /// <summary>Returns the test for a <c>video|output</c> or <c>audio|output</c> key among the catalog's inputs.</summary>
     /// <param name="key">The key.</param>
-    /// <returns>The test, or null for an unknown key.</returns>
+    /// <returns>The test, or null for an unknown key or a video paired with an audio output, or the reverse.</returns>
     public static SpeedTest? Find(string key)
     {
         ArgumentNullException.ThrowIfNull(key);
         var parts = key.Split('|');
-        return parts.Length == 2 && FindVideo(parts[0]) is { } video && FindOutput(parts[1]) is { } output ? Test(video, output) : null;
+        return parts.Length != 2 || FindOutput(parts[1]) is not { } output ? null
+            : output.Audio ? (FindAudio(parts[0]) is { } audio ? Test(audio, output) : null)
+            : FindVideo(parts[0]) is { } video ? Test(video, output) : null;
     }
 
     /// <summary>Returns a catalog video.</summary>
     /// <param name="key">The key.</param>
     /// <returns>The video, or null.</returns>
     public static SpeedVideo? FindVideo(string key) => Videos.FirstOrDefault(v => string.Equals(v.Key, key, StringComparison.Ordinal));
+
+    /// <summary>Returns a catalog audio input.</summary>
+    /// <param name="key">The key.</param>
+    /// <returns>The audio input, or null.</returns>
+    public static SpeedAudio? FindAudio(string key) => Audios.FirstOrDefault(a => string.Equals(a.Key, key, StringComparison.Ordinal));
 
     /// <summary>Returns an output.</summary>
     /// <param name="key">The key.</param>
@@ -104,7 +139,17 @@ public static class SpeedCatalog
             Profile = clip.Profile,
             AudioCodec = clip.AudioCodec,
             AudioChannels = clip.AudioChannels,
+            Seconds = clip.Seconds,
         };
+
+    /// <summary>Returns a catalog audio input.</summary>
+    /// <param name="audio">The audio input.</param>
+    /// <returns>The audio input, with its clip.</returns>
+    private static SpeedAudio Audio(CatalogAudio audio)
+    {
+        var fixture = Fixture(audio.Clip) with { AudioCodec = audio.Codec, AudioChannels = audio.Channels };
+        return new SpeedAudio(audio.Key, audio.Name, fixture, audio.Codec, audio.Channels, audio.SampleRate) { Description = audio.Description, Legacy = audio.Legacy };
+    }
 
     /// <summary>Returns a catalog video.</summary>
     /// <param name="video">The video.</param>

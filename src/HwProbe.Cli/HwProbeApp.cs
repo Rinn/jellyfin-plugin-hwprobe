@@ -134,7 +134,7 @@ internal static class HwProbeApp
             }
 
             var viable = report.Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device)).ToList();
-            using var engine = new SpeedEngine(new FfmpegRunner(), new ArgumentSourceFactory(), platform, TimeProvider.System, EnvironmentRules.Standalone());
+            using var engine = new SpeedEngine(new FfmpegRunner(), new ArgumentSourceFactory(), platform, TimeProvider.System, EnvironmentRules.Standalone()) { CommandLog = options.Verbose ? command => stderr.WriteLine("$ " + command) : null };
 
             // A terminal gets one line rewritten in place; a log (Docker, a pipe) gets a line each time the status changes.
             var lastStatus = string.Empty;
@@ -176,7 +176,7 @@ internal static class HwProbeApp
                 {
                     var settings = step.Options.Aggregate(speed.Settings, (current, option) => SpeedSettingsOptions.Apply(current, option.Key, option.Value) ?? current);
                     await stderr.WriteLineAsync(string.Create(CultureInfo.InvariantCulture, $"hwprobe: {suite.Name}: {step.Label}, {reports.Count + 1} of {steps.Count}").AsMemory(), CancellationToken.None);
-                    var stepReport = await engine.RunAsync(engineOptions, speed.ForReport(report) with { Videos = step.Videos, Outputs = step.Outputs, Settings = settings, Backends = step.HardwareOnly ? [.. backends.Where(b => b != HwType.none)] : backends }, viable, progress, cancellationToken);
+                    var stepReport = await engine.RunAsync(engineOptions, speed.ForReport(report) with { Videos = step.Videos, Audios = step.Audios, Outputs = step.Outputs, Settings = settings, Backends = step.HardwareOnly ? [.. backends.Where(b => b != HwType.none)] : backends }, viable, progress, cancellationToken);
                     reports.Add(stepReport with { Suite = suite.Name, SuiteStep = step.Label, SuiteStartedUtc = started });
                     if (stepReport.Cancelled)
                     {

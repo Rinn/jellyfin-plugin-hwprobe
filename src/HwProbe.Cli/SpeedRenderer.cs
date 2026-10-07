@@ -89,7 +89,9 @@ internal static class SpeedRenderer
             result.Variant.Length == 0 ? "-" : result.Variant,
             Streams(result),
             result.Fps is { } fps && frameRate is { } rate ? (fps / rate).ToString("0.0", CultureInfo.InvariantCulture) + "x" : "-",
-            result.Fps is { } f ? f.ToString("0", CultureInfo.InvariantCulture) : "-",
+
+            // An image or audio result's fps isn't frames it made: the source's frames, or seconds of audio, each second.
+            result.Fps is { } f && result.Kind is SpeedOutputKind.Transcode or SpeedOutputKind.Decode ? f.ToString("0", CultureInfo.InvariantCulture) : "-",
             result.Variant.Length == 0 ? string.Empty : Change(result.Fps, baseFps),
             result.Note ?? string.Empty,
         ];
@@ -114,6 +116,7 @@ internal static class SpeedRenderer
             $"deinterlace {(settings.Bwdif ? "BWDIF" : "YADIF")}{(settings.DoubleRate ? " double rate" : string.Empty)}",
             $"OS native decoders {OnOff(settings.PreferNativeDecoder)}",
             $"enhanced NVDEC {OnOff(settings.EnhancedNvdec)}",
+            string.Create(CultureInfo.InvariantCulture, $"trickplay MJPEG hardware encoding {OnOff(settings.TrickplayHwEncoding)} / key frames only {OnOff(settings.TrickplayKeyFrames)} / {settings.TrickplayThreads} FFmpeg threads"),
         });
     }
 

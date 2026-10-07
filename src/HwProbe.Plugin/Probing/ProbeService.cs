@@ -82,8 +82,8 @@ public sealed partial class ProbeService : IDisposable
         ArgumentNullException.ThrowIfNull(mediaEncoder);
         ArgumentNullException.ThrowIfNull(paths);
         CurrentFfmpeg = () => (mediaEncoder.EncoderPath, mediaEncoder.EncoderVersion);
-        MeasureSpeed = (speed, backends, progress, ct) => RunSpeedEngineAsync(arguments, mediaEncoder, paths, baseline, speed, backends, progress, ct);
-        ServerSpeedSettings = () => SettingsFrom(config.GetEncodingOptions());
+        MeasureSpeed = (speed, backends, progress, ct) => RunSpeedEngineAsync(arguments, mediaEncoder, paths, baseline, logger, speed, backends, progress, ct);
+        ServerSpeedSettings = () => SettingsFrom(config.GetEncodingOptions(), config.Configuration.TrickplayOptions);
         ServerBackend = () => BackendFrom(config.GetEncodingOptions());
         FindFile = files.Find;
         FixturesDirectory = ServerEngineOptions(mediaEncoder, paths).FixturesDirectory;
@@ -266,19 +266,21 @@ public sealed partial class ProbeService : IDisposable
             return ProbeRunResult.Invalid;
         }
 
-        var backends = SpeedSuites.Backends(suite, configured).Select(b => b.ToString()).ToList();
+        var suiteBackends = SpeedSuites.Backends(suite, configured);
+        var backends = suiteBackends.Select(b => b.ToString()).ToList();
         var runs = SpeedSuites.Steps(suite, Environment.ProcessorCount, ServerSpeedSettings(), configured)
             .Select(step =>
             {
                 List<string> stepBackends = [.. backends.Where(b => !step.HardwareOnly || b != nameof(HwType.none))];
-                return ((string?)suite.Name, (string?)step.Label, new SpeedRequest(Catalog.Default.SuiteMethod.ToString(), step.Videos, step.Outputs)
+                return ((string?)suite.Name, (string?)step.Label, new SpeedRequest((suite.Method ?? Catalog.Default.SuiteMethod).ToString(), step.Videos, step.Outputs)
                 {
                     Backends = stepBackends,
+                    Audios = step.Audios,
                     Options = step.Options,
                     MeasureResources = request.MeasureResources,
                     WhenTranscoding = request.WhenTranscoding,
                     ReuseResults = request.ReuseResults,
-                }, step.Videos.Count * step.Outputs.Count * stepBackends.Count);
+                }, step.VideoMeasurements(suiteBackends) + step.AudioMeasurements(suiteBackends));
             })
             .ToList();
         return await StartRunsAsync(runs, request.WhenTranscoding, cancellationToken);
@@ -302,9 +304,12 @@ public sealed partial class ProbeService : IDisposable
                 [.. steps.Select(step => step.Label)],
                 backends,
                 report is not null && SpeedSuites.Offered(s, report, configured),
-                steps.Sum(step => step.Videos.Count * step.Outputs.Count * backends.Count(b => !step.HardwareOnly || b != HwType.none)),
-                Catalog.Default.SuiteMethod,
-                s.Note);
+                steps.Sum(step => step.VideoMeasurements(backends)),
+                s.Method ?? Catalog.Default.SuiteMethod,
+                s.Note)
+            {
+                AudioMeasurements = steps.Sum(step => step.AudioMeasurements(backends)),
+            };
         })];
     }
 
@@ -710,11 +715,18 @@ public sealed partial class ProbeService : IDisposable
     /// <returns>False for direct play and a remux (both streams copied); true otherwise.</returns>
     internal static bool IsTranscoding(TranscodingInfo? info) => info is not null && (!info.IsVideoDirect || !info.IsAudioDirect);
 
-    /// <summary>Reads the speed run's starting settings from the server's encoding options.</summary>
+    /// <summary>Reads the speed run's starting settings from the server's encoding and trickplay options.</summary>
     /// <param name="options">The server's encoding options.</param>
+    /// <param name="trickplay">The server's trickplay options.</param>
     /// <returns>The settings.</returns>
-    internal static SpeedSettings SettingsFrom(EncodingOptions options) => new()
+    internal static SpeedSettings SettingsFrom(EncodingOptions options, TrickplayOptions trickplay) => new()
     {
+        TrickplayHwEncoding = trickplay.EnableHwEncoding,
+        TrickplayKeyFrames = trickplay.EnableKeyFrameOnlyExtraction,
+        TrickplayThreads = trickplay.ProcessThreads,
+        TrickplayQscale = trickplay.Qscale,
+        TrickplayWidth = trickplay.WidthResolutions.FirstOrDefault(320),
+        TrickplayInterval = trickplay.Interval,
         EncoderPreset = options.EncoderPreset == EncoderPreset.auto ? null : options.EncoderPreset.ToString(),
         AudioVbr = options.EnableAudioVbr,
         H264Crf = options.H264Crf,
@@ -778,10 +790,12 @@ public sealed partial class ProbeService : IDisposable
             return null;
         }
 
-        var videos = request.Videos.Count == 0 ? SpeedCatalog.DefaultVideos : request.Videos;
+        // A run of audio inputs alone measures no video.
+        var videos = request.Videos.Count == 0 && request.Audios.Count == 0 ? SpeedCatalog.DefaultVideos : request.Videos;
         var outputs = request.Outputs.Count == 0 ? SpeedCatalog.DefaultOutputs : request.Outputs;
         if (videos.Any(v => SpeedCatalog.FindVideo(v) is null && !(v == SpeedCatalog.LibraryKey && file is not null))
-            || outputs.Any(o => SpeedCatalog.FindOutput(o) is null))
+            || outputs.Any(o => SpeedCatalog.FindOutput(o) is null)
+            || request.Audios.Any(a => SpeedCatalog.FindAudio(a) is null))
         {
             return null;
         }
@@ -797,6 +811,7 @@ public sealed partial class ProbeService : IDisposable
         return new SpeedOptions(method, videos, outputs, new SpeedSettings())
         {
             File = file,
+            Audios = request.Audios,
             Backends = request.Backends?.Select(Enum.Parse<HwType>).ToList(),
             Repeats = request.Repeats,
             TimeLimit = request.TimeLimitSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null,
@@ -874,15 +889,16 @@ public sealed partial class ProbeService : IDisposable
     /// <param name="mediaEncoder">The server's media encoder.</param>
     /// <param name="paths">Server paths.</param>
     /// <param name="baseline">Environment values captured when the plugin loaded.</param>
+    /// <param name="logger">Receives each measurement's command.</param>
     /// <param name="speed">What to measure.</param>
     /// <param name="backends">The working backends.</param>
     /// <param name="progress">Receives measurements done and the total.</param>
     /// <param name="cancellationToken">Cancels the run.</param>
     /// <returns>The speed report.</returns>
-    private static async Task<SpeedReport> RunSpeedEngineAsync(IArgumentSourceFactory arguments, IMediaEncoder mediaEncoder, IApplicationPaths paths, ServerEnvironmentBaseline baseline, SpeedOptions speed, IReadOnlyCollection<(HwType Type, string Device)> backends, IProgress<SpeedProgress> progress, CancellationToken cancellationToken)
+    private static async Task<SpeedReport> RunSpeedEngineAsync(IArgumentSourceFactory arguments, IMediaEncoder mediaEncoder, IApplicationPaths paths, ServerEnvironmentBaseline baseline, ILogger logger, SpeedOptions speed, IReadOnlyCollection<(HwType Type, string Device)> backends, IProgress<SpeedProgress> progress, CancellationToken cancellationToken)
     {
         var environment = EnvironmentRules.InServer(baseline.Values, new Dictionary<string, string>());
-        using var engine = new SpeedEngine(new FfmpegRunner(), arguments, new HostPlatform(), TimeProvider.System, environment);
+        using var engine = new SpeedEngine(new FfmpegRunner(), arguments, new HostPlatform(), TimeProvider.System, environment) { CommandLog = command => Log.SpeedCommand(logger, command) };
         return await engine.RunAsync(ServerEngineOptions(mediaEncoder, paths), speed, backends, progress, cancellationToken);
     }
 

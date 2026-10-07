@@ -134,8 +134,9 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Options = new Dictionary<string, string> { ["Nonsense"] = "true" } }, ct));
         Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Backends = ["cuda"] }, ct));
         Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Backends = [] }, ct));
+        Assert.Equal(ProbeRunResult.Invalid, await service.StartSpeedAsync(request with { Audios = ["dsd"] }, ct));
 
-        Assert.Equal(ProbeRunResult.Started, await service.StartSpeedAsync(request, ct));
+        Assert.Equal(ProbeRunResult.Started, await service.StartSpeedAsync(request with { Audios = ["flac"], Outputs = ["h264-8mbps", "audio-aac"] }, ct));
         await service.Background;
 
         Assert.Equal(Reports.Sample().Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device)), measured);
@@ -143,7 +144,11 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal((SpeedMethod.Full, "fast", 4), (asked.Method, asked.Settings.EncoderPreset, asked.Settings.EncodingThreadCount));
         Assert.Equal([HwType.none], asked.Backends);
         Assert.True(asked.MeasureResources);
-        Assert.Equal((SpeedCatalog.DefaultVideos, SpeedCatalog.DefaultOutputs), (asked.Videos, asked.Outputs));
+
+        // Audio inputs alone measure no default video.
+        Assert.Empty(asked.Videos);
+        Assert.Equal(["h264-8mbps", "audio-aac"], asked.Outputs);
+        Assert.Equal(["flac"], asked.Audios);
         Assert.Equal((20, 28, true), (asked.Settings.H264Crf, asked.Settings.H265Crf, asked.Settings.AudioCopy));
         Assert.Equal((2, TimeSpan.FromMinutes(1)), (asked.Repeats, Assert.NotNull(asked.TimeLimit)));
         Assert.Null(service.RunningSpeedJson());
@@ -200,6 +205,16 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal(presets.Steps.Select(s => s.Label).Reverse(), history.Select(h => h.SuiteStep));
         Assert.All(history, h => Assert.Equal(presets.Name, h.Suite));
         Assert.Null(service.Status.Suite);
+
+        // The audio suite measures its audio inputs in software at its own accuracy, and counts them apart from video.
+        var audio = Assert.Single(await service.SuitesAsync(ct), s => s.Key == "audio-formats");
+        Assert.Equal((0, SpeedCatalog.Audios.Count * SpeedCatalog.Outputs.Count(o => o.Audio), SpeedMethod.Quick), (audio.Measurements, audio.AudioMeasurements, audio.Method));
+        asked.Clear();
+        Assert.Equal(ProbeRunResult.Started, await service.StartSuiteAsync(new SuiteRequest("audio-formats"), ct));
+        await service.Background;
+        var run = Assert.Single(asked);
+        Assert.Equal((SpeedMethod.Quick, SpeedCatalog.Audios.Count), (run.Method, run.Audios.Count));
+        Assert.Equal([HwType.none], run.Backends);
     }
 
     /// <summary>A run set to cancel for transcodes refuses to start during one, and stops when one begins, keeping what it measured.</summary>

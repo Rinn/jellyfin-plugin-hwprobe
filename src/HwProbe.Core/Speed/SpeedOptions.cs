@@ -1,6 +1,6 @@
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 
-/// <summary>What one speed run measures: every chosen output from every chosen video.</summary>
+/// <summary>What one speed run measures: every chosen video output from every chosen video, and every chosen audio output from every chosen audio input.</summary>
 /// <param name="Method">How streams are counted.</param>
 /// <param name="Videos">Keys from <see cref="SpeedCatalog.Videos"/>, and <see cref="SpeedCatalog.LibraryKey"/> for <see cref="File"/>.</param>
 /// <param name="Outputs">Keys from <see cref="SpeedCatalog.Outputs"/>.</param>
@@ -37,13 +37,21 @@ public sealed record SpeedOptions(SpeedMethod Method, IReadOnlyList<string> Vide
     /// <summary>Gets the library file the <c>library</c> video reads, or null.</summary>
     public SpeedFile? File { get; init; }
 
-    /// <summary>Returns the tests to run, video by video, in the order asked.</summary>
+    /// <summary>Gets keys from <see cref="SpeedCatalog.Audios"/>.</summary>
+    public IReadOnlyList<string> Audios { get; init; } = [];
+
+    /// <summary>Returns the tests to run, video by video then audio input by audio input, in the order asked.</summary>
     /// <returns>The tests; unknown keys are left out.</returns>
     public IReadOnlyList<SpeedTest> Resolve()
     {
         var videos = Videos.Select(k => k == SpeedCatalog.LibraryKey ? (File is null ? null : SpeedCatalog.LibraryVideo(File)) : SpeedCatalog.FindVideo(k)).OfType<SpeedVideo>().ToList();
+        var audios = Audios.Select(SpeedCatalog.FindAudio).OfType<SpeedAudio>().ToList();
         var outputs = Outputs.Select(SpeedCatalog.FindOutput).OfType<SpeedOutput>().ToList();
-        return [.. videos.SelectMany(v => outputs.Select(o => SpeedCatalog.Test(v, o)))];
+        return
+        [
+            .. videos.SelectMany(v => outputs.Where(o => !o.Audio).Select(o => SpeedCatalog.Test(v, o))),
+            .. audios.SelectMany(a => outputs.Where(o => o.Audio).Select(o => SpeedCatalog.Test(a, o))),
+        ];
     }
 
     /// <summary>Returns these options with what a probe found missing: low-power encoders and decodes that fail.</summary>
