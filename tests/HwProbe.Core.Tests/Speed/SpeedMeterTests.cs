@@ -150,6 +150,36 @@ public sealed class SpeedMeterTests
         Assert.Equal("ffmpeg exited with 1: No such filter: 'scale_vt'", broken.Note);
     }
 
+    /// <summary>A failure's note names the cause rather than the lines that follow from it, and leaves out the memory addresses ffmpeg prints, so the same failure reads the same on every measurement.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task FailureNotesNameTheCause()
+    {
+        // As Homebrew ffmpeg 9.0.2 printed it for aac_at on 96 kHz FLAC.
+        static Func<int, TimeSpan, CancellationToken, Task<IReadOnlyList<FfmpegRunResult>>> Failing(string address, string stderr) => (copies, content, ct) =>
+            Task.FromResult<IReadOnlyList<FfmpegRunResult>>([new(FfmpegRunStatus.Exited, 171, string.Empty, stderr.Replace("@ ADDRESS", "@ " + address, StringComparison.Ordinal), null, TimeSpan.FromSeconds(0.2), null)]);
+        const string AacAt = """
+            [aac_at @ ADDRESS] AudioToolbox init error: 1718449215
+            [aost#0:0/aac_at @ ADDRESS] [enc:aac_at @ ADDRESS] Error while opening encoder - maybe incorrect parameters such as bit_rate, rate, width or height.
+            [af#0:0 @ ADDRESS] Error sending frames to consumers: Unknown error occurred
+            [af#0:0 @ ADDRESS] Task finished with error code: -1313558101 (Unknown error occurred)
+            [af#0:0 @ ADDRESS] Terminating thread with return code -1313558101 (Unknown error occurred)
+            [aost#0:0/aac_at @ ADDRESS] [enc:aac_at @ ADDRESS] Could not open encoder before EOF
+            [aost#0:0/aac_at @ ADDRESS] Task finished with error code: -22 (Invalid argument)
+            [aost#0:0/aac_at @ ADDRESS] Terminating thread with return code -22 (Invalid argument)
+            [out#0/null @ ADDRESS] Nothing was written into output file, because at least one of its streams received no packets.
+            """;
+        const string Trailer = "[out#0/null @ ADDRESS] Nothing was written into output file, because at least one of its streams received no packets.";
+
+        var first = await SpeedMeter.MeasureAsync(Failing("0x55e590e68280", AacAt), SpeedMethod.Quick, 24, countStreams: false, TestContext.Current.CancellationToken);
+        var second = await SpeedMeter.MeasureAsync(Failing("0x5585040b9f00", AacAt), SpeedMethod.Quick, 24, countStreams: false, TestContext.Current.CancellationToken);
+        var trailerOnly = await SpeedMeter.MeasureAsync(Failing("0x5585040b9f00", Trailer), SpeedMethod.Quick, 24, countStreams: false, TestContext.Current.CancellationToken);
+
+        Assert.Equal("ffmpeg exited with 171: [aac_at] AudioToolbox init error: 1718449215", first.Note);
+        Assert.Equal(first.Note, second.Note);
+        Assert.Equal("ffmpeg exited with 171: [out#0/null] Nothing was written into output file, because at least one of its streams received no packets.", trailerOnly.Note);
+    }
+
     /// <summary>Copies that fail to start rather than fall behind are reported as a likely session limit.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

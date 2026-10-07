@@ -95,6 +95,27 @@ public static class StderrMarkers
         "v4l2 output format not supported",
     ];
 
+    /// <summary>Lines ffmpeg prints as a failure spreads through its threads and outputs, which name no cause, so a failure note skips them for the line that does.</summary>
+    /// <remarks>
+    /// fftools (ffmpeg 7 and 8): an encoder that fails to open logs its own error, then "Error while opening encoder", "Error sending
+    /// frames to consumers", "Could not open encoder before EOF", "Task finished with error code", "Terminating thread", and "Nothing was
+    /// written into output file"; observed with aac_at on 96 kHz FLAC (Homebrew ffmpeg 9.0.2) and mjpeg on NVIDIA (jellyfin-ffmpeg 8.1.3).
+    /// </remarks>
+    public static readonly IReadOnlyList<string> Consequences =
+    [
+        "Task finished with error code",
+        "Terminating thread with return code",
+        "Nothing was written into output file",
+        "Could not open encoder before EOF",
+        "Error sending frames to consumers",
+        "Error while opening encoder",
+        "Error submitting",
+        "Error encoding a frame",
+        "Error selecting an encoder",
+        "Error opening output file",
+        "Conversion failed!",
+    ];
+
     /// <summary>Gets every failure marker, for picking the stderr lines that explain a failure.</summary>
     public static IReadOnlyList<string> AllFailures { get; } = [.. PermissionDenied, .. DeviceUnavailable, .. FilterUnsupported, .. CodecUnsupported, .. Generic];
 

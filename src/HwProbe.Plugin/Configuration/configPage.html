@@ -1601,7 +1601,7 @@
                                 if (speeds[i] && counted) {
                                     td.appendChild(el('span', ' ' + streamsText(x), 'hwprobe-small secondaryText'));
                                 }
-                                td.title = [speeds[i] ? speeds[i].toFixed(2) + '\u00d7 real time' : '', speeds[i] && counted ? streamsText(x) + ' concurrent streams' : '', x && x.note ? x.note : ''].filter(t => t).join('\n');
+                                td.title = [speeds[i] ? speeds[i].toFixed(2) + '\u00d7 real time' : '', speeds[i] && counted ? streamsText(x) + ' concurrent streams' : '', x && x.note ? noteText(x.note) : ''].filter(t => t).join('\n');
                                 return [td].concat(resourceCells(x, false, kinds));
                             }).flat();
                             row(table, [el('td', backendName(key)), el('td', key.video || key.label || key.test), el('td', (key.output || '') + (key.variant ? ' (' + key.variant + ')' : ''))].concat(cells));
@@ -1635,6 +1635,11 @@
                 // Alternatives with a serial comma: "a", "a or b", "a, b, or c".
                 function orList(items) {
                     return items.length > 2 ? items.slice(0, -1).join(', ') + ', or ' + items[items.length - 1] : items.join(' or ');
+                }
+
+                // A result's note without the memory addresses ffmpeg prints after a component's name ("[out#0/null @ 0x55e590e68280]").
+                function noteText(note) {
+                    return note ? note.replace(/ @ 0x[0-9a-f]+/gi, '') : note;
                 }
 
                 // Items with a serial comma: "a", "a and b", "a, b, and c".
@@ -2428,9 +2433,10 @@
                         section.appendChild(el('div', (r.cancelledForTranscode ? 'Cancelled when the server started transcoding' : 'Cancelled') + ': these are the measurements finished before then.', 'infoBanner'));
                     }
 
-                    // A note shared by cells becomes one numbered footnote.
+                    // A note shared by cells becomes one numbered footnote. Earlier runs saved ffmpeg's memory addresses in their notes, which would split one failure into a footnote per measurement.
                     const footnotes = [];
-                    const footnote = note => {
+                    const footnote = text => {
+                        const note = noteText(text);
                         if (!note) {
                             return null;
                         }
@@ -2506,7 +2512,7 @@
                             facts.push(Math.round(x.fps) + ' frames a second');
                         }
                         if (x.note) {
-                            facts.push(x.note);
+                            facts.push(noteText(x.note));
                         }
                         if (x.reusedFromUtc) {
                             facts.push('Measured ' + new Date(x.reusedFromUtc).toLocaleString());

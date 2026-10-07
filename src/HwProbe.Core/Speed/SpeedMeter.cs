@@ -1,11 +1,13 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
+using Jellyfin.Plugin.HwProbe.Core.Verdict;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 
 /// <summary>Finds one command's fps and how many copies of it keep real time at once.</summary>
 /// <remarks>The launches are passed in, so the counting is tested without ffmpeg.</remarks>
-public static class SpeedMeter
+public static partial class SpeedMeter
 {
     /// <summary>The most copies run at once; more is reported as at least this many.</summary>
     public const int MaxStreams = 16;
@@ -189,13 +191,20 @@ public static class SpeedMeter
             ? content.TotalSeconds * frameRate / result.Duration.TotalSeconds
             : null;
 
+    /// <summary>Matches the address ffmpeg prints after a component's name, e.g. <c> @ 0x55e590e68280</c> in <c>[out#0/null @ 0x55e590e68280]</c>.</summary>
+    /// <returns>The pattern.</returns>
+    [GeneratedRegex(" @ 0x[0-9a-fA-F]+")]
+    private static partial Regex Address();
+
     /// <summary>Describes a run that produced no fps.</summary>
     /// <param name="result">The run.</param>
     /// <param name="byContent">Whether speed is read from the content, which only a finished run gives.</param>
-    /// <returns>The reason, with ffmpeg's last stderr line when there is one.</returns>
+    /// <returns>The reason, with ffmpeg's last stderr line that names a cause (else its last line) when there is one, its memory addresses left out so the same failure reads the same every run.</returns>
     private static string Failure(FfmpegRunResult result, bool byContent)
     {
-        var last = result.Stderr.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).LastOrDefault();
+        var lines = result.Stderr.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var cause = lines.LastOrDefault(l => !StderrMarkers.Consequences.Any(c => l.Contains(c, StringComparison.Ordinal))) ?? lines.LastOrDefault();
+        var last = cause is null ? null : Address().Replace(cause, string.Empty);
         var ended = result.Status switch
         {
             FfmpegRunStatus.LaunchFailed => $"ffmpeg didn't start: {result.LaunchError}",
