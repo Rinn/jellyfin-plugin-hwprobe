@@ -7,6 +7,7 @@
     <!-- Analyzers apply to every project. -->
     <GlobalPackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556" />
     <GlobalPackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" Version="18.7.23" />
+    <GlobalPackageReference Include="Nullable.Extended.Analyzer" Version="1.16.6891" />
   </ItemGroup>
 
   <ItemGroup>

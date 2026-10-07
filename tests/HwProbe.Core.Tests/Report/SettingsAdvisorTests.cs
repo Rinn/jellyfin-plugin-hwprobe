@@ -150,9 +150,10 @@ public sealed class SettingsAdvisorTests
 
         var advice = SettingsAdvisor.For(_apolloLakeQsv with { Tonemap = tonemap }, _docker with { OpenclUnavailable = true });
 
-        var lowPower = Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerHevcHwEncoder").Fix!;
+        var lowPower = Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerHevcHwEncoder").Fix;
+        Assert.NotNull(lowPower);
         Assert.Equal("Gen 11+: Enable HuC firmware", lowPower.Action);
-        Assert.EndsWith("#configure-and-verify-lp-mode-on-linux", lowPower.Url!.ToString(), StringComparison.Ordinal);
+        Assert.EndsWith("#configure-and-verify-lp-mode-on-linux", lowPower.Url?.ToString(), StringComparison.Ordinal);
         Assert.Equal(Hints.OpenclFix(inContainer: true), Assert.Single(advice, a => a.Setting == "EnableTonemapping").Fix);
         Assert.Null(Assert.Single(advice, a => a.Setting == "EnableVppTonemapping").Fix);
         Assert.Null(Assert.Single(advice, a => a.Setting == "EnableIntelLowPowerH264HwEncoder").Fix);
@@ -318,10 +319,10 @@ public sealed class SettingsAdvisorTests
     [Fact]
     public void CatalogOptionLabelsMatchTheAdvisor()
     {
-        var shared = Catalog.Default.Options.Where(o => o.Server is not null && SettingsAdvisor.LabelFor(o.Server) is not null).ToList();
+        var shared = Catalog.Default.Options.Select(o => (o.Label, Advisor: o.Server is { } server ? SettingsAdvisor.LabelFor(server) : null)).Where(o => o.Advisor is not null).ToList();
 
         Assert.NotEmpty(shared);
-        Assert.All(shared, o => Assert.Equal(o.Label, SettingsAdvisor.LabelFor(o.Server!)));
+        Assert.All(shared, o => Assert.Equal(o.Label, o.Advisor));
     }
 
     /// <summary>Every setting the advisor gives, for every backend, host and result, has a label for the history.</summary>

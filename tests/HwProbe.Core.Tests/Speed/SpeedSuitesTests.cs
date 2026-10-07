@@ -22,7 +22,9 @@ public sealed class SpeedSuitesTests
     {
         ArgumentNullException.ThrowIfNull(limits);
         var suite = Suite("threads");
-        var auto = Option("EncodingThreadCount").Choices![0];
+        var choices = Option("EncodingThreadCount").Choices;
+        Assert.NotNull(choices);
+        var auto = choices[0];
         var expected = limits.Split(',').Select(n => (n == "1" ? suite.ThreadLabelOne : suite.ThreadLabel).Replace("{n}", n, StringComparison.Ordinal)).Prepend(auto.Label);
 
         var steps = SpeedSuites.Steps(suite, cpus);
@@ -39,7 +41,9 @@ public sealed class SpeedSuitesTests
         var presets = SpeedSuites.Steps(Suite("presets"), 8, new SpeedSettings { EncoderPreset = "veryfast" });
         var threads = SpeedSuites.Steps(Suite("threads"), 8, new SpeedSettings { EncodingThreadCount = 6 });
 
-        var veryfast = Option("EncoderPreset").Choices!.Single(c => c.Key == "veryfast").Label;
+        var presetChoices = Option("EncoderPreset").Choices;
+        Assert.NotNull(presetChoices);
+        var veryfast = presetChoices.Single(c => c.Key == "veryfast").Label;
 
         Assert.Equal(($"{veryfast} ({Catalog.Default.Labels["ServerSettingAfter"]})", "veryfast"), (presets[^1].Label, presets[^1].Options["EncoderPreset"]));
         Assert.Equal(Suite("presets").Steps.Count + 1, presets.Count);

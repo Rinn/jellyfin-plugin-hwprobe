@@ -29,7 +29,8 @@ internal static class Program
             ?? throw new InvalidOperationException($"{ScenarioVariable} is not set.");
         var scenario = JsonSerializer.Deserialize(await File.ReadAllTextAsync(scenarioPath), FakeJsonContext.Default.FakeScenario)
             ?? throw new InvalidOperationException($"{scenarioPath} is empty.");
-        var baseDirectory = Path.GetDirectoryName(Path.GetFullPath(scenarioPath))!;
+        var baseDirectory = Path.GetDirectoryName(Path.GetFullPath(scenarioPath))
+            ?? throw new InvalidOperationException($"{scenarioPath} has no directory.");
 
         var start = DateTimeOffset.UtcNow;
         var joined = string.Join(' ', args);
@@ -103,9 +104,9 @@ internal static class Program
     /// <returns>The grandchild's PID.</returns>
     private static int SpawnGrandchild()
     {
-        var info = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false };
+        var info = new ProcessStartInfo(Environment.ProcessPath ?? throw new InvalidOperationException("The process path is unknown.")) { UseShellExecute = false };
         info.Environment[RoleVariable] = "grandchild";
-        using var child = Process.Start(info)!;
+        using var child = Process.Start(info) ?? throw new InvalidOperationException("The grandchild didn't start.");
         return child.Id;
     }
 

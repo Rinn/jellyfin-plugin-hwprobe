@@ -18,7 +18,7 @@ public static class AtomicFile
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
         ArgumentNullException.ThrowIfNull(write);
-        var directory = Path.GetDirectoryName(Path.GetFullPath(path))!;
+        var directory = Path.GetDirectoryName(Path.GetFullPath(path)) ?? throw new ArgumentException("A file path is required.", nameof(path));
         Directory.CreateDirectory(directory);
         var temp = Path.Combine(directory, $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
         try

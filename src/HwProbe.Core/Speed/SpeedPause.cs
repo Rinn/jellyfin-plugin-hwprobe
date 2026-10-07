@@ -115,7 +115,11 @@ public sealed class SpeedPause(TimeProvider time)
         {
             lock (_lock)
             {
-                _paused += time.GetUtcNow() - _waitingSince!.Value;
+                if (_waitingSince is { } since)
+                {
+                    _paused += time.GetUtcNow() - since;
+                }
+
                 _waitingSince = null;
                 _holding = false;
             }
@@ -147,7 +151,11 @@ public sealed class SpeedPause(TimeProvider time)
         {
             lock (_lock)
             {
-                _paused += time.GetUtcNow() - _waitingSince!.Value;
+                if (_waitingSince is { } since)
+                {
+                    _paused += time.GetUtcNow() - since;
+                }
+
                 _waitingSince = null;
             }
         }

@@ -14,6 +14,12 @@
         "resolved": "18.7.23",
         "contentHash": "dyj6z8m+LFjpeH69hdnciCcRCmD0YgMlvuQEywiEshjqj/blgQ+PuWX8Vd5gkWQFoBN4e+TFxx6DvGNSv/gIKg=="
       },
+      "Nullable.Extended.Analyzer": {
+        "type": "Direct",
+        "requested": "[1.16.6891, )",
+        "resolved": "1.16.6891",
+        "contentHash": "2Kr1kJjw4uROleupzp1YtwdvBL8IHoZzLIP0TItg/Lgz5PYb8sn29Pe88jctQ3tc6vGlpbGLFmO1FoTGVtUG0Q=="
+      },
       "StyleCop.Analyzers": {
         "type": "Direct",
         "requested": "[1.2.0-beta.556, )",

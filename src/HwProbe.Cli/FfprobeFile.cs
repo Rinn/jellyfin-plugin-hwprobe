@@ -17,7 +17,7 @@ internal static class FfprobeFile
     public static async Task<SpeedFile> ReadAsync(string ffmpegPath, string path, CancellationToken cancellationToken)
     {
         var name = OperatingSystem.IsWindows() ? "ffprobe.exe" : "ffprobe";
-        var ffprobe = Path.Combine(Path.GetDirectoryName(ffmpegPath)!, name);
+        var ffprobe = Path.Join(Path.GetDirectoryName(ffmpegPath), name);
         if (!File.Exists(ffprobe))
         {
             throw new InvalidOperationException($"No {name} beside {ffmpegPath}.");
@@ -32,7 +32,8 @@ internal static class FfprobeFile
             start.ArgumentList.Add(argument);
         }
 
-        using var process = Process.Start(start)!;
+        using var process = new Process { StartInfo = start };
+        process.Start();
         var stdout = process.StandardOutput.ReadToEndAsync(cancellationToken);
         var stderr = process.StandardError.ReadToEndAsync(cancellationToken);
         await process.WaitForExitAsync(cancellationToken);

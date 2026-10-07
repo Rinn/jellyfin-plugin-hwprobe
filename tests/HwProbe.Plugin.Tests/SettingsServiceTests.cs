@@ -152,7 +152,9 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.Equal(ApplyOutcome.Rejected, (await ApplyAsync(("EnableSubtitleExtraction", true))).Outcome);
 
         var software = Reports.Backend(HwType.none);
-        _harness.Report = _harness.Report! with { Software = software with { Settings = SettingsAdvisor.For(software, new AdviceContext(HostOs.Linux, InContainer: true, OpenclUnavailable: false)) } };
+        var report = _harness.Report;
+        Assert.NotNull(report);
+        _harness.Report = report with { Software = software with { Settings = SettingsAdvisor.For(software, new AdviceContext(HostOs.Linux, InContainer: true, OpenclUnavailable: false)) } };
         var result = await ApplyAsync(("EnableSubtitleExtraction", true), ("AllowAv1Encoding", false));
 
         Assert.Equal(ApplyOutcome.Applied, result.Outcome);

@@ -504,7 +504,7 @@ public sealed partial class FixtureBuilder
 
         var timeout = spec.GenerateTimeout ?? _timeout;
         var arguments = piece is null ? spec.EncodeArguments : spec.EncodeArguments.Replace("{piece}", $"\"{piece}\"", StringComparison.Ordinal);
-        arguments = ClipPlaceholder().Replace(arguments, m => $"\"{Path.Combine(Path.GetDirectoryName(path)!, m.Groups[1].Value)}\"");
+        arguments = ClipPlaceholder().Replace(arguments, m => $"\"{Path.Join(Path.GetDirectoryName(path), m.Groups[1].Value)}\"");
         var result = await EncodeAsync(arguments, partial, timeout, cancellationToken);
         if (result is not null && spec.FallbackArguments is not null)
         {

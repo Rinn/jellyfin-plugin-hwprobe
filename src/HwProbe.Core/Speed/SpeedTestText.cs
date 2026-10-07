@@ -55,7 +55,7 @@ public static class SpeedTestText
         }
 
         var rate = test.Bitrate >= 1_000_000 ? string.Create(CultureInfo.InvariantCulture, $"{test.Bitrate / 1_000_000.0:0.#} Mbps") : string.Create(CultureInfo.InvariantCulture, $"{test.Bitrate / 1000} kbps");
-        List<string> parts = [$"{CodecName(test.OutputCodec!)} at {rate}"];
+        List<string> parts = [$"{CodecName(test.OutputCodec ?? "h264")} at {rate}"];
         if (test.SourceAudio is not null)
         {
             parts.Add("stereo AAC");

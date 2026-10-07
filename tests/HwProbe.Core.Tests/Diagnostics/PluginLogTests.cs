@@ -44,7 +44,9 @@ public sealed class PluginLogTests
 
         using var read = new ZipArchive(new MemoryStream(twice), ZipArchiveMode.Read);
         Assert.Equal(["jellyfin.log", "report.json"], read.Entries.Select(e => e.FullName).Order(StringComparer.Ordinal));
-        using var log = new StreamReader(await read.GetEntry("jellyfin.log")!.OpenAsync(ct));
+        var logEntry = read.GetEntry("jellyfin.log");
+        Assert.NotNull(logEntry);
+        using var log = new StreamReader(await logEntry.OpenAsync(ct));
         Assert.Equal("new", await log.ReadToEndAsync(ct));
     }
 }

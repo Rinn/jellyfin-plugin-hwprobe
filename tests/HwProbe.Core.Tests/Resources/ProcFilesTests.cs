@@ -31,8 +31,9 @@ public sealed class ProcFilesTests
     {
         const string Fdinfo = "pos:\t0\nflags:\t02100002\ndrm-driver:\ti915\ndrm-pdev:\t0000:00:02.0\ndrm-client-id:\t7\ndrm-engine-render:\t1000 ns\ndrm-engine-video:\t250000000 ns\ndrm-engine-capacity-video:\t2\ndrm-total-system0:\t4 MiB\n";
 
-        var client = ProcFiles.Drm(Fdinfo)!;
+        var client = ProcFiles.Drm(Fdinfo);
 
+        Assert.NotNull(client);
         Assert.Equal("0000:00:02.0/7", client.Id);
         Assert.Equal(new Dictionary<string, long> { ["render"] = 1000, ["video"] = 250_000_000 }, client.Nanoseconds);
     }
@@ -41,8 +42,9 @@ public sealed class ProcFilesTests
     [Fact]
     public void DrmEnginesInCycles()
     {
-        var client = ProcFiles.Drm("drm-driver:\txe\ndrm-client-id:\t3\ndrm-cycles-vcs:\t500\ndrm-total-cycles-vcs:\t2000\n")!;
+        var client = ProcFiles.Drm("drm-driver:\txe\ndrm-client-id:\t3\ndrm-cycles-vcs:\t500\ndrm-total-cycles-vcs:\t2000\n");
 
+        Assert.NotNull(client);
         Assert.Equal((500L, 2000L), client.Cycles["vcs"]);
     }
 
@@ -50,9 +52,11 @@ public sealed class ProcFilesTests
     [Fact]
     public void DrmResidentMemory()
     {
-        Assert.Equal((4L * 1024 * 1024) + 512, ProcFiles.Drm("drm-client-id:\t1\ndrm-total-system0:\t8 MiB\ndrm-resident-system0:\t4 MiB\ndrm-resident-local0:\t512\n")!.ResidentBytes);
-        Assert.Equal(3L * 1024, ProcFiles.Drm("drm-client-id:\t1\ndrm-memory-vram:\t2 KiB\ndrm-memory-gtt:\t1 KiB\n")!.ResidentBytes);
-        Assert.Null(ProcFiles.Drm("drm-client-id:\t1\ndrm-engine-render:\t5 ns\n")!.ResidentBytes);
+        Assert.Equal((4L * 1024 * 1024) + 512, ProcFiles.Drm("drm-client-id:\t1\ndrm-total-system0:\t8 MiB\ndrm-resident-system0:\t4 MiB\ndrm-resident-local0:\t512\n")?.ResidentBytes);
+        Assert.Equal(3L * 1024, ProcFiles.Drm("drm-client-id:\t1\ndrm-memory-vram:\t2 KiB\ndrm-memory-gtt:\t1 KiB\n")?.ResidentBytes);
+        var noMemory = ProcFiles.Drm("drm-client-id:\t1\ndrm-engine-render:\t5 ns\n");
+        Assert.NotNull(noMemory);
+        Assert.Null(noMemory.ResidentBytes);
     }
 
     /// <summary>A descriptor that isn't a DRM client has no client id.</summary>

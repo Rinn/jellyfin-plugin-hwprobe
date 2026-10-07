@@ -24,7 +24,7 @@ public static class MatrixCatalog
     public static IReadOnlyList<MatrixCell> Software { get; } =
     [
         new(MatrixGroup.Deinterlace, "bwdif", FixtureCatalog.H264Interlaced, Cell(FixtureCatalog.H264Interlaced, H264, hardwareDecode: false) with { HardwareEncode = false, Bwdif = true }),
-        new(MatrixGroup.Decode, FixtureCatalog.H264KeyFrames.Key!, FixtureCatalog.H264KeyFrames, Cell(FixtureCatalog.H264KeyFrames, H264, hardwareDecode: false) with { HardwareEncode = false, KeyFramesOnly = true }),
+        new(MatrixGroup.Decode, Key(FixtureCatalog.H264KeyFrames), FixtureCatalog.H264KeyFrames, Cell(FixtureCatalog.H264KeyFrames, H264, hardwareDecode: false) with { HardwareEncode = false, KeyFramesOnly = true }),
     ];
 
     /// <summary>Returns the codec matrix cells for a backend.</summary>
@@ -67,7 +67,7 @@ public static class MatrixCatalog
         }
 
         // Trickplay's "Only generate images from key frames" skips non-key frames in the hardware decoder.
-        cells.Add(new(MatrixGroup.Decode, FixtureCatalog.H264KeyFrames.Key!, FixtureCatalog.H264KeyFrames, Cell(FixtureCatalog.H264KeyFrames, H264, hardwareDecode: true) with { KeyFramesOnly = true }));
+        cells.Add(new(MatrixGroup.Decode, Key(FixtureCatalog.H264KeyFrames), FixtureCatalog.H264KeyFrames, Cell(FixtureCatalog.H264KeyFrames, H264, hardwareDecode: true) with { KeyFramesOnly = true }));
 
         if (type == HwType.nvenc)
         {

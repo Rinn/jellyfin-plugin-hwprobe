@@ -28,7 +28,10 @@ public sealed class ProbeServiceTests : IDisposable
 
         Assert.Equal(ProbeRunResult.Completed, result);
         var json = await service.LatestJsonAsync(TestContext.Current.CancellationToken);
-        Assert.Equal(Reports.Sample().Fingerprint, ReportStore.Deserialize(json!)!.Fingerprint);
+        Assert.NotNull(json);
+        var report = ReportStore.Deserialize(json);
+        Assert.NotNull(report);
+        Assert.Equal(Reports.Sample().Fingerprint, report.Fingerprint);
         Assert.Equal(ProbeState.Idle, service.Status.State);
         Assert.NotNull(service.Status.LastCompletedUtc);
         Assert.Null(service.Status.LastError);
@@ -136,16 +139,17 @@ public sealed class ProbeServiceTests : IDisposable
         await service.Background;
 
         Assert.Equal(Reports.Sample().Backends.Where(b => b.Verdict == BackendVerdict.Viable).Select(b => (b.Type, b.Device)), measured);
-        Assert.Equal((SpeedMethod.Full, "fast", 4), (asked!.Method, asked.Settings.EncoderPreset, asked.Settings.EncodingThreadCount));
+        Assert.NotNull(asked);
+        Assert.Equal((SpeedMethod.Full, "fast", 4), (asked.Method, asked.Settings.EncoderPreset, asked.Settings.EncodingThreadCount));
         Assert.Equal([HwType.none], asked.Backends);
         Assert.True(asked.MeasureResources);
         Assert.Equal((SpeedCatalog.DefaultVideos, SpeedCatalog.DefaultOutputs), (asked.Videos, asked.Outputs));
         Assert.Equal((20, 28, true), (asked.Settings.H264Crf, asked.Settings.H265Crf, asked.Settings.AudioCopy));
-        Assert.Equal((2, TimeSpan.FromMinutes(1)), (asked.Repeats, asked.TimeLimit!.Value));
+        Assert.Equal((2, TimeSpan.FromMinutes(1)), (asked.Repeats, Assert.NotNull(asked.TimeLimit)));
         Assert.Null(service.RunningSpeedJson());
         Assert.Equal(ProbeActivity.Speed, service.Status.Activity);
         Assert.Null(service.Status.Total);
-        Assert.Equal(12, SpeedReportStore.Deserialize((await service.LatestSpeedJsonAsync(ct))!)!.Results[0].Streams);
+        Assert.Equal(12, SpeedReportFrom(await service.LatestSpeedJsonAsync(ct)).Results[0].Streams);
 
         var history = await service.SpeedHistoryAsync(ct);
         Assert.Equal([("19700101T000000Z", "Full", 1, true)], history.Select(h => (h.Id, h.Method, h.Tests, h.Current)));
@@ -233,7 +237,7 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal(ProbeRunResult.Started, await service.StartSpeedAsync(request, ct));
         await service.Background;
 
-        Assert.True(SpeedReportStore.Deserialize((await service.LatestSpeedJsonAsync(ct))!)!.CancelledForTranscode);
+        Assert.True(SpeedReportFrom(await service.LatestSpeedJsonAsync(ct)).CancelledForTranscode);
     }
 
     /// <summary>A run set to cancel for transcodes stops checking for them when it ends.</summary>
@@ -317,7 +321,8 @@ public sealed class ProbeServiceTests : IDisposable
                 await proceed.WaitAsync(token);
                 try
                 {
-                    await speed.Pause!.WaitAsync(token);
+                    Assert.NotNull(speed.Pause);
+                    await speed.Pause.WaitAsync(token);
                 }
                 catch (OperationCanceledException)
                 {
@@ -332,7 +337,7 @@ public sealed class ProbeServiceTests : IDisposable
 
         Assert.Equal(ProbeRunResult.Started, await service.StartSpeedAsync(new SpeedRequest("confirm", [], []), ct));
         await first.Task;
-        var running = SpeedReportStore.Deserialize(service.RunningSpeedJson()!)!;
+        var running = SpeedReportFrom(service.RunningSpeedJson());
         Assert.Equal([(false, 12), (true, (int?)null)], running.Results.Select(r => (r.Pending, r.Streams)));
         Assert.Equal(SpeedPhase.Measuring, service.Status.Phase);
         Assert.NotNull(service.Status.ElapsedSeconds);
@@ -345,7 +350,7 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.True(service.CancelSpeed());
         await service.Background;
 
-        var saved = SpeedReportStore.Deserialize((await service.LatestSpeedJsonAsync(ct))!)!;
+        var saved = SpeedReportFrom(await service.LatestSpeedJsonAsync(ct));
         Assert.True(saved.Cancelled);
         Assert.Single(saved.Results);
         Assert.False(service.CancelSpeed());
@@ -579,6 +584,17 @@ public sealed class ProbeServiceTests : IDisposable
 
     /// <inheritdoc/>
     public void Dispose() => Directory.Delete(_directory, recursive: true);
+
+    /// <summary>Reads a speed report, failing the test when there's none or it doesn't parse.</summary>
+    /// <param name="json">The report's JSON, or null.</param>
+    /// <returns>The report.</returns>
+    private static SpeedReport SpeedReportFrom(string? json)
+    {
+        Assert.NotNull(json);
+        var report = SpeedReportStore.Deserialize(json);
+        Assert.NotNull(report);
+        return report;
+    }
 
     /// <summary>Creates a service with a scripted probe.</summary>
     /// <param name="probe">The probe.</param>

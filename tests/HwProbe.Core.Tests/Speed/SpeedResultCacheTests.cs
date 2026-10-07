@@ -10,7 +10,7 @@ public sealed class SpeedResultCacheTests
 {
     private const string Command = "-i a.mkv -c:v h264_videotoolbox -b:v 8000000 -f null -";
 
-    private static readonly SpeedTest _test = SpeedCatalog.Find("pattern|h264-8mbps")!;
+    private static readonly SpeedTest _test = SpeedCatalog.Find("pattern|h264-8mbps") ?? throw new InvalidOperationException("The catalog has no pattern|h264-8mbps test.");
 
     private static readonly SpeedOptions _speed = new(SpeedMethod.Quick, ["pattern"], ["h264-8mbps"], new SpeedSettings());
 

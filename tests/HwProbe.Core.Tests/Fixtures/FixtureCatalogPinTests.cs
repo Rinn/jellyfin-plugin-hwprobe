@@ -19,7 +19,7 @@ public sealed class FixtureCatalogPinTests
         Assert.Null(FixtureCatalog.Vc1.UntestedReason);
         Assert.All(downloadable, f =>
         {
-            Assert.StartsWith(Catalog.Default.Links["fateSuite"], f.DownloadUrl!.ToString(), StringComparison.Ordinal);
+            Assert.StartsWith(Catalog.Default.Links["fateSuite"], f.DownloadUrl?.ToString(), StringComparison.Ordinal);
             Assert.Matches("^[0-9a-f]{64}$", f.Sha256);
         });
     }

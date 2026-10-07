@@ -24,17 +24,24 @@ public sealed class CatalogTests
     [Fact]
     public void ArgumentsExpand()
     {
-        var pattern = SpeedCatalog.FindVideo("pattern")!.Fixture!.EncodeArguments;
+        var video = SpeedCatalog.FindVideo("pattern");
 
-        Assert.Matches(@"^-[^{}]+\{clip:speed_audio_51\.mka\}[^{}]+$", pattern);
+        Assert.NotNull(video);
+        Assert.NotNull(video.Fixture);
+        Assert.Matches(@"^-[^{}]+\{clip:speed_audio_51\.mka\}[^{}]+$", video.Fixture.EncodeArguments);
     }
 
     /// <summary>A sample downloaded whole shows its length and size, not as generated; a generated test video says so.</summary>
     [Fact]
     public void OriginNamesDownloadsAndGeneratedVideos()
     {
-        Assert.Equal("30.3 s, 2 MB", SpeedCatalog.FindVideo("flv-280p")!.Origin);
-        Assert.Equal("Generated, 10 s", SpeedCatalog.FindVideo("pattern")!.Origin);
+        var sample = SpeedCatalog.FindVideo("flv-280p");
+        var generated = SpeedCatalog.FindVideo("pattern");
+
+        Assert.NotNull(sample);
+        Assert.NotNull(generated);
+        Assert.Equal("30.3 s, 2 MB", sample.Origin);
+        Assert.Equal("Generated, 10 s", generated.Origin);
     }
 
     /// <summary>A setting is found by its key; an unknown key finds none.</summary>
@@ -91,7 +98,9 @@ public sealed class CatalogTests
     [InlineData("  - { key: AudioVbr,", "  - { key: AudioVbr, label: Enable VBR audio encoding, server: EnableAudioVbr, switch: true, qualityOrder: [\"true\", \"false\"], caveat: \"In some rare cases VBR may cause buffering and compatibility issues.\", compatibleValue: \"false\", description: \"Variable bitrate offers better quality to average bitrate ratio, but in some rare cases may cause buffering and compatibility issues.\" }\n  - { key: AudioVbr,")]
     public void BrokenFileIsRefused(string find, string replace)
     {
-        using var reader = new StreamReader(typeof(Catalog).Assembly.GetManifestResourceStream("catalog.yaml")!);
+        using var resource = typeof(Catalog).Assembly.GetManifestResourceStream("catalog.yaml");
+        Assert.NotNull(resource);
+        using var reader = new StreamReader(resource);
         var yaml = reader.ReadToEnd();
         Assert.Contains(find, yaml, StringComparison.Ordinal);
 

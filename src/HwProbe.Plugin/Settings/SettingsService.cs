@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Jellyfin.Plugin.HwProbe.Core.Model;
@@ -118,10 +119,10 @@ public sealed class SettingsService : IDisposable
         return LockedAsync(
             async () =>
             {
-                var (report, refusal) = await CurrentReportAsync(cancellationToken);
-                if (report is null)
+                var report = await _report(cancellationToken);
+                if (IsRefused(report, out var refusal))
                 {
-                    return refusal!;
+                    return refusal;
                 }
 
                 var options = _read();
@@ -202,13 +203,13 @@ public sealed class SettingsService : IDisposable
                 var measured = speeds.Count > 0 && speeds.Min() >= 1;
                 var options = _read();
                 var changes = measured ? SpeedAdvisor.GroupRowChanges(choice.Group, choice.Row, Probing.ProbeService.SettingsFrom(options.Encoding), Probing.ProbeService.BackendFrom(options.Encoding).Type) : null;
-                var settings = changes?.Select(c => MeasuredSettings.ToSetting(c.Key, c.Value)).ToList();
-                if (settings is null || settings.Count == 0 || settings.Any(s => s is null))
+                List<(string Setting, string Value)> settings = [.. (changes ?? []).Select(c => MeasuredSettings.ToSetting(c.Key, c.Value)).OfType<(string Setting, string Value)>()];
+                if (changes is null || settings.Count == 0 || settings.Count != changes.Count)
                 {
                     return Refuse($"{choice.Row} isn't a measured choice the server can switch to.");
                 }
 
-                return await WriteAsync(options, [.. settings.Select(s => s!.Value)], HistoryKind.Apply, user, cancellationToken);
+                return await WriteAsync(options, settings, HistoryKind.Apply, user, cancellationToken);
             },
             cancellationToken);
     }
@@ -224,10 +225,10 @@ public sealed class SettingsService : IDisposable
         return LockedAsync(
             async () =>
             {
-                var (report, refusal) = await CurrentReportAsync(cancellationToken);
-                if (report is null)
+                var report = await _report(cancellationToken);
+                if (IsRefused(report, out var refusal))
                 {
-                    return refusal!;
+                    return refusal;
                 }
 
                 // Software (none) always works, so it needs no probe result.
@@ -324,7 +325,7 @@ public sealed class SettingsService : IDisposable
     /// <param name="options">The options.</param>
     /// <returns>A copy.</returns>
     private static T Clone<T>(T options) =>
-        JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(options, _json), _json)!;
+        JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(options, _json), _json) ?? throw new JsonException($"{typeof(T).Name} didn't survive a JSON round trip.");
 
     /// <summary>Finds the report row for the backend and device the server is configured to use.</summary>
     /// <param name="report">The latest report.</param>
@@ -381,20 +382,26 @@ public sealed class SettingsService : IDisposable
         }
     }
 
-    /// <summary>Loads the latest report, if it was made with the server's current ffmpeg.</summary>
-    /// <param name="cancellationToken">Cancels the read.</param>
-    /// <returns>The report, or null and the refusal.</returns>
-    private async Task<(CapabilityReport? Report, ApplyResult? Refusal)> CurrentReportAsync(CancellationToken cancellationToken)
+    /// <summary>Reports whether a write is refused because there's no report, or it was made with another ffmpeg than the server's.</summary>
+    /// <param name="report">The latest report, or null.</param>
+    /// <param name="refusal">Receives the refusal.</param>
+    /// <returns>True when refused.</returns>
+    private bool IsRefused([NotNullWhen(false)] CapabilityReport? report, [NotNullWhen(true)] out ApplyResult? refusal)
     {
-        var report = await _report(cancellationToken);
         if (report is null)
         {
-            return (null, new ApplyResult(ApplyOutcome.NoReport, [], "Run a probe first."));
+            refusal = new ApplyResult(ApplyOutcome.NoReport, [], "Run a probe first.");
+            return true;
         }
 
-        return report.Ffmpeg.Path == _encoderPath()
-            ? (report, null)
-            : (null, Refuse("The last probe used a different ffmpeg. Run the probe again."));
+        if (report.Ffmpeg.Path != _encoderPath())
+        {
+            refusal = Refuse("The last probe used a different ffmpeg. Run the probe again.");
+            return true;
+        }
+
+        refusal = null;
+        return false;
     }
 
     /// <summary>Writes the values that differ, saves, and records the history.</summary>

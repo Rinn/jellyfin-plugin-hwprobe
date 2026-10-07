@@ -14,7 +14,7 @@ public static class SpeedCatalog
     public static IReadOnlyList<SpeedOutput> Outputs { get; } =
     [
         .. Catalog.Default.Codecs.SelectMany(c => Catalog.Default.Qualities.Select(q => new SpeedOutput(Catalog.OutputKey(c, q), c.Name + ", " + q.Name, c.Key, q.Bitrate))),
-        new SpeedOutput(Catalog.Default.Decode!.Key, Catalog.Default.Decode.Label, null, 0),
+        new SpeedOutput(Catalog.Default.Decode.Key, Catalog.Default.Decode.Label, null, 0),
     ];
 
     /// <summary>Gets the videos chosen when none are asked for.</summary>
@@ -24,13 +24,13 @@ public static class SpeedCatalog
     public static IReadOnlyList<string> DefaultOutputs => Catalog.Default.DefaultOutputs;
 
     /// <summary>Gets the 5.1 AAC track the test videos copy, made before them.</summary>
-    public static FixtureSpec TestAudio { get; } = Fixture(Catalog.Default.TestAudio!);
+    public static FixtureSpec TestAudio { get; } = Fixture(Catalog.Default.TestAudio);
 
     /// <summary>Gets the text (ASS) subtitle the burn-in variation draws.</summary>
-    public static FixtureSpec TextSubtitles { get; } = Fixture(Catalog.Default.Subtitles!.Text);
+    public static FixtureSpec TextSubtitles { get; } = Fixture(Catalog.Default.Subtitles.Text);
 
     /// <summary>Gets the image (PGS) subtitle the burn-in variation draws.</summary>
-    public static FixtureSpec ImageSubtitles { get; } = Fixture(Catalog.Default.Subtitles!.Image);
+    public static FixtureSpec ImageSubtitles { get; } = Fixture(Catalog.Default.Subtitles.Image);
 
     /// <summary>Gets the key of the library video.</summary>
     public static string LibraryKey => "library";

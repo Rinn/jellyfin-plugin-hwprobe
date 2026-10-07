@@ -87,7 +87,8 @@ public sealed class FixtureBuilderTests : IDisposable
     public async Task DamagedFixtureIsRegenerated(string fileName, string damage, string argument)
     {
         var first = await BuildAsync(_allEncoders);
-        var path = first.Single(r => r.Spec.FileName == fileName).Path!;
+        var path = first.Single(r => r.Spec.FileName == fileName).Path;
+        Assert.NotNull(path);
         var manifest = path + ".sha256";
         var token = TestContext.Current.CancellationToken;
         switch (damage)
