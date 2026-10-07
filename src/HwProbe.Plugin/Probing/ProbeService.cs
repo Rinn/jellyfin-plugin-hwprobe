@@ -128,11 +128,13 @@ public sealed partial class ProbeService : IDisposable
         {
             lock (_speedSoFar)
             {
+                // One read: the run replaces it from another thread.
+                var status = _status;
                 if (_speedRunning is null || _speedPause is not { } pause)
                 {
-                    return _status.State == ProbeState.Running && _status.Activity == ProbeActivity.Probe && _probeProgress is { } p
-                        ? _status with { Done = p.Done, Total = p.Total == 0 ? null : p.Total, Step = p.Step, ElapsedSeconds = _status.LastStartedUtc is { } probeStarted ? (int)(_time.GetUtcNow() - probeStarted).TotalSeconds : null }
-                        : _status;
+                    return status.State == ProbeState.Running && status.Activity == ProbeActivity.Probe && _probeProgress is { } p
+                        ? status with { Done = p.Done, Total = p.Total == 0 ? null : p.Total, Step = p.Step, ElapsedSeconds = status.LastStartedUtc is { } probeStarted ? (int)(_time.GetUtcNow() - probeStarted).TotalSeconds : null }
+                        : status;
                 }
 
                 var phase = _speedCancel?.IsCancellationRequested == true ? SpeedPhase.Cancelling
@@ -141,10 +143,10 @@ public sealed partial class ProbeService : IDisposable
                     : _measuringSince is null ? SpeedPhase.Preparing
                     : SpeedPhase.Measuring;
                 var now = _time.GetUtcNow();
-                return _status with
+                return status with
                 {
                     Phase = phase,
-                    ElapsedSeconds = _status.LastStartedUtc is { } started ? (int)(now - started).TotalSeconds : null,
+                    ElapsedSeconds = status.LastStartedUtc is { } started ? (int)(now - started).TotalSeconds : null,
                 };
             }
         }
@@ -342,7 +344,8 @@ public sealed partial class ProbeService : IDisposable
                 return false;
             }
 
-            cancel.Cancel();
+            // Callbacks run on the thread pool, so the run doesn't carry on in this request inside the lock.
+            _ = cancel.CancelAsync();
             return true;
         }
     }
@@ -393,12 +396,16 @@ public sealed partial class ProbeService : IDisposable
     /// </remarks>
     public async Task<string?> LatestJsonAsync(CancellationToken cancellationToken)
     {
-        if (!File.Exists(_latestPath))
+        string json;
+        try
+        {
+            json = await File.ReadAllTextAsync(_latestPath, cancellationToken);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
         {
             return null;
         }
 
-        var json = await File.ReadAllTextAsync(_latestPath, cancellationToken);
         var report = ReportStore.Deserialize(json);
         return report?.HwProbeVersion == CapabilityReport.CurrentHwProbeVersion && IsCurrentFfmpeg(report.Ffmpeg) ? json : null;
     }
@@ -456,7 +463,15 @@ public sealed partial class ProbeService : IDisposable
         var path = Directory.Exists(SpeedHistoryDirectory)
             ? Directory.EnumerateFiles(SpeedHistoryDirectory, "*.json").FirstOrDefault(f => Path.GetFileNameWithoutExtension(f) == id)
             : null;
-        return path is null ? null : await File.ReadAllTextAsync(path, cancellationToken);
+        try
+        {
+            return path is null ? null : await File.ReadAllTextAsync(path, cancellationToken);
+        }
+        catch (FileNotFoundException)
+        {
+            // Deleted or pruned since it was listed.
+            return null;
+        }
     }
 
     /// <summary>Deletes one saved speed run, or every one; the latest run shown goes with the newest.</summary>

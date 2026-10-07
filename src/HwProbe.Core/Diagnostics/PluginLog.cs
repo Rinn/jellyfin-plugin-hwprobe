@@ -70,10 +70,7 @@ public static partial class PluginLog
     /// <summary>Decides whether a line that starts an entry is kept.</summary>
     /// <param name="line">A log line.</param>
     /// <returns>Whether the entry is HwProbe's or names it; null for a line that doesn't start an entry, such as a stack trace, which goes with the entry before it.</returns>
-    private static bool? Keeps(string line) =>
-        Entry().Match(line) is { Success: true } entry
-            ? entry.Groups["category"].Value.StartsWith("Jellyfin.Plugin." + Name, StringComparison.Ordinal) || line.Contains(Name, StringComparison.Ordinal)
-            : null;
+    private static bool? Keeps(string line) => Entry().IsMatch(line) ? line.Contains(Name, StringComparison.Ordinal) : null;
 
     /// <summary>Matches the start of a Jellyfin log entry: <c>[time] [LVL] [thread] Category: message</c>.</summary>
     /// <returns>The pattern.</returns>

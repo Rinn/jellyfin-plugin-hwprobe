@@ -453,13 +453,16 @@ public sealed class SettingsService : IDisposable
     /// <returns>The entries, oldest first; empty when there's no file.</returns>
     private async Task<List<HistoryEntry>> ReadHistoryAsync(CancellationToken cancellationToken)
     {
-        if (!File.Exists(_historyPath))
+        try
         {
+            await using var stream = File.OpenRead(_historyPath);
+            return await JsonSerializer.DeserializeAsync<List<HistoryEntry>>(stream, _json, cancellationToken) ?? [];
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            // None yet, or cleared during the read.
             return [];
         }
-
-        await using var stream = File.OpenRead(_historyPath);
-        return await JsonSerializer.DeserializeAsync<List<HistoryEntry>>(stream, _json, cancellationToken) ?? [];
     }
 
     /// <summary>Writes the history file through a temporary file, so a crash can't leave it half written.</summary>
