@@ -38,19 +38,23 @@ internal static class LinuxEnergy
         }
     }
 
-    /// <summary>Returns the readable power meters: AMD GPUs', which report power and no energy.</summary>
+    /// <summary>Returns the power meters: AMD GPUs', which report power and no energy.</summary>
     /// <returns>The sources.</returns>
     /// <remarks>
     /// amdgpu's power1_input is instantaneous and power1_average averaged by the firmware, both in microwatts; not every GPU has
-    /// both, and on APUs they include the CPU (drivers/gpu/drm/amd/pm/amdgpu_pm.c, hwmon interfaces for GPU power).
+    /// both, and on APUs they include the CPU (drivers/gpu/drm/amd/pm/amdgpu_pm.c, hwmon interfaces for GPU power). A GPU in
+    /// runtime suspend refuses every sensor read (amdgpu_pm_get_access_if_active), so the meter is found by its file, not a read,
+    /// and reads as no power while the device says it's suspended.
     /// </remarks>
     public static IEnumerable<IPowerSource> PowerSources()
     {
         foreach (var hwmon in GpuHwmons().Where(h => Name(h) == "amdgpu"))
         {
-            if (_amdPowerFiles.Select(f => Path.Combine(hwmon, f)).FirstOrDefault(f => ReadNumber(f) is not null) is { } power)
+            if (_amdPowerFiles.Select(f => Path.Combine(hwmon, f)).FirstOrDefault(File.Exists) is { } power)
             {
-                yield return new PowerSource("Gpu", () => ReadNumber(power) * WattsPerMicrowatt);
+                // hwmon/hwmonN sits in the device's folder, beside its power/runtime_status.
+                var status = Path.Combine(hwmon, "..", "..", "power", "runtime_status");
+                yield return new PowerSource("Gpu", () => ReadNumber(power) * WattsPerMicrowatt ?? (Suspended(status) ? 0 : null));
             }
         }
     }
@@ -77,6 +81,21 @@ internal static class LinuxEnergy
             {
                 yield return folder;
             }
+        }
+    }
+
+    /// <summary>Reports whether a device is runtime-suspended.</summary>
+    /// <param name="status">Its power/runtime_status file.</param>
+    /// <returns>True when the file reads <c>suspended</c>.</returns>
+    private static bool Suspended(string status)
+    {
+        try
+        {
+            return File.ReadAllText(status).Trim() == "suspended";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
         }
     }
 

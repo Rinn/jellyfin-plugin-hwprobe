@@ -82,7 +82,8 @@ internal static class EnergyMeter
         await using (var span = Start())
         {
             await Task.Delay(_idle, cancellationToken);
-            watts = (await span.StopAsync())?.ToDictionary(d => d.Key, d => d.Value / _idle.TotalSeconds, StringComparer.Ordinal);
+            var used = await span.StopAsync();
+            watts = used?.ToDictionary(d => d.Key, d => d.Value / span.Seconds, StringComparer.Ordinal);
         }
 
         lock (_idleGate)

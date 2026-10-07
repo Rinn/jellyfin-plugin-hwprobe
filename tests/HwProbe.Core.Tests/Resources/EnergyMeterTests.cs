@@ -59,7 +59,7 @@ public sealed class EnergyMeterTests
         Assert.Same(used, await span.StopAsync());
     }
 
-    /// <summary>A power meter whose read fails or throws is left out, as a gap would count as no power, and a timer callback that throws would end the process.</summary>
+    /// <summary>A power meter read once only, or one that throws, is left out: the first spans no time, and a timer callback that throws would end the process.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
     public async Task SpanLeavesOutFailingPowerMeters()
@@ -69,6 +69,21 @@ public sealed class EnergyMeterTests
         await Task.Delay(TimeSpan.FromMilliseconds(300), TestContext.Current.CancellationToken);
 
         Assert.Null(await span.StopAsync());
+    }
+
+    /// <summary>A read that fails in the middle of a span, as a suspended GPU's does, is skipped and the samples either side joined.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task SpanJoinsAcrossFailedReads()
+    {
+        var reads = 0;
+        await using var span = new EnergySpan([], [new PowerSource("Gpu", () => ++reads % 2 == 0 ? null : 10)]);
+        await Task.Delay(TimeSpan.FromMilliseconds(700), TestContext.Current.CancellationToken);
+
+        var used = await span.StopAsync();
+
+        Assert.NotNull(used);
+        Assert.InRange(used["Gpu"], 1, 10 * span.Seconds);
     }
 
     /// <summary>Power above idle is the run's average less the idle reading, never below zero.</summary>

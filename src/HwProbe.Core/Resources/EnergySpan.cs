@@ -32,6 +32,9 @@ internal sealed class EnergySpan : IAsyncDisposable
         _timer = _power.Length > 0 ? new Timer(_ => Tick(), null, _interval, _interval) : null;
     }
 
+    /// <summary>Gets how long the span ran, once stopped.</summary>
+    public double Seconds { get; private set; }
+
     /// <summary>Stops the span and returns what it measured; later calls return the same.</summary>
     /// <returns>Joules by domain, or null when no meter was read at both ends.</returns>
     public async Task<Dictionary<string, double>?> StopAsync()
@@ -51,6 +54,7 @@ internal sealed class EnergySpan : IAsyncDisposable
 
             Sample();
             _stopped = true;
+            Seconds = Stopwatch.GetElapsedTime(_startedAt).TotalSeconds;
             var used = EnergyMeter.Used(_start, EnergyMeter.Read(_counters)) ?? new Dictionary<string, double>(StringComparer.Ordinal);
             foreach (var (source, integral) in _power.Where(p => p.Integral.Spans && !_failed.Contains(p.Source)))
             {
@@ -86,7 +90,7 @@ internal sealed class EnergySpan : IAsyncDisposable
         }
     }
 
-    /// <summary>Reads every power meter once; a meter that fails is left out of the span, as a gap would read as zero watts.</summary>
+    /// <summary>Reads every power meter once; a read that fails is skipped, the samples either side of it joined, and a meter that throws is left out of the span.</summary>
     private void Sample()
     {
         var seconds = Stopwatch.GetElapsedTime(_startedAt).TotalSeconds;
@@ -97,10 +101,6 @@ internal sealed class EnergySpan : IAsyncDisposable
                 if (source.ReadWatts() is { } watts)
                 {
                     integral.Add(seconds, watts);
-                }
-                else
-                {
-                    _failed.Add(source);
                 }
             }
             catch (Exception ex) when (ex is not OutOfMemoryException)
