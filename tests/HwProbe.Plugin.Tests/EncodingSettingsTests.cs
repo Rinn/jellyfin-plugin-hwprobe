@@ -1,4 +1,3 @@
-using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Settings;
 using Jellyfin.Plugin.HwProbe.TestSupport;
 using MediaBrowser.Model.Configuration;
@@ -71,19 +70,17 @@ public sealed class EncodingSettingsTests
         Assert.Equal(DeinterlaceMethod.yadif, options.DeinterlaceMethod);
     }
 
-    /// <summary>Trickplay's thread count reads and writes as a whole number, and every trickplay option a performance test sets maps to a key the settings know.</summary>
+    /// <summary>Trickplay's thread count, which earlier performance tests could apply, still reads and writes, so its history entries revert.</summary>
     [Fact]
-    public void TrickplayThreadsAreANumber()
+    public void TrickplayThreadsStillRevert()
     {
         var options = new TrickplayOptions();
-        var threads = Assert.NotNull(MeasuredSettings.ToSetting("TrickplayThreads", "4"));
+        const string Threads = TrickplaySettings.Prefix + nameof(TrickplayOptions.ProcessThreads);
 
-        Assert.True(ServerSettings.IsKnown(threads.Setting));
-        TrickplaySettings.Write(options, threads.Setting, threads.Value);
+        TrickplaySettings.Write(options, Threads, "4");
 
-        Assert.Equal(4, options.ProcessThreads);
-        Assert.Equal("4", TrickplaySettings.Read(options, threads.Setting));
-        Assert.All(Catalog.Default.Options.Where(o => o.Key.StartsWith("Trickplay", StringComparison.Ordinal)), o => Assert.True(ServerSettings.IsKnown(Assert.NotNull(MeasuredSettings.ToSetting(o.Key, "1")).Setting), o.Key));
+        Assert.True(ServerSettings.IsKnown(Threads));
+        Assert.Equal((4, "4"), (options.ProcessThreads, TrickplaySettings.Read(options, Threads)));
     }
 
     /// <summary>Every key the advisor can produce is known; anything else is not.</summary>

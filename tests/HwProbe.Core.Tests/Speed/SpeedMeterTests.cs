@@ -213,25 +213,25 @@ public sealed class SpeedMeterTests
         Assert.Equal(240, Assert.NotNull(measured.Fps), 1);
     }
 
-    /// <summary>An image run's speed is the content it read over the time taken, whatever few frames it made; a timed-out one has none.</summary>
+    /// <summary>An audio run's speed is the content it read over the time taken, as it has no frames; a timed-out one has none.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
-    public async Task ImagesAreTimedByContent()
+    public async Task AudioIsTimedByContent()
     {
         List<TimeSpan> contents = [];
-        Task<IReadOnlyList<FfmpegRunResult>> ImagesAsync(int copies, TimeSpan content, CancellationToken ct)
+        Task<IReadOnlyList<FfmpegRunResult>> AudioAsync(int copies, TimeSpan content, CancellationToken ct)
         {
             contents.Add(content);
-            return Task.FromResult<IReadOnlyList<FfmpegRunResult>>([new(FfmpegRunStatus.Exited, 0, string.Empty, string.Empty, 1, TimeSpan.FromSeconds(content.TotalSeconds / 50), null)]);
+            return Task.FromResult<IReadOnlyList<FfmpegRunResult>>([new(FfmpegRunStatus.Exited, 0, string.Empty, string.Empty, 0, TimeSpan.FromSeconds(content.TotalSeconds / 200), null)]);
         }
 
         Task<IReadOnlyList<FfmpegRunResult>> TimedOutAsync(int copies, TimeSpan content, CancellationToken ct) =>
             Task.FromResult<IReadOnlyList<FfmpegRunResult>>([new(FfmpegRunStatus.TimedOut, null, string.Empty, string.Empty, 2, TimeSpan.FromSeconds(30), null)]);
 
-        var measured = await SpeedMeter.MeasureAsync(ImagesAsync, SpeedMethod.Full, 24, countStreams: false, TestContext.Current.CancellationToken, pace: MeterPace.Images);
-        var slow = await SpeedMeter.MeasureAsync(TimedOutAsync, SpeedMethod.Full, 24, countStreams: false, TestContext.Current.CancellationToken, pace: MeterPace.Images);
+        var measured = await SpeedMeter.MeasureAsync(AudioAsync, SpeedMethod.Full, 1, countStreams: false, TestContext.Current.CancellationToken, pace: MeterPace.Audio);
+        var slow = await SpeedMeter.MeasureAsync(TimedOutAsync, SpeedMethod.Full, 1, countStreams: false, TestContext.Current.CancellationToken, pace: MeterPace.Audio);
 
-        Assert.Equal(50 * 24, Assert.NotNull(measured.Fps), 1);
+        Assert.Equal(200, Assert.NotNull(measured.Fps), 1);
         Assert.Null(measured.Streams);
         Assert.Equal(2, contents.Count);
         Assert.Null(slow.Fps);

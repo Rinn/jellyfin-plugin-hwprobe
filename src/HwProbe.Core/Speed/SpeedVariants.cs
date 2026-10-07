@@ -26,8 +26,7 @@ internal static class SpeedVariants
             SourceWidth = test.Width,
             SourceHeight = test.Height,
             SourceFrameRate = test.FrameRate,
-            VideoBitrate = test.DecodeOnly || test.Images ? null : test.Bitrate,
-            Images = test.Images ? new ImageJob(settings.TrickplayWidth, settings.TrickplayInterval, settings.TrickplayQscale, settings.TrickplayThreads, settings.TrickplayHwEncoding, settings.TrickplayKeyFrames) : null,
+            VideoBitrate = test.DecodeOnly ? null : test.Bitrate,
             FullQuality = true,
             Tonemap = cell.Tonemap && settings.Tonemap,
 
@@ -36,7 +35,7 @@ internal static class SpeedVariants
             EncoderPreset = settings.EncoderPreset,
             H264Crf = settings.H264Crf,
             H265Crf = settings.H265Crf,
-            Audio = cell.Audio && !test.DecodeOnly && !test.Images,
+            Audio = cell.Audio && !test.DecodeOnly,
             AudioVbr = settings.AudioVbr,
             AudioCopy = settings.AudioCopy,
             SubtitlePath = Burns(test) && settings.BurnIn == "text" ? clips.GetValueOrDefault(SpeedCatalog.TextSubtitles.FileName) : null,
@@ -140,10 +139,10 @@ internal static class SpeedVariants
         _ => null,
     };
 
-    /// <summary>Returns whether a test burns in the run's subtitles: a video transcode does; a decode, images, and audio don't.</summary>
+    /// <summary>Returns whether a test burns in the run's subtitles: a video transcode does; a decode and audio don't.</summary>
     /// <param name="test">The test.</param>
     /// <returns>True for a transcode.</returns>
-    private static bool Burns(SpeedTest test) => !test.DecodeOnly && !test.Images && !test.AudioOnly;
+    private static bool Burns(SpeedTest test) => !test.DecodeOnly && !test.AudioOnly;
 
     /// <summary>Describes a generated clip.</summary>
     /// <param name="fixture">The clip.</param>
@@ -163,7 +162,7 @@ internal static class SpeedVariants
             ColorTransfer = color?.Transfer,
             ColorSpace = color?.Space,
             Tonemap = test.Tonemap,
-            Audio = !test.DecodeOnly && !test.Images && test.SourceAudio is not null,
+            Audio = !test.DecodeOnly && test.SourceAudio is not null,
             AudioCodec = fixture.AudioCodec ?? "aac",
             AudioChannels = fixture.AudioChannels ?? 6,
             SourcePath = clips[fixture.FileName],
@@ -187,7 +186,6 @@ internal static class SpeedVariants
             ColorPrimaries = video.ColorPrimaries,
             ColorTransfer = video.ColorTransfer,
             ColorSpace = video.ColorSpace,
-            AspectRatio = video.AspectRatio,
             Tonemap = test.Tonemap && settings.Tonemap,
             VideoIndex = video.Index,
             Audio = file.Audio is not null,

@@ -83,7 +83,7 @@ public sealed partial class ProbeService : IDisposable
         ArgumentNullException.ThrowIfNull(paths);
         CurrentFfmpeg = () => (mediaEncoder.EncoderPath, mediaEncoder.EncoderVersion);
         MeasureSpeed = (speed, backends, progress, ct) => RunSpeedEngineAsync(arguments, mediaEncoder, paths, baseline, logger, speed, backends, progress, ct);
-        ServerSpeedSettings = () => SettingsFrom(config.GetEncodingOptions(), config.Configuration.TrickplayOptions);
+        ServerSpeedSettings = () => SettingsFrom(config.GetEncodingOptions());
         ServerBackend = () => BackendFrom(config.GetEncodingOptions());
         FindFile = files.Find;
         FixturesDirectory = ServerEngineOptions(mediaEncoder, paths).FixturesDirectory;
@@ -715,18 +715,11 @@ public sealed partial class ProbeService : IDisposable
     /// <returns>False for direct play and a remux (both streams copied); true otherwise.</returns>
     internal static bool IsTranscoding(TranscodingInfo? info) => info is not null && (!info.IsVideoDirect || !info.IsAudioDirect);
 
-    /// <summary>Reads the speed run's starting settings from the server's encoding and trickplay options.</summary>
+    /// <summary>Reads the speed run's starting settings from the server's encoding options.</summary>
     /// <param name="options">The server's encoding options.</param>
-    /// <param name="trickplay">The server's trickplay options.</param>
     /// <returns>The settings.</returns>
-    internal static SpeedSettings SettingsFrom(EncodingOptions options, TrickplayOptions trickplay) => new()
+    internal static SpeedSettings SettingsFrom(EncodingOptions options) => new()
     {
-        TrickplayHwEncoding = trickplay.EnableHwEncoding,
-        TrickplayKeyFrames = trickplay.EnableKeyFrameOnlyExtraction,
-        TrickplayThreads = trickplay.ProcessThreads,
-        TrickplayQscale = trickplay.Qscale,
-        TrickplayWidth = trickplay.WidthResolutions.FirstOrDefault(320),
-        TrickplayInterval = trickplay.Interval,
         EncoderPreset = options.EncoderPreset == EncoderPreset.auto ? null : options.EncoderPreset.ToString(),
         AudioVbr = options.EnableAudioVbr,
         H264Crf = options.H264Crf,

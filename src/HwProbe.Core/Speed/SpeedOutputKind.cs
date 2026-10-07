@@ -9,7 +9,7 @@ public enum SpeedOutputKind
     /// <summary>Nothing: the video is decoded only.</summary>
     Decode,
 
-    /// <summary>Images at an interval, as Jellyfin extracts them for trickplay.</summary>
+    /// <summary>Trickplay images, which HwProbe 1.1.0 to 1.1.2 measured; kept so the runs they saved still load.</summary>
     Images,
 
     /// <summary>An audio codec, as a client asks for it.</summary>

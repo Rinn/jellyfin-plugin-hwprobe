@@ -15,8 +15,8 @@ public static partial class SpeedMeter
     /// <summary>The content each copy transcodes: long enough that start-up is a small part of it.</summary>
     public static readonly TimeSpan Content = TimeSpan.FromSeconds(10);
 
-    /// <summary>The most content the repeated single run processes, for hosts that run hundreds of times real time.</summary>
-    public static readonly TimeSpan LongestContent = TimeSpan.FromMinutes(10);
+    // Content cap for the repeated single run, for hosts that run hundreds of times real time.
+    private static readonly TimeSpan _longestContent = TimeSpan.FromMinutes(10);
 
     /// <summary>Measures one command.</summary>
     /// <param name="launch">Starts this many copies together, each transcoding this much content, and returns when all have ended.</param>
@@ -48,7 +48,7 @@ public static partial class SpeedMeter
         {
             // Enough content to take about the pace's target. Start-up, and restarting a short looped clip (slow
             // with NVIDIA's cuvid decoders), only slow a run down, so the faster run is the closer figure.
-            var longer = TimeSpan.FromSeconds(Math.Min(pace.Content.TotalSeconds * pace.Target.TotalSeconds / single.Duration.TotalSeconds, LongestContent.TotalSeconds));
+            var longer = TimeSpan.FromSeconds(Math.Min(pace.Content.TotalSeconds * pace.Target.TotalSeconds / single.Duration.TotalSeconds, _longestContent.TotalSeconds));
             var longerRun = (await launch(1, longer, cancellationToken))[0];
             var longerFps = Rate(longerRun, longer);
             resources = longerFps is { } better && (fps is null || better > fps) ? longerRun.Resources : resources;

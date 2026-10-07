@@ -36,9 +36,6 @@ public static class SpeedAdvisor
         ["H264Crf"] = s => s.H264Crf.ToString(CultureInfo.InvariantCulture),
         ["DeinterlaceMethod"] = s => s.Bwdif ? "bwdif" : "yadif",
         ["DoubleRate"] = s => Flag(s.DoubleRate),
-        ["TrickplayHwEncoding"] = s => Flag(s.TrickplayHwEncoding),
-        ["TrickplayKeyFrames"] = s => Flag(s.TrickplayKeyFrames),
-        ["TrickplayThreads"] = s => s.TrickplayThreads.ToString(CultureInfo.InvariantCulture),
     };
 
     /// <summary>Gets the share under which two speeds count as alike.</summary>
@@ -115,7 +112,7 @@ public static class SpeedAdvisor
 
         var measured = shown.Results.Where(r => r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && !r.Pending).ToList();
 
-        // Images reach the backend only with trickplay's own Enable hardware decoding on, so they don't pick it.
+        // Trickplay images, which earlier runs measured, reach the backend only with trickplay's own Enable hardware decoding on, so they don't pick it.
         var hardware = measured.Where(r => r.Type != HwType.none && r.Kind != SpeedOutputKind.Images).ToList();
         if (hardware.Count > 0)
         {
@@ -155,7 +152,7 @@ public static class SpeedAdvisor
         }
 
         // Outputs that two or more backends measured and none kept real time on; one backend alone, as suites measure, doesn't show the others would fall behind.
-        // Images are extracted ahead of playback, so they have no real time to keep.
+        // Trickplay images in earlier runs are made ahead of playback, so they have no real time to keep.
         bool KeepsUp(SpeedResult r) => Speed(r) >= 1 && r.Streams != 0;
         var playback = measured.Where(r => r.Kind != SpeedOutputKind.Images).ToList();
         var tooSlow = playback.GroupBy(r => r.Test, StringComparer.Ordinal).Where(g => !g.Any(KeepsUp) && g.Select(r => (r.Type, r.Device)).Distinct().Count() > 1).ToList();
@@ -236,9 +233,7 @@ public static class SpeedAdvisor
                     continue;
                 }
 
-                // The trickplay width, interval, and quality scale change image commands without being options.
-                var sameImages = (a.Settings.TrickplayWidth, a.Settings.TrickplayInterval, a.Settings.TrickplayQscale) == (b.Settings.TrickplayWidth, b.Settings.TrickplayInterval, b.Settings.TrickplayQscale);
-                foreach (var mine in a.Run.Results.Where(r => r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && !r.LowPowerDropped && configured(r) && (sameImages || r.Kind != SpeedOutputKind.Images)))
+                foreach (var mine in a.Run.Results.Where(r => r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && !r.LowPowerDropped && configured(r) && r.Kind != SpeedOutputKind.Images))
                 {
                     // A setting for another output codec (low power, CRF) doesn't reach this output, so the Intel low power suite, which switches both codecs at once, still compares each.
                     // The key's output part names the codec, also for a library test, which SpeedCatalog.Find doesn't resolve.

@@ -71,18 +71,13 @@ public static class SpeedTestText
 
     /// <summary>Describes what a test makes from it.</summary>
     /// <param name="test">The test.</param>
-    /// <returns>e.g. <c>H.264 at 4 Mbps, stereo AAC</c>, or that it only decodes or extracts images.</returns>
+    /// <returns>e.g. <c>H.264 at 4 Mbps, stereo AAC</c>, or that it only decodes.</returns>
     public static string Output(SpeedTest test)
     {
         ArgumentNullException.ThrowIfNull(test);
         if (test.DecodeOnly)
         {
             return "Decoded only, not encoded";
-        }
-
-        if (test.Images)
-        {
-            return "MJPEG images at an interval";
         }
 
         if (test.AudioOnly)

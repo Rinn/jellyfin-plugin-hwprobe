@@ -12,7 +12,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 /// <param name="Height">The source height.</param>
 public sealed record SpeedTest(string Key, string Label, FixtureSpec? Fixture, float FrameRate, int Width, int Height)
 {
-    /// <summary>Gets the output codec: a video codec, <c>mjpeg</c> for images, or an audio codec; null for a decode-only test.</summary>
+    /// <summary>Gets the output codec: a video or an audio codec; null for a decode-only test.</summary>
     public string? OutputCodec { get; init; }
 
     /// <summary>Gets what the test makes.</summary>
@@ -27,9 +27,6 @@ public sealed record SpeedTest(string Key, string Label, FixtureSpec? Fixture, f
     /// <summary>Gets a value indicating whether the test reads an audio input rather than a video.</summary>
     [MemberNotNullWhen(true, nameof(AudioInput))]
     public bool AudioOnly => AudioInput is not null;
-
-    /// <summary>Gets a value indicating whether the test extracts images at an interval.</summary>
-    public bool Images => Kind == SpeedOutputKind.Images;
 
     /// <summary>Gets the video bitrate the client asks for, in bits per second.</summary>
     public int Bitrate { get; init; }

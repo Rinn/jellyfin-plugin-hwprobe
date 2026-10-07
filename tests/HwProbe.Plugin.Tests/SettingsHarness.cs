@@ -25,7 +25,7 @@ internal sealed class SettingsHarness : IDisposable
     public SettingsHarness()
     {
         Service = new SettingsService(
-            () => new ServerSettings(Copy(Saved), new TrickplayOptions { EnableHwAcceleration = SavedTrickplay.EnableHwAcceleration, EnableHwEncoding = SavedTrickplay.EnableHwEncoding, EnableKeyFrameOnlyExtraction = SavedTrickplay.EnableKeyFrameOnlyExtraction, ProcessThreads = SavedTrickplay.ProcessThreads }) { Streaming = new StreamingOptions { RemoteClientBitrateLimit = SavedBitrateLimit } },
+            () => new ServerSettings(Copy(Saved), new TrickplayOptions { EnableHwAcceleration = SavedTrickplay.EnableHwAcceleration, EnableHwEncoding = SavedTrickplay.EnableHwEncoding, EnableKeyFrameOnlyExtraction = SavedTrickplay.EnableKeyFrameOnlyExtraction }) { Streaming = new StreamingOptions { RemoteClientBitrateLimit = SavedBitrateLimit } },
             Save,
             options => SavedTrickplay = options,
             _ => Task.FromResult<CapabilityReport?>(Report),

@@ -202,7 +202,7 @@ public sealed class SettingsService : IDisposable
                     .ToList();
                 var measured = speeds.Count > 0 && speeds.Min() >= 1;
                 var options = _read();
-                var changes = measured ? SpeedAdvisor.GroupRowChanges(choice.Group, choice.Row, Probing.ProbeService.SettingsFrom(options.Encoding, options.Trickplay), Probing.ProbeService.BackendFrom(options.Encoding).Type) : null;
+                var changes = measured ? SpeedAdvisor.GroupRowChanges(choice.Group, choice.Row, Probing.ProbeService.SettingsFrom(options.Encoding), Probing.ProbeService.BackendFrom(options.Encoding).Type) : null;
                 List<(string Setting, string Value)> settings = [.. (changes ?? []).Select(c => MeasuredSettings.ToSetting(c.Key, c.Value)).OfType<(string Setting, string Value)>()];
                 if (changes is null || settings.Count == 0 || settings.Count != changes.Count)
                 {

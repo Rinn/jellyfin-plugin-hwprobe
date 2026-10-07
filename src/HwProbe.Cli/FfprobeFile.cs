@@ -78,9 +78,6 @@ internal static class FfprobeFile
             ColorTransfer = Text(video, "color_transfer"),
             ColorPrimaries = Text(video, "color_primaries"),
             ColorSpace = Text(video, "color_space"),
-
-            // ffprobe gives 0:1 when the file doesn't say.
-            AspectRatio = Text(video, "display_aspect_ratio") is { } aspect && aspect != "0:1" ? aspect : null,
         })
         {
             Audio = audio.ValueKind == JsonValueKind.Undefined ? null : new SpeedFileAudio(Number(audio, "index"), Text(audio, "codec_name") ?? "aac", Number(audio, "channels")),
