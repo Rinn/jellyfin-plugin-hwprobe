@@ -52,8 +52,8 @@ public sealed class SpeedAdvisorTests
     public void ComparesQsvRunsForVaapi()
     {
         const string Film = "live-action|h264-8mbps";
-        var medium = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.qsv, Film, 100) with { Command = "medium" });
-        var fast = Run(new SpeedSettings { EncoderPreset = "fast" }, Result(HwType.qsv, Film, 150) with { Command = "fast" });
+        var medium = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.qsv, Film, 30) with { Command = "medium" });
+        var fast = Run(new SpeedSettings { EncoderPreset = "fast" }, Result(HwType.qsv, Film, 45) with { Command = "fast" });
 
         var faster = Assert.Single(SpeedAdvisor.Advise(fast, [medium, fast], HwType.vaapi, "/dev/dri/renderD128", new SpeedSettings { EncoderPreset = "medium" }), s => s.Kind == SpeedSuggestionKind.FasterSetting);
         Assert.Equal(("EncoderPreset", "fast"), (faster.Setting, faster.Value));
@@ -194,8 +194,8 @@ public sealed class SpeedAdvisorTests
     public void ComparesCrfOnALibraryVideo()
     {
         const string Library = "library|h264-8mbps";
-        var crf23 = Run(new SpeedSettings { H264Crf = 23 }, Result(HwType.none, Library, 100) with { Command = "23" });
-        var crf28 = Run(new SpeedSettings { H264Crf = 28 }, Result(HwType.none, Library, 150) with { Command = "28" });
+        var crf23 = Run(new SpeedSettings { H264Crf = 23 }, Result(HwType.none, Library, 30) with { Command = "23" });
+        var crf28 = Run(new SpeedSettings { H264Crf = 28 }, Result(HwType.none, Library, 45) with { Command = "28" });
 
         var faster = Assert.Single(SpeedAdvisor.Advise(crf28, [crf23, crf28], HwType.none, string.Empty, new SpeedSettings { H264Crf = 23 }), s => s.Setting == "H264Crf" && s.Kind == SpeedSuggestionKind.FasterSetting);
         Assert.Equal("28", faster.Value);
@@ -261,17 +261,92 @@ public sealed class SpeedAdvisorTests
         Assert.Equal(("true", 10, 16), (quality.Value, quality.Streams, quality.OtherStreams));
     }
 
-    /// <summary>Of several better-quality presets that keep up, only the best is suggested.</summary>
+    /// <summary>Of several better-quality presets that keep up, only the best is suggested, with the others in its table.</summary>
     [Fact]
     public void SuggestsOnlyTheBestQuality()
     {
         const string Film = "live-action|h264-8mbps";
-        var auto = Run(new SpeedSettings(), Result(HwType.none, Film, 1000) with { Command = "auto" });
+        var veryfast = Run(new SpeedSettings { EncoderPreset = "veryfast" }, Result(HwType.none, Film, 1000) with { Command = "veryfast" });
         var fast = Run(new SpeedSettings { EncoderPreset = "fast" }, Result(HwType.none, Film, 900) with { Command = "fast" });
         var medium = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.none, Film, 800) with { Command = "medium" });
 
-        var quality = Assert.Single(SpeedAdvisor.Advise(auto, [auto, fast, medium], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.HigherQuality);
+        var quality = Assert.Single(SpeedAdvisor.Advise(veryfast, [veryfast, fast, medium], HwType.none, string.Empty, new SpeedSettings { EncoderPreset = "veryfast" }), s => s.Kind == SpeedSuggestionKind.HigherQuality);
         Assert.Equal("medium", quality.Value);
+        Assert.Equal([("veryfast", true, true), ("fast", false, true)], quality.Compared.Select(c => (c.Value, c.Current, c.LowerQuality == true)));
+    }
+
+    /// <summary>Auto is the encoding preset recommended whenever it was measured, with every other preset compared listed beside it: on the Intel NAS, faster measured faster than Auto on HEVC but slower on H.264.</summary>
+    [Fact]
+    public void AlwaysRecommendsAuto()
+    {
+        const string H264 = "live-action|h264-8mbps";
+        const string Hevc = "live-action|hevc-8mbps";
+        SpeedReport Preset(string preset, double h264, int h264Streams, double hevc, int hevcStreams) => Run(
+            new SpeedSettings { EncoderPreset = preset },
+            Result(HwType.qsv, H264, h264 * 25) with { Command = preset + "-h264", Streams = h264Streams },
+            Result(HwType.qsv, Hevc, hevc * 25) with { Command = preset + "-hevc", Streams = hevcStreams });
+        SpeedReport[] runs = [Preset("auto", 8.3, 10, 3.97, 4), Preset("faster", 6.9, 9, 4.47, 5), Preset("fast", 5.5, 6, 1.07, 1), Preset("medium", 5.3, 7, 1.19, 1), Preset("slow", 5.2, 7, 1.16, 1)];
+
+        var onAuto = SpeedAdvisor.Advise(runs[0], runs, HwType.qsv, "/dev/dri/renderD128", new SpeedSettings());
+        var onFaster = SpeedAdvisor.Advise(runs[0], runs, HwType.qsv, "/dev/dri/renderD128", new SpeedSettings { EncoderPreset = "faster" });
+
+        var preset = Assert.Single(onAuto, s => s.Setting == "EncoderPreset");
+        Assert.Equal((SpeedSuggestionKind.RecommendedValue, "auto", true), (preset.Kind, preset.Value, preset.Current));
+        Assert.Equal(["fast", "faster", "medium", "slow"], preset.Compared.Select(c => c.Value).Order(StringComparer.Ordinal));
+        Assert.All(preset.Compared, c => Assert.Equal([H264, Hevc], c.Speeds.Select(o => o.Label)));
+        Assert.Equal((4.47, 5), (Math.Round(preset.Compared.Single(c => c.Value == "faster").Speeds[1].Speed, 2), preset.Compared.Single(c => c.Value == "faster").Speeds[1].Streams));
+
+        var switchBack = Assert.Single(onFaster, s => s.Setting == "EncoderPreset");
+        Assert.Equal((SpeedSuggestionKind.RecommendedValue, "auto", false), (switchBack.Kind, switchBack.Value, switchBack.Current));
+        Assert.True(switchBack.Compared.Single(c => c.Value == "faster").Current);
+
+        // VAAPI leaves Auto to the driver, so no preset is better or worse than it there.
+        var onVaapi = Assert.Single(SpeedAdvisor.Advise(runs[0], runs, HwType.vaapi, "/dev/dri/renderD128", new SpeedSettings()), s => s.Setting == "EncoderPreset");
+        Assert.All(onVaapi.Compared, c => Assert.Null(c.LowerQuality));
+    }
+
+    /// <summary>A value only as fast as the server's within noise isn't recommended for using less when the server's value measured faster than it by more.</summary>
+    [Fact]
+    public void KeepsAServerValueThatMeasuredFaster()
+    {
+        const string Film = "live-action|h264-8mbps";
+        static SpeedResult Used(SpeedResult r, double cpuSeconds) => r with { Resources = new Core.Resources.ResourceUsage(10, cpuSeconds, 400_000_000) };
+        var four = Run(new SpeedSettings { EncodingThreadCount = 4 }, Used(Result(HwType.none, Film, 2.102 * 25), 40) with { Command = "four" });
+        var two = Run(new SpeedSettings { EncodingThreadCount = 2 }, Used(Result(HwType.none, Film, 2.0 * 25), 20) with { Command = "two" });
+
+        var kept = Assert.Single(SpeedAdvisor.Advise(two, [four, two], HwType.none, string.Empty, new SpeedSettings { EncodingThreadCount = 4 }), s => s.Setting == "EncodingThreadCount");
+
+        Assert.Equal((SpeedSuggestionKind.FasterSetting, "4", true), (kept.Kind, kept.Value, kept.Current));
+        Assert.Equal(2.102, kept.Speed!.Value, 3);
+    }
+
+    /// <summary>A better-quality value that measured faster than the server's contradicts the quality order, so it isn't recommended, but its table still lists it.</summary>
+    [Fact]
+    public void DropsABetterQualityValueThatMeasuredFaster()
+    {
+        const string Film = "live-action|h264-8mbps";
+        var crf28 = Run(new SpeedSettings { H264Crf = 28 }, Result(HwType.none, Film, 100) with { Command = "28" });
+        var crf23 = Run(new SpeedSettings { H264Crf = 23 }, Result(HwType.none, Film, 120) with { Command = "23" });
+
+        var kept = Assert.Single(SpeedAdvisor.Advise(crf23, [crf28, crf23], HwType.none, string.Empty, new SpeedSettings { H264Crf = 28 }), s => s.Setting == "H264Crf");
+
+        Assert.Equal((SpeedSuggestionKind.NoChange, "28", true), (kept.Kind, kept.Value, kept.Current));
+        Assert.Equal(("23", false), (Assert.Single(kept.Compared).Value, kept.Compared[0].LowerQuality));
+    }
+
+    /// <summary>Several faster values make one table, recommending the fastest, and the gain its reason gives is the smallest any output measured: with one run per value, the ratio of the speeds the table shows.</summary>
+    [Fact]
+    public void TakesTheGainFromTheRows()
+    {
+        const string Film = "live-action|h264-8mbps";
+        const string Pattern = "pattern|h264-8mbps";
+        SpeedReport Crf(int crf, double film, double pattern) => Run(new SpeedSettings { H264Crf = crf }, Result(HwType.none, Film, film) with { Command = $"{crf}-film" }, Result(HwType.none, Pattern, pattern) with { Command = $"{crf}-pattern" });
+        SpeedReport[] runs = [Crf(18, 30, 90), Crf(23, 36, 135), Crf(28, 45, 180)];
+
+        var faster = Assert.Single(SpeedAdvisor.Advise(runs[0], runs, HwType.none, string.Empty, new SpeedSettings { H264Crf = 18 }), s => s.Setting == "H264Crf");
+
+        Assert.Equal((SpeedSuggestionKind.FasterSetting, "28", 0.5), (faster.Kind, faster.Value, Math.Round(faster.Gain!.Value, 2)));
+        Assert.Equal([("18", true), ("23", false)], faster.Compared.Select(c => (c.Value, c.Current)));
     }
 
     /// <summary>Outputs below real time on the configured backend are flagged, unless every backend measured fell behind too, and marked when only test videos showed it.</summary>
@@ -306,8 +381,11 @@ public sealed class SpeedAdvisorTests
         var medium = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.none, Film, 125), Result(HwType.none, "pattern|h264-8mbps", 375));
         var fast = Run(new SpeedSettings { EncoderPreset = "fast" }, Result(HwType.none, Film, 150), Result(HwType.none, "pattern|h264-8mbps", 450));
         var threads = Run(new SpeedSettings { EncoderPreset = "fast", EncodingThreadCount = 4 }, Result(HwType.none, Film, 150));
+        var slowMedium = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.none, Film, 30), Result(HwType.none, "pattern|h264-8mbps", 90));
+        var slowFast = Run(new SpeedSettings { EncoderPreset = "fast" }, Result(HwType.none, Film, 36), Result(HwType.none, "pattern|h264-8mbps", 108));
 
-        var onMedium = SpeedAdvisor.Advise(fast, [medium, fast, threads], HwType.none, string.Empty, new SpeedSettings { EncoderPreset = "medium" });
+        // Medium below the headroom a better-quality value needs, so fast is recommended for its speed.
+        var onMedium = SpeedAdvisor.Advise(slowFast, [slowMedium, slowFast], HwType.none, string.Empty, new SpeedSettings { EncoderPreset = "medium" });
         var onFast = SpeedAdvisor.Advise(fast, [medium, fast, threads], HwType.none, string.Empty, new SpeedSettings { EncoderPreset = "fast" });
 
         var faster = Assert.Single(onMedium, s => s.Kind == SpeedSuggestionKind.FasterSetting);
@@ -352,7 +430,7 @@ public sealed class SpeedAdvisorTests
         var fast = Run(new SpeedSettings { EncoderPreset = "fast" }, Result(HwType.none, Film, 150));
 
         Assert.Equal(SpeedSuggestionKind.NoChange, Assert.Single(SpeedAdvisor.Advise(on, [on, off], HwType.none, string.Empty, new SpeedSettings { Tonemap = true }), s => s.Setting == "Tonemap").Kind);
-        Assert.True(Assert.Single(SpeedAdvisor.Advise(medium, [medium, fast], HwType.none, string.Empty, new SpeedSettings { EncoderPreset = "medium" }), s => s.Kind == SpeedSuggestionKind.FasterSetting).LowerQuality);
+        Assert.True(Assert.Single(SpeedAdvisor.Advise(medium, [medium, fast], HwType.none, string.Empty, new SpeedSettings { EncoderPreset = "medium" }), s => s.Setting == "EncoderPreset").Compared.Single(c => c.Value == "fast").LowerQuality);
     }
 
     /// <summary>Returns a run.</summary>

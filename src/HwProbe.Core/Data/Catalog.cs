@@ -292,6 +292,11 @@ public sealed partial class Catalog
             {
                 throw new InvalidDataException($"catalog.yaml: option {option.Key}'s compatibleValue requires a caveat and a value it takes.");
             }
+
+            if ((option.Recommended is null) != (option.RecommendedReason is null) || (option.Recommended is { } recommended && !option.Takes(recommended)))
+            {
+                throw new InvalidDataException($"catalog.yaml: option {option.Key}'s recommended requires a recommendedReason and a value it takes.");
+            }
         }
 
         if (Videos.Select(v => v.Sample).FirstOrDefault(s => s?.HolderUrl is { } site && !Uri.TryCreate(site, UriKind.Absolute, out _)) is { } unlinked)
