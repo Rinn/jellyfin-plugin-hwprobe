@@ -37,6 +37,40 @@ public sealed class CatalogTests
         Assert.Equal("Generated, 10 s", SpeedCatalog.FindVideo("pattern")!.Origin);
     }
 
+    /// <summary>A setting is found by its key; an unknown key finds none.</summary>
+    [Fact]
+    public void OptionIsFoundByKey()
+    {
+        Assert.Same(Catalog.Default.Options.First(o => o.Key == "EncoderPreset"), Catalog.Default.Option("EncoderPreset"));
+        Assert.Null(Catalog.Default.Option("NoSuchSetting"));
+    }
+
+    /// <summary>A value earlier in the quality order, or a lower number where lower is better, is the better quality; a value the setting doesn't take never is.</summary>
+    /// <param name="key">The setting.</param>
+    /// <param name="value">The value.</param>
+    /// <param name="other">The value it's compared with.</param>
+    /// <param name="better">Whether the value is the better quality.</param>
+    [Theory]
+    [InlineData("EncoderPreset", "slow", "fast", true)]
+    [InlineData("EncoderPreset", "fast", "slow", false)]
+    [InlineData("EncoderPreset", "slow", "slow", false)]
+    [InlineData("EncoderPreset", "slow", "placebo", false)]
+    [InlineData("H264Crf", "18", "23", true)]
+    [InlineData("H264Crf", "23", "18", false)]
+    public void QualityOrderDecidesTheBetterValue(string key, string value, string other, bool better) =>
+        Assert.Equal(better, Catalog.Default.Option(key)!.IsBetterQuality(value, other));
+
+    /// <summary>Two settings with one key are refused.</summary>
+    [Fact]
+    public void DuplicateOptionKeyIsRefused()
+    {
+        using var reader = new StreamReader(typeof(Catalog).Assembly.GetManifestResourceStream("catalog.yaml")!);
+        var yaml = reader.ReadToEnd();
+        var line = yaml.Split('\n').First(l => l.StartsWith("  - { key: AudioVbr,", StringComparison.Ordinal));
+
+        Assert.Throws<InvalidDataException>(() => Catalog.Parse(yaml.Replace(line, line + "\n" + line, StringComparison.Ordinal)));
+    }
+
     /// <summary>A file that leaves out an enum value, misspells a field or uses an unknown placeholder is refused.</summary>
     /// <param name="find">Text in the compiled-in file.</param>
     /// <param name="replace">What to put instead.</param>

@@ -111,7 +111,7 @@ internal sealed class HwProbeCommand
             foreach (var pair in r.GetValueOrDefault<string[]>() ?? [])
             {
                 var parts = pair.Split('=', 2);
-                if (parts.Length != 2 || Catalog.Default.Options.FirstOrDefault(o => o.Key == parts[0]) is not { } option || !option.Takes(parts[1]))
+                if (parts.Length != 2 || Catalog.Default.Option(parts[0]) is not { } option || !option.Takes(parts[1]))
                 {
                     r.AddError($"--speed-option {pair}: expected KEY=VALUE with a key from {string.Join(", ", Catalog.Default.Options.Select(o => o.Key))} and a value it takes.");
                 }

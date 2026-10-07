@@ -22,7 +22,7 @@ internal static class SuggestionRenderer
         var text = new StringBuilder("\nrecommend\n");
         foreach (var s in suggestions)
         {
-            var label = s.Setting is null ? null : Catalog.Default.Options.FirstOrDefault(o => o.Key == s.Setting)?.Label ?? Catalog.Default.Labels.GetValueOrDefault(s.Setting) ?? s.Setting;
+            var label = s.Setting is null ? null : Catalog.Default.Option(s.Setting)?.Label ?? Catalog.Default.Labels.GetValueOrDefault(s.Setting) ?? s.Setting;
             var current = s.Current ? $" ({Catalog.Default.Labels["ServerSettingAfter"]})" : string.Empty;
             var others = OrList([.. s.Others.Select(o => Value(s.Setting, o))]);
             var value = Value(s.Setting, s.Value);
@@ -61,7 +61,7 @@ internal static class SuggestionRenderer
     /// <returns>The name.</returns>
     private static string Value(string? setting, string? value)
     {
-        var option = Catalog.Default.Options.FirstOrDefault(o => o.Key == setting);
+        var option = setting is null ? null : Catalog.Default.Option(setting);
         return option?.Choices?.FirstOrDefault(c => c.Key == value)?.Label ?? (option?.Switch == true ? (value == "true" ? "On" : "Off") : value ?? string.Empty);
     }
 }

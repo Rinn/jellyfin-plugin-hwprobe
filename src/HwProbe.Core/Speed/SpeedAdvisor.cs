@@ -82,7 +82,7 @@ public static class SpeedAdvisor
                 return [.. changes.Where(c => _values[c.Key](server) != c.Value).Select(c => (c.Key, c.Value))];
             }
 
-            if (reached?.When?.FirstOrDefault(c => !changes.ContainsKey(c.Key) && Catalog.Default.Options.FirstOrDefault(o => o.Key == c.Key)?.Switch == true) is not { Key: not null } blocking)
+            if (reached?.When?.FirstOrDefault(c => !changes.ContainsKey(c.Key) && Catalog.Default.Option(c.Key)?.Switch == true) is not { Key: not null } blocking)
             {
                 return null;
             }
@@ -226,7 +226,7 @@ public static class SpeedAdvisor
                     // A setting for another output codec (low power, CRF) doesn't reach this output, so the Intel low power suite, which switches both codecs at once, still compares each.
                     // The key's output part names the codec, also for a library test, which SpeedCatalog.Find doesn't resolve.
                     var codec = SpeedCatalog.FindOutput(mine.Test.Split('|')[^1])?.Codec;
-                    var relevant = differs.Where(k => Catalog.Default.Options.FirstOrDefault(o => o.Key == k)?.OutputCodec is not { } only || only == codec).ToList();
+                    var relevant = differs.Where(k => Catalog.Default.Option(k)?.OutputCodec is not { } only || only == codec).ToList();
                     if (relevant.Count != 1)
                     {
                         continue;
@@ -295,7 +295,7 @@ public static class SpeedAdvisor
             var tonemapOff = key is "Tonemap" or "VppTonemap" or "VideoToolboxTonemap" && value == "false" && group.Any(s => !s.ToneMaps);
 
             // A value with a known drawback comes with the value that avoids it, so the choice is shown both ways.
-            var avoidable = Catalog.Default.Options.FirstOrDefault(o => o.Key == key)?.CompatibleValue == other;
+            var avoidable = Catalog.Default.Option(key)?.CompatibleValue == other;
             if (gains.All(g => g > Noise))
             {
                 if (tonemapOff || contradicted)
@@ -498,7 +498,7 @@ public static class SpeedAdvisor
             };
         }
 
-        if (Catalog.Default.Options.FirstOrDefault(o => o.Key == key)?.Recommended is { } recommended && values.Any(v => v.Value == recommended))
+        if (Catalog.Default.Option(key)?.Recommended is { } recommended && values.Any(v => v.Value == recommended))
         {
             return Listing(SpeedSuggestionKind.RecommendedValue, recommended);
         }
@@ -591,7 +591,7 @@ public static class SpeedAdvisor
         // VAAPI leaves it to the driver, so there it isn't ordered (EncodingHelper.GetEncoderParam, v12.2).
         static string Preset(string v) => v == "auto" ? "veryfast" : v;
         return !(type == HwType.vaapi && (value == "auto" || other == "auto"))
-            && Catalog.Default.Options.FirstOrDefault(o => o.Key == key) is { } option && option.IsBetterQuality(Preset(value), Preset(other));
+            && Catalog.Default.Option(key) is { } option && option.IsBetterQuality(Preset(value), Preset(other));
     }
 
     /// <summary>Returns the better of two results for one output: more streams kept up, then faster; when they measure alike, QSV over VAAPI on the same GPU, then the more efficient one.</summary>

@@ -71,7 +71,7 @@ public static class SpeedSuites
         }
 
         var value = SpeedAdvisor.ValueOf(server, key);
-        if (steps.Any(s => s.Options[key] == value) || Catalog.Default.Options.FirstOrDefault(o => o.Key == key) is not { } option || !option.Takes(value))
+        if (steps.Any(s => s.Options[key] == value) || Catalog.Default.Option(key) is not { } option || !option.Takes(value))
         {
             return steps;
         }

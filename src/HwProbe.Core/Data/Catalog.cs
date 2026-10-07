@@ -13,6 +13,8 @@ public sealed partial class Catalog
 {
     private static readonly Lazy<Catalog> _default = new(() => Parse(ReadResource()));
 
+    private Dictionary<string, CatalogSetting>? _optionsByKey;
+
     /// <summary>Gets the catalog compiled into this assembly.</summary>
     public static Catalog Default => _default.Value;
 
@@ -176,6 +178,12 @@ public sealed partial class Catalog
         return codec.Key + "-" + quality.Key;
     }
 
+    /// <summary>Returns the setting with a key.</summary>
+    /// <param name="key">The setting's key.</param>
+    /// <returns>The setting, or null for an unknown key.</returns>
+    public CatalogSetting? Option(string key) =>
+        (_optionsByKey ??= Options.ToDictionary(o => o.Key, StringComparer.Ordinal)).GetValueOrDefault(key);
+
     /// <summary>Expands <c>{name}</c> placeholders from <see cref="Vars"/>, including placeholders inside them.</summary>
     /// <param name="arguments">The arguments.</param>
     /// <returns>The expanded arguments; unknown placeholders are left.</returns>
@@ -267,6 +275,11 @@ public sealed partial class Catalog
         if (Methods.Any(m => m.Seconds.Count != 2))
         {
             throw new InvalidDataException("catalog.yaml: method seconds are [low, high].");
+        }
+
+        if (Options.DistinctBy(o => o.Key, StringComparer.Ordinal).Count() != Options.Count)
+        {
+            throw new InvalidDataException("catalog.yaml: option keys must be unique.");
         }
 
         foreach (var option in Options)
