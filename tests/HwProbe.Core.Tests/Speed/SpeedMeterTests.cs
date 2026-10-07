@@ -150,6 +150,21 @@ public sealed class SpeedMeterTests
         Assert.Equal("ffmpeg exited with 1: No such filter: 'scale_vt'", broken.Note);
     }
 
+    /// <summary>A failure's note leaves out the memory addresses ffmpeg prints, so the same failure reads the same on every measurement.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task FailureNotesLeaveOutAddresses()
+    {
+        static Func<int, TimeSpan, CancellationToken, Task<IReadOnlyList<FfmpegRunResult>>> Failing(string address) => (copies, content, ct) =>
+            Task.FromResult<IReadOnlyList<FfmpegRunResult>>([new(FfmpegRunStatus.Exited, 171, string.Empty, $"[out#0/null @ {address}] Nothing was written into output file, because at least one of its streams received no packets.\n", null, TimeSpan.FromSeconds(0.2), null)]);
+
+        var first = await SpeedMeter.MeasureAsync(Failing("0x55e590e68280"), SpeedMethod.Quick, 24, countStreams: false, TestContext.Current.CancellationToken);
+        var second = await SpeedMeter.MeasureAsync(Failing("0x5585040b9f00"), SpeedMethod.Quick, 24, countStreams: false, TestContext.Current.CancellationToken);
+
+        Assert.Equal("ffmpeg exited with 171: [out#0/null] Nothing was written into output file, because at least one of its streams received no packets.", first.Note);
+        Assert.Equal(first.Note, second.Note);
+    }
+
     /// <summary>Copies that fail to start rather than fall behind are reported as a likely session limit.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
