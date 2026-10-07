@@ -57,21 +57,15 @@ public sealed class CatalogTests
     [InlineData("EncoderPreset", "slow", "placebo", false)]
     [InlineData("H264Crf", "18", "23", true)]
     [InlineData("H264Crf", "23", "18", false)]
-    public void QualityOrderDecidesTheBetterValue(string key, string value, string other, bool better) =>
-        Assert.Equal(better, Catalog.Default.Option(key)!.IsBetterQuality(value, other));
-
-    /// <summary>Two settings with one key are refused.</summary>
-    [Fact]
-    public void DuplicateOptionKeyIsRefused()
+    public void QualityOrderDecidesTheBetterValue(string key, string value, string other, bool better)
     {
-        using var reader = new StreamReader(typeof(Catalog).Assembly.GetManifestResourceStream("catalog.yaml")!);
-        var yaml = reader.ReadToEnd();
-        var line = yaml.Split('\n').First(l => l.StartsWith("  - { key: AudioVbr,", StringComparison.Ordinal));
+        var option = Catalog.Default.Option(key);
 
-        Assert.Throws<InvalidDataException>(() => Catalog.Parse(yaml.Replace(line, line + "\n" + line, StringComparison.Ordinal)));
+        Assert.NotNull(option);
+        Assert.Equal(better, option.IsBetterQuality(value, other));
     }
 
-    /// <summary>A file that leaves out an enum value, misspells a field or uses an unknown placeholder is refused.</summary>
+    /// <summary>A file that leaves out an enum value, misspells a field, repeats a setting's key, or uses an unknown placeholder is refused.</summary>
     /// <param name="find">Text in the compiled-in file.</param>
     /// <param name="replace">What to put instead.</param>
     [Theory]
@@ -94,6 +88,7 @@ public sealed class CatalogTests
     [InlineData("sha256: 0da88a6b", "sha256: 0DA88A6B")]
     [InlineData("      size: 1719794\n", "")]
     [InlineData("testDelay: 1\n", "testDelay: -1\n")]
+    [InlineData("  - { key: AudioVbr,", "  - { key: AudioVbr, label: Enable VBR audio encoding, server: EnableAudioVbr, switch: true, qualityOrder: [\"true\", \"false\"], caveat: \"In some rare cases VBR may cause buffering and compatibility issues.\", compatibleValue: \"false\", description: \"Variable bitrate offers better quality to average bitrate ratio, but in some rare cases may cause buffering and compatibility issues.\" }\n  - { key: AudioVbr,")]
     public void BrokenFileIsRefused(string find, string replace)
     {
         using var reader = new StreamReader(typeof(Catalog).Assembly.GetManifestResourceStream("catalog.yaml")!);

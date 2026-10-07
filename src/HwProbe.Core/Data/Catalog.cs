@@ -325,7 +325,7 @@ public sealed partial class Catalog
             var known = group.Settings.All(k => Option(k) is not null);
             var conditions = group.Rows.SelectMany(r => r.When ?? new Dictionary<string, string>()).ToList();
             var valid = known
-                && conditions.All(c => group.Settings.Contains(c.Key) && Option(c.Key)!.Takes(c.Value))
+                && conditions.All(c => group.Settings.Contains(c.Key) && Option(c.Key)?.Takes(c.Value) == true)
                 && group.Rows.All(r => r.Describes is null || group.Settings.Contains(r.Describes))
                 && group.Rows.Select(r => r.Label).Distinct(StringComparer.Ordinal).Count() == group.Rows.Count;
             if (!known || !valid || group.Rows.Count == 0 || SettingGroups.Count(g => g.Settings.Intersect(group.Settings).Any()) > 1)
