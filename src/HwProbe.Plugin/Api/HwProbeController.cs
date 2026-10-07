@@ -153,7 +153,7 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> LibrariesAsync(CancellationToken cancellationToken)
     {
-        var path = Path.Combine(Path.GetDirectoryName(typeof(HwProbeController).Assembly.Location)!, "libraries.json");
+        var path = Path.Join(Path.GetDirectoryName(typeof(HwProbeController).Assembly.Location), "libraries.json");
         return System.IO.File.Exists(path) ? Content(await System.IO.File.ReadAllTextAsync(path, cancellationToken), "application/json") : NotFound();
     }
 

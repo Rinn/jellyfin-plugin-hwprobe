@@ -111,7 +111,7 @@ internal sealed class HwProbeCommand
             foreach (var pair in r.GetValueOrDefault<string[]>() ?? [])
             {
                 var parts = pair.Split('=', 2);
-                if (parts.Length != 2 || Catalog.Default.Options.FirstOrDefault(o => o.Key == parts[0]) is not { } option || !option.Takes(parts[1]))
+                if (parts.Length != 2 || Catalog.Default.Option(parts[0]) is not { } option || !option.Takes(parts[1]))
                 {
                     r.AddError($"--speed-option {pair}: expected KEY=VALUE with a key from {string.Join(", ", Catalog.Default.Options.Select(o => o.Key))} and a value it takes.");
                 }
@@ -144,14 +144,14 @@ internal sealed class HwProbeCommand
         return new CliOptions(
             result.GetValue(_ffmpeg),
             result.GetValue(_stage),
-            result.GetValue(_types)!,
+            result.GetRequiredValue(_types),
             result.GetValue(_device),
             result.GetValue(_format),
             result.GetValue(_json),
             TimeSpan.FromSeconds(result.GetValue(_timeout)),
             TimeSpan.FromSeconds(result.GetValue(_fixtureTimeout)),
             result.GetValue(_refresh),
-            Path.GetFullPath(result.GetValue(_fixtures)!),
+            Path.GetFullPath(result.GetRequiredValue(_fixtures)),
             result.GetValue(_expectHw),
             result.GetValue(_verbose))
         {
@@ -209,10 +209,10 @@ internal sealed class HwProbeCommand
     /// <param name="result">The option's argument result.</param>
     /// <param name="message">The error.</param>
     /// <returns>The default value.</returns>
-    private static T Error<T>(System.CommandLine.Parsing.ArgumentResult result, string message)
+    private static T? Error<T>(System.CommandLine.Parsing.ArgumentResult result, string message)
     {
         result.AddError(message);
-        return default!;
+        return default;
     }
 
     /// <summary>Rejects zero or negative second counts.</summary>
@@ -250,7 +250,7 @@ internal sealed class HwProbeCommand
             settings = SpeedSettingsOptions.Apply(settings, parts[0], parts[1]) ?? settings;
         }
 
-        return new(method, result.GetValue(_speedVideos)!, result.GetValue(_speedOutputs)!, settings)
+        return new(method, result.GetRequiredValue(_speedVideos), result.GetRequiredValue(_speedOutputs), settings)
         {
             Backends = result.GetValue(_speedBackends) is { Length: > 0 } names ? [.. names.SelectMany(n => n.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).Select(Enum.Parse<HwType>)] : null,
             Repeats = result.GetValue(_speedRepeats),

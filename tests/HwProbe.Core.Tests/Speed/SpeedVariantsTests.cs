@@ -21,7 +21,7 @@ public sealed class SpeedVariantsTests
     [InlineData(HwType.qsv, "pattern|av1-8mbps", false)]
     public void LowPowerReachesQsvAlone(HwType type, string test, bool expected)
     {
-        var spec = SpeedCatalog.Find(test)!;
+        var spec = Test(test);
         var settings = new SpeedSettings { QsvLowPowerH264 = true };
         var clips = SpeedVariants.Clips([spec], settings).ToDictionary(f => f.FileName, f => "/c/" + f.FileName, StringComparer.Ordinal);
 
@@ -32,7 +32,7 @@ public sealed class SpeedVariantsTests
     [Fact]
     public void BaseCellIsARealRequest()
     {
-        var spec = SpeedCatalog.Find("pattern|h264-4mbps")!;
+        var spec = Test("pattern|h264-4mbps");
         var settings = new SpeedSettings { EncoderPreset = "fast", AudioVbr = true, BurnIn = "image" };
         var clips = SpeedVariants.Clips([spec], settings).ToDictionary(f => f.FileName, f => "/c/" + f.FileName, StringComparer.Ordinal);
         var cell = SpeedVariants.Base(spec, settings, clips);
@@ -41,19 +41,20 @@ public sealed class SpeedVariantsTests
         Assert.True(cell.Audio);
         Assert.True(cell.AudioVbr);
         Assert.Equal("fast", cell.EncoderPreset);
-        Assert.Equal((spec.Width, spec.Height, spec.FrameRate, spec.Bitrate), (cell.SourceWidth, cell.SourceHeight, cell.SourceFrameRate, cell.VideoBitrate!.Value));
+        Assert.Equal((spec.Width, spec.Height, spec.FrameRate, spec.Bitrate), (cell.SourceWidth, cell.SourceHeight, cell.SourceFrameRate, Assert.NotNull(cell.VideoBitrate)));
         Assert.Equal((null, null), (cell.MaxWidth, cell.MaxHeight));
-        Assert.Equal("/c/" + spec.Fixture!.FileName, cell.SourcePath);
+        Assert.NotNull(spec.Fixture);
+        Assert.Equal("/c/" + spec.Fixture.FileName, cell.SourcePath);
         Assert.Equal(("/c/" + SpeedCatalog.ImageSubtitles.FileName, (string?)null), (cell.GraphicalSubtitlePath, cell.SubtitlePath));
         Assert.DoesNotContain(SpeedCatalog.TextSubtitles, SpeedVariants.Clips([spec], settings));
-        Assert.DoesNotContain(SpeedCatalog.ImageSubtitles, SpeedVariants.Clips([SpeedCatalog.Find("pattern|decode")!], settings));
+        Assert.DoesNotContain(SpeedCatalog.ImageSubtitles, SpeedVariants.Clips([Test("pattern|decode")], settings));
     }
 
     /// <summary>A sample without audio asks upstream for no audio stream, so ffmpeg isn't told to map one that isn't there.</summary>
     [Fact]
     public void SilentSampleHasNoAudio()
     {
-        var spec = SpeedCatalog.Find("drama-8k|h264-8mbps")!;
+        var spec = Test("drama-8k|h264-8mbps");
         var clips = SpeedVariants.Clips([spec], new SpeedSettings()).ToDictionary(f => f.FileName, f => "/c/" + f.FileName, StringComparer.Ordinal);
 
         Assert.False(SpeedVariants.Base(spec, new SpeedSettings(), clips).Audio);
@@ -65,11 +66,20 @@ public sealed class SpeedVariantsTests
     {
         foreach (var option in Catalog.Default.Options)
         {
-            var values = option.Switch ? ["true", "false"] : option.Range is [var low, var high] ? [low.ToString(System.Globalization.CultureInfo.InvariantCulture), high.ToString(System.Globalization.CultureInfo.InvariantCulture)] : option.Choices!.Select(c => c.Key).ToArray();
+            var values = option.Switch ? ["true", "false"] : option.Range is [var low, var high] ? [low.ToString(System.Globalization.CultureInfo.InvariantCulture), high.ToString(System.Globalization.CultureInfo.InvariantCulture)] : option.Choices?.Select(c => c.Key).ToArray();
+            Assert.NotNull(values);
             Assert.All(values, v => Assert.NotNull(SpeedSettingsOptions.Apply(new SpeedSettings(), option.Key, v)));
         }
 
-        Assert.Equal((null, 20, true, "text"), (SpeedSettingsOptions.Apply(new SpeedSettings { EncoderPreset = "fast" }, "EncoderPreset", "auto")!.EncoderPreset, SpeedSettingsOptions.Apply(new SpeedSettings(), "H264Crf", "20")!.H264Crf, SpeedSettingsOptions.Apply(new SpeedSettings(), "DeinterlaceMethod", "bwdif")!.Bwdif, SpeedSettingsOptions.Apply(new SpeedSettings(), "BurnIn", "text")!.BurnIn));
+        var preset = SpeedSettingsOptions.Apply(new SpeedSettings { EncoderPreset = "fast" }, "EncoderPreset", "auto");
+        var crf = SpeedSettingsOptions.Apply(new SpeedSettings(), "H264Crf", "20");
+        var bwdif = SpeedSettingsOptions.Apply(new SpeedSettings(), "DeinterlaceMethod", "bwdif");
+        var burnIn = SpeedSettingsOptions.Apply(new SpeedSettings(), "BurnIn", "text");
+        Assert.NotNull(preset);
+        Assert.NotNull(crf);
+        Assert.NotNull(bwdif);
+        Assert.NotNull(burnIn);
+        Assert.Equal((null, 20, true, "text"), (preset.EncoderPreset, crf.H264Crf, bwdif.Bwdif, burnIn.BurnIn));
         Assert.Null(SpeedSettingsOptions.Apply(new SpeedSettings(), "Nonsense", "true"));
     }
 
@@ -82,7 +92,7 @@ public sealed class SpeedVariantsTests
         Assert.All(SpeedCatalog.DefaultVideos, k => Assert.NotNull(SpeedCatalog.FindVideo(k)));
         Assert.All(SpeedCatalog.DefaultOutputs, k => Assert.NotNull(SpeedCatalog.FindOutput(k)));
         Assert.Null(SpeedCatalog.Find("pattern"));
-        Assert.Equal("Test video, H.264 \u2192 HEVC, 720 kbps", SpeedCatalog.Find("pattern|hevc-720kbps")!.Label);
+        Assert.Equal("Test video, H.264 \u2192 HEVC, 720 kbps", Test("pattern|hevc-720kbps").Label);
         Assert.Equal((Catalog.Default.Codecs.Count * Catalog.Default.Qualities.Count) + 1, SpeedCatalog.Outputs.Count);
     }
 
@@ -105,15 +115,15 @@ public sealed class SpeedVariantsTests
     [Fact]
     public void DescriptionsReadPlainly()
     {
-        Assert.Equal("1080p H.264, 24 fps, 5.1 AAC", SpeedTestText.Input(SpeedCatalog.FindVideo("pattern")!));
-        Assert.Equal("4K HEVC 10-bit HDR, 24 fps, 5.1 AAC", SpeedTestText.Input(SpeedCatalog.FindVideo("pattern-4k-hdr")!));
-        Assert.Equal("1080i H.264, 25 fps, 5.1 AAC", SpeedTestText.Input(SpeedCatalog.FindVideo("pattern-1080i")!));
-        Assert.Equal("H.264 at 4 Mbps, stereo AAC, tone-mapped to SDR", SpeedTestText.Output(SpeedCatalog.Find("pattern-4k-hdr|h264-4mbps")!));
-        Assert.Equal("AV1 at 420 kbps, stereo AAC", SpeedTestText.Output(SpeedCatalog.Find("pattern|av1-420kbps")!));
-        Assert.Equal("Decoded only, not encoded", SpeedTestText.Output(SpeedCatalog.Find("anime|decode")!));
-        Assert.Equal("1080p VP9, 24 fps, stereo Opus", SpeedTestText.Input(SpeedCatalog.FindVideo("live-action")!));
-        Assert.Equal("8K VP9, 25 fps", SpeedTestText.Input(SpeedCatalog.FindVideo("drama-8k")!));
-        Assert.Equal("H.264 at 8 Mbps", SpeedTestText.Output(SpeedCatalog.Find("drama-8k|h264-8mbps")!));
+        Assert.Equal("1080p H.264, 24 fps, 5.1 AAC", SpeedTestText.Input(Video("pattern")));
+        Assert.Equal("4K HEVC 10-bit HDR, 24 fps, 5.1 AAC", SpeedTestText.Input(Video("pattern-4k-hdr")));
+        Assert.Equal("1080i H.264, 25 fps, 5.1 AAC", SpeedTestText.Input(Video("pattern-1080i")));
+        Assert.Equal("H.264 at 4 Mbps, stereo AAC, tone-mapped to SDR", SpeedTestText.Output(Test("pattern-4k-hdr|h264-4mbps")));
+        Assert.Equal("AV1 at 420 kbps, stereo AAC", SpeedTestText.Output(Test("pattern|av1-420kbps")));
+        Assert.Equal("Decoded only, not encoded", SpeedTestText.Output(Test("anime|decode")));
+        Assert.Equal("1080p VP9, 24 fps, stereo Opus", SpeedTestText.Input(Video("live-action")));
+        Assert.Equal("8K VP9, 25 fps", SpeedTestText.Input(Video("drama-8k")));
+        Assert.Equal("H.264 at 8 Mbps", SpeedTestText.Output(Test("drama-8k|h264-8mbps")));
     }
 
     /// <summary>A speed report round-trips through compact JSON with string enums, nulls left out and text unescaped; indented JSON saved before still reads.</summary>
@@ -128,8 +138,30 @@ public sealed class SpeedVariantsTests
         Assert.Contains("Live action \u2192 H.264", json, StringComparison.Ordinal);
         Assert.DoesNotContain("\n", json, StringComparison.Ordinal);
         Assert.DoesNotContain("\"note\"", json, StringComparison.Ordinal);
-        Assert.Equal(410.5, SpeedReportStore.Deserialize("{\n  \"method\": \"Full\",\n  \"results\": [ { \"type\": \"qsv\", \"test\": \"a\", \"fps\": 410.5, \"note\": null } ]\n}")!.Results[0].Fps);
-        Assert.Equal(json, SpeedReportStore.Serialize(SpeedReportStore.Deserialize(json)!));
+        Assert.Equal(410.5, SpeedReportStore.Deserialize("{\n  \"method\": \"Full\",\n  \"results\": [ { \"type\": \"qsv\", \"test\": \"a\", \"fps\": 410.5, \"note\": null } ]\n}")?.Results[0].Fps);
+        var roundTripped = SpeedReportStore.Deserialize(json);
+        Assert.NotNull(roundTripped);
+        Assert.Equal(json, SpeedReportStore.Serialize(roundTripped));
         Assert.Null(SpeedReportStore.Deserialize("not json"));
+    }
+
+    /// <summary>Returns a test from the catalog, failing the test when there's none.</summary>
+    /// <param name="key">The test's key, video|output.</param>
+    /// <returns>The test.</returns>
+    private static SpeedTest Test(string key)
+    {
+        var test = SpeedCatalog.Find(key);
+        Assert.NotNull(test);
+        return test;
+    }
+
+    /// <summary>Returns a video from the catalog, failing the test when there's none.</summary>
+    /// <param name="key">The video's key.</param>
+    /// <returns>The video.</returns>
+    private static SpeedVideo Video(string key)
+    {
+        var video = SpeedCatalog.FindVideo(key);
+        Assert.NotNull(video);
+        return video;
     }
 }

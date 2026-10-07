@@ -70,8 +70,22 @@ public sealed class CatalogSetting
             return Takes(value) && Takes(other) && int.Parse(value, CultureInfo.InvariantCulture) < int.Parse(other, CultureInfo.InvariantCulture);
         }
 
-        var order = QualityOrder?.ToList() ?? [];
-        return order.IndexOf(value) is var mine and >= 0 && order.IndexOf(other) is var theirs and >= 0 && mine < theirs;
+        var order = QualityOrder ?? [];
+        var (mine, theirs) = (Position(value), Position(other));
+        return mine >= 0 && theirs >= 0 && mine < theirs;
+
+        int Position(string v)
+        {
+            for (var i = 0; i < order.Count; i++)
+            {
+                if (order[i] == v)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
     }
 
     /// <summary>Returns whether a value is one it takes.</summary>

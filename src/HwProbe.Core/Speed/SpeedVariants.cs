@@ -18,7 +18,9 @@ internal static class SpeedVariants
         ArgumentNullException.ThrowIfNull(test);
         ArgumentNullException.ThrowIfNull(settings);
         var output = test.OutputCodec ?? "h264";
-        var cell = test.File is { } file ? FromFile(file, test, output, settings) : FromClip(test, output, clips);
+        var cell = test.File is { } file ? FromFile(file, test, output, settings)
+            : test.Fixture is { } fixture ? FromClip(fixture, test, output, clips)
+            : throw new ArgumentException($"Test {test.Key} has neither a file nor a clip.", nameof(test));
         return cell with
         {
             SourceWidth = test.Width,
@@ -116,13 +118,13 @@ internal static class SpeedVariants
     };
 
     /// <summary>Describes a generated clip.</summary>
+    /// <param name="fixture">The clip.</param>
     /// <param name="test">The test.</param>
     /// <param name="output">The output codec.</param>
     /// <param name="clips">Clip paths by file name.</param>
     /// <returns>The cell, before the settings.</returns>
-    private static ProbeCell FromClip(SpeedTest test, string output, IReadOnlyDictionary<string, string> clips)
+    private static ProbeCell FromClip(FixtureSpec fixture, SpeedTest test, string output, IReadOnlyDictionary<string, string> clips)
     {
-        var fixture = test.Fixture!;
         var color = fixture.IsHdr10 ? ColorMetadata.Hdr10 : null;
         return new ProbeCell(fixture.Codec, fixture.BitDepth, output, HardwareDecode: true, HardwareEncode: true)
         {

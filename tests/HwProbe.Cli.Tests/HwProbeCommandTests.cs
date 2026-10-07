@@ -14,8 +14,10 @@ public sealed class HwProbeCommandTests
         var alone = Bind(["--suite", "presets"]);
         var quick = Bind(["--suite", "tonemap", "--speed", "quick"]);
 
-        Assert.Equal(("presets", Core.Speed.SpeedMethod.Confirm), (alone.Suite, alone.Speed!.Method));
-        Assert.Equal(("tonemap", Core.Speed.SpeedMethod.Quick), (quick.Suite, quick.Speed!.Method));
+        Assert.NotNull(alone.Speed);
+        Assert.NotNull(quick.Speed);
+        Assert.Equal(("presets", Core.Speed.SpeedMethod.Confirm), (alone.Suite, alone.Speed.Method));
+        Assert.Equal(("tonemap", Core.Speed.SpeedMethod.Quick), (quick.Suite, quick.Speed.Method));
         Assert.Null(Bind([]).Suite);
     }
 

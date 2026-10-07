@@ -17,7 +17,7 @@ internal sealed class FakeFfmpegHost : IDisposable
     /// <summary>Gets the absolute path of the FakeFfmpeg executable.</summary>
     public static string ExecutablePath { get; } = Path.Combine(
         typeof(FakeFfmpegHost).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
-            .Single(a => a.Key == "FakeFfmpegDirectory").Value!,
+            .Single(a => a.Key == "FakeFfmpegDirectory").Value ?? throw new InvalidOperationException("FakeFfmpegDirectory is empty."),
         OperatingSystem.IsWindows() ? "FakeFfmpeg.exe" : "FakeFfmpeg");
 
     /// <summary>Gets the temp directory for scenario, log and PID files.</summary>

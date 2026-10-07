@@ -92,11 +92,11 @@ internal static class HwProbeApp
             await ReportStore.WriteAsync(report, options.JsonPath, cancellationToken);
         }
 
-        if (recorder is not null)
+        if (recorder is not null && options.DiagnosticsPath is { } diagnosticsPath)
         {
             try
             {
-                await DiagnosticsBundle.WriteAsync(options.DiagnosticsPath!, report, recorder.Runs, cancellationToken);
+                await DiagnosticsBundle.WriteAsync(diagnosticsPath, report, recorder.Runs, cancellationToken);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {

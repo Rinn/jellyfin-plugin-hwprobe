@@ -17,5 +17,5 @@ public sealed class D3d11AdapterTests
     [InlineData("[D3D11VA @ 0000020a] Using device 1414:008c (Microsoft Basic Render Driver).\n[D3D11VA @ 0000020a] Failed to create Direct3D device (887a0004)\n", "0x1414", "0x008c")]
     [InlineData("[D3D11VA @ 0000020a] Selecting d3d11va adapter 4\n", null, null)]
     public void ParsesTheAdapter(string stderr, string? vendor, string? device) =>
-        Assert.Equal(vendor is null ? null : (vendor, device!), D3d11Adapter.Parse(stderr));
+        Assert.Equal(vendor is null || device is null ? null : (vendor, device), D3d11Adapter.Parse(stderr));
 }

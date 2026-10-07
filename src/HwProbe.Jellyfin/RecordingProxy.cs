@@ -6,7 +6,7 @@ namespace Jellyfin.Plugin.HwProbe.Jellyfin;
 /// <remarks>Public and unsealed because <see cref="DispatchProxy"/> generates a subclass at runtime.</remarks>
 public class RecordingProxy : DispatchProxy
 {
-    private CallRecorder? _recorder;
+    private CallRecorder _recorder = new();
     private string _interfaceName = string.Empty;
     private IReadOnlyDictionary<string, Func<object?[], object?>> _handlers = new Dictionary<string, Func<object?[], object?>>();
 
@@ -34,11 +34,11 @@ public class RecordingProxy : DispatchProxy
         var member = $"{_interfaceName}.{targetMethod.Name}";
         if (_handlers.TryGetValue(targetMethod.Name, out var handler))
         {
-            _recorder!.Record(member);
+            _recorder.Record(member);
             return handler(args ?? []);
         }
 
-        _recorder!.RecordUnexpected(member);
+        _recorder.RecordUnexpected(member);
         throw new NotSupportedException($"{member} is not modelled by the probe stubs.");
     }
 }

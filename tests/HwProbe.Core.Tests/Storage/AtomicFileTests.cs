@@ -16,13 +16,14 @@ public sealed class AtomicFileTests : IDisposable
     [Fact]
     public async Task ReplacesTheFile()
     {
-        var path = Path.Combine(_directory, "nested", "report.json");
+        var directory = Path.Combine(_directory, "nested");
+        var path = Path.Combine(directory, "report.json");
 
         await AtomicFile.WriteAllTextAsync(path, "first", TestContext.Current.CancellationToken);
         await AtomicFile.WriteAllTextAsync(path, "second", TestContext.Current.CancellationToken);
 
         Assert.Equal("second", await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken));
-        Assert.Equal([path], Directory.GetFiles(Path.GetDirectoryName(path)!));
+        Assert.Equal([path], Directory.GetFiles(directory));
     }
 
     /// <summary>A write waits for a reader that has the file open, which on Windows blocks replacing it.</summary>

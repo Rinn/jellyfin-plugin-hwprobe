@@ -27,7 +27,8 @@ public sealed class FfprobeFileTests
         Assert.True(file.Video.IsHdr);
         Assert.False(file.Video.Interlaced);
         Assert.Equal(TimeSpan.FromSeconds(5400.5), file.Duration);
-        Assert.Equal((2, "eac3", 6), (file.Audio!.Index, file.Audio.Codec, file.Audio.Channels));
+        Assert.NotNull(file.Audio);
+        Assert.Equal((2, "eac3", 6), (file.Audio.Index, file.Audio.Codec, file.Audio.Channels));
         Assert.Equal([(3, "PGSSUB", false, "eng"), (4, "subrip", true, null)], file.Subtitles.Select(s => (s.Index, s.Codec, s.IsText, s.Title)));
     }
 

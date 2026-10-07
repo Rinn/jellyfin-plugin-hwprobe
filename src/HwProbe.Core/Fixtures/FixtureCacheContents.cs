@@ -28,7 +28,15 @@ public static class FixtureCacheContents
         }
 
         var byName = Known();
-        var bySha = Specs().Where(s => s.Spec.Sha256 is not null).GroupBy(s => s.Spec.Sha256!, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First().Description, StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, string> bySha = new(StringComparer.OrdinalIgnoreCase);
+        foreach (var (spec, description) in Specs())
+        {
+            if (spec.Sha256 is { } sha256)
+            {
+                bySha.TryAdd(sha256, description);
+            }
+        }
+
         List<CacheEntry> entries = [];
         foreach (var folder in new DirectoryInfo(directory).EnumerateDirectories())
         {
@@ -154,9 +162,12 @@ public static class FixtureCacheContents
     /// <returns>The clips.</returns>
     private static IEnumerable<(FixtureSpec Spec, string Description)> Specs()
     {
-        foreach (var video in SpeedCatalog.Videos.Where(v => v.Fixture is not null))
+        foreach (var video in SpeedCatalog.Videos)
         {
-            yield return (video.Fixture!, video.Name);
+            if (video.Fixture is { } fixture)
+            {
+                yield return (fixture, video.Name);
+            }
         }
 
         yield return (SpeedCatalog.TestAudio, "Test audio, 5.1 AAC");

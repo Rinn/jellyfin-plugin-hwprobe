@@ -19,21 +19,21 @@ public static class ProbeMediaEncoder
         {
             ["get_EncoderPath"] = _ => capabilities.EncoderPath,
             ["get_EncoderVersion"] = _ => capabilities.EncoderVersion,
-            ["SupportsHwaccel"] = a => capabilities.Hwaccels.Contains((string)a[0]!),
-            ["SupportsEncoder"] = a => capabilities.Encoders.Contains((string)a[0]!),
-            ["SupportsDecoder"] = a => capabilities.Decoders.Contains((string)a[0]!),
-            ["SupportsFilter"] = a => capabilities.Filters.Contains((string)a[0]!),
+            ["SupportsHwaccel"] = a => capabilities.Hwaccels.Contains(Text(a[0])),
+            ["SupportsEncoder"] = a => capabilities.Encoders.Contains(Text(a[0])),
+            ["SupportsDecoder"] = a => capabilities.Decoders.Contains(Text(a[0])),
+            ["SupportsFilter"] = a => capabilities.Filters.Contains(Text(a[0])),
 
             // Same escaping as MediaEncoder.EscapeSubtitleFilterPath (v12.2, L1224); the server uses the real one.
-            ["EscapeSubtitleFilterPath"] = a => ((string)a[0]!)
+            ["EscapeSubtitleFilterPath"] = a => Text(a[0])
                 .Replace('\\', '/')
                 .Replace(":", "\\:", StringComparison.Ordinal)
                 .Replace("'", @"'\\\''", StringComparison.Ordinal)
                 .Replace("\"", "\\\"", StringComparison.Ordinal),
 
             // MediaEncoder.GetInputPathArgument through EncodingUtils.GetFileInputArgument (v12.2): a library path is escaped, so its quotes can't end the argument.
-            ["GetInputPathArgument"] = a => InputPath(a.Length == 1 ? ((EncodingJobInfo)a[0]!).MediaPath : (string)a[0]!),
-            ["SupportsFilterWithOption"] = a => capabilities.FilterOptions.Contains((FilterOptionType)a[0]!),
+            ["GetInputPathArgument"] = a => InputPath(a[0] is EncodingJobInfo job ? job.MediaPath : Text(a[0])),
+            ["SupportsFilterWithOption"] = a => a[0] is FilterOptionType option && capabilities.FilterOptions.Contains(option),
             ["get_IsVaapiDeviceInteliHD"] = _ => capabilities.IsVaapiDeviceInteliHD,
             ["get_IsVaapiDeviceInteli965"] = _ => capabilities.IsVaapiDeviceInteli965,
             ["get_IsVaapiDeviceAmd"] = _ => capabilities.IsVaapiDeviceAmd,
@@ -43,6 +43,8 @@ public static class ProbeMediaEncoder
         };
 
         return RecordingProxy.Create<IMediaEncoder>(recorder, handlers);
+
+        static string Text(object? value) => value as string ?? throw new ArgumentException("IMediaEncoder takes a string here.", nameof(value));
     }
 
     /// <summary>Quotes a source path for ffmpeg as EncodingUtils.GetFileInputArgument does (v12.2).</summary>

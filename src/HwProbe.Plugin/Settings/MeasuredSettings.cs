@@ -52,6 +52,6 @@ public static class MeasuredSettings
     public static string? LabelFor(string setting)
     {
         var option = _keys.FirstOrDefault(k => k.Value == setting).Key;
-        return option is null ? null : Catalog.Default.Options.FirstOrDefault(o => o.Key == option)?.Label ?? Catalog.Default.Labels.GetValueOrDefault(option);
+        return option is null ? null : Catalog.Default.Option(option)?.Label ?? Catalog.Default.Labels.GetValueOrDefault(option);
     }
 }

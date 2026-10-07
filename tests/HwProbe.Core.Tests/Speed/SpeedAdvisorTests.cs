@@ -317,7 +317,7 @@ public sealed class SpeedAdvisorTests
         var kept = Assert.Single(SpeedAdvisor.Advise(two, [four, two], HwType.none, string.Empty, new SpeedSettings { EncodingThreadCount = 4 }), s => s.Setting == "EncodingThreadCount");
 
         Assert.Equal((SpeedSuggestionKind.FasterSetting, "4", true), (kept.Kind, kept.Value, kept.Current));
-        Assert.Equal(2.102, kept.Speed!.Value, 3);
+        Assert.Equal(2.102, Assert.NotNull(kept.Speed), 3);
     }
 
     /// <summary>A better-quality value that measured faster than the server's contradicts the quality order, so it isn't recommended, but its table still lists it.</summary>
@@ -345,7 +345,7 @@ public sealed class SpeedAdvisorTests
 
         var faster = Assert.Single(SpeedAdvisor.Advise(runs[0], runs, HwType.none, string.Empty, new SpeedSettings { H264Crf = 18 }), s => s.Setting == "H264Crf");
 
-        Assert.Equal((SpeedSuggestionKind.FasterSetting, "28", 0.5), (faster.Kind, faster.Value, Math.Round(faster.Gain!.Value, 2)));
+        Assert.Equal((SpeedSuggestionKind.FasterSetting, "28", 0.5), (faster.Kind, faster.Value, Math.Round(Assert.NotNull(faster.Gain), 2)));
         Assert.Equal([("18", true), ("23", false)], faster.Compared.Select(c => (c.Value, c.Current)));
     }
 
@@ -389,11 +389,11 @@ public sealed class SpeedAdvisorTests
         var onFast = SpeedAdvisor.Advise(fast, [medium, fast, threads], HwType.none, string.Empty, new SpeedSettings { EncoderPreset = "fast" });
 
         var faster = Assert.Single(onMedium, s => s.Kind == SpeedSuggestionKind.FasterSetting);
-        Assert.Equal(("EncoderPreset", "fast", "medium", 0.2, false), (faster.Setting, faster.Value, Assert.Single(faster.Others), Math.Round(faster.Gain!.Value, 2), faster.TestVideosOnly));
+        Assert.Equal(("EncoderPreset", "fast", "medium", 0.2, false), (faster.Setting, faster.Value, Assert.Single(faster.Others), Math.Round(Assert.NotNull(faster.Gain), 2), faster.TestVideosOnly));
 
         // Headroom comes from the film alone: the test video's 12x overstates it.
         var quality = Assert.Single(onFast, s => s.Kind == SpeedSuggestionKind.HigherQuality);
-        Assert.Equal(("medium", 5.0), (quality.Value, quality.Speed!.Value));
+        Assert.Equal(("medium", 5.0), (quality.Value, Assert.NotNull(quality.Speed)));
         Assert.Equal([Film], quality.Outputs);
         Assert.Equal(SpeedSuggestionKind.NoChange, Assert.Single(onFast, s => s.Setting == "EncodingThreadCount").Kind);
     }

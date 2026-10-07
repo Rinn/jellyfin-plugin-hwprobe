@@ -156,10 +156,10 @@ public sealed partial class ProbeService : IDisposable
     internal string DiagnosticsPath => DiagnosticsPathFor(_latestPath);
 
     /// <summary>Gets where the latest speed report is saved.</summary>
-    internal string SpeedPath => Path.Combine(Path.GetDirectoryName(_latestPath)!, "speed.json");
+    internal string SpeedPath => Path.Join(Path.GetDirectoryName(_latestPath), "speed.json");
 
     /// <summary>Gets where every speed run is kept.</summary>
-    internal string SpeedHistoryDirectory => Path.Combine(Path.GetDirectoryName(_latestPath)!, "speed-history");
+    internal string SpeedHistoryDirectory => Path.Join(Path.GetDirectoryName(_latestPath), "speed-history");
 
     /// <summary>Gets the speed run, or null when this service can't measure speed.</summary>
     internal Func<SpeedOptions, IReadOnlyCollection<(HwType Type, string Device)>, IProgress<SpeedProgress>, CancellationToken, Task<SpeedReport>>? MeasureSpeed { get; init; }
@@ -787,7 +787,7 @@ public sealed partial class ProbeService : IDisposable
         }
 
         if (!Catalog.Default.Repeats.Any(o => o.Value == request.Repeats) || !Catalog.Default.TimeLimits.Any(o => o.Value == request.TimeLimitSeconds)
-            || request.Options?.Any(o => Catalog.Default.Options.FirstOrDefault(c => c.Key == o.Key) is not { } option || !option.Takes(o.Value)) == true
+            || request.Options?.Any(o => Catalog.Default.Option(o.Key) is not { } option || !option.Takes(o.Value)) == true
             || request.Backends?.Any(b => !Enum.TryParse<HwType>(b, out var type) || !Enum.IsDefined(type)) == true
             || request.Backends is [])
         {
@@ -834,7 +834,7 @@ public sealed partial class ProbeService : IDisposable
     /// <summary>Returns where the diagnostics zip is saved, beside the report.</summary>
     /// <param name="latestPath">Where the report is saved.</param>
     /// <returns>The file path.</returns>
-    private static string DiagnosticsPathFor(string latestPath) => Path.Combine(Path.GetDirectoryName(latestPath)!, "diagnostics.zip");
+    private static string DiagnosticsPathFor(string latestPath) => Path.Join(Path.GetDirectoryName(latestPath), "diagnostics.zip");
 
     /// <summary>Runs the probe engine against the server's ffmpeg, and saves a diagnostics zip of its launches.</summary>
     /// <param name="arguments">Argument source factory.</param>

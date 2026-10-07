@@ -35,8 +35,10 @@ public sealed class FfmpegCapabilityProbeRealTests
     [Fact(Skip = "Requires HWPROBE_HW_TESTS=1 and an ffmpeg (HWPROBE_TEST_FFMPEG or discovery).", SkipUnless = nameof(TestEnvironment.RealFfmpegAvailable), SkipType = typeof(TestEnvironment))]
     public async Task StderrKeepsNonAsciiText()
     {
+        var ffmpeg = TestEnvironment.RealFfmpeg;
+        Assert.NotNull(ffmpeg);
         var path = Path.Combine(Path.GetTempPath(), "hwprobe-missing-Ünïcødé-日本.mkv");
-        var invocation = new FfmpegInvocation(TestEnvironment.RealFfmpeg!, $"-hide_banner -i \"{path}\"", new Dictionary<string, string?>(), TimeSpan.FromSeconds(15));
+        var invocation = new FfmpegInvocation(ffmpeg, $"-hide_banner -i \"{path}\"", new Dictionary<string, string?>(), TimeSpan.FromSeconds(15));
 
         var result = await new FfmpegRunner().RunAsync(invocation, TestContext.Current.CancellationToken);
 
@@ -45,7 +47,10 @@ public sealed class FfmpegCapabilityProbeRealTests
 
     /// <summary>Runs build enumeration against the real ffmpeg.</summary>
     /// <returns>The capabilities.</returns>
-    private static Task<FfmpegCapabilities> ProbeAsync() =>
-        new FfmpegCapabilityProbe(new FfmpegRunner(), TimeSpan.FromSeconds(15))
-            .ProbeAsync(TestEnvironment.RealFfmpeg!, TestContext.Current.CancellationToken);
+    private static Task<FfmpegCapabilities> ProbeAsync()
+    {
+        var ffmpeg = TestEnvironment.RealFfmpeg;
+        Assert.NotNull(ffmpeg);
+        return new FfmpegCapabilityProbe(new FfmpegRunner(), TimeSpan.FromSeconds(15)).ProbeAsync(ffmpeg, TestContext.Current.CancellationToken);
+    }
 }

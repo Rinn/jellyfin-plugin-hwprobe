@@ -776,13 +776,13 @@ public sealed class ProbeEngine : IDisposable
 
                 // Checked after asking Jellyfin: a codec it won't hardware-decode needs no clip to say so.
                 var fixture = run.Fixtures.GetValueOrDefault(cell.Fixture.FileName);
-                if (fixture?.Status != FixtureStatus.Available)
+                if (fixture is not { Status: FixtureStatus.Available, Path: { } clip })
                 {
                     var missing = fixture?.Status == FixtureStatus.Untested ? ProbeOutcome.Untested : ProbeOutcome.Skipped;
                     return Record(candidate, cell, stage, missing, null, fixture?.Reason ?? $"No {cell.Fixture.FileName} fixture.", null);
                 }
 
-                var commandLine = ProbeCommandLine.Build(args, fixture.Path!, MatrixCatalog.Frames);
+                var commandLine = ProbeCommandLine.Build(args, clip, MatrixCatalog.Frames);
                 var invocation = new FfmpegInvocation(run.Options.Ffmpeg.Path, commandLine, args.Environment, run.Options.ProbeTimeout);
                 var ran = await _runner.RunAsync(invocation, ct);
                 var lowPowerDropped = cell.Cell.LowPower && StderrMarkers.LowPowerDisabled.Any(m => ran.Stderr.Contains(m, StringComparison.Ordinal));

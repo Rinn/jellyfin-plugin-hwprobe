@@ -51,7 +51,9 @@ public sealed class FixtureCacheContentsTests : IDisposable
         Write("sha256_abc", FixtureCatalog.Hevc10.FileName, 100);
         Write("sha256_abc", FixtureCatalog.Hevc10.FileName + ".sha256", 64);
         Write("sha256_abc", "other.mp4", 10);
-        var outside = Path.Combine(Path.GetDirectoryName(_root)!, Path.GetFileName(_root) + "-outside.txt");
+        var parent = Path.GetDirectoryName(_root);
+        Assert.NotNull(parent);
+        var outside = Path.Combine(parent, Path.GetFileName(_root) + "-outside.txt");
         File.WriteAllText(outside, "keep");
 
         Assert.False(FixtureCacheContents.Delete(_root, "..", Path.GetFileName(outside)));

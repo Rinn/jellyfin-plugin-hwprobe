@@ -13,6 +13,8 @@ public sealed partial class Catalog
 {
     private static readonly Lazy<Catalog> _default = new(() => Parse(ReadResource()));
 
+    private Dictionary<string, CatalogSetting>? _optionsByKey;
+
     /// <summary>Gets the catalog compiled into this assembly.</summary>
     public static Catalog Default => _default.Value;
 
@@ -109,8 +111,8 @@ public sealed partial class Catalog
     /// <summary>Gets shared fields the file merges into entries; not read after parsing.</summary>
     internal IReadOnlyDictionary<string, object> Templates { get; init; } = new Dictionary<string, object>();
 
-    /// <summary>Gets the audio track the test videos copy; null only in a file that leaves it out, which <see cref="Check"/> refuses.</summary>
-    internal CatalogClip? TestAudio { get; init; }
+    /// <summary>Gets the audio track the test videos copy.</summary>
+    internal CatalogClip TestAudio => TestAudioEntry ?? throw Missing("testAudio");
 
     /// <summary>Gets the speed videos, in the page's order.</summary>
     internal IReadOnlyList<CatalogVideo> Videos { get; init; } = [];
@@ -119,13 +121,25 @@ public sealed partial class Catalog
     internal IReadOnlyList<string> DefaultVideos { get; init; } = [];
 
     /// <summary>Gets the decode-only output.</summary>
-    internal CatalogOutput? Decode { get; init; }
+    internal CatalogOutput Decode => DecodeEntry ?? throw Missing("decode");
 
     /// <summary>Gets the outputs chosen when none are asked for.</summary>
     internal IReadOnlyList<string> DefaultOutputs { get; init; } = [];
 
-    /// <summary>Gets the subtitle files the burn-in variation reads; null only in a file that leaves them out, which <see cref="Check"/> refuses.</summary>
-    internal CatalogSubtitles? Subtitles { get; init; }
+    /// <summary>Gets the subtitle files the burn-in variation reads.</summary>
+    internal CatalogSubtitles Subtitles => SubtitlesEntry ?? throw Missing("subtitles");
+
+    /// <summary>Gets <see cref="TestAudio"/> as the file gives it; null when the file leaves it out, which <see cref="Check"/> refuses.</summary>
+    [YamlMember(Alias = "testAudio")]
+    internal CatalogClip? TestAudioEntry { get; init; }
+
+    /// <summary>Gets <see cref="Decode"/> as the file gives it; null when the file leaves it out, which <see cref="Check"/> refuses.</summary>
+    [YamlMember(Alias = "decode")]
+    internal CatalogOutput? DecodeEntry { get; init; }
+
+    /// <summary>Gets <see cref="Subtitles"/> as the file gives them; null when the file leaves them out, which <see cref="Check"/> refuses.</summary>
+    [YamlMember(Alias = "subtitles")]
+    internal CatalogSubtitles? SubtitlesEntry { get; init; }
 
     /// <summary>Returns a text from <see cref="Texts"/> with its placeholders filled in.</summary>
     /// <param name="key">The text's key.</param>
@@ -176,6 +190,12 @@ public sealed partial class Catalog
         return codec.Key + "-" + quality.Key;
     }
 
+    /// <summary>Returns the setting with a key.</summary>
+    /// <param name="key">The setting's key.</param>
+    /// <returns>The setting, or null for an unknown key.</returns>
+    public CatalogSetting? Option(string key) =>
+        (_optionsByKey ??= Options.ToDictionary(o => o.Key, StringComparer.Ordinal)).GetValueOrDefault(key);
+
     /// <summary>Expands <c>{name}</c> placeholders from <see cref="Vars"/>, including placeholders inside them.</summary>
     /// <param name="arguments">The arguments.</param>
     /// <returns>The expanded arguments; unknown placeholders are left.</returns>
@@ -220,6 +240,11 @@ public sealed partial class Catalog
         }
     }
 
+    /// <summary>Makes the error for a section the file leaves out.</summary>
+    /// <param name="name">The section.</param>
+    /// <returns>The error.</returns>
+    private static InvalidDataException Missing(string name) => new($"catalog.yaml: {name} is missing.");
+
     /// <summary>Requires keys to be unique, and defaults to be among them.</summary>
     /// <param name="name">The catalog section, for the message.</param>
     /// <param name="keys">The section's keys.</param>
@@ -258,15 +283,20 @@ public sealed partial class Catalog
         RequireAll("tiers", Tiers.Keys, PipelineTier.Unknown);
         RequireAll("verdicts", Verdicts.Keys, BackendVerdict.Viable, BackendVerdict.NotBuilt);
         RequireKeys("videos", [.. Videos.Select(v => v.Key), SpeedCatalog.LibraryKey], DefaultVideos);
-        if (Decode is null)
+        if (DecodeEntry is null)
         {
-            throw new InvalidDataException("catalog.yaml: decode is missing.");
+            throw Missing("decode");
         }
 
         RequireKeys("outputs", [.. Codecs.SelectMany(c => Qualities.Select(q => OutputKey(c, q))), Decode.Key], DefaultOutputs);
         if (Methods.Any(m => m.Seconds.Count != 2))
         {
             throw new InvalidDataException("catalog.yaml: method seconds are [low, high].");
+        }
+
+        if (Options.DistinctBy(o => o.Key, StringComparer.Ordinal).Count() != Options.Count)
+        {
+            throw new InvalidDataException("catalog.yaml: option keys must be unique.");
         }
 
         foreach (var option in Options)
@@ -309,10 +339,10 @@ public sealed partial class Catalog
 
         foreach (var group in SettingGroups)
         {
-            var known = group.Settings.All(k => Options.Any(o => o.Key == k));
+            var known = group.Settings.All(k => Option(k) is not null);
             var conditions = group.Rows.SelectMany(r => r.When ?? new Dictionary<string, string>()).ToList();
             var valid = known
-                && conditions.All(c => group.Settings.Contains(c.Key) && Options.First(o => o.Key == c.Key).Takes(c.Value))
+                && conditions.All(c => group.Settings.Contains(c.Key) && Option(c.Key)?.Takes(c.Value) == true)
                 && group.Rows.All(r => r.Describes is null || group.Settings.Contains(r.Describes))
                 && group.Rows.Select(r => r.Label).Distinct(StringComparer.Ordinal).Count() == group.Rows.Count;
             if (!known || !valid || group.Rows.Count == 0 || SettingGroups.Count(g => g.Settings.Intersect(group.Settings).Any()) > 1)
@@ -326,9 +356,9 @@ public sealed partial class Catalog
             throw new InvalidDataException("catalog.yaml: testDelay requires a number of seconds, zero or more.");
         }
 
-        if (Subtitles is null || TestAudio is null)
+        if (SubtitlesEntry is null || TestAudioEntry is null)
         {
-            throw new InvalidDataException("catalog.yaml: subtitles or testAudio are missing.");
+            throw Missing("subtitles or testAudio");
         }
 
         if (Videos.FirstOrDefault(v => v.Clip.Download is not null && v.Clip.Size is not > 0) is { } unsized)
@@ -369,7 +399,7 @@ public sealed partial class Catalog
     private void CheckSuites()
     {
         var videos = Videos.Select(v => v.Key).ToHashSet(StringComparer.Ordinal);
-        var outputs = Codecs.SelectMany(c => Qualities.Select(q => OutputKey(c, q))).Append(Decode!.Key).ToHashSet(StringComparer.Ordinal);
+        var outputs = Codecs.SelectMany(c => Qualities.Select(q => OutputKey(c, q))).Append(Decode.Key).ToHashSet(StringComparer.Ordinal);
         string[] backends = ["configuredAndSoftware", "configured", "software"];
         foreach (var suite in Suites)
         {
@@ -382,7 +412,7 @@ public sealed partial class Catalog
                 : suite.Outputs.Concat(steps.SelectMany(s => s.Outputs ?? [])).FirstOrDefault(o => !outputs.Contains(o)) is { } output ? $"output {output}"
                 : steps.FirstOrDefault(s => s.Backends?.Contains(HwType.none) == true) is { } software ? $"backend none on step {software.Label} (steps are for hardware backends)"
                 : suite.ThreadSteps && !suite.ThreadLabel.Contains("{n}", StringComparison.Ordinal) ? "threadLabel (it requires {n})"
-                : steps.SelectMany(s => s.Options).FirstOrDefault(o => Options.FirstOrDefault(c => c.Key == o.Key) is not { } known || !known.Takes(o.Value) || SpeedSettingsOptions.Apply(new SpeedSettings(), o.Key, o.Value) is null) is { Key: not null } option ? $"option {option.Key}={option.Value}"
+                : steps.SelectMany(s => s.Options).FirstOrDefault(o => Option(o.Key) is not { } known || !known.Takes(o.Value) || SpeedSettingsOptions.Apply(new SpeedSettings(), o.Key, o.Value) is null) is { Key: not null } option ? $"option {option.Key}={option.Value}"
                 : null;
             if (wrong is not null)
             {

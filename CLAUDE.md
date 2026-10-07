@@ -59,6 +59,7 @@ Pull files with `gh` and grep locally. WebFetch truncates `EncodingHelper.cs` (8
 
 - **Docstrings on every member**, private included: `<summary>`, a `<param>` per parameter, `<returns>` for non-void, one line each where possible. Enforced by StyleCop SA1600 (with `documentPrivateElements`), SA1611 and SA1615. Never suppress these.
 - **One type per file**, named after the type, small enums and records included (SA1402 + SA1649, with `topLevelTypes` widened in `stylecop.json`).
+- **No null-forgiving operator (`!`)**: Nullable.Extended.Analyzer reports each as an error (NX0001 to NX0004) unless a `// !` comment justifies it. Never add such a comment; prove non-null in the code instead (a pattern, a guard, `?? throw`, `Assert.NotNull` in tests).
 - **Async entry points**: `static async Task<int> Main` in an explicit `Program` class. No `Thread.Sleep` or blocking I/O; no `ConfigureAwait(false)` (CA2007 is off, as upstream has it).
 - **Comments only where the code isn't self-documenting**, terse, explaining why. Upstream constraints and ffmpeg quirks are the usual reason; cite the source.
 - **Gate platform- and hardware-bound tests declaratively** with `[Fact(Skip = "Requires …", SkipUnless = nameof(TestEnvironment.X), SkipType = typeof(TestEnvironment))]` from `tests/TestSupport/TestEnvironment.cs`, never an `if (OperatingSystem.Is…)` inside a test. Real ffmpeg comes from `TestEnvironment.RealFfmpeg`.

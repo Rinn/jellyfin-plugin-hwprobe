@@ -24,20 +24,55 @@ public sealed class CatalogTests
     [Fact]
     public void ArgumentsExpand()
     {
-        var pattern = SpeedCatalog.FindVideo("pattern")!.Fixture!.EncodeArguments;
+        var video = SpeedCatalog.FindVideo("pattern");
 
-        Assert.Matches(@"^-[^{}]+\{clip:speed_audio_51\.mka\}[^{}]+$", pattern);
+        Assert.NotNull(video);
+        Assert.NotNull(video.Fixture);
+        Assert.Matches(@"^-[^{}]+\{clip:speed_audio_51\.mka\}[^{}]+$", video.Fixture.EncodeArguments);
     }
 
     /// <summary>A sample downloaded whole shows its length and size, not as generated; a generated test video says so.</summary>
     [Fact]
     public void OriginNamesDownloadsAndGeneratedVideos()
     {
-        Assert.Equal("30.3 s, 2 MB", SpeedCatalog.FindVideo("flv-280p")!.Origin);
-        Assert.Equal("Generated, 10 s", SpeedCatalog.FindVideo("pattern")!.Origin);
+        var sample = SpeedCatalog.FindVideo("flv-280p");
+        var generated = SpeedCatalog.FindVideo("pattern");
+
+        Assert.NotNull(sample);
+        Assert.NotNull(generated);
+        Assert.Equal("30.3 s, 2 MB", sample.Origin);
+        Assert.Equal("Generated, 10 s", generated.Origin);
     }
 
-    /// <summary>A file that leaves out an enum value, misspells a field or uses an unknown placeholder is refused.</summary>
+    /// <summary>A setting is found by its key; an unknown key finds none.</summary>
+    [Fact]
+    public void OptionIsFoundByKey()
+    {
+        Assert.Same(Catalog.Default.Options.First(o => o.Key == "EncoderPreset"), Catalog.Default.Option("EncoderPreset"));
+        Assert.Null(Catalog.Default.Option("NoSuchSetting"));
+    }
+
+    /// <summary>A value earlier in the quality order, or a lower number where lower is better, is the better quality; a value the setting doesn't take never is.</summary>
+    /// <param name="key">The setting.</param>
+    /// <param name="value">The value.</param>
+    /// <param name="other">The value it's compared with.</param>
+    /// <param name="better">Whether the value is the better quality.</param>
+    [Theory]
+    [InlineData("EncoderPreset", "slow", "fast", true)]
+    [InlineData("EncoderPreset", "fast", "slow", false)]
+    [InlineData("EncoderPreset", "slow", "slow", false)]
+    [InlineData("EncoderPreset", "slow", "placebo", false)]
+    [InlineData("H264Crf", "18", "23", true)]
+    [InlineData("H264Crf", "23", "18", false)]
+    public void QualityOrderDecidesTheBetterValue(string key, string value, string other, bool better)
+    {
+        var option = Catalog.Default.Option(key);
+
+        Assert.NotNull(option);
+        Assert.Equal(better, option.IsBetterQuality(value, other));
+    }
+
+    /// <summary>A file that leaves out an enum value or a section, misspells a field, repeats a setting's key, or uses an unknown placeholder is refused.</summary>
     /// <param name="find">Text in the compiled-in file.</param>
     /// <param name="replace">What to put instead.</param>
     [Theory]
@@ -60,9 +95,14 @@ public sealed class CatalogTests
     [InlineData("sha256: 0da88a6b", "sha256: 0DA88A6B")]
     [InlineData("      size: 1719794\n", "")]
     [InlineData("testDelay: 1\n", "testDelay: -1\n")]
+    [InlineData("  - { key: AudioVbr,", "  - { key: AudioVbr, label: Enable VBR audio encoding, server: EnableAudioVbr, switch: true, qualityOrder: [\"true\", \"false\"], caveat: \"In some rare cases VBR may cause buffering and compatibility issues.\", compatibleValue: \"false\", description: \"Variable bitrate offers better quality to average bitrate ratio, but in some rare cases may cause buffering and compatibility issues.\" }\n  - { key: AudioVbr,")]
+    [InlineData("decode: { key: decode, label: Decode only }\n", "")]
+    [InlineData("testAudio: { file: speed_audio_51.mka, codec: aac, encoder: aac, arguments: \"{quiet} -f lavfi -i sine=frequency=440:sample_rate=48000 -t 10 -ac 6 -c:a aac -b:a 384k\" }\n", "")]
     public void BrokenFileIsRefused(string find, string replace)
     {
-        using var reader = new StreamReader(typeof(Catalog).Assembly.GetManifestResourceStream("catalog.yaml")!);
+        using var resource = typeof(Catalog).Assembly.GetManifestResourceStream("catalog.yaml");
+        Assert.NotNull(resource);
+        using var reader = new StreamReader(resource);
         var yaml = reader.ReadToEnd();
         Assert.Contains(find, yaml, StringComparison.Ordinal);
 

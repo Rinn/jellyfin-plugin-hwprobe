@@ -71,7 +71,7 @@ public static class SpeedSuites
         }
 
         var value = SpeedAdvisor.ValueOf(server, key);
-        if (steps.Any(s => s.Options[key] == value) || Catalog.Default.Options.FirstOrDefault(o => o.Key == key) is not { } option || !option.Takes(value))
+        if (steps.Any(s => s.Options[key] == value) || Catalog.Default.Option(key) is not { } option || !option.Takes(value))
         {
             return steps;
         }
@@ -95,8 +95,13 @@ public static class SpeedSuites
                 .Select(s => new SuiteStep(s.Label, s.Options, s.Videos ?? suite.Videos, s.Outputs ?? suite.Outputs) { HardwareOnly = s.Backends is not null })];
         }
 
+        // Auto is the option's own first choice; limits are labelled from the suite's pattern.
+        if (Catalog.Default.Option(ThreadOption) is not { Choices: [var auto, ..] } option)
+        {
+            throw new InvalidOperationException($"The catalog's {ThreadOption} option is missing or has no choices.");
+        }
+
         // Auto, then doubling thread limits, then the CPU count itself; only limits the setting offers.
-        var option = Catalog.Default.Options.First(o => o.Key == ThreadOption);
         List<int> limits = [];
         for (var n = 1; n < processorCount; n *= 2)
         {
@@ -105,13 +110,6 @@ public static class SpeedSuites
 
         limits.Add(processorCount);
         var values = limits.Select(n => n.ToString(CultureInfo.InvariantCulture)).Where(option.Takes).Distinct(StringComparer.Ordinal);
-
-        // Auto is the option's own first choice; limits are labelled from the suite's pattern.
-        if (option.Choices is not [var auto, ..])
-        {
-            throw new InvalidOperationException($"The catalog's {ThreadOption} option has no choices.");
-        }
-
         return [.. new[] { (auto.Key, auto.Label) }.Concat(values.Select(v => (v, (v == "1" ? suite.ThreadLabelOne : suite.ThreadLabel).Replace("{n}", v, StringComparison.Ordinal))))
             .Select(v => new SuiteStep(v.Item2, new Dictionary<string, string>(StringComparer.Ordinal) { [ThreadOption] = v.Item1 }, suite.Videos, suite.Outputs))];
     }

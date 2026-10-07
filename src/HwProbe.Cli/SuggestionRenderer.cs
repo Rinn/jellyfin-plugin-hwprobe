@@ -22,24 +22,24 @@ internal static class SuggestionRenderer
         var text = new StringBuilder("\nrecommend\n");
         foreach (var s in suggestions)
         {
-            var label = s.Setting is null ? null : Catalog.Default.Options.FirstOrDefault(o => o.Key == s.Setting)?.Label ?? Catalog.Default.Labels.GetValueOrDefault(s.Setting) ?? s.Setting;
+            var label = s.Setting is null ? null : Catalog.Default.Option(s.Setting)?.Label ?? Catalog.Default.Labels.GetValueOrDefault(s.Setting) ?? s.Setting;
             var current = s.Current ? $" ({Catalog.Default.Labels["ServerSettingAfter"]})" : string.Empty;
             var others = OrList([.. s.Others.Select(o => Value(s.Setting, o))]);
             var value = Value(s.Setting, s.Value);
             var savings = string.Join(", ", s.Savings.Select(x => string.Create(CultureInfo.InvariantCulture, $"{x.Fraction:0%} less {Catalog.Default.ResourceNames.GetValueOrDefault(x.Resource, x.Resource)}")));
             var line = s.Kind switch
             {
-                SpeedSuggestionKind.FastestBackend => $"hardware acceleration: {SpeedRenderer.Name(s.Type!.Value)}{(s.Savings.Count > 0 ? $", as fast with {savings}" : string.Empty)}",
-                SpeedSuggestionKind.FallsBehind => $"{SpeedRenderer.Name(s.Type!.Value)} falls behind real time",
-                SpeedSuggestionKind.TooSlowEverywhere => string.Create(CultureInfo.InvariantCulture, $"too slow on every backend: {s.Outputs[0]}, fastest {SpeedRenderer.Name(s.Type!.Value)} at {s.Speed:0.00}x real time"),
+                SpeedSuggestionKind.FastestBackend when s.Type is { } type => $"hardware acceleration: {SpeedRenderer.Name(type)}{(s.Savings.Count > 0 ? $", as fast with {savings}" : string.Empty)}",
+                SpeedSuggestionKind.FallsBehind when s.Type is { } type => $"{SpeedRenderer.Name(type)} falls behind real time",
+                SpeedSuggestionKind.TooSlowEverywhere when s.Type is { } type => string.Create(CultureInfo.InvariantCulture, $"too slow on every backend: {s.Outputs[0]}, fastest {SpeedRenderer.Name(type)} at {s.Speed:0.00}x real time"),
                 SpeedSuggestionKind.FasterSetting => string.Create(CultureInfo.InvariantCulture, $"{label}: {value}{current}, {Math.Abs(s.Gain ?? 0):0%} faster than {others}{(s.LowerQuality ? ", at lower quality" : string.Empty)}"),
                 SpeedSuggestionKind.EfficientSetting => $"{label}: {value}{current}, as fast as {others} with {savings}{(s.LowerQuality ? ", at lower quality" : string.Empty)}",
                 SpeedSuggestionKind.HigherQuality => string.Create(CultureInfo.InvariantCulture, $"{label}: {value}{current}, better quality than {others}, still {s.Speed:0.0}x real time"),
                 SpeedSuggestionKind.Compatible when s.Setting == SpeedAdvisor.BitrateLimitKey => string.Create(CultureInfo.InvariantCulture, $"{label}: no limit, the highest quality, slowest {s.Speed:0.0}x real time"),
                 SpeedSuggestionKind.Compatible => string.Create(CultureInfo.InvariantCulture, $"{label}: {value}{current}, more compatible than {others}, at lower quality, {s.Speed:0.0}x real time"),
-                SpeedSuggestionKind.BitrateLimit => string.Create(CultureInfo.InvariantCulture, $"{label}: {int.Parse(s.Value!, CultureInfo.InvariantCulture) / 1e6:0.#} Mbps, the highest H.264 quality that keeps real time"),
+                SpeedSuggestionKind.BitrateLimit when s.Value is { } limit => string.Create(CultureInfo.InvariantCulture, $"{label}: {int.Parse(limit, CultureInfo.InvariantCulture) / 1e6:0.#} Mbps, the highest H.264 quality that keeps real time"),
                 SpeedSuggestionKind.NoChange => $"{label}: {value}{current}, nothing compared is worth changing to ({others})",
-                SpeedSuggestionKind.RecommendedValue => $"{label}: {value}{current}, {Catalog.Default.Options.First(o => o.Key == s.Setting).RecommendedReason!.TrimEnd('.')}",
+                SpeedSuggestionKind.RecommendedValue when s.Setting is { } key && Catalog.Default.Option(key)?.RecommendedReason is { } reason => $"{label}: {value}{current}, {reason.TrimEnd('.')}",
                 _ => s.Kind.ToString(),
             };
             var streams = s.Streams is { } mine && s.OtherStreams is { } theirs && mine != theirs ? string.Create(CultureInfo.InvariantCulture, $"; streams {theirs}{(s.OtherStreamsCapped ? "+" : string.Empty)} -> {mine}{(s.StreamsCapped ? "+" : string.Empty)}") : string.Empty;
@@ -61,7 +61,7 @@ internal static class SuggestionRenderer
     /// <returns>The name.</returns>
     private static string Value(string? setting, string? value)
     {
-        var option = Catalog.Default.Options.FirstOrDefault(o => o.Key == setting);
+        var option = setting is null ? null : Catalog.Default.Option(setting);
         return option?.Choices?.FirstOrDefault(c => c.Key == value)?.Label ?? (option?.Switch == true ? (value == "true" ? "On" : "Off") : value ?? string.Empty);
     }
 }

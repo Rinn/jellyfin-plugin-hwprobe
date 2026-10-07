@@ -16,7 +16,8 @@ public sealed class FixtureBuilderRealFfmpegTests : IDisposable
     [Fact(Skip = "Requires HWPROBE_HW_TESTS=1 and an ffmpeg (HWPROBE_TEST_FFMPEG or discovery).", SkipUnless = nameof(TestEnvironment.RealFfmpegAvailable), SkipType = typeof(TestEnvironment))]
     public async Task GeneratesWithRealFfmpeg()
     {
-        var ffmpeg = TestEnvironment.RealFfmpeg!;
+        var ffmpeg = TestEnvironment.RealFfmpeg;
+        Assert.NotNull(ffmpeg);
         var ct = TestContext.Current.CancellationToken;
         var runner = new FfmpegRunner();
         var encoders = (await new FfmpegCapabilityProbe(runner, TimeSpan.FromSeconds(15)).ProbeAsync(ffmpeg, ct)).Encoders;

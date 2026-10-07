@@ -9,7 +9,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Tests.Speed;
 [Trait("Category", "Platform")]
 public sealed class SpeedResultCacheFileTests : IDisposable
 {
-    private static readonly SpeedTest _test = SpeedCatalog.Find("pattern|h264-8mbps")!;
+    private static readonly SpeedTest _test = SpeedCatalog.Find("pattern|h264-8mbps") ?? throw new InvalidOperationException("The catalog has no pattern|h264-8mbps test.");
 
     private readonly string _root = Directory.CreateTempSubdirectory("hwprobe-results-").FullName;
 
@@ -29,7 +29,8 @@ public sealed class SpeedResultCacheFileTests : IDisposable
         await File.WriteAllTextAsync(Path.Combine(_root, "broken.json"), "{", ct);
 
         var entry = await cache.GetAsync("current", ct);
-        Assert.Equal((measured, 240.0, 9), (entry!.MeasuredUtc, entry.Result.Fps!.Value, entry.Result.Streams!.Value));
+        Assert.NotNull(entry);
+        Assert.Equal((measured, (double?)240.0, (int?)9), (entry.MeasuredUtc, entry.Result.Fps, entry.Result.Streams));
         Assert.Equal(2, cache.Prune("ffmpeg version 7"));
         Assert.NotNull(await cache.GetAsync("current", ct));
         Assert.Null(await cache.GetAsync("older", ct));

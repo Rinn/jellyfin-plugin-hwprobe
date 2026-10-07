@@ -82,7 +82,7 @@ public static class SpeedAdvisor
                 return [.. changes.Where(c => _values[c.Key](server) != c.Value).Select(c => (c.Key, c.Value))];
             }
 
-            if (reached?.When?.FirstOrDefault(c => !changes.ContainsKey(c.Key) && Catalog.Default.Options.FirstOrDefault(o => o.Key == c.Key)?.Switch == true) is not { Key: not null } blocking)
+            if (reached?.When?.FirstOrDefault(c => !changes.ContainsKey(c.Key) && Catalog.Default.Option(c.Key)?.Switch == true) is not { Key: not null } blocking)
             {
                 return null;
             }
@@ -125,7 +125,7 @@ public static class SpeedAdvisor
             List<SpeedResult> beaten = type == HwType.none ? [.. best] : [.. best.Where(w => Mine(w) is { } mine && Beats(w, mine))];
             if ((best.Key.Type != type || (!string.IsNullOrEmpty(device) && best.Key.Device != device)) && beaten.Count > 0)
             {
-                var alike = type != HwType.none && beaten.All(w => Gain(w, Mine(w)!) <= Noise);
+                var alike = type != HwType.none && beaten.All(w => Mine(w) is { } own && Gain(w, own) <= Noise);
                 var mine = beaten.Select(Mine).OfType<SpeedResult>().ToList();
                 suggestions.Add(new SpeedSuggestion(SpeedSuggestionKind.FastestBackend, [.. beaten.Select(r => Label(r, shown.Settings))])
                 {
@@ -136,8 +136,8 @@ public static class SpeedAdvisor
                     StreamsCapped = FewestCapped(beaten),
                     Compared = mine.Count == beaten.Count ? [new SpeedComparedValue(type.ToString(), mine.Min(Speed), Fewest(mine), FewestCapped(mine))] : [],
                     TestVideosOnly = beaten.All(IsGenerated),
-                    Preferred = alike && beaten.All(w => BackendPreference.IsPreferredOver(w, Mine(w)!)),
-                    Savings = alike ? Common(beaten.Select(w => ResourceComparison.Savings(w, Mine(w)!))) : [],
+                    Preferred = alike && beaten.All(w => Mine(w) is { } own && BackendPreference.IsPreferredOver(w, own)),
+                    Savings = alike ? Common(beaten.Select(w => Mine(w) is { } own ? ResourceComparison.Savings(w, own) : [])) : [],
                 });
             }
         }
@@ -179,14 +179,14 @@ public static class SpeedAdvisor
                 Gain = g.Min(s => s.Gain),
                 Speed = g.Min(s => s.Speed),
                 Speeds = Slowest(g.SelectMany(s => s.Speeds)),
-                Compared = [.. g.SelectMany(s => s.Compared).GroupBy(c => (c.Value, c.Row)).Select(c => c.MinBy(v => v.Speed)! with { Speeds = Slowest(c.SelectMany(v => v.Speeds)) })],
+                Compared = [.. g.SelectMany(s => s.Compared).GroupBy(c => (c.Value, c.Row)).Select(c => c.OrderBy(v => v.Speed).First() with { Speeds = Slowest(c.SelectMany(v => v.Speeds)) })],
                 TestVideosOnly = g.All(s => s.TestVideosOnly),
             })
             .ToList();
 
         // Of several better-quality values that all keep up, only the best is worth suggesting; the others are steps on the way.
         merged.RemoveAll(s => s.Kind == SpeedSuggestionKind.HigherQuality && !s.Current
-            && merged.Any(o => o.Kind == SpeedSuggestionKind.HigherQuality && !o.Current && o.Setting == s.Setting && IsBetterQuality(o.Setting!, o.Value!, s.Value!, type)));
+            && merged.Any(o => o.Kind == SpeedSuggestionKind.HigherQuality && !o.Current && o.Setting == s.Setting && IsBetterQuality(o.Setting, o.Value, s.Value, type)));
 
         // A value already suggested as faster or more efficient needs no second suggestion for avoiding a drawback.
         merged.RemoveAll(s => s.Kind == SpeedSuggestionKind.Compatible
@@ -202,31 +202,39 @@ public static class SpeedAdvisor
     private static List<SettingComparison> Comparisons(IReadOnlyList<SpeedReport> runs, Func<SpeedResult, bool> configured)
     {
         List<SettingComparison> seen = [];
-        var withSettings = runs.Where(r => r.Settings is not null).ToList();
-        var values = withSettings.Select(r => _values.ToDictionary(v => v.Key, v => v.Value(r.Settings!), StringComparer.Ordinal)).ToList();
+        List<(SpeedReport Run, SpeedSettings Settings)> withSettings = [];
+        foreach (var run in runs)
+        {
+            if (run.Settings is { } settings)
+            {
+                withSettings.Add((run, settings));
+            }
+        }
+
+        var values = withSettings.Select(r => _values.ToDictionary(v => v.Key, v => v.Value(r.Settings), StringComparer.Ordinal)).ToList();
         for (var i = 0; i < withSettings.Count; i++)
         {
             for (var j = 0; j < withSettings.Count; j++)
             {
                 var (a, b) = (withSettings[i], withSettings[j]);
-                if (i == j || a.Method != b.Method || a.Repeats != b.Repeats)
+                if (i == j || a.Run.Method != b.Run.Method || a.Run.Repeats != b.Run.Repeats)
                 {
                     continue;
                 }
 
                 // Audio and burned-in subtitles describe the client; they must match too, but aren't suggested.
                 var differs = _values.Keys.Where(k => values[i][k] != values[j][k]).ToList();
-                if (differs.Count == 0 || a.Settings!.AudioCopy != b.Settings!.AudioCopy || a.Settings.BurnIn != b.Settings.BurnIn)
+                if (differs.Count == 0 || a.Settings.AudioCopy != b.Settings.AudioCopy || a.Settings.BurnIn != b.Settings.BurnIn)
                 {
                     continue;
                 }
 
-                foreach (var mine in a.Results.Where(r => r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && !r.LowPowerDropped && configured(r)))
+                foreach (var mine in a.Run.Results.Where(r => r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && !r.LowPowerDropped && configured(r)))
                 {
                     // A setting for another output codec (low power, CRF) doesn't reach this output, so the Intel low power suite, which switches both codecs at once, still compares each.
                     // The key's output part names the codec, also for a library test, which SpeedCatalog.Find doesn't resolve.
                     var codec = SpeedCatalog.FindOutput(mine.Test.Split('|')[^1])?.Codec;
-                    var relevant = differs.Where(k => Catalog.Default.Options.FirstOrDefault(o => o.Key == k)?.OutputCodec is not { } only || only == codec).ToList();
+                    var relevant = differs.Where(k => Catalog.Default.Option(k)?.OutputCodec is not { } only || only == codec).ToList();
                     if (relevant.Count != 1)
                     {
                         continue;
@@ -236,10 +244,10 @@ public static class SpeedAdvisor
 
                     // The same command means the setting doesn't reach this output (CRF on a hardware encoder, presets VideoToolbox maps alike).
                     // A library test keeps the same key whatever file it read, so the input must match as well.
-                    if (b.Results.FirstOrDefault(r => r.Test == mine.Test && r.Type == mine.Type && r.Device == mine.Device && r.Input == mine.Input && r.Video == mine.Video && r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && !r.LowPowerDropped && configured(r)) is { } theirs
+                    if (b.Run.Results.FirstOrDefault(r => r.Test == mine.Test && r.Type == mine.Type && r.Device == mine.Device && r.Input == mine.Input && r.Video == mine.Video && r.Fps is > 0 && string.IsNullOrEmpty(r.Variant) && !r.LowPowerDropped && configured(r)) is { } theirs
                         && (mine.Command is null || mine.Command != theirs.Command))
                     {
-                        seen.Add(new(key, values[i][key], values[j][key], mine.Test, Label(mine, a.Settings), Gain(mine, theirs), Speed(mine), IsGenerated(mine), ResourceComparison.Savings(mine, theirs), mine.Streams, theirs.Streams, a.Settings!.Tonemap || a.Settings.VppTonemap || a.Settings.VideoToolboxTonemap, mine.Capped, theirs.Capped, Speed(theirs), GroupRow(key, a.Settings, mine.Type), GroupRow(key, b.Settings!, theirs.Type), mine.Video, mine.Output));
+                        seen.Add(new(key, values[i][key], values[j][key], mine.Test, Label(mine, a.Settings), Gain(mine, theirs), Speed(mine), IsGenerated(mine), ResourceComparison.Savings(mine, theirs), mine.Streams, theirs.Streams, a.Settings.Tonemap || a.Settings.VppTonemap || a.Settings.VideoToolboxTonemap, mine.Capped, theirs.Capped, Speed(theirs), GroupRow(key, a.Settings, mine.Type), GroupRow(key, b.Settings, theirs.Type), mine.Video, mine.Output));
                     }
                 }
             }
@@ -295,7 +303,7 @@ public static class SpeedAdvisor
             var tonemapOff = key is "Tonemap" or "VppTonemap" or "VideoToolboxTonemap" && value == "false" && group.Any(s => !s.ToneMaps);
 
             // A value with a known drawback comes with the value that avoids it, so the choice is shown both ways.
-            var avoidable = Catalog.Default.Options.FirstOrDefault(o => o.Key == key)?.CompatibleValue == other;
+            var avoidable = Catalog.Default.Option(key)?.CompatibleValue == other;
             if (gains.All(g => g > Noise))
             {
                 if (tonemapOff || contradicted)
@@ -308,7 +316,7 @@ public static class SpeedAdvisor
                 yield return faster;
                 if (avoidable)
                 {
-                    yield return Compatible(faster, group.Min(s => s.OtherSpeed), serverValue, type);
+                    yield return Compatible(faster, value, group.Min(s => s.OtherSpeed), serverValue, type);
                 }
 
                 continue;
@@ -323,7 +331,7 @@ public static class SpeedAdvisor
                 yield return efficient;
                 if (avoidable)
                 {
-                    yield return Compatible(efficient, group.Min(s => s.OtherSpeed), serverValue, type);
+                    yield return Compatible(efficient, value, group.Min(s => s.OtherSpeed), serverValue, type);
                 }
 
                 continue;
@@ -358,7 +366,7 @@ public static class SpeedAdvisor
                 yield return quality;
                 if (avoidable)
                 {
-                    yield return Compatible(quality, real.Min(s => s.OtherSpeed), serverValue, type);
+                    yield return Compatible(quality, value, real.Min(s => s.OtherSpeed), serverValue, type);
                 }
             }
         }
@@ -398,18 +406,19 @@ public static class SpeedAdvisor
 
     /// <summary>Returns the suggestion for the value a suggested one was compared with, which avoids the suggested value's known drawback.</summary>
     /// <param name="suggested">The suggestion for the value with the drawback.</param>
+    /// <param name="value">The value with the drawback.</param>
     /// <param name="speed">The slowest measured speed with the value that avoids it, as a multiple of real time.</param>
     /// <param name="serverValue">The server's current value.</param>
     /// <param name="type">The configured backend.</param>
     /// <returns>The suggestion, on the same outputs with the speeds and streams swapped.</returns>
-    private static SpeedSuggestion Compatible(SpeedSuggestion suggested, double speed, string serverValue, HwType type) =>
+    private static SpeedSuggestion Compatible(SpeedSuggestion suggested, string value, double speed, string serverValue, HwType type) =>
         new(SpeedSuggestionKind.Compatible, suggested.Outputs)
         {
             Setting = suggested.Setting,
             Value = suggested.Others[0],
-            Others = [suggested.Value!],
+            Others = [value],
             Gain = suggested.Gain is { } gain ? (1 / (1 + gain)) - 1 : null,
-            LowerQuality = IsBetterQuality(suggested.Setting!, suggested.Value!, suggested.Others[0], type),
+            LowerQuality = IsBetterQuality(suggested.Setting, value, suggested.Others[0], type),
             Speed = speed,
             Current = suggested.Others[0] == serverValue,
             Streams = suggested.OtherStreams,
@@ -419,7 +428,7 @@ public static class SpeedAdvisor
             Group = suggested.Group,
             Row = suggested.Compared.Count > 0 ? suggested.Compared[0].Row : null,
             Speeds = suggested.Compared.Count > 0 ? suggested.Compared[0].Speeds : [],
-            Compared = [new SpeedComparedValue(suggested.Value!, suggested.Speed ?? 0, suggested.Streams, suggested.StreamsCapped) { Row = suggested.Row, Speeds = suggested.Speeds, Current = suggested.Current }],
+            Compared = [new SpeedComparedValue(value, suggested.Speed ?? 0, suggested.Streams, suggested.StreamsCapped) { Row = suggested.Row, Speeds = suggested.Speeds, Current = suggested.Current }],
             TestVideosOnly = suggested.TestVideosOnly,
         };
 
@@ -431,9 +440,18 @@ public static class SpeedAdvisor
     /// <returns>One suggestion per setting outside a group, followed by any for the value that avoids its drawback; those in a group unchanged.</returns>
     private static IEnumerable<SpeedSuggestion> OneTablePerSetting(List<SpeedSuggestion> merged, List<SettingComparison> comparisons, SpeedSettings server, HwType type)
     {
-        foreach (var setting in merged.GroupBy(s => s.Setting!, StringComparer.Ordinal))
+        foreach (var setting in merged.GroupBy(s => s.Setting, StringComparer.Ordinal))
         {
-            var key = setting.Key;
+            if (setting.Key is not { } key)
+            {
+                foreach (var s in setting)
+                {
+                    yield return s;
+                }
+
+                continue;
+            }
+
             var serverValue = _values[key](server);
             var against = comparisons.Where(c => c.Key == key && c.Other == serverValue).ToList();
             if (GroupOf(key) is not null || against.Count == 0)
@@ -462,7 +480,7 @@ public static class SpeedAdvisor
                 {
                     Speeds = v.Speeds,
                     Current = v.Value == serverValue,
-                    LowerQuality = IsBetterQuality(key, chosen.Value!, v.Value, type) ? true : IsBetterQuality(key, v.Value, chosen.Value!, type) ? false : null,
+                    LowerQuality = IsBetterQuality(key, chosen.Value, v.Value, type) ? true : IsBetterQuality(key, v.Value, chosen.Value, type) ? false : null,
                 })],
             };
             yield return table;
@@ -498,15 +516,15 @@ public static class SpeedAdvisor
             };
         }
 
-        if (Catalog.Default.Options.FirstOrDefault(o => o.Key == key)?.Recommended is { } recommended && values.Any(v => v.Value == recommended))
+        if (Catalog.Default.Option(key)?.Recommended is { } recommended && values.Any(v => v.Value == recommended))
         {
             return Listing(SpeedSuggestionKind.RecommendedValue, recommended);
         }
 
         // A value as fast as the server's within noise isn't worth switching to when the server's measured faster than it by more.
-        bool Outpaced(SpeedSuggestion s) => s.Kind == SpeedSuggestionKind.EfficientSetting && measured.Any(o => o.Kind == SpeedSuggestionKind.FasterSetting && o.Current && o.Others.Contains(s.Value!, StringComparer.Ordinal));
+        bool Outpaced(SpeedSuggestion s) => s.Kind == SpeedSuggestionKind.EfficientSetting && s.Value is { } value && measured.Any(o => o.Kind == SpeedSuggestionKind.FasterSetting && o.Current && o.Others.Contains(value, StringComparer.Ordinal));
         var quality = measured.Where(s => s.Kind == SpeedSuggestionKind.HigherQuality).ToList();
-        return quality.FirstOrDefault(s => !quality.Any(o => IsBetterQuality(key, o.Value!, s.Value!, type)))
+        return quality.FirstOrDefault(s => !quality.Any(o => IsBetterQuality(key, o.Value, s.Value, type)))
             ?? measured.Where(s => s.Kind is SpeedSuggestionKind.FasterSetting or SpeedSuggestionKind.EfficientSetting && !Outpaced(s))
                 .OrderBy(s => s.Current)
                 .ThenBy(s => s.Kind == SpeedSuggestionKind.FasterSetting ? 0 : 1)
@@ -528,28 +546,33 @@ public static class SpeedAdvisor
     /// <remarks>H.264 decides, as the codec Jellyfin encodes to unless HEVC encoding is allowed (EncodingOptions.AllowHevcEncoding, off by default, v12.2).</remarks>
     private static (SpeedSuggestion Limit, SpeedSuggestion NoLimit)? BitrateLimit(List<SpeedResult> configured, SpeedSettings? settings)
     {
-        var ladder = configured
-            .Select(r => (Result: r, Output: SpeedCatalog.Find(r.Test)))
-            .Where(x => x.Output is { DecodeOnly: false, OutputCodec: "h264" })
-            .OrderByDescending(x => x.Output!.Bitrate)
-            .ToList();
-        if (ladder.Select(x => x.Output!.Bitrate).Distinct().Count() < 2)
+        List<(SpeedResult Result, SpeedTest Output)> found = [];
+        foreach (var result in configured)
+        {
+            if (SpeedCatalog.Find(result.Test) is { DecodeOnly: false, OutputCodec: "h264" } output)
+            {
+                found.Add((result, output));
+            }
+        }
+
+        var ladder = found.OrderByDescending(x => x.Output.Bitrate).ToList();
+        if (ladder.Select(x => x.Output.Bitrate).Distinct().Count() < 2)
         {
             return null;
         }
 
         static bool KeepsUp(SpeedResult r) => Speed(r) >= 1 && r.Streams is not 0;
         var behind = ladder.Where(x => !KeepsUp(x.Result)).ToList();
-        var keeping = ladder.Where(x => KeepsUp(x.Result) && behind.All(b => x.Output!.Bitrate < b.Output!.Bitrate)).ToList();
+        var keeping = ladder.Where(x => KeepsUp(x.Result) && behind.All(b => x.Output.Bitrate < b.Output.Bitrate)).ToList();
         if (behind.Count == 0 || keeping.Count == 0)
         {
             return null;
         }
 
         var best = keeping[0];
-        var value = best.Output!.Bitrate.ToString(CultureInfo.InvariantCulture);
+        var value = best.Output.Bitrate.ToString(CultureInfo.InvariantCulture);
         var outputs = behind.Select(x => Label(x.Result, settings)).Distinct(StringComparer.Ordinal).ToList();
-        var slowest = behind.MinBy(x => Speed(x.Result))!.Result;
+        var slowest = behind.MinBy(x => Speed(x.Result)).Result;
         var limit = new SpeedSuggestion(SpeedSuggestionKind.BitrateLimit, outputs)
         {
             Setting = BitrateLimitKey,
@@ -584,14 +607,15 @@ public static class SpeedAdvisor
     /// <param name="value">The value.</param>
     /// <param name="other">The other value.</param>
     /// <param name="type">The configured backend.</param>
-    /// <returns>True when the setting trades speed for quality and the value is the better-quality one.</returns>
-    private static bool IsBetterQuality(string key, string value, string other, HwType type)
+    /// <returns>True when the setting trades speed for quality and the value is the better-quality one; false when any is missing.</returns>
+    private static bool IsBetterQuality(string? key, string? value, string? other, HwType type)
     {
         // Auto is veryfast for libx264, libx265, and QSV, and the same setting as veryfast on NVENC, AMF, and VideoToolbox (SVT-AV1 takes faster's);
         // VAAPI leaves it to the driver, so there it isn't ordered (EncodingHelper.GetEncoderParam, v12.2).
         static string Preset(string v) => v == "auto" ? "veryfast" : v;
-        return !(type == HwType.vaapi && (value == "auto" || other == "auto"))
-            && Catalog.Default.Options.FirstOrDefault(o => o.Key == key) is { } option && option.IsBetterQuality(Preset(value), Preset(other));
+        return key is not null && value is not null && other is not null
+            && !(type == HwType.vaapi && (value == "auto" || other == "auto"))
+            && Catalog.Default.Option(key) is { } option && option.IsBetterQuality(Preset(value), Preset(other));
     }
 
     /// <summary>Returns the better of two results for one output: more streams kept up, then faster; when they measure alike, QSV over VAAPI on the same GPU, then the more efficient one.</summary>
@@ -654,8 +678,8 @@ public static class SpeedAdvisor
 
     /// <summary>Returns a result's speed as a multiple of real time.</summary>
     /// <param name="r">The result.</param>
-    /// <returns>The speed; fps alone when the frame rate wasn't recorded.</returns>
-    private static double Speed(SpeedResult r) => r.Fps!.Value / (r.FrameRate is > 0 and var rate ? rate : 1);
+    /// <returns>The speed; fps alone when the frame rate wasn't recorded, and 0 without fps.</returns>
+    private static double Speed(SpeedResult r) => (r.Fps ?? 0) / (r.FrameRate is > 0 and var rate ? rate : 1);
 
     /// <summary>Returns what was tested: the input, and the output with its audio.</summary>
     /// <param name="r">The result.</param>

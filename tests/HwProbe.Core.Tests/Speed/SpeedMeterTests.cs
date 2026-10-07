@@ -32,7 +32,7 @@ public sealed class SpeedMeterTests
     [Fact]
     public void SteadyFpsSkipsStartUp()
     {
-        Assert.Equal(24, new FrameTiming(TimeSpan.FromSeconds(2), 24, TimeSpan.FromSeconds(12), 264).SteadyFps!.Value, 3);
+        Assert.Equal(24, Assert.NotNull(new FrameTiming(TimeSpan.FromSeconds(2), 24, TimeSpan.FromSeconds(12), 264).SteadyFps), 3);
         Assert.Null(new FrameTiming(TimeSpan.FromSeconds(2), 24, TimeSpan.FromSeconds(2.5), 36).SteadyFps);
     }
 
@@ -45,7 +45,7 @@ public sealed class SpeedMeterTests
 
         var measured = await SpeedMeter.MeasureAsync(host.LaunchAsync, SpeedMethod.Quick, 24, countStreams: true, TestContext.Current.CancellationToken);
 
-        Assert.Equal(130, measured.Fps!.Value, 1);
+        Assert.Equal(130, Assert.NotNull(measured.Fps), 1);
         Assert.Null(measured.Streams);
 
         // One copy, then one again with more content, since the first finished in under 5 s.
@@ -95,7 +95,7 @@ public sealed class SpeedMeterTests
 
         var measured = await SpeedMeter.MeasureAsync(host.LaunchAsync, method, 24, countStreams: true, TestContext.Current.CancellationToken, () => host.Copies.Count >= 2 + runsAllowed);
 
-        Assert.Equal(130, measured.Fps!.Value, 1);
+        Assert.Equal(130, Assert.NotNull(measured.Fps), 1);
         Assert.Equal(expected, measured.Streams);
         Assert.StartsWith("Time limit reached", measured.Note, StringComparison.Ordinal);
         Assert.True(measured.Interrupted);
@@ -113,7 +113,7 @@ public sealed class SpeedMeterTests
 
         Assert.Equal(2, host.Contents.Count);
         Assert.True(host.Contents[1] > host.Contents[0] * 5);
-        Assert.Equal(2400, measured.Fps!.Value, 1);
+        Assert.Equal(2400, Assert.NotNull(measured.Fps), 1);
     }
 
     /// <summary>A decode test reports fps only.</summary>
@@ -142,7 +142,7 @@ public sealed class SpeedMeterTests
         var slow = await SpeedMeter.MeasureAsync(TimedOutAsync, SpeedMethod.Confirm, 24, countStreams: true, TestContext.Current.CancellationToken);
         var broken = await SpeedMeter.MeasureAsync(FailedAsync, SpeedMethod.Confirm, 24, countStreams: true, TestContext.Current.CancellationToken);
 
-        Assert.Equal(2, slow.Fps!.Value, 1);
+        Assert.Equal(2, Assert.NotNull(slow.Fps), 1);
         Assert.Equal(0, slow.Streams);
         Assert.True(slow.Interrupted);
         Assert.Null(broken.Fps);
@@ -180,7 +180,7 @@ public sealed class SpeedMeterTests
 
         var measured = await SpeedMeter.MeasureAsync(SlowerLaterAsync, SpeedMethod.Quick, 24, countStreams: false, TestContext.Current.CancellationToken);
 
-        Assert.Equal(240, measured.Fps!.Value, 1);
+        Assert.Equal(240, Assert.NotNull(measured.Fps), 1);
     }
 
     /// <summary>A scripted host that keeps a fixed number of copies at real time.</summary>

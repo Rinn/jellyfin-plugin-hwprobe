@@ -41,7 +41,9 @@ public sealed class HwProbeAppTests : IDisposable
         Assert.Contains($"\"schemaVersion\": {CapabilityReport.CurrentSchemaVersion}", stdout, StringComparison.Ordinal);
         var report = ReportStore.Deserialize(stdout);
         Assert.NotNull(report);
-        Assert.Equal(report.Fingerprint, ReportStore.Deserialize(await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken))!.Fingerprint);
+        var saved = ReportStore.Deserialize(await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken));
+        Assert.NotNull(saved);
+        Assert.Equal(report.Fingerprint, saved.Fingerprint);
     }
 
     /// <summary>--diagnostics writes a zip with the report and the capability listings.</summary>
@@ -107,7 +109,9 @@ public sealed class HwProbeAppTests : IDisposable
     private async Task<(int Code, string Stdout, string Stderr)> RunAsync(Dictionary<string, string?> scenario, string[] args)
     {
         // Build enumeration launches carry no env overrides, so a wrapper script fixes the scenario per test.
-        var wrapper = WriteWrapper(scenario["HWPROBE_FAKE_SCENARIO"]!);
+        var scenarioPath = scenario["HWPROBE_FAKE_SCENARIO"];
+        Assert.NotNull(scenarioPath);
+        var wrapper = WriteWrapper(scenarioPath);
         var command = new HwProbeCommand();
         var options = command.Bind(command.Root.Parse([.. args, "--ffmpeg", wrapper, "--fixtures", _host.PathFor("fixtures")]));
         using var stdout = new StringWriter();

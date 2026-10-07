@@ -95,12 +95,13 @@ public sealed class RecordedCorpusTests
     public void EveryRecordedFileIsCovered()
     {
         var covered = new[] { nameof(Evaluate), nameof(DeviceOpen) }
-            .SelectMany(m => typeof(RecordedCorpusTests).GetMethod(m)!.GetCustomAttributes<InlineDataAttribute>())
-            .Select(a => (string)a.Data[0]!)
+            .SelectMany(m => typeof(RecordedCorpusTests).GetMethod(m)?.GetCustomAttributes<InlineDataAttribute>() ?? throw new InvalidOperationException($"No test method {m}."))
+            .Select(a => a.Data[0])
+            .OfType<string>()
             .Append(OpenclNoRuntime)
             .Select(Path.GetFileName)
             .ToHashSet(StringComparer.Ordinal);
-        var recorded = Directory.GetFiles(Path.Combine(AppContext.BaseDirectory, "Corpus", "stderr")).Select(f => Path.GetFileName(f)!);
+        var recorded = Directory.GetFiles(Path.Combine(AppContext.BaseDirectory, "Corpus", "stderr")).Select(f => Path.GetFileName(f));
 
         Assert.All(recorded, f => Assert.Contains(f, covered));
     }

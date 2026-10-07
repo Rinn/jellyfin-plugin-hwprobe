@@ -45,7 +45,8 @@ public sealed class PieceFixtureTests : IDisposable
         var result = await BuildAsync(spec, downloader);
 
         Assert.Equal(FixtureStatus.Available, result.Status);
-        var saved = await File.ReadAllBytesAsync(result.Path!, TestContext.Current.CancellationToken);
+        Assert.NotNull(result.Path);
+        var saved = await File.ReadAllBytesAsync(result.Path, TestContext.Current.CancellationToken);
         Assert.Equal(_file[..10].Concat(_file[500..600]), saved);
         Assert.Empty(_runner.Invocations);
         await BuildAsync(spec, downloader);

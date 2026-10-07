@@ -66,7 +66,7 @@ public sealed class SpeedEngine : IDisposable
     public static SpeedResultCache ResultCacheFor(EngineOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        return new SpeedResultCache(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(options.FixturesDirectory))!, "speed-results"));
+        return new SpeedResultCache(Path.Join(Path.GetDirectoryName(Path.GetFullPath(options.FixturesDirectory)), "speed-results"));
     }
 
     /// <summary>Measures every backend, then software, on every chosen test.</summary>
@@ -107,7 +107,15 @@ public sealed class SpeedEngine : IDisposable
         List<SpeedResult> results = [];
         try
         {
-            var names = tests.Where(t => t.Fixture is not null).GroupBy(t => t.Fixture!.FileName).ToDictionary(g => g.Key, g => g.First().Name ?? g.Key, StringComparer.Ordinal);
+            Dictionary<string, string> names = new(StringComparer.Ordinal);
+            foreach (var test in tests)
+            {
+                if (test.Fixture is { } fixture)
+                {
+                    names.TryAdd(fixture.FileName, test.Name ?? fixture.FileName);
+                }
+            }
+
             var resultsCache = ResultCacheFor(options);
             resultsCache.Prune(caps.VersionLine);
             if (speed.Pause is { } waitFirst)
@@ -256,8 +264,19 @@ public sealed class SpeedEngine : IDisposable
     /// <summary>Returns available clip paths by file name.</summary>
     /// <param name="clips">Every clip built.</param>
     /// <returns>The paths.</returns>
-    private static Dictionary<string, string> Paths(Dictionary<string, FixtureResult> clips) =>
-        clips.Values.Where(c => c.Path is not null).ToDictionary(c => c.Spec.FileName, c => c.Path!, StringComparer.Ordinal);
+    private static Dictionary<string, string> Paths(Dictionary<string, FixtureResult> clips)
+    {
+        Dictionary<string, string> paths = new(StringComparer.Ordinal);
+        foreach (var clip in clips.Values)
+        {
+            if (clip.Path is { } path)
+            {
+                paths[clip.Spec.FileName] = path;
+            }
+        }
+
+        return paths;
+    }
 
     /// <summary>Adds what the page and report show about a test to its result.</summary>
     /// <param name="test">The test.</param>
