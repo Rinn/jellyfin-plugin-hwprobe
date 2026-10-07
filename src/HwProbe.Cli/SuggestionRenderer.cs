@@ -39,7 +39,7 @@ internal static class SuggestionRenderer
                 SpeedSuggestionKind.Compatible => string.Create(CultureInfo.InvariantCulture, $"{label}: {value}{current}, more compatible than {others}, at lower quality, {s.Speed:0.0}x real time"),
                 SpeedSuggestionKind.BitrateLimit => string.Create(CultureInfo.InvariantCulture, $"{label}: {int.Parse(s.Value!, CultureInfo.InvariantCulture) / 1e6:0.#} Mbps, the highest H.264 quality that keeps real time"),
                 SpeedSuggestionKind.NoChange => $"{label}: {value}{current}, nothing compared is worth changing to ({others})",
-                SpeedSuggestionKind.RecommendedValue => $"{label}: {value}{current}, {Catalog.Default.Options.First(o => o.Key == s.Setting).RecommendedReason!.TrimEnd('.')}",
+                SpeedSuggestionKind.RecommendedValue => $"{label}: {value}{current}, {Catalog.Default.Option(s.Setting!)!.RecommendedReason!.TrimEnd('.')}",
                 _ => s.Kind.ToString(),
             };
             var streams = s.Streams is { } mine && s.OtherStreams is { } theirs && mine != theirs ? string.Create(CultureInfo.InvariantCulture, $"; streams {theirs}{(s.OtherStreamsCapped ? "+" : string.Empty)} -> {mine}{(s.StreamsCapped ? "+" : string.Empty)}") : string.Empty;

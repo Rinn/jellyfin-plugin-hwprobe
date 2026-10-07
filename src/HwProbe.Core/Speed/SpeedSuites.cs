@@ -96,7 +96,7 @@ public static class SpeedSuites
         }
 
         // Auto, then doubling thread limits, then the CPU count itself; only limits the setting offers.
-        var option = Catalog.Default.Options.First(o => o.Key == ThreadOption);
+        var option = Catalog.Default.Option(ThreadOption)!;
         List<int> limits = [];
         for (var n = 1; n < processorCount; n *= 2)
         {

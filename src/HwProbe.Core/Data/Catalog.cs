@@ -322,10 +322,10 @@ public sealed partial class Catalog
 
         foreach (var group in SettingGroups)
         {
-            var known = group.Settings.All(k => Options.Any(o => o.Key == k));
+            var known = group.Settings.All(k => Option(k) is not null);
             var conditions = group.Rows.SelectMany(r => r.When ?? new Dictionary<string, string>()).ToList();
             var valid = known
-                && conditions.All(c => group.Settings.Contains(c.Key) && Options.First(o => o.Key == c.Key).Takes(c.Value))
+                && conditions.All(c => group.Settings.Contains(c.Key) && Option(c.Key)!.Takes(c.Value))
                 && group.Rows.All(r => r.Describes is null || group.Settings.Contains(r.Describes))
                 && group.Rows.Select(r => r.Label).Distinct(StringComparer.Ordinal).Count() == group.Rows.Count;
             if (!known || !valid || group.Rows.Count == 0 || SettingGroups.Count(g => g.Settings.Intersect(group.Settings).Any()) > 1)
@@ -395,7 +395,7 @@ public sealed partial class Catalog
                 : suite.Outputs.Concat(steps.SelectMany(s => s.Outputs ?? [])).FirstOrDefault(o => !outputs.Contains(o)) is { } output ? $"output {output}"
                 : steps.FirstOrDefault(s => s.Backends?.Contains(HwType.none) == true) is { } software ? $"backend none on step {software.Label} (steps are for hardware backends)"
                 : suite.ThreadSteps && !suite.ThreadLabel.Contains("{n}", StringComparison.Ordinal) ? "threadLabel (it requires {n})"
-                : steps.SelectMany(s => s.Options).FirstOrDefault(o => Options.FirstOrDefault(c => c.Key == o.Key) is not { } known || !known.Takes(o.Value) || SpeedSettingsOptions.Apply(new SpeedSettings(), o.Key, o.Value) is null) is { Key: not null } option ? $"option {option.Key}={option.Value}"
+                : steps.SelectMany(s => s.Options).FirstOrDefault(o => Option(o.Key) is not { } known || !known.Takes(o.Value) || SpeedSettingsOptions.Apply(new SpeedSettings(), o.Key, o.Value) is null) is { Key: not null } option ? $"option {option.Key}={option.Value}"
                 : null;
             if (wrong is not null)
             {

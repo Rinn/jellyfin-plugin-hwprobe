@@ -787,7 +787,7 @@ public sealed partial class ProbeService : IDisposable
         }
 
         if (!Catalog.Default.Repeats.Any(o => o.Value == request.Repeats) || !Catalog.Default.TimeLimits.Any(o => o.Value == request.TimeLimitSeconds)
-            || request.Options?.Any(o => Catalog.Default.Options.FirstOrDefault(c => c.Key == o.Key) is not { } option || !option.Takes(o.Value)) == true
+            || request.Options?.Any(o => Catalog.Default.Option(o.Key) is not { } option || !option.Takes(o.Value)) == true
             || request.Backends?.Any(b => !Enum.TryParse<HwType>(b, out var type) || !Enum.IsDefined(type)) == true
             || request.Backends is [])
         {
