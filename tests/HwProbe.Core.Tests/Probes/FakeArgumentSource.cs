@@ -16,9 +16,6 @@ internal sealed class FakeArgumentSource : IArgumentSource, IArgumentSourceFacto
     /// <summary>Gets or sets a value indicating whether deinterlacing happens on the CPU.</summary>
     public bool NoHardwareDeinterlace { get; set; }
 
-    /// <summary>Gets or sets a value indicating whether the hardware decoders don't decode key frames only, so images come from software.</summary>
-    public bool NoKeyFrameDecoding { get; set; }
-
     /// <summary>Gets environment overrides returned with every set of arguments.</summary>
     public Dictionary<string, string?> Environment { get; } = [];
 
@@ -49,28 +46,6 @@ internal sealed class FakeArgumentSource : IArgumentSource, IArgumentSourceFacto
             EncoderArgs = cell.LowPower ? " -low_power 1" : string.Empty,
             HardwareTonemap = cell.Tonemap,
             HardwareDeinterlacer = cell.Interlaced && !NoHardwareDeinterlace ? "videotoolbox" : null,
-        };
-    }
-
-    /// <inheritdoc/>
-    public ProbeArguments BuildImages(HwType type, string? device, ProbeCell cell, ImageJob job)
-    {
-        ArgumentNullException.ThrowIfNull(cell);
-        ArgumentNullException.ThrowIfNull(job);
-        if (type != HwType.none && job.KeyFramesOnly && NoKeyFrameDecoding)
-        {
-            throw new ArgumentConstructionException($"no key-frame decoding on {type}");
-        }
-
-        var hwaccel = type == HwType.none ? string.Empty : Hwaccel(cell);
-        var threads = type == HwType.none ? $"-threads {job.Threads} " : string.Empty;
-        return new ProbeArguments(hwaccel, $"-vf \"fps=fps=0.1,scale=w={job.Width}:h=-2\"", type != HwType.none && job.HwEncoding ? "mjpeg_videotoolbox" : "mjpeg", Environment)
-        {
-            InputArgument = $"{(job.KeyFramesOnly ? "-skip_frame nokey " : string.Empty)}{threads}{hwaccel} -i file:\"{cell.SourcePath}\" -map 0:0".Replace("  ", " ", StringComparison.Ordinal),
-            EncoderArgs = $"-qscale:v {job.Qscale} -fps_mode passthrough",
-            Threads = job.Threads,
-            HardwareDecoder = type != HwType.none && cell.HardwareDecode && !SoftwareDecoded.Contains(cell.InputCodec) ? "-hwaccel videotoolbox" : null,
-            HardwareEncoder = type != HwType.none && job.HwEncoding,
         };
     }
 

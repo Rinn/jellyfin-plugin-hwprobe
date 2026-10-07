@@ -63,29 +63,6 @@ public sealed class SpeedCommandLineTests
             SpeedCommandLine.Build(_args, TimeSpan.FromSeconds(10), decodeOnly: false, TimeSpan.FromMinutes(12)),
             StringComparison.Ordinal);
 
-    /// <summary>An image run keeps the server's arguments, bounds and seeks the input rather than the output, discards the images, and repeats the source through a concat list.</summary>
-    [Fact]
-    public void ImagesBoundTheInput()
-    {
-        var images = new ProbeArguments("-hwaccel videotoolbox", "-vf \"setpts=N/24.000/TB,fps=0.1,scale=320:-2\"", "mjpeg", new Dictionary<string, string?>())
-        {
-            InputArgument = "-skip_frame nokey -hwaccel videotoolbox -i file:\"/c/a.mkv\" -map 0:0",
-            EncoderArgs = "-qscale:v 4 -fps_mode passthrough",
-            Threads = 1,
-        };
-
-        Assert.Equal(
-            "-hide_banner -v warning -nostats -progress pipe:1 -skip_frame nokey -hwaccel videotoolbox -ss 60 -t 10 -i file:\"/c/a.mkv\" -map 0:0 -an -sn -vf \"setpts=N/24.000/TB,fps=0.1,scale=320:-2\" -threads 1 -c:v mjpeg -qscale:v 4 -fps_mode passthrough -f null -",
-            SpeedCommandLine.BuildImages(images, TimeSpan.FromSeconds(10), TimeSpan.FromMinutes(1)));
-        Assert.StartsWith(
-            "-hide_banner -v warning -nostats -progress pipe:1 -skip_frame nokey -hwaccel videotoolbox -t 600 -f concat -safe 0 -i file:\"/t/l\\\".txt\" -map 0:0 -an",
-            SpeedCommandLine.BuildImages(images with { InputArgument = "-skip_frame nokey -hwaccel videotoolbox -i file:\"/c/a \\\" b.mkv\" -map 0:0" }, TimeSpan.FromMinutes(10), loopList: "/t/l\".txt"),
-            StringComparison.Ordinal);
-        Assert.Equal("file '/m/it'\\''s.mkv'\nfile '/m/it'\\''s.mkv'\n", SpeedCommandLine.LoopList("/m/it's.mkv", 2, null));
-        Assert.Equal("file '/c/a.webm'\nduration 10.9\n", SpeedCommandLine.LoopList("/c/a.webm", 1, 10.9));
-        Assert.Throws<ArgumentException>(() => SpeedCommandLine.BuildImages(images with { Threads = null }, TimeSpan.FromSeconds(10)));
-    }
-
     /// <summary>An audio run loops the input and bounds the output; a decode run keeps the input alone and drops any video.</summary>
     [Fact]
     public void AudioBoundsTheOutput()

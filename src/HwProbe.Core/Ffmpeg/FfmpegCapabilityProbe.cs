@@ -53,9 +53,6 @@ public sealed class FfmpegCapabilityProbe
             filterOptions[check.Key] = CapabilityParser.HasFilterOption(help, check.Filter, check.RequiredText);
         }
 
-        // As MediaEncoder.SetFFmpegPath checks it (v12.2): the flag works when the run exits cleanly.
-        var lowPriority = await _runner.RunAsync(new FfmpegInvocation(ffmpegPath, "-loglevel quiet -hwaccel_flags +low_priority -hide_banner -f lavfi -i nullsrc=s=1x1:d=100 -f null -", _noEnvironment, _timeout), cancellationToken);
-
         return new FfmpegCapabilities(
             ffmpegPath,
             versionOutput,
@@ -67,10 +64,7 @@ public sealed class FfmpegCapabilityProbe
             decoders,
             filters,
             filterOptions,
-            BuildStatusResolver.Resolve(hwaccels, encoders))
-        {
-            LowPriorityHwDecode = lowPriority.Status == FfmpegRunStatus.Exited && lowPriority.ExitCode == 0,
-        };
+            BuildStatusResolver.Resolve(hwaccels, encoders));
     }
 
     /// <summary>Runs one enumeration and returns its stdout, or empty if it did not exit cleanly.</summary>

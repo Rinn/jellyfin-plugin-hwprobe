@@ -126,9 +126,6 @@ public sealed partial class Catalog
     /// <summary>Gets the decode-only output.</summary>
     internal CatalogOutput Decode => DecodeEntry ?? throw Missing("decode");
 
-    /// <summary>Gets the outputs that extract images at an interval, as trickplay does.</summary>
-    internal IReadOnlyList<CatalogOutput> Images { get; init; } = [];
-
     /// <summary>Gets the audio inputs, in the page's order.</summary>
     internal IReadOnlyList<CatalogAudio> Audios { get; init; } = [];
 
@@ -331,7 +328,7 @@ public sealed partial class Catalog
                 throw new InvalidDataException($"catalog.yaml: option {option.Key}'s qualityOrder lists values it doesn't take, or lowerIsBetter is set without a range.");
             }
 
-            if (option.OutputCodec is { } codec && !Codecs.Any(c => c.Key == codec) && codec != SpeedCatalog.ImageCodec)
+            if (option.OutputCodec is { } codec && !Codecs.Any(c => c.Key == codec))
             {
                 throw new InvalidDataException($"catalog.yaml: option {option.Key}'s outputCodec {codec} isn't a codec the catalog lists.");
             }
@@ -413,9 +410,9 @@ public sealed partial class Catalog
         }
     }
 
-    /// <summary>Returns every output's key: each codec at each quality, decoding alone, the image outputs, and the audio outputs.</summary>
+    /// <summary>Returns every output's key: each codec at each quality, decoding alone, and the audio outputs.</summary>
     /// <returns>The keys.</returns>
-    private IReadOnlyList<string> OutputKeys() => [.. Codecs.SelectMany(c => Qualities.Select(q => OutputKey(c, q))), Decode.Key, .. Images.Select(i => i.Key), .. AudioOutputs.Select(o => o.Key)];
+    private IReadOnlyList<string> OutputKeys() => [.. Codecs.SelectMany(c => Qualities.Select(q => OutputKey(c, q))), Decode.Key, .. AudioOutputs.Select(o => o.Key)];
 
     /// <summary>Checks each suite names videos, audio inputs, outputs, backends, and settings the catalog has.</summary>
     private void CheckSuites()

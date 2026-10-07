@@ -1,6 +1,6 @@
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 
-/// <summary>What a speed run makes from each input: a video codec at a quality, as a player asks for it, images at an interval, an audio codec, or decoding alone.</summary>
+/// <summary>What a speed run makes from each input: a video codec at a quality, as a player asks for it, an audio codec, or decoding alone.</summary>
 /// <param name="Key">Stable key, e.g. <c>hevc-8mbps</c>.</param>
 /// <param name="Label">What the page calls it, e.g. <c>HEVC, 8 Mbps</c>.</param>
 /// <param name="Codec">The output codec, or null to decode only.</param>

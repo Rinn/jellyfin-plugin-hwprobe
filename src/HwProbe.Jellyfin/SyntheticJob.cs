@@ -34,7 +34,6 @@ public static class SyntheticJob
             ColorTransfer = cell.ColorTransfer,
             ColorPrimaries = cell.ColorPrimaries,
             ColorSpace = cell.ColorSpace,
-            AspectRatio = cell.AspectRatio,
         };
 
         // External, like a track the server has extracted: it reaches the same subtitles= burn-in filter

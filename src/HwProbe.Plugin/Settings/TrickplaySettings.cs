@@ -16,6 +16,7 @@ public static class TrickplaySettings
         [Prefix + nameof(TrickplayOptions.EnableKeyFrameOnlyExtraction)] = (o => o.EnableKeyFrameOnlyExtraction, (o, v) => o.EnableKeyFrameOnlyExtraction = v),
     };
 
+    // Performance tests in HwProbe 1.1.0 to 1.1.2 could apply the thread count, so those history entries still revert.
     private static readonly Dictionary<string, (Func<TrickplayOptions, int> Get, Action<TrickplayOptions, int> Set)> _numbers = new(StringComparer.Ordinal)
     {
         [Prefix + nameof(TrickplayOptions.ProcessThreads)] = (o => o.ProcessThreads, (o, v) => o.ProcessThreads = v),

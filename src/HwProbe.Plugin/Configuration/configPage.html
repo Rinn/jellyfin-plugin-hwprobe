@@ -1181,9 +1181,9 @@
                     return o.Kind === 'Audio' || o.Kind === 'AudioDecode';
                 }
 
-                // Video outputs chosen on their own rather than as a codec at a quality: decoding alone and images.
+                // Video outputs chosen on their own rather than as a codec at a quality: decoding alone.
                 function standalone(o) {
-                    return (o.DecodeOnly || o.Kind === 'Images') && !audioOutput(o);
+                    return o.DecodeOnly && !audioOutput(o);
                 }
 
                 function selectedAudioOutputs() {
@@ -2288,7 +2288,7 @@
                         .appendChild(el('div', 'Measured in software alone: no backend decodes or encodes audio on the GPU.', 'fieldDescription'));
                     form.appendChild(el('h3', 'Output', 'sectionTitle'));
                     multiSelect(form, 'Codec', speedCodecs.map(c => ({ key: c.Key, text: c.Name })).concat(speedOutputs.filter(standalone).map(o => ({ key: o.Key, text: o.Label }))), chosenCodecs, () => update())
-                        .appendChild(el('div', 'Every selected codec at every selected quality is processed for every selected input; ' + andList(speedOutputs.filter(standalone).map(o => o.Label)) + ' take no quality.', 'fieldDescription'));
+                        .appendChild(el('div', 'Every selected codec at every selected quality is processed for every selected input.', 'fieldDescription'));
                     multiSelect(form, 'Quality', speedQualities.map(q => ({ key: q.Key, text: q.Name })), chosenQualities, () => update())
                         .appendChild(el('div', 'Output resolution is determined by transcoded quality and codec.', 'fieldDescription'));
                     multiSelect(form, 'Audio codec', speedOutputs.filter(audioOutput).map(o => ({ key: o.Key, text: o.Label })), chosenAudioOutputs, () => update())
@@ -2507,7 +2507,7 @@
                         if (speed && !values && counted) {
                             facts.push(streamsText(x) + ' concurrent streams');
                         }
-                        // An image output's fps is the source's frames over the time taken, not frames it decoded; audio has no frames.
+                        // Audio has no frames, nor did earlier runs' trickplay images: their fps isn't frames decoded.
                         if (x.fps && !['Images', 'Audio', 'AudioDecode'].includes(x.kind)) {
                             facts.push(Math.round(x.fps) + ' frames a second');
                         }
@@ -2679,11 +2679,9 @@
                         ['encoderPreset', t.encoderPreset || 'Auto (veryfast)'],
                         ['crf', 'H.265 ' + t.h265Crf + ', H.264 ' + t.h264Crf],
                         ['deinterlace', (t.bwdif ? 'BWDIF' : 'YADIF') + (t.doubleRate ? ', double rate' : '')],
-                        // Reports from before trickplay was measured have none of its settings.
-                        ['trickplay', t.trickplayWidth ? 'MJPEG hardware encoding ' + onOff(t.trickplayHwEncoding) + ', key frames only ' + onOff(t.trickplayKeyFrames) + ', ' + t.trickplayThreads + ' FFmpeg threads, ' + t.trickplayWidth + ' wide, every ' + t.trickplayInterval / 1000 + ' s, qscale ' + t.trickplayQscale : null],
                         ['audio', t.audioCopy ? 'Copied (passthrough)' : 'Transcoded to stereo AAC'],
                         ['burnIn', { text: 'Text (ASS)', image: 'Image (PGS)' }[t.burnIn] || 'None']
-                    ].filter(([, value]) => value !== null).map(([key, value]) => [settingLabels[key] || key, value]);
+                    ].map(([key, value]) => [settingLabels[key] || key, value]);
                 }
 
                 // In a suite, which step; and anything other than measuring: preparing, pausing, waiting, or cancelling.

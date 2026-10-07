@@ -82,9 +82,6 @@ public sealed class ArgumentSource : IArgumentSource
     /// <summary>Gets the recorder shared by every stub.</summary>
     public CallRecorder Recorder { get; }
 
-    /// <summary>Gets a value indicating whether the build takes <c>-hwaccel_flags +low_priority</c>, which image extraction adds for VideoToolbox.</summary>
-    public bool LowPriorityHwDecode { get; init; }
-
     /// <summary>Builds the encoding options upstream would hold for this probe.</summary>
     /// <param name="type">The backend.</param>
     /// <param name="device">Render node or adapter, or null.</param>
@@ -223,105 +220,6 @@ public sealed class ArgumentSource : IArgumentSource
 
     /// <inheritdoc/>
     /// <remarks>
-    /// A pinned copy of what TrickplayManager, MediaEncoder.ExtractVideoImagesOnIntervalAccelerated, and ExtractVideoImagesOnIntervalInternal
-    /// add around EncodingHelper's input, filter and encoder (v12.2): the width, the key-frame check, the height of stretched frames, the job,
-    /// the input threads and low priority, the stream map, setpts, and the quality per encoder. The output, and the retry without
-    /// key frames only when that fails, are left to the caller.
-    /// </remarks>
-    public ProbeArguments BuildImages(HwType type, string? device, ProbeCell cell, ImageJob job)
-    {
-        ArgumentNullException.ThrowIfNull(cell);
-        ArgumentNullException.ThrowIfNull(job);
-        var path = cell.SourcePath ?? throw new ArgumentException("Image arguments require the source path.", nameof(cell));
-        var allowHwAccel = type != HwType.none;
-        var options = allowHwAccel ? CreateOptions(type, device, cell) : new EncodingOptions();
-        if (allowHwAccel && job.KeyFramesOnly && !SupportsKeyFrameOnly(options))
-        {
-            throw new ArgumentConstructionException($"{type} decoders don't decode key frames only here, so images are extracted in software.");
-        }
-
-        // A new EncodingOptions, as upstream makes for software, with the fields that have no defaults set.
-        if (!allowHwAccel)
-        {
-            options.EnableHardwareEncoding = false;
-            options.HardwareAccelerationType = HardwareAccelerationType.none;
-            options.EnableTonemapping = false;
-        }
-
-        var source = SyntheticJob.Create(cell with { Audio = false }, path);
-        var stream = source.VideoStream ?? throw new InvalidOperationException("The synthetic job has no video stream.");
-
-        // TrickplayManager evens the width, and uses the video's own when it's narrower.
-        var width = stream.Width is { } videoWidth && videoWidth < job.Width ? 2 * (videoWidth / 2) : 2 * (job.Width / 2);
-
-        // Frames stored stretched (the size's ratio isn't the display aspect ratio) get the height they're shown at, as fixed-size hardware scalers need it.
-        if (stream is { Width: { } w, Height: { } h, AspectRatio: { Length: > 0 } aspect } && aspect.Split(':') is [var a, var b]
-            && double.TryParse(a, NumberStyles.Float, CultureInfo.InvariantCulture, out var wa) && double.TryParse(b, NumberStyles.Float, CultureInfo.InvariantCulture, out var ha) && wa > 0
-            && Math.Abs((w * ha) - (h * wa)) > .05)
-        {
-            stream.Height = Convert.ToInt32(w * ha / wa);
-        }
-
-        var state = new EncodingJobInfo(TranscodingJobType.Progressive)
-        {
-            IsVideoRequest = true,
-            MediaSource = source.MediaSource,
-            VideoStream = stream,
-            BaseRequest = new BaseEncodingJobOptions { MaxWidth = width, MaxFramerate = (float)(1.0 / TimeSpan.FromMilliseconds(job.IntervalMilliseconds).TotalSeconds) },
-            MediaPath = path,
-            OutputVideoCodec = "mjpeg",
-        };
-        var encoder = job.HwEncoding ? _helper.GetVideoEncoder(state, options) : state.OutputVideoCodec;
-        var ((hwaccel, input), childEnvironment) = Generate(type, () => (_helper.GetInputVideoHwaccelArgs(state, options), _helper.GetInputArgument(state, options, source.MediaSource.Container).Trim()));
-        if (string.IsNullOrWhiteSpace(input))
-        {
-            throw new InvalidOperationException("EncodingHelper returned empty input arguments.");
-        }
-
-        // MediaEncoder passes TrickplayOptions.ProcessThreads, an int, so its own default thread count never applies.
-        if (!allowHwAccel)
-        {
-            input = string.Create(CultureInfo.InvariantCulture, $"-threads {job.Threads} {input}");
-        }
-
-        if (options.HardwareAccelerationType == HardwareAccelerationType.videotoolbox && LowPriorityHwDecode)
-        {
-            input = "-hwaccel_flags +low_priority " + input;
-        }
-
-        input += " -map 0:" + EncodingHelper.FindIndex(source.MediaSource.MediaStreams, stream).ToString(CultureInfo.InvariantCulture);
-        var filter = _helper.GetVideoProcessingFilterParam(state, options, encoder).Trim();
-        if (string.IsNullOrWhiteSpace(filter))
-        {
-            throw new InvalidOperationException("EncodingHelper returned empty or invalid filter parameters.");
-        }
-
-        if (!job.KeyFramesOnly)
-        {
-            var fps = filter.IndexOf("fps=", StringComparison.Ordinal);
-            if (fps < 0)
-            {
-                throw new InvalidOperationException("EncodingHelper returned invalid filter parameters.");
-            }
-
-            var rate = stream.ReferenceFrameRate is > 0 and var reference ? reference : 30;
-            filter = filter.Insert(fps, string.Create(CultureInfo.InvariantCulture, $"setpts=N/{rate:F3}/TB,"));
-        }
-
-        var (option, quality) = ImageQuality(encoder, job.Qscale);
-        var allowSoftware = encoder.Contains("videotoolbox", StringComparison.InvariantCultureIgnoreCase) ? "-allow_sw 1 " : string.Empty;
-        return new ProbeArguments(hwaccel, filter, encoder, childEnvironment)
-        {
-            InputArgument = (job.KeyFramesOnly ? "-skip_frame nokey " : string.Empty) + input,
-            EncoderArgs = string.Create(CultureInfo.InvariantCulture, $"{option}{quality} {allowSoftware}{EncodingHelper.GetVideoSyncOption("0", _encoder.EncoderVersion).Trim()}"),
-            Threads = job.Threads,
-            HardwareDecoder = _helper.HardwareDecoder(state, options),
-            HardwareEncoder = !string.Equals(encoder, state.OutputVideoCodec, StringComparison.Ordinal),
-        };
-    }
-
-    /// <inheritdoc/>
-    /// <remarks>
     /// The job is set up as UniversalAudioController and StreamingHelpers.GetStreamingState set it for a progressive stream with no
     /// bitrate asked (v12.2), and the command is AudioHelper's: EncodingHelper.GetProgressiveAudioFullCommandLine, split at its input.
     /// </remarks>
@@ -365,34 +263,6 @@ public sealed class ArgumentSource : IArgumentSource
 
         return new AudioArguments(head, full[head.Length..^tail.Length].Trim(), environment);
     }
-
-    /// <summary>Returns the quality option and value image extraction passes to an encoder, as MediaEncoder.ExtractVideoImagesOnIntervalInternal maps the quality scale (v12.2).</summary>
-    /// <param name="encoder">The MJPEG encoder.</param>
-    /// <param name="qscale">The quality scale (TrickplayOptions.Qscale).</param>
-    /// <returns>The option with its trailing space, and the value.</returns>
-    internal static (string Option, int Value) ImageQuality(string encoder, int qscale)
-    {
-        var quality = Math.Clamp(qscale, 1, 31);
-        bool Uses(string name) => encoder.Contains(name, StringComparison.OrdinalIgnoreCase);
-
-        // The integer divisions are upstream's: 100 / 30 is 3.
-        return Uses("vaapi") || Uses("qsv") ? ("-global_quality:v ", 100 - ((quality - 1) * (100 / 30)))
-            : Uses("videotoolbox") ? ("-qscale:v ", 118 - ((quality - 1) * (118 / 30)))
-            : Uses("rkmpp") ? ("-qp_init:v ", 99 - ((quality - 1) * (99 / 30)))
-            : ("-qscale:v ", quality);
-    }
-
-    /// <summary>Returns whether a backend decodes key frames only, as MediaEncoder.ExtractVideoImagesOnIntervalAccelerated checks it (v12.2).</summary>
-    /// <param name="options">The server's encoding options.</param>
-    /// <returns>False when image extraction would turn hardware decoding off.</returns>
-    private static bool SupportsKeyFrameOnly(EncodingOptions options) => options.HardwareAccelerationType switch
-    {
-        HardwareAccelerationType.nvenc => options.EnableEnhancedNvdecDecoder,
-        HardwareAccelerationType.amf => OperatingSystem.IsWindows(),
-        HardwareAccelerationType.qsv => options.PreferSystemNativeHwDecoder,
-        HardwareAccelerationType.vaapi or HardwareAccelerationType.videotoolbox or HardwareAccelerationType.rkmpp => true,
-        _ => false,
-    };
 
     /// <summary>Reads the variables EncodingHelper can set.</summary>
     /// <returns>Current values, null when unset.</returns>

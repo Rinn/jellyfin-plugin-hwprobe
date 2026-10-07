@@ -17,15 +17,6 @@ public interface IArgumentSource
     /// <exception cref="ArgumentConstructionException">Upstream emits no hardware arguments for this combination.</exception>
     ProbeArguments Build(HwType type, string? device, ProbeCell cell);
 
-    /// <summary>Builds the arguments the server's image extraction (trickplay's) runs for a video, with hardware decoding on for a hardware backend and off for software.</summary>
-    /// <param name="type">The backend.</param>
-    /// <param name="device">Render node or adapter, or null when the backend takes none.</param>
-    /// <param name="cell">The video, with <see cref="ProbeCell.SourcePath"/> set.</param>
-    /// <param name="job">The image settings.</param>
-    /// <returns>The arguments: <see cref="ProbeArguments.InputArgument"/> holds the whole input, <see cref="ProbeArguments.EncoderArgs"/> what follows the encoder.</returns>
-    /// <exception cref="ArgumentConstructionException">The server would make them in software with this backend.</exception>
-    ProbeArguments BuildImages(HwType type, string? device, ProbeCell cell, ImageJob job);
-
     /// <summary>Builds the arguments the server runs to transcode an audio file for a client, as it does for music; always in software.</summary>
     /// <param name="cell">The file and what the client asks for.</param>
     /// <returns>The arguments; decode-only cells get the input alone.</returns>
