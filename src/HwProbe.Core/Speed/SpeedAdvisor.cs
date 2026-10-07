@@ -125,7 +125,7 @@ public static class SpeedAdvisor
             List<SpeedResult> beaten = type == HwType.none ? [.. best] : [.. best.Where(w => Mine(w) is { } mine && Beats(w, mine))];
             if ((best.Key.Type != type || (!string.IsNullOrEmpty(device) && best.Key.Device != device)) && beaten.Count > 0)
             {
-                var alike = type != HwType.none && beaten.All(w => Mine(w) is { } mine && Gain(w, mine) <= Noise);
+                var alike = type != HwType.none && beaten.All(w => Mine(w) is { } own && Gain(w, own) <= Noise);
                 var mine = beaten.Select(Mine).OfType<SpeedResult>().ToList();
                 suggestions.Add(new SpeedSuggestion(SpeedSuggestionKind.FastestBackend, [.. beaten.Select(r => Label(r, shown.Settings))])
                 {
@@ -136,8 +136,8 @@ public static class SpeedAdvisor
                     StreamsCapped = FewestCapped(beaten),
                     Compared = mine.Count == beaten.Count ? [new SpeedComparedValue(type.ToString(), mine.Min(Speed), Fewest(mine), FewestCapped(mine))] : [],
                     TestVideosOnly = beaten.All(IsGenerated),
-                    Preferred = alike && beaten.All(w => Mine(w) is { } mine && BackendPreference.IsPreferredOver(w, mine)),
-                    Savings = alike ? Common(beaten.Select(w => Mine(w) is { } mine ? ResourceComparison.Savings(w, mine) : [])) : [],
+                    Preferred = alike && beaten.All(w => Mine(w) is { } own && BackendPreference.IsPreferredOver(w, own)),
+                    Savings = alike ? Common(beaten.Select(w => Mine(w) is { } own ? ResourceComparison.Savings(w, own) : [])) : [],
                 });
             }
         }
@@ -316,7 +316,7 @@ public static class SpeedAdvisor
                 yield return faster;
                 if (avoidable)
                 {
-                    yield return Compatible(faster, group.Min(s => s.OtherSpeed), serverValue, type);
+                    yield return Compatible(faster, value, group.Min(s => s.OtherSpeed), serverValue, type);
                 }
 
                 continue;
@@ -331,7 +331,7 @@ public static class SpeedAdvisor
                 yield return efficient;
                 if (avoidable)
                 {
-                    yield return Compatible(efficient, group.Min(s => s.OtherSpeed), serverValue, type);
+                    yield return Compatible(efficient, value, group.Min(s => s.OtherSpeed), serverValue, type);
                 }
 
                 continue;
@@ -366,7 +366,7 @@ public static class SpeedAdvisor
                 yield return quality;
                 if (avoidable)
                 {
-                    yield return Compatible(quality, real.Min(s => s.OtherSpeed), serverValue, type);
+                    yield return Compatible(quality, value, real.Min(s => s.OtherSpeed), serverValue, type);
                 }
             }
         }
@@ -406,14 +406,13 @@ public static class SpeedAdvisor
 
     /// <summary>Returns the suggestion for the value a suggested one was compared with, which avoids the suggested value's known drawback.</summary>
     /// <param name="suggested">The suggestion for the value with the drawback.</param>
+    /// <param name="value">The value with the drawback.</param>
     /// <param name="speed">The slowest measured speed with the value that avoids it, as a multiple of real time.</param>
     /// <param name="serverValue">The server's current value.</param>
     /// <param name="type">The configured backend.</param>
     /// <returns>The suggestion, on the same outputs with the speeds and streams swapped.</returns>
-    private static SpeedSuggestion Compatible(SpeedSuggestion suggested, double speed, string serverValue, HwType type)
-    {
-        var value = suggested.Value ?? throw new ArgumentException("A setting suggestion has a value.", nameof(suggested));
-        return new(SpeedSuggestionKind.Compatible, suggested.Outputs)
+    private static SpeedSuggestion Compatible(SpeedSuggestion suggested, string value, double speed, string serverValue, HwType type) =>
+        new(SpeedSuggestionKind.Compatible, suggested.Outputs)
         {
             Setting = suggested.Setting,
             Value = suggested.Others[0],
@@ -432,7 +431,6 @@ public static class SpeedAdvisor
             Compared = [new SpeedComparedValue(value, suggested.Speed ?? 0, suggested.Streams, suggested.StreamsCapped) { Row = suggested.Row, Speeds = suggested.Speeds, Current = suggested.Current }],
             TestVideosOnly = suggested.TestVideosOnly,
         };
-    }
 
     /// <summary>Makes each setting outside a group one suggestion listing every value compared with the server's beside the recommended one, so the page shows one table per setting.</summary>
     /// <param name="merged">The setting suggestions.</param>
@@ -444,10 +442,19 @@ public static class SpeedAdvisor
     {
         foreach (var setting in merged.GroupBy(s => s.Setting, StringComparer.Ordinal))
         {
-            var key = setting.Key;
-            var serverValue = key is null ? null : _values[key](server);
+            if (setting.Key is not { } key)
+            {
+                foreach (var s in setting)
+                {
+                    yield return s;
+                }
+
+                continue;
+            }
+
+            var serverValue = _values[key](server);
             var against = comparisons.Where(c => c.Key == key && c.Other == serverValue).ToList();
-            if (key is null || serverValue is null || GroupOf(key) is not null || against.Count == 0)
+            if (GroupOf(key) is not null || against.Count == 0)
             {
                 foreach (var s in setting)
                 {

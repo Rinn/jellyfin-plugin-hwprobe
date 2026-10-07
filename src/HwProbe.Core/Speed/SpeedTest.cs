@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Jellyfin.Plugin.HwProbe.Core.Fixtures;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
@@ -45,5 +46,6 @@ public sealed record SpeedTest(string Key, string Label, FixtureSpec? Fixture, f
     public TimeSpan StartAt => File is null ? TimeSpan.Zero : File.Duration / 10;
 
     /// <summary>Gets a value indicating whether the test only decodes.</summary>
+    [MemberNotNullWhen(false, nameof(OutputCodec))]
     public bool DecodeOnly => OutputCodec is null;
 }
