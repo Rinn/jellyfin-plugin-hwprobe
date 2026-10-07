@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "1.2.0.0",
+        "changelog": "- Performance Tests no longer measure trickplay.",
+        "targetAbi": "12.2.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v1.2.0/hwprobe-plugin_1.2.0.0.zip",
+        "checksum": "1a3a3dedc23e4c2bca4da6f3327d9862",
+        "timestamp": "2026-10-07T20:44:50Z"
+      },
+      {
         "version": "1.1.2.0",
         "changelog": "- Performance test failures say what went wrong, and the same failure is listed once.",
         "targetAbi": "12.2.0.0",
