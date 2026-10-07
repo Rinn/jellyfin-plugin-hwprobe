@@ -98,13 +98,13 @@ The page should look and behave like a native Jellyfin dashboard page, stay calm
 - A second i965/AMD GPU (not the configured device) is reported `Untested` by the plugin, since probing it would change the server's environment; the CLI can test it.
 - CUDA is probed at index 0 only; `EncodingHelper` hard-codes device 0.
 - Intel low power is untested on real hardware: the Intel NAS has no HuC firmware, so the Intel low power suite and its per-codec comparisons rest on unit tests alone.
+- AMD GPU power (amdgpu hwmon `power1_input` or `power1_average`, sampled every 200 ms and summed by `EnergySpan`) is untested, as no AMD hardware is available. On APUs the reading includes the CPU, so it overlaps the CPU package's.
+- macOS has no power figures: IOReport is a private API whose CPU channels read 0 on macOS 27.
 - v4l2m2m is confirmed from a recorded Raspberry Pi run (`Using device /dev/videoN`), not yet through Jellyfin.
 - Page and CLI text are English only. Behaviour doesn't depend on locale: ffmpeg runs with `LC_ALL=C`, numbers are formatted and parsed invariantly, and the page reads structured fields rather than message text. `CultureScope` tests and `HWPROBE_LOCALE` in `container-plugin.sh` check it.
 - The busy check (`ProbeService.IsTranscoding`) skips direct play and remux, but a transcode that finished ahead of playback still blocks until playback stops: `TranscodeManager.OnFfMpegProcessExited` leaves the session's `TranscodingInfo` set, and Jellyfin has no API to list running jobs by session.
 
 ## To do
-
-- **Power draw, next steps**: AMD GPU power (amdgpu hwmon `power1_average`, watts only, to integrate over samples) and macOS (IOReport is a private API whose CPU channels read 0 on macOS 27). Intel and AMD GPU usage on Linux 5.19+ is unverified, as no such host is available.
 
 Queued by the user on 2026-10-03, in no particular order:
 

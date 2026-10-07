@@ -2265,7 +2265,7 @@
                     // What this server's platform can measure, and whose usage it is.
                     const coverage = {
                         windows: 'CPU, memory, GPU, and GPU memory usage are measured per transcode. Power is measured for the CPU package and NVIDIA GPUs where their meters exist, covering the whole device above its idle draw.',
-                        linux: 'CPU and memory usage are measured per transcode. Intel and AMD GPU usage is measured per transcode on kernel 5.19 or newer (6.8 for Intel\u2019s xe driver). NVIDIA GPU usage covers the whole GPU, including any other work on it. Power is measured for NVIDIA GPUs, Intel Arc GPUs, and the CPU package where the server may read their meters (not usually in a container), covering the whole device above its idle draw.',
+                        linux: 'CPU and memory usage are measured per transcode. Intel and AMD GPU usage is measured per transcode on kernel 5.19 or newer (6.8 for Intel\u2019s xe driver). NVIDIA GPU usage covers the whole GPU, including any other work on it. Power is measured for NVIDIA GPUs, Intel Arc GPUs, AMD GPUs, and the CPU package where the server may read their meters (not usually in a container), covering the whole device above its idle draw.',
                         macos: 'CPU and memory usage are measured per transcode. GPU usage and power can\u2019t be measured on macOS.',
                     }[report && report.host ? report.host.os : ''];
                     // Test suites have their own Resource Usage and transcoding choices.
