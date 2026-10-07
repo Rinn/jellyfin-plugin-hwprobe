@@ -168,6 +168,63 @@ check "delete an unknown run" 404 "$(code -X DELETE "$base/HwProbe/SpeedHistory/
 check "cache size" True "$(curl -sf "$base/HwProbe/Cache" -H "$h" | json 'j["Files"] > 0')"
 check "cache contents named" True "$(curl -sf "$base/HwProbe/Cache/Contents" -H "$h" | json 'len(j) > 0 and any(e["Description"] for e in j)')"
 check "software decode measured" True "$(curl -sf "$base/HwProbe/Speed" -H "$h" | json 'any(r["type"] == "none" and r["test"] == "pattern|decode" and (r.get("fps") or 0) > 0 for r in j["results"])')"
+# Image extraction is a pinned copy of MediaEncoder's wrapper: Jellyfin's own trickplay command and HwProbe's for the same file
+# must match once HwProbe's wrapper (progress, seek, length, loop, null output) and Jellyfin's (log level, image files) are taken off.
+if [ "$install" != existing ]; then
+    podman exec "$name" sh -c 'mkdir -p /media/film && /usr/lib/jellyfin-ffmpeg/ffmpeg -hide_banner -loglevel error -f lavfi -i sine=frequency=440:sample_rate=48000 -f lavfi -i testsrc2=size=1280x720:rate=24 -t 30 -map 0:a -map 1:v -c:a aac -c:v libx264 -pix_fmt yuv420p /media/film/film.mkv'
+    check "add a library" 204 "$(code -X POST "$base/Library/VirtualFolders?name=Films&collectionType=movies&paths=%2Fmedia&refreshLibrary=true" -H "$h" -H 'Content-Type: application/json' -d '{"LibraryOptions":{"EnableTrickplayImageExtraction":true,"PathInfos":[{"Path":"/media"}]}}')"
+    item=""
+    for _ in $(seq 1 60); do
+        item="$(curl -sf "$base/Items?Recursive=true&IncludeItemTypes=Movie" -H "$h" | json 'j["Items"][0]["Id"] if j["Items"] else ""')"
+        [ -n "$item" ] && break
+        sleep 2
+    done
+    check "library film found" True "$([ -n "$item" ] && echo True || echo False)"
+    # The scan saves the film's streams after it's listed, and HwProbe reads them, so both tasks are left to finish.
+    tasks_idle() { curl -sf "$base/ScheduledTasks" -H "$h" | json 'all(t["State"] == "Idle" for t in j if t["Key"] in ("RefreshLibrary", "RefreshTrickplayImages"))'; }
+    for _ in $(seq 1 60); do
+        [ "$(tasks_idle)" = True ] && break
+        sleep 2
+    done
+    task="$(curl -sf "$base/ScheduledTasks" -H "$h" | json 'next(t["Id"] for t in j if t["Key"] == "RefreshTrickplayImages")')"
+    curl -sf -X POST "$base/ScheduledTasks/Running/$task" -H "$h"
+    jellyfin_command=""
+    for _ in $(seq 1 60); do
+        jellyfin_command="$(podman exec "$name" sh -c 'grep -h "Trickplay generation: " /config/log/*.log | tail -1')"
+        [ -n "$jellyfin_command" ] && [ "$(tasks_idle)" = True ] && break
+        sleep 2
+    done
+    described=404
+    for _ in $(seq 1 60); do
+        described="$(code "$base/HwProbe/SpeedLibraryVideo?itemId=$item" -H "$h")"
+        [ "$described" = 200 ] && break
+        sleep 2
+    done
+    check "library film described" 200 "$described"
+    started="$(curl -s -w ' %{http_code}' -X POST "$base/HwProbe/Speed" -H "$h" -H 'Content-Type: application/json' -d "{\"Method\":\"Quick\",\"Videos\":[\"library\"],\"Outputs\":[\"trickplay\"],\"Backends\":[\"none\"],\"ItemId\":\"$item\"}")"
+    check "start a library trickplay run" 202 "${started##* }"
+    [ "${started##* }" = 202 ] || echo "      $started"
+    for _ in $(seq 1 150); do
+        [ "$(curl -sf "$base/HwProbe/Status" -H "$h" | json 'j["State"]')" = Idle ] && break
+        sleep 2
+    done
+    check "trickplay measured" True "$(curl -sf "$base/HwProbe/Speed" -H "$h" | json 'any(r["test"] == "library|trickplay" and (r.get("fps") or 0) > 0 for r in j["results"])')"
+    hwprobe_command="$(podman exec "$name" sh -c 'grep -h "HwProbe performance test: .*-c:v mjpeg" /config/log/*.log | tail -1')"
+    check "trickplay command matches Jellyfin's" True "$(python3 -c '
+import re, sys
+# Both are logged as quoted strings, with their quotes escaped.
+def logged(line, prefix):
+    text = line.split(prefix, 1)[-1].strip()
+    return text[1:-1].replace("\\\"", "\"") if text.startswith("\"") and text.endswith("\"") else text
+jellyfin = logged(sys.argv[1], "Trickplay generation: ")
+jellyfin = re.sub(r" -f image2 \"[^\"]*\"$", "", jellyfin.replace(" -loglevel error ", " ", 1))
+hwprobe = logged(sys.argv[2], "HwProbe performance test: ")
+hwprobe = re.sub(r" -f null -$", "", hwprobe.replace(" -hide_banner -v warning -nostats -progress pipe:1 ", " ", 1))
+hwprobe = re.sub(r"(-ss \S+|-t \S+|-stream_loop -1) ", "", hwprobe)
+print(jellyfin == hwprobe or "\n      jellyfin: " + jellyfin + "\n      hwprobe:  " + hwprobe)
+' "$jellyfin_command" "$hwprobe_command")"
+fi
+
 check "every failure has a remedy" True "$(printf "%s" "$report" | json 'all(b["hint"] for b in j["backends"] if b["verdict"] != "Viable")')"
 
 before="$(curl -sf "$base/System/Configuration/encoding" -H "$h")"

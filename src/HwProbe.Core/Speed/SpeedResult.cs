@@ -29,6 +29,10 @@ public sealed record SpeedResult(HwType Type, string Device, string Test, string
     /// <summary>Gets the source frame rate, so fps can be shown as a multiple of real time.</summary>
     public float? FrameRate { get; init; }
 
+    /// <summary>Gets what the test made; an image test's fps is the source's frames over the time taken, as it makes few images.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public SpeedOutputKind Kind { get; init; }
+
     /// <summary>Gets the credit a sample's licence requires, or null.</summary>
     public string? Credit { get; init; }
 

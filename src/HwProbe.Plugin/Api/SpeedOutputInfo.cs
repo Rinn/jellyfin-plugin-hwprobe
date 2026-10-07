@@ -7,7 +7,8 @@ namespace Jellyfin.Plugin.HwProbe.Api;
 /// <param name="Label">What it's called.</param>
 /// <param name="DecodeOnly">Whether it only decodes.</param>
 /// <param name="Default">Whether it's chosen when the page first loads.</param>
-public sealed record SpeedOutputInfo(string Key, string Label, bool DecodeOnly, bool Default)
+/// <param name="Kind">What it makes.</param>
+public sealed record SpeedOutputInfo(string Key, string Label, bool DecodeOnly, bool Default, SpeedOutputKind Kind)
 {
     /// <summary>Returns the page's view of an output.</summary>
     /// <param name="output">The output.</param>
@@ -15,6 +16,6 @@ public sealed record SpeedOutputInfo(string Key, string Label, bool DecodeOnly, 
     public static SpeedOutputInfo From(SpeedOutput output)
     {
         ArgumentNullException.ThrowIfNull(output);
-        return new(output.Key, output.Label, output.Codec is null, SpeedCatalog.DefaultOutputs.Contains(output.Key));
+        return new(output.Key, output.Label, output.Codec is null, SpeedCatalog.DefaultOutputs.Contains(output.Key), output.Kind);
     }
 }

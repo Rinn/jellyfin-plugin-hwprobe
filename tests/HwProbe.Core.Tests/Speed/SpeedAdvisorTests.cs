@@ -361,6 +361,15 @@ public sealed class SpeedAdvisorTests
         Assert.True(behind.TestVideosOnly);
     }
 
+    /// <summary>Images below real time aren't reported: they're extracted ahead of playback.</summary>
+    [Fact]
+    public void ImagesHaveNoRealTime()
+    {
+        var run = Run(new SpeedSettings(), Result(HwType.qsv, "pattern|trickplay", 10) with { Kind = SpeedOutputKind.Images }, Result(HwType.none, "pattern|trickplay", 5) with { Kind = SpeedOutputKind.Images });
+
+        Assert.DoesNotContain(SpeedAdvisor.Advise(run, [run], HwType.qsv, string.Empty, new SpeedSettings()), s => s.Kind is SpeedSuggestionKind.FallsBehind or SpeedSuggestionKind.TooSlowEverywhere);
+    }
+
     /// <summary>An output none of several backends keeps real time on is reported once, with the fastest backend; one measured on a single backend isn't.</summary>
     [Fact]
     public void ReportsOutputsTooSlowOnEveryBackend()

@@ -3,7 +3,7 @@ using MediaBrowser.Model.Configuration;
 
 namespace Jellyfin.Plugin.HwProbe.Settings;
 
-/// <summary>Maps the catalog's performance test options to the <see cref="EncodingOptions"/> values they stand for, so a suggestion can be applied.</summary>
+/// <summary>Maps the catalog's performance test options to the <see cref="EncodingOptions"/> and <see cref="TrickplayOptions"/> values they stand for, so a suggestion can be applied.</summary>
 public static class MeasuredSettings
 {
     private static readonly Dictionary<string, string> _keys = new(StringComparer.Ordinal)
@@ -30,13 +30,16 @@ public static class MeasuredSettings
         ["H264Crf"] = nameof(EncodingOptions.H264Crf),
         ["DeinterlaceMethod"] = EncodingSettings.Bwdif,
         ["DoubleRate"] = nameof(EncodingOptions.DeinterlaceDoubleRate),
+        ["TrickplayHwEncoding"] = TrickplaySettings.Prefix + nameof(TrickplayOptions.EnableHwEncoding),
+        ["TrickplayKeyFrames"] = TrickplaySettings.Prefix + nameof(TrickplayOptions.EnableKeyFrameOnlyExtraction),
+        ["TrickplayThreads"] = TrickplaySettings.Prefix + nameof(TrickplayOptions.ProcessThreads),
         [Core.Speed.SpeedAdvisor.BitrateLimitKey] = StreamingSettings.RemoteClientBitrateLimit,
     };
 
     /// <summary>Returns the setting key and value to write for a catalog option's value.</summary>
     /// <param name="option">The catalog option key, e.g. <c>EncoderPreset</c>.</param>
     /// <param name="value">Its value as the catalog keys it.</param>
-    /// <returns>The <see cref="EncodingSettings"/> key and value, or null for an option that isn't a server setting.</returns>
+    /// <returns>The setting key and value, or null for an option that isn't a server setting.</returns>
     public static (string Setting, string Value)? ToSetting(string option, string value)
     {
         ArgumentNullException.ThrowIfNull(option);

@@ -45,6 +45,6 @@ public sealed class ArgumentSourceFactory : IArgumentSourceFactory
         ArgumentNullException.ThrowIfNull(capabilities);
         ArgumentNullException.ThrowIfNull(traits);
 
-        return new ArgumentSource(ToProbeCapabilities(capabilities, traits), new CallRecorder());
+        return new ArgumentSource(ToProbeCapabilities(capabilities, traits), new CallRecorder()) { LowPriorityHwDecode = capabilities.LowPriorityHwDecode };
     }
 }

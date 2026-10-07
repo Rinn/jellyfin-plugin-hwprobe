@@ -123,6 +123,9 @@ public sealed partial class Catalog
     /// <summary>Gets the decode-only output.</summary>
     internal CatalogOutput Decode => DecodeEntry ?? throw Missing("decode");
 
+    /// <summary>Gets the outputs that extract images at an interval, as trickplay does.</summary>
+    internal IReadOnlyList<CatalogOutput> Images { get; init; } = [];
+
     /// <summary>Gets the outputs chosen when none are asked for.</summary>
     internal IReadOnlyList<string> DefaultOutputs { get; init; } = [];
 
@@ -288,7 +291,7 @@ public sealed partial class Catalog
             throw Missing("decode");
         }
 
-        RequireKeys("outputs", [.. Codecs.SelectMany(c => Qualities.Select(q => OutputKey(c, q))), Decode.Key], DefaultOutputs);
+        RequireKeys("outputs", OutputKeys(), DefaultOutputs);
         if (Methods.Any(m => m.Seconds.Count != 2))
         {
             throw new InvalidDataException("catalog.yaml: method seconds are [low, high].");
@@ -378,8 +381,8 @@ public sealed partial class Catalog
         }
     }
 
-    /// <summary>Checks each suite names videos, outputs, backends, and settings the catalog has.</summary>
-    /// <exception cref="InvalidDataException">A suite names something that isn't there.</exception>
+    /// <summary>Checks the advice thresholds, and that the names and labels the page and suggestions read are there.</summary>
+    /// <exception cref="InvalidDataException">A threshold is out of range or a name is missing.</exception>
     private void CheckAdvice()
     {
         // YamlDotNet doesn't enforce required members, so a missing block is caught here.
@@ -395,11 +398,15 @@ public sealed partial class Catalog
         }
     }
 
+    /// <summary>Returns every output's key: each codec at each quality, decoding alone, and the image outputs.</summary>
+    /// <returns>The keys.</returns>
+    private IReadOnlyList<string> OutputKeys() => [.. Codecs.SelectMany(c => Qualities.Select(q => OutputKey(c, q))), Decode.Key, .. Images.Select(i => i.Key)];
+
     /// <summary>Checks each suite names videos, outputs, backends, and settings the catalog has.</summary>
     private void CheckSuites()
     {
         var videos = Videos.Select(v => v.Key).ToHashSet(StringComparer.Ordinal);
-        var outputs = Codecs.SelectMany(c => Qualities.Select(q => OutputKey(c, q))).Append(Decode.Key).ToHashSet(StringComparer.Ordinal);
+        var outputs = OutputKeys().ToHashSet(StringComparer.Ordinal);
         string[] backends = ["configuredAndSoftware", "configured", "software"];
         foreach (var suite in Suites)
         {

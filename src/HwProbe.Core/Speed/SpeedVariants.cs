@@ -26,7 +26,8 @@ internal static class SpeedVariants
             SourceWidth = test.Width,
             SourceHeight = test.Height,
             SourceFrameRate = test.FrameRate,
-            VideoBitrate = test.DecodeOnly ? null : test.Bitrate,
+            VideoBitrate = test.DecodeOnly || test.Images ? null : test.Bitrate,
+            Images = test.Images ? new ImageJob(settings.TrickplayWidth, settings.TrickplayInterval, settings.TrickplayQscale, settings.TrickplayThreads, settings.TrickplayHwEncoding, settings.TrickplayKeyFrames) : null,
             FullQuality = true,
             Tonemap = cell.Tonemap && settings.Tonemap,
 
@@ -35,11 +36,11 @@ internal static class SpeedVariants
             EncoderPreset = settings.EncoderPreset,
             H264Crf = settings.H264Crf,
             H265Crf = settings.H265Crf,
-            Audio = cell.Audio && !test.DecodeOnly,
+            Audio = cell.Audio && !test.DecodeOnly && !test.Images,
             AudioVbr = settings.AudioVbr,
             AudioCopy = settings.AudioCopy,
-            SubtitlePath = !test.DecodeOnly && settings.BurnIn == "text" ? clips.GetValueOrDefault(SpeedCatalog.TextSubtitles.FileName) : null,
-            GraphicalSubtitlePath = !test.DecodeOnly && settings.BurnIn == "image" ? clips.GetValueOrDefault(SpeedCatalog.ImageSubtitles.FileName) : null,
+            SubtitlePath = Burns(test) && settings.BurnIn == "text" ? clips.GetValueOrDefault(SpeedCatalog.TextSubtitles.FileName) : null,
+            GraphicalSubtitlePath = Burns(test) && settings.BurnIn == "image" ? clips.GetValueOrDefault(SpeedCatalog.ImageSubtitles.FileName) : null,
             DoubleRate = settings.DoubleRate,
             Bwdif = settings.Bwdif,
             EncodingThreadCount = settings.EncodingThreadCount,
@@ -99,7 +100,7 @@ internal static class SpeedVariants
             all.Insert(0, SpeedCatalog.TestAudio);
         }
 
-        if (list.Any(t => !t.DecodeOnly) && SubtitleClip(settings) is { } subtitles)
+        if (list.Any(Burns) && SubtitleClip(settings) is { } subtitles)
         {
             all.Add(subtitles);
         }
@@ -116,6 +117,11 @@ internal static class SpeedVariants
         "image" => SpeedCatalog.ImageSubtitles,
         _ => null,
     };
+
+    /// <summary>Returns whether a test burns in the run's subtitles: a transcode does, a decode and images don't.</summary>
+    /// <param name="test">The test.</param>
+    /// <returns>True for a transcode.</returns>
+    private static bool Burns(SpeedTest test) => !test.DecodeOnly && !test.Images;
 
     /// <summary>Describes a generated clip.</summary>
     /// <param name="fixture">The clip.</param>
@@ -135,7 +141,7 @@ internal static class SpeedVariants
             ColorTransfer = color?.Transfer,
             ColorSpace = color?.Space,
             Tonemap = test.Tonemap,
-            Audio = !test.DecodeOnly && test.SourceAudio is not null,
+            Audio = !test.DecodeOnly && !test.Images && test.SourceAudio is not null,
             AudioCodec = fixture.AudioCodec ?? "aac",
             AudioChannels = fixture.AudioChannels ?? 6,
             SourcePath = clips[fixture.FileName],

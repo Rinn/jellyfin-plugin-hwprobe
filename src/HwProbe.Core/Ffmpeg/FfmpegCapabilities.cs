@@ -27,6 +27,9 @@ public sealed record FfmpegCapabilities(
     IReadOnlyDictionary<string, bool> FilterOptions,
     IReadOnlyDictionary<HwType, BuildStatus> BuildStatus)
 {
+    /// <summary>Gets a value indicating whether <c>-hwaccel_flags +low_priority</c> works, which image extraction adds for VideoToolbox (<c>EncoderValidator.CheckSupportedHwaccelFlag</c>, v12.2).</summary>
+    public bool LowPriorityHwDecode { get; init; }
+
     /// <summary>Gets the first line of <c>-version</c>, used in the fingerprint.</summary>
     public string VersionLine => VersionOutput.Split('\n', 2)[0].TrimEnd('\r');
 

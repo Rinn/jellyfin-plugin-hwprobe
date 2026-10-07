@@ -81,4 +81,22 @@ public sealed record SpeedSettings
 
     /// <summary>Gets the audio boost when downmixing.</summary>
     public double DownmixBoost { get; init; } = 2;
+
+    /// <summary>Gets a value indicating whether trickplay images are encoded with the backend's MJPEG encoder (TrickplayOptions.EnableHwEncoding).</summary>
+    public bool TrickplayHwEncoding { get; init; }
+
+    /// <summary>Gets a value indicating whether trickplay images come from key frames only (TrickplayOptions.EnableKeyFrameOnlyExtraction).</summary>
+    public bool TrickplayKeyFrames { get; init; }
+
+    /// <summary>Gets the threads trickplay's ffmpeg is given (TrickplayOptions.ProcessThreads); 0 lets ffmpeg pick.</summary>
+    public int TrickplayThreads { get; init; } = 1;
+
+    /// <summary>Gets the trickplay images' quality scale, 2 (best) to 31 (TrickplayOptions.Qscale).</summary>
+    public int TrickplayQscale { get; init; } = 4;
+
+    /// <summary>Gets the trickplay images' width: the first of TrickplayOptions.WidthResolutions, as each width is made by its own ffmpeg.</summary>
+    public int TrickplayWidth { get; init; } = 320;
+
+    /// <summary>Gets the time between trickplay images, in milliseconds (TrickplayOptions.Interval).</summary>
+    public int TrickplayInterval { get; init; } = 10000;
 }

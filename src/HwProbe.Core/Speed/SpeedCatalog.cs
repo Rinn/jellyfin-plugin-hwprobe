@@ -10,11 +10,12 @@ public static class SpeedCatalog
     /// <summary>Gets every video, in the order the page lists them; the library video is added from a chosen file.</summary>
     public static IReadOnlyList<SpeedVideo> Videos { get; } = [.. Catalog.Default.Videos.Select(Video)];
 
-    /// <summary>Gets every output, in the order the page lists them.</summary>
+    /// <summary>Gets every output, in the order the page lists them: each codec at each quality, then decoding alone and the image outputs.</summary>
     public static IReadOnlyList<SpeedOutput> Outputs { get; } =
     [
         .. Catalog.Default.Codecs.SelectMany(c => Catalog.Default.Qualities.Select(q => new SpeedOutput(Catalog.OutputKey(c, q), c.Name + ", " + q.Name, c.Key, q.Bitrate))),
         new SpeedOutput(Catalog.Default.Decode.Key, Catalog.Default.Decode.Label, null, 0),
+        .. Catalog.Default.Images.Select(i => new SpeedOutput(i.Key, i.Label, "mjpeg", 0) { Kind = SpeedOutputKind.Images }),
     ];
 
     /// <summary>Gets the videos chosen when none are asked for.</summary>
@@ -63,6 +64,7 @@ public static class SpeedCatalog
             Credit = video.Credit,
             LicenseUrl = video.LicenseUrl,
             OutputCodec = output.Codec,
+            Kind = output.Kind,
             Bitrate = output.Bitrate,
             Tonemap = hdr && output.Codec is not null,
         };

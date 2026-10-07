@@ -1169,13 +1169,15 @@
                     renderSpeedSetup(speedTab, viable);
                 }
 
-                // In codec then quality order, so a video's rows read H.264 8 Mbps, H.264 4 Mbps, HEVC 8 Mbps.
+                // Outputs chosen on their own rather than as a codec at a quality: decoding alone and images.
+                function standalone(o) {
+                    return o.DecodeOnly || o.Kind === 'Images';
+                }
+
+                // In codec then quality order, so a video's rows read H.264 8 Mbps, H.264 4 Mbps, HEVC 8 Mbps, then the standalone outputs.
                 function selectedOutputs() {
                     const keys = speedCodecs.filter(c => chosenCodecs.has(c.Key)).flatMap(c => speedQualities.filter(q => chosenQualities.has(q.Key)).map(q => c.Key + '-' + q.Key));
-                    const decode = speedOutputs.find(o => o.DecodeOnly);
-                    if (decode && chosenCodecs.has(decode.Key)) {
-                        keys.push(decode.Key);
-                    }
+                    keys.push(...speedOutputs.filter(o => standalone(o) && chosenCodecs.has(o.Key)).map(o => o.Key));
                     return keys.map(k => speedOutputs.find(o => o.Key === k)).filter(o => o);
                 }
 
@@ -1325,7 +1327,7 @@
                     if (!chosenVideos) {
                         chosenVideos = new Set(speedVideos.filter(v => v.Default).map(v => v.Key));
                         const defaults = speedOutputs.filter(o => o.Default).map(o => o.Key);
-                        chosenCodecs = new Set(speedCodecs.filter(c => defaults.some(k => k.startsWith(c.Key + '-'))).map(c => c.Key).concat(defaults.filter(k => speedOutputs.some(o => o.Key === k && o.DecodeOnly))));
+                        chosenCodecs = new Set(speedCodecs.filter(c => defaults.some(k => k.startsWith(c.Key + '-'))).map(c => c.Key).concat(defaults.filter(k => speedOutputs.some(o => o.Key === k && standalone(o)))));
                         chosenQualities = new Set(speedQualities.filter(q => defaults.some(k => k.endsWith('-' + q.Key))).map(q => q.Key));
                     }
                 }
@@ -1609,12 +1611,17 @@
                 // How much more efficient a suggestion is, e.g. "30% less CPU and 20% less memory".
                 function savingsText(savings) {
                     const parts = savings.map(x => Math.round(x.Fraction * 100) + '% less ' + (resourceNames[x.Resource] || x.Resource));
-                    return parts.length > 2 ? parts.slice(0, -1).join(', ') + ', and ' + parts[parts.length - 1] : parts.join(' and ');
+                    return andList(parts);
                 }
 
                 // Alternatives with a serial comma: "a", "a or b", "a, b, or c".
                 function orList(items) {
                     return items.length > 2 ? items.slice(0, -1).join(', ') + ', or ' + items[items.length - 1] : items.join(' or ');
+                }
+
+                // Items with a serial comma: "a", "a and b", "a, b, and c".
+                function andList(items) {
+                    return items.length > 2 ? items.slice(0, -1).join(', ') + ', and ' + items[items.length - 1] : items.join(' and ');
                 }
 
                 // For the value that avoids a drawback, the suggestion for the value that has it, each compared with the other's value.
@@ -1796,12 +1803,12 @@
                         // Settings that together pick one thing: one table for the group, a row per choice the runs made, in the catalog's order.
                         const groupTable = (key, members) => {
                             const group = settingGroups.find(g => g.Key === key);
-                            // A row is the server's when all the group's settings match it, not just the one a suggestion is about; the catalog's server field names each in EncodingOptions.
+                            // A row is the server's when all the group's settings match it, not just the one a suggestion is about; the catalog's server field names each setting.
                             const backend = encoding ? encoding.HardwareAccelerationType : null;
                             const rowOf = values => (group.Rows.find(r => (!r.Backends || r.Backends.includes(backend)) && Object.entries(r.When || {}).every(([k, v]) => values[k] === v)) || {}).Label;
                             const server = Object.fromEntries(group.Settings.map(k => {
                                 const option = runOptions.find(o => o.Key === k);
-                                return [k, encoding && option && option.Server ? String(encoding[option.Server]) : null];
+                                return [k, encoding && option && option.Server ? String(current(option.Server)) : null];
                             }));
                             const serverRow = rowOf(server);
                             const rows = new Map();
@@ -2159,7 +2166,7 @@
                         const runs = speedRuns(viable);
                         const missing = [[videos, 'an input'], [outputs, 'an output'], [speedBackends(viable), 'a backend']].filter(([n]) => !n).map(([, what]) => what);
                         estimate.textContent = missing.length
-                            ? 'Requires ' + (missing.length > 2 ? missing.slice(0, -1).join(', ') + ', and ' + missing[missing.length - 1] : missing.join(' and ')) + '.'
+                            ? 'Requires ' + andList(missing) + '.'
                             : !runs ? 'Nothing to measure with these choices.'
                             : videos + ' input' + (videos === 1 ? '' : 's') + ' \u00d7 ' + outputs + ' output' + (outputs === 1 ? '' : 's') + ' on ' + speedBackends(viable) + ' backend' + (speedBackends(viable) === 1 ? '' : 's') + ': ' + measurementsText(runs, speedMethod, speedRepeats, speedTimeLimit);
                         button.disabled = runs === 0 || running;
@@ -2205,7 +2212,7 @@
                             choices.push([String(n), String(n)]);
                         }
                         if (o.Server) {
-                            const value = encoding ? encoding[o.Server] : null;
+                            const value = current(o.Server);
                             const found = choices.find(([key]) => value !== null && value !== undefined && key === String(value));
                             choices = [['', serverLabels.ServerSetting + (found ? ' (' + found[1] + ')' : '')]].concat(choices);
                         }
@@ -2249,8 +2256,8 @@
                         .appendChild(sources);
                     sourceLines(sources, update);
                     form.appendChild(el('h3', 'Output', 'sectionTitle'));
-                    multiSelect(form, 'Codec', speedCodecs.map(c => ({ key: c.Key, text: c.Name })).concat(speedOutputs.filter(o => o.DecodeOnly).map(o => ({ key: o.Key, text: o.Label }))), chosenCodecs, () => update())
-                        .appendChild(el('div', 'Every selected codec at every selected quality is processed for every selected input.', 'fieldDescription'));
+                    multiSelect(form, 'Codec', speedCodecs.map(c => ({ key: c.Key, text: c.Name })).concat(speedOutputs.filter(standalone).map(o => ({ key: o.Key, text: o.Label }))), chosenCodecs, () => update())
+                        .appendChild(el('div', 'Every selected codec at every selected quality is processed for every selected input; ' + andList(speedOutputs.filter(standalone).map(o => o.Label)) + ' take no quality.', 'fieldDescription'));
                     multiSelect(form, 'Quality', speedQualities.map(q => ({ key: q.Key, text: q.Name })), chosenQualities, () => update())
                         .appendChild(el('div', 'Output resolution is determined by transcoded quality and codec.', 'fieldDescription'));
 
@@ -2466,7 +2473,8 @@
                         if (speed && !values && counted) {
                             facts.push(streamsText(x) + ' concurrent streams');
                         }
-                        if (x.fps) {
+                        // An image output's fps is the source's frames over the time taken, not frames it decoded.
+                        if (x.fps && x.kind !== 'Images') {
                             facts.push(Math.round(x.fps) + ' frames a second');
                         }
                         if (x.note) {
@@ -2637,9 +2645,11 @@
                         ['encoderPreset', t.encoderPreset || 'Auto (veryfast)'],
                         ['crf', 'H.265 ' + t.h265Crf + ', H.264 ' + t.h264Crf],
                         ['deinterlace', (t.bwdif ? 'BWDIF' : 'YADIF') + (t.doubleRate ? ', double rate' : '')],
+                        // Reports from before trickplay was measured have none of its settings.
+                        ['trickplay', t.trickplayWidth ? 'MJPEG hardware encoding ' + onOff(t.trickplayHwEncoding) + ', key frames only ' + onOff(t.trickplayKeyFrames) + ', ' + t.trickplayThreads + ' FFmpeg threads, ' + t.trickplayWidth + ' wide, every ' + t.trickplayInterval / 1000 + ' s, qscale ' + t.trickplayQscale : null],
                         ['audio', t.audioCopy ? 'Copied (passthrough)' : 'Transcoded to stereo AAC'],
                         ['burnIn', { text: 'Text (ASS)', image: 'Image (PGS)' }[t.burnIn] || 'None']
-                    ].map(([key, value]) => [settingLabels[key] || key, value]);
+                    ].filter(([, value]) => value !== null).map(([key, value]) => [settingLabels[key] || key, value]);
                 }
 
                 // In a suite, which step; and anything other than measuring: preparing, pausing, waiting, or cancelling.

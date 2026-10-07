@@ -22,6 +22,12 @@ internal static partial class Log
     [LoggerMessage(Level = LogLevel.Error, Message = "HwProbe failed.")]
     public static partial void Failed(ILogger logger, Exception exception);
 
+    /// <summary>Logs the command a performance test measurement runs, as Jellyfin logs its own.</summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="command">ffmpeg's path and arguments.</param>
+    [LoggerMessage(Level = LogLevel.Information, Message = "HwProbe performance test: {Command}")]
+    public static partial void SpeedCommand(ILogger logger, string command);
+
     /// <summary>Logs a completed speed run.</summary>
     /// <param name="logger">The logger.</param>
     /// <param name="results">Number of measurements.</param>

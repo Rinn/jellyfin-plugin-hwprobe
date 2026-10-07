@@ -13,9 +13,6 @@ public static class SpeedMeter
     /// <summary>The content each copy transcodes: long enough that start-up is a small part of it.</summary>
     public static readonly TimeSpan Content = TimeSpan.FromSeconds(10);
 
-    // A single run shorter than this is repeated with more content, so start-up doesn't skew its fps.
-    private static readonly TimeSpan _shortest = TimeSpan.FromSeconds(5);
-
     // Content cap for the repeated single run, for hosts that run hundreds of times real time.
     private static readonly TimeSpan _longestContent = TimeSpan.FromMinutes(10);
 
@@ -26,6 +23,7 @@ public static class SpeedMeter
     /// <param name="countStreams">False for a decode test, which reports fps only.</param>
     /// <param name="cancellationToken">Cancels the measurement.</param>
     /// <param name="timeUp">Reports when the measurement's time limit has passed; checked before each run of copies, never before the first run. Null for no limit.</param>
+    /// <param name="pace">How much content the copies process and how speed is read; null for <see cref="MeterPace.Frames"/>.</param>
     /// <returns>The fps and stream count.</returns>
     public static async Task<SpeedMeasurement> MeasureAsync(
         Func<int, TimeSpan, CancellationToken, Task<IReadOnlyList<FfmpegRunResult>>> launch,
@@ -33,21 +31,24 @@ public static class SpeedMeter
         double frameRate,
         bool countStreams,
         CancellationToken cancellationToken,
-        Func<bool>? timeUp = null)
+        Func<bool>? timeUp = null,
+        MeterPace? pace = null)
     {
         ArgumentNullException.ThrowIfNull(launch);
+        pace ??= MeterPace.Frames;
+        double? Rate(FfmpegRunResult run, TimeSpan content) => pace.ByContent ? ContentFps(run, content, frameRate) : Fps(run);
 
-        var single = (await launch(1, Content, cancellationToken))[0];
+        var single = (await launch(1, pace.Content, cancellationToken))[0];
         var longerCutOff = false;
-        var fps = Fps(single);
+        var fps = Rate(single, pace.Content);
         var resources = single.Resources;
-        if (single.Status == FfmpegRunStatus.Exited && single.ExitCode == 0 && single.Duration < _shortest && single.Duration > TimeSpan.Zero)
+        if (single.Status == FfmpegRunStatus.Exited && single.ExitCode == 0 && single.Duration < pace.Shortest && single.Duration > TimeSpan.Zero)
         {
-            // Enough content to take about as long as the content plays. Start-up, and restarting a short looped
-            // clip (slow with NVIDIA's cuvid decoders), only slow a run down, so the faster run is the closer figure.
-            var longer = TimeSpan.FromSeconds(Math.Min(Content.TotalSeconds * Content.TotalSeconds / single.Duration.TotalSeconds, _longestContent.TotalSeconds));
+            // Enough content to take about the pace's target. Start-up, and restarting a short looped clip (slow
+            // with NVIDIA's cuvid decoders), only slow a run down, so the faster run is the closer figure.
+            var longer = TimeSpan.FromSeconds(Math.Min(pace.Content.TotalSeconds * pace.Target.TotalSeconds / single.Duration.TotalSeconds, _longestContent.TotalSeconds));
             var longerRun = (await launch(1, longer, cancellationToken))[0];
-            var longerFps = Fps(longerRun);
+            var longerFps = Rate(longerRun, longer);
             resources = longerFps is { } better && (fps is null || better > fps) ? longerRun.Resources : resources;
             fps = fps is { } first && longerFps is { } second ? Math.Max(first, second) : fps ?? longerFps;
             longerCutOff = longerRun.Status == FfmpegRunStatus.TimedOut;
@@ -55,7 +56,7 @@ public static class SpeedMeter
 
         if (fps is null)
         {
-            return new SpeedMeasurement(null, null, false, Failure(single)) { Interrupted = single.Status == FfmpegRunStatus.TimedOut };
+            return new SpeedMeasurement(null, null, false, Failure(single, pace.ByContent)) { Interrupted = single.Status == FfmpegRunStatus.TimedOut };
         }
 
         // A single copy killed by its timeout gives fps from the frames it reached.
@@ -82,7 +83,7 @@ public static class SpeedMeter
                 throw new TimeoutException();
             }
 
-            var runs = await launch(copies, Content, cancellationToken);
+            var runs = await launch(copies, pace.Content, cancellationToken);
             if (runs.Any(r => r.Status == FfmpegRunStatus.LaunchFailed || (r.Status == FfmpegRunStatus.Exited && r.ExitCode != 0)))
             {
                 erroredAt = erroredAt == 0 ? copies : Math.Min(erroredAt, copies);
@@ -90,7 +91,7 @@ public static class SpeedMeter
             }
 
             // Judged from the first frame on, so start-up (device init, probing the input) doesn't count against a copy and isn't excused either.
-            var kept = runs.All(r => r.Status == FfmpegRunStatus.Exited && (r.Timing?.SteadyFps ?? Fps(r)) >= frameRate);
+            var kept = runs.All(r => r.Status == FfmpegRunStatus.Exited && ((pace.ByContent ? null : r.Timing?.SteadyFps) ?? Rate(r, pace.Content)) >= frameRate);
             keptUp = kept ? Math.Max(keptUp, copies) : keptUp;
             return kept;
         }
@@ -178,16 +179,27 @@ public static class SpeedMeter
             ? frames / result.Duration.TotalSeconds
             : null;
 
+    /// <summary>The source's frames a second over a run that read the whole of its content.</summary>
+    /// <param name="result">The run.</param>
+    /// <param name="content">The content it read.</param>
+    /// <param name="frameRate">The source frame rate.</param>
+    /// <returns>The fps, or null unless the run exited cleanly.</returns>
+    private static double? ContentFps(FfmpegRunResult result, TimeSpan content, double frameRate) =>
+        result.Status == FfmpegRunStatus.Exited && result.ExitCode == 0 && result.Duration > TimeSpan.Zero
+            ? content.TotalSeconds * frameRate / result.Duration.TotalSeconds
+            : null;
+
     /// <summary>Describes a run that produced no fps.</summary>
     /// <param name="result">The run.</param>
+    /// <param name="byContent">Whether speed is read from the content, which only a finished run gives.</param>
     /// <returns>The reason, with ffmpeg's last stderr line when there is one.</returns>
-    private static string Failure(FfmpegRunResult result)
+    private static string Failure(FfmpegRunResult result, bool byContent)
     {
         var last = result.Stderr.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).LastOrDefault();
         var ended = result.Status switch
         {
             FfmpegRunStatus.LaunchFailed => $"ffmpeg didn't start: {result.LaunchError}",
-            FfmpegRunStatus.TimedOut => "ffmpeg produced no frames before the time limit",
+            FfmpegRunStatus.TimedOut => byContent ? "ffmpeg didn't finish before the time limit" : "ffmpeg produced no frames before the time limit",
             _ => string.Create(CultureInfo.InvariantCulture, $"ffmpeg exited with {result.ExitCode}"),
         };
         return last is null ? ended : $"{ended}: {last}";

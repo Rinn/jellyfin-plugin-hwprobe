@@ -21,7 +21,7 @@ public sealed class SpeedEngine : IDisposable
     private static readonly TimeSpan _singleTimeout = TimeSpan.FromSeconds(30);
 
     // Copies that need much longer than real time have already fallen behind.
-    private static readonly TimeSpan _copiesTimeout = SpeedMeter.Content + TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan _copiesGrace = TimeSpan.FromSeconds(10);
 
     private readonly IFfmpegRunner _runner;
     private readonly IArgumentSourceFactory _arguments;
@@ -59,6 +59,9 @@ public sealed class SpeedEngine : IDisposable
 
     /// <summary>Gets the downloader for clips that can't be generated, such as the PGS sample.</summary>
     public IFixtureDownloader FixtureDownloader { get; init; } = new HttpFixtureDownloader();
+
+    /// <summary>Gets what receives each measurement's command line, ffmpeg's path first, as it starts, or null.</summary>
+    public Action<string>? CommandLog { get; init; }
 
     /// <summary>Returns where measurements are kept for reuse: beside the clip cache.</summary>
     /// <param name="options">The cache locations.</param>
@@ -283,13 +286,35 @@ public sealed class SpeedEngine : IDisposable
     /// <param name="result">The result.</param>
     /// <returns>The described result.</returns>
     private static SpeedResult Describe(SpeedTest test, SpeedResult result) =>
-        result with { Label = test.Label, Video = test.Name, Output = test.OutputLabel, Input = SpeedTestText.Input(test), FrameRate = result.FrameRate ?? test.FrameRate, Credit = test.Credit, LicenseUrl = test.LicenseUrl };
+        result with { Label = test.Label, Video = test.Name, Output = test.OutputLabel, Input = SpeedTestText.Input(test), FrameRate = result.FrameRate ?? test.FrameRate, Credit = test.Credit, LicenseUrl = test.LicenseUrl, Kind = test.Kind };
 
     /// <summary>Returns the SHA-256 of an ffmpeg command line, so runs can tell whether a setting changed it.</summary>
     /// <param name="command">The command line.</param>
     /// <returns>The hash in lowercase hex.</returns>
     private static string CommandHash(string command) =>
         Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(command)));
+
+    /// <summary>Generates a test's arguments: image extraction's for an image cell, a transcode's or decode's otherwise.</summary>
+    /// <param name="source">The device's argument source.</param>
+    /// <param name="type">The backend.</param>
+    /// <param name="device">The device.</param>
+    /// <param name="cell">The cell to generate.</param>
+    /// <returns>The arguments.</returns>
+    private static ProbeArguments Arguments(IArgumentSource source, HwType type, string device, ProbeCell cell) =>
+        cell.Images is { } job ? source.BuildImages(type, device.Length == 0 ? null : device, cell, job) : source.Build(type, device.Length == 0 ? null : device, cell);
+
+    /// <summary>Builds a test's command line.</summary>
+    /// <param name="args">The test's arguments.</param>
+    /// <param name="test">The test.</param>
+    /// <param name="content">How much of the looped source to process.</param>
+    /// <returns>The ffmpeg argument string.</returns>
+    private static string CommandLine(ProbeArguments args, SpeedTest test, TimeSpan content) =>
+        test.Images ? SpeedCommandLine.BuildImages(args, content, test.StartAt) : SpeedCommandLine.Build(args, content, test.DecodeOnly, test.StartAt);
+
+    /// <summary>Returns how a test is paced.</summary>
+    /// <param name="test">The test.</param>
+    /// <returns>The pace.</returns>
+    private static MeterPace Pace(SpeedTest test) => test.Images ? MeterPace.Images : MeterPace.Frames;
 
     /// <summary>Describes a clip being made or downloaded.</summary>
     /// <param name="step">The step.</param>
@@ -458,9 +483,9 @@ public sealed class SpeedEngine : IDisposable
             {
                 try
                 {
-                    var args = source.Build(type, device.Length == 0 ? null : device, cell);
+                    var args = Arguments(source, type, device, cell);
                     var environment = string.Join('\n', args.Environment.OrderBy(e => e.Key, StringComparer.Ordinal).Select(e => e.Key + "=" + e.Value));
-                    return Task.FromResult<string?>(SpeedCommandLine.Build(args, SpeedMeter.Content, test.DecodeOnly, test.StartAt) + "\n" + environment);
+                    return Task.FromResult<string?>(CommandLine(args, test, Pace(test).Content) + "\n" + environment);
                 }
                 catch (Exception e) when (e is ArgumentConstructionException or UnsafeProbeException or NotSupportedException)
                 {
@@ -498,12 +523,12 @@ public sealed class SpeedEngine : IDisposable
                 ProbeArguments args;
                 try
                 {
-                    args = source.Build(type, device.Length == 0 ? null : device, cell);
+                    args = Arguments(source, type, device, cell);
                 }
                 catch (ArgumentConstructionException)
                 {
-                    // No hardware arguments at all: Jellyfin would do the whole job in software.
-                    return new SpeedResult(type, device, test.Key, string.Empty, null, null, false, test.DecodeOnly ? "Not measured: decoded in software with this backend." : "Not measured: decoded and encoded in software with this backend.");
+                    // No hardware arguments at all, or for images a backend whose decoders don't skip to key frames: Jellyfin would do the whole job in software.
+                    return new SpeedResult(type, device, test.Key, string.Empty, null, null, false, test.Images ? Data.Catalog.Text("noteImagesKeyFrames") : test.DecodeOnly ? "Not measured: decoded in software with this backend." : "Not measured: decoded and encoded in software with this backend.");
                 }
                 catch (UnsafeProbeException ex)
                 {
@@ -515,40 +540,43 @@ public sealed class SpeedEngine : IDisposable
                     return new SpeedResult(type, device, test.Key, string.Empty, null, null, false, "Burning in a file's own text subtitles requires Jellyfin; measure it from the plugin.");
                 }
 
-                // A hardware column needs the step it's about on the GPU: the encode for a transcode, the decode for a decode test. Software has its own column.
+                // A hardware column needs the step it's about on the GPU: the encode for a transcode, the decode for a decode test or images. Software has its own column.
                 var softwareDecode = type != HwType.none && args.Hwaccel is null && args.HardwareDecoder is null;
                 var softwareStep = type == HwType.none ? null
-                    : test.DecodeOnly ? (softwareDecode ? "decoded" : null)
+                    : test.DecodeOnly || test.Images ? (softwareDecode ? "decoded" : null)
                     : args.HardwareEncoder ? null
                     : "encoded";
 
                 // Decoding the probe found failing is named as the reason, as the advice to untick that codec is.
                 if (softwareStep is not null)
                 {
-                    return new SpeedResult(type, device, test.Key, string.Empty, null, null, false, softwareStep == "decoded" && !cell.HardwareDecode ? Data.Catalog.Text("noteDecodeFailed") : $"Not measured: {softwareStep} in software with this backend.");
+                    return new SpeedResult(type, device, test.Key, string.Empty, null, null, false, softwareStep == "decoded" && !cell.HardwareDecode ? Data.Catalog.Text("noteDecodeFailed") : test.Images ? Data.Catalog.Text("noteImagesSoftware") : $"Not measured: {softwareStep} in software with this backend.");
                 }
 
                 var note = !softwareDecode ? null : Data.Catalog.Text(cell.HardwareDecode ? "noteSoftwareDecode" : "noteSoftwareDecodeFailed");
                 var width = Math.Min(args.OutputWidth ?? test.Width, test.Width);
-                var size = test.DecodeOnly ? null : SpeedTestText.Resolution(width, test.Height * width / test.Width, false);
+                var size = test.DecodeOnly || test.Images ? null : SpeedTestText.Resolution(width, test.Height * width / test.Width, false);
+                var pace = Pace(test);
 
-                string Command(TimeSpan content) => SpeedCommandLine.Build(args, content, test.DecodeOnly, test.StartAt);
+                string Command(TimeSpan content) => CommandLine(args, test, content);
 
                 // jellyfin-ffmpeg's qsvenc drops low-power mode it can't use and carries on (debian/patches/0071), so the run measures normal mode.
                 var lowPowerDropped = false;
                 async Task<IReadOnlyList<FfmpegRunResult>> LaunchAsync(int copies, TimeSpan content, CancellationToken token)
                 {
-                    var invocation = new FfmpegInvocation(options.Ffmpeg.Path, Command(content), args.Environment, copies == 1 ? _singleTimeout : _copiesTimeout) { MeasureResources = measureResources && copies == 1 };
+                    var invocation = new FfmpegInvocation(options.Ffmpeg.Path, Command(content), args.Environment, copies == 1 ? _singleTimeout : pace.Content + _copiesGrace) { MeasureResources = measureResources && copies == 1 };
                     var runs = await Task.WhenAll(Enumerable.Range(0, copies).Select(_ => _runner.RunAsync(invocation, token)));
                     lowPowerDropped |= cell.LowPower && runs.Any(r => StderrMarkers.LowPowerDisabled.Any(m => r.Stderr.Contains(m, StringComparison.Ordinal)));
                     return runs;
                 }
 
                 // Double-rate deinterlacing makes a frame per field, so real time is twice the source rate (EncodingHelper.GetSwDeinterlaceFilter and the hardware deinterlace filters, v12.2: interlaced sources of 30 fps or less).
-                var outputRate = cell.DoubleRate && test.Interlaced && !test.DecodeOnly && test.FrameRate <= 30 ? test.FrameRate * 2 : test.FrameRate;
-                var measured = await SpeedMeter.MeasureAsync(LaunchAsync, method, outputRate, !test.DecodeOnly, ct, timeUp);
+                // Images are extracted ahead of playback, so their speed has no real time to keep up with, and no streams are counted.
+                var outputRate = cell.DoubleRate && test.Interlaced && !test.DecodeOnly && !test.Images && test.FrameRate <= 30 ? test.FrameRate * 2 : test.FrameRate;
+                CommandLog?.Invoke($"{options.Ffmpeg.Path} {Command(pace.Content)}");
+                var measured = await SpeedMeter.MeasureAsync(LaunchAsync, method, outputRate, !test.DecodeOnly && !test.Images, ct, timeUp, pace);
                 note = lowPowerDropped ? Data.Catalog.Text("noteLowPowerDropped") : note;
-                return new SpeedResult(type, device, test.Key, string.Empty, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note) { OutputSize = size, Interrupted = measured.Interrupted, Command = CommandHash(Command(SpeedMeter.Content)), Resources = measured.Resources, LowPowerDropped = lowPowerDropped, FrameRate = outputRate };
+                return new SpeedResult(type, device, test.Key, string.Empty, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note) { OutputSize = size, Interrupted = measured.Interrupted, Command = CommandHash(Command(pace.Content)), Resources = measured.Resources, LowPowerDropped = lowPowerDropped, FrameRate = outputRate };
             },
             cancellationToken);
 }

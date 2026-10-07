@@ -4,7 +4,7 @@ Operating manual for this repo: what it is, commands, conventions, the traps tha
 
 ## What this is
 
-A device-verified hardware-transcode detector for Jellyfin, shipped as a CLI (`src/HwProbe.Cli`) and a plugin (`src/HwProbe.Plugin`) over a shared engine (`src/HwProbe.Core`, with Jellyfin's own `EncodingHelper` wired in by `src/HwProbe.Jellyfin`). Jellyfin's hardware acceleration dropdown is a fixed list in jellyfin-web, so it offers backends that fail every job; HwProbe runs small real transcodes and reports what works, with a fix for each failure. The page has five tabs: Hardware Probe, Recommended Settings (per working backend and software, with Apply, history and Revert), Performance Tests and Test Results (transcode speed per backend, single runs or test suites, driven by `src/HwProbe.Core/Data/catalog.yaml`; "speed" in code, "performance" in user-facing text), and Help (diagnostics zip with HwProbe's log lines, saved runs, measurements, and cache contents, each with its own delete, Delete clips, and Delete all data).
+A device-verified hardware-transcode detector for Jellyfin, shipped as a CLI (`src/HwProbe.Cli`) and a plugin (`src/HwProbe.Plugin`) over a shared engine (`src/HwProbe.Core`, with Jellyfin's own `EncodingHelper` wired in by `src/HwProbe.Jellyfin`). Jellyfin's hardware acceleration dropdown is a fixed list in jellyfin-web, so it offers backends that fail every job; HwProbe runs small real transcodes and reports what works, with a fix for each failure. The page has five tabs: Hardware Probe, Recommended Settings (per working backend and software, with Apply, history and Revert), Performance Tests and Test Results (transcode and trickplay speed per backend, single runs or test suites, driven by `src/HwProbe.Core/Data/catalog.yaml`; "speed" in code, "performance" in user-facing text), and Help (diagnostics zip with HwProbe's log lines, saved runs, measurements, and cache contents, each with its own delete, Delete clips, and Delete all data).
 
 Public at https://github.com/Rinn/jellyfin-plugin-hwprobe (`origin`).
 
@@ -51,7 +51,7 @@ Pull files with `gh` and grep locally. WebFetch truncates `EncodingHelper.cs` (8
 
 - **Verify against source; never describe upstream behaviour from memory.** The owner checks provenance and has caught real errors. Anything claimed about Jellyfin should trace to a file and symbol; if it rests on a summary, say so.
 - **Put catalog-like data in `catalog.yaml`, not code.** Lists, labels, defaults, orderings, thresholds, and the report's remedy, fix, and finding text (`texts`, read with `Catalog.Text`) belong in the catalog, served to the page by `HwProbe/Catalog`; the page shouldn't keep its own copy. Upstream constants and logic stay in code.
-- **Don't hardcode ffmpeg arguments.** Generate them through `EncodingHelper`. The pinned drift strings detect upstream changes; they aren't the source of truth. The one exception is the bare device-open probe, which upstream never emits.
+- **Don't hardcode ffmpeg arguments.** Generate them through `EncodingHelper`. The pinned drift strings detect upstream changes; they aren't the source of truth. The exceptions are the bare device-open probe, which upstream never emits, and the pinned copy of `MediaEncoder`'s image wrapper (`ArgumentSource.BuildImages`), checked by `ImageArgumentsTests` and against Jellyfin's own logged trickplay command in `container-plugin.sh`.
 - **Keep this file current in every PR**, along with `README.md`, `CONTRIBUTING.md`, `DEVELOPMENT.md`, `ARCHITECTURE.md`, and `build.yaml`: state, commands, traps, and the to-do list.
 - **Never auto-apply settings and never restart the server.** Apply writes only advised `EncodingOptions` values through `SaveConfiguration`, with history and Revert.
 
@@ -106,6 +106,4 @@ The page should look and behave like a native Jellyfin dashboard page, stay calm
 
 ## To do
 
-Queued by the user on 2026-10-03, in no particular order:
-
-- Trickplay generation as a Performance Tests output (researched 2026-10-04). Input, filter, and encoder come from public EncodingHelper methods; only `MediaEncoder.ExtractVideoImagesOnIntervalAccelerated`'s wrapper (skip_frame, setpts, quality per encoder, threads, image2) needs a pinned copy, guarded by drift tests and a log diff in `container-plugin.sh`. A direct call was rejected: configured backend only, no CLI, no stderr to confirm hardware, slow cancellation.
+Nothing queued.

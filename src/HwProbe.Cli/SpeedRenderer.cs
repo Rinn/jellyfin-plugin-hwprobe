@@ -114,6 +114,7 @@ internal static class SpeedRenderer
             $"deinterlace {(settings.Bwdif ? "BWDIF" : "YADIF")}{(settings.DoubleRate ? " double rate" : string.Empty)}",
             $"OS native decoders {OnOff(settings.PreferNativeDecoder)}",
             $"enhanced NVDEC {OnOff(settings.EnhancedNvdec)}",
+            string.Create(CultureInfo.InvariantCulture, $"trickplay MJPEG hardware encoding {OnOff(settings.TrickplayHwEncoding)} / key frames only {OnOff(settings.TrickplayKeyFrames)} / {settings.TrickplayThreads} FFmpeg threads"),
         });
     }
 

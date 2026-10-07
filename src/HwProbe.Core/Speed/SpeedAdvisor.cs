@@ -36,6 +36,9 @@ public static class SpeedAdvisor
         ["H264Crf"] = s => s.H264Crf.ToString(CultureInfo.InvariantCulture),
         ["DeinterlaceMethod"] = s => s.Bwdif ? "bwdif" : "yadif",
         ["DoubleRate"] = s => Flag(s.DoubleRate),
+        ["TrickplayHwEncoding"] = s => Flag(s.TrickplayHwEncoding),
+        ["TrickplayKeyFrames"] = s => Flag(s.TrickplayKeyFrames),
+        ["TrickplayThreads"] = s => s.TrickplayThreads.ToString(CultureInfo.InvariantCulture),
     };
 
     /// <summary>Gets the share under which two speeds count as alike.</summary>
@@ -150,11 +153,13 @@ public static class SpeedAdvisor
         }
 
         // Outputs that two or more backends measured and none kept real time on; one backend alone, as suites measure, doesn't show the others would fall behind.
+        // Images are extracted ahead of playback, so they have no real time to keep.
         bool KeepsUp(SpeedResult r) => Speed(r) >= 1 && r.Streams != 0;
-        var tooSlow = measured.GroupBy(r => r.Test, StringComparer.Ordinal).Where(g => !g.Any(KeepsUp) && g.Select(r => (r.Type, r.Device)).Distinct().Count() > 1).ToList();
+        var playback = measured.Where(r => r.Kind != SpeedOutputKind.Images).ToList();
+        var tooSlow = playback.GroupBy(r => r.Test, StringComparer.Ordinal).Where(g => !g.Any(KeepsUp) && g.Select(r => (r.Type, r.Device)).Distinct().Count() > 1).ToList();
 
         // A test video that falls behind means real video will too: test videos encode faster. Outputs every backend falls behind on are reported on their own instead.
-        var behind = measured.Where(r => Configured(r) && !KeepsUp(r) && !tooSlow.Any(g => g.Key == r.Test)).ToList();
+        var behind = playback.Where(r => Configured(r) && !KeepsUp(r) && !tooSlow.Any(g => g.Key == r.Test)).ToList();
         if (behind.Count > 0)
         {
             suggestions.Add(new SpeedSuggestion(SpeedSuggestionKind.FallsBehind, [.. behind.Select(r => Label(r, shown.Settings))]) { Type = type, Device = device, Speed = behind.Min(Speed), Streams = Fewest(behind), StreamsCapped = FewestCapped(behind), TestVideosOnly = behind.All(IsGenerated) });

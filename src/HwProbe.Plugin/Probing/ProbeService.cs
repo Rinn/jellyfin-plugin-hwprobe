@@ -82,8 +82,8 @@ public sealed partial class ProbeService : IDisposable
         ArgumentNullException.ThrowIfNull(mediaEncoder);
         ArgumentNullException.ThrowIfNull(paths);
         CurrentFfmpeg = () => (mediaEncoder.EncoderPath, mediaEncoder.EncoderVersion);
-        MeasureSpeed = (speed, backends, progress, ct) => RunSpeedEngineAsync(arguments, mediaEncoder, paths, baseline, speed, backends, progress, ct);
-        ServerSpeedSettings = () => SettingsFrom(config.GetEncodingOptions());
+        MeasureSpeed = (speed, backends, progress, ct) => RunSpeedEngineAsync(arguments, mediaEncoder, paths, baseline, logger, speed, backends, progress, ct);
+        ServerSpeedSettings = () => SettingsFrom(config.GetEncodingOptions(), config.Configuration.TrickplayOptions);
         ServerBackend = () => BackendFrom(config.GetEncodingOptions());
         FindFile = files.Find;
         FixturesDirectory = ServerEngineOptions(mediaEncoder, paths).FixturesDirectory;
@@ -710,11 +710,18 @@ public sealed partial class ProbeService : IDisposable
     /// <returns>False for direct play and a remux (both streams copied); true otherwise.</returns>
     internal static bool IsTranscoding(TranscodingInfo? info) => info is not null && (!info.IsVideoDirect || !info.IsAudioDirect);
 
-    /// <summary>Reads the speed run's starting settings from the server's encoding options.</summary>
+    /// <summary>Reads the speed run's starting settings from the server's encoding and trickplay options.</summary>
     /// <param name="options">The server's encoding options.</param>
+    /// <param name="trickplay">The server's trickplay options.</param>
     /// <returns>The settings.</returns>
-    internal static SpeedSettings SettingsFrom(EncodingOptions options) => new()
+    internal static SpeedSettings SettingsFrom(EncodingOptions options, TrickplayOptions trickplay) => new()
     {
+        TrickplayHwEncoding = trickplay.EnableHwEncoding,
+        TrickplayKeyFrames = trickplay.EnableKeyFrameOnlyExtraction,
+        TrickplayThreads = trickplay.ProcessThreads,
+        TrickplayQscale = trickplay.Qscale,
+        TrickplayWidth = trickplay.WidthResolutions.FirstOrDefault(320),
+        TrickplayInterval = trickplay.Interval,
         EncoderPreset = options.EncoderPreset == EncoderPreset.auto ? null : options.EncoderPreset.ToString(),
         AudioVbr = options.EnableAudioVbr,
         H264Crf = options.H264Crf,
@@ -874,15 +881,16 @@ public sealed partial class ProbeService : IDisposable
     /// <param name="mediaEncoder">The server's media encoder.</param>
     /// <param name="paths">Server paths.</param>
     /// <param name="baseline">Environment values captured when the plugin loaded.</param>
+    /// <param name="logger">Receives each measurement's command.</param>
     /// <param name="speed">What to measure.</param>
     /// <param name="backends">The working backends.</param>
     /// <param name="progress">Receives measurements done and the total.</param>
     /// <param name="cancellationToken">Cancels the run.</param>
     /// <returns>The speed report.</returns>
-    private static async Task<SpeedReport> RunSpeedEngineAsync(IArgumentSourceFactory arguments, IMediaEncoder mediaEncoder, IApplicationPaths paths, ServerEnvironmentBaseline baseline, SpeedOptions speed, IReadOnlyCollection<(HwType Type, string Device)> backends, IProgress<SpeedProgress> progress, CancellationToken cancellationToken)
+    private static async Task<SpeedReport> RunSpeedEngineAsync(IArgumentSourceFactory arguments, IMediaEncoder mediaEncoder, IApplicationPaths paths, ServerEnvironmentBaseline baseline, ILogger logger, SpeedOptions speed, IReadOnlyCollection<(HwType Type, string Device)> backends, IProgress<SpeedProgress> progress, CancellationToken cancellationToken)
     {
         var environment = EnvironmentRules.InServer(baseline.Values, new Dictionary<string, string>());
-        using var engine = new SpeedEngine(new FfmpegRunner(), arguments, new HostPlatform(), TimeProvider.System, environment);
+        using var engine = new SpeedEngine(new FfmpegRunner(), arguments, new HostPlatform(), TimeProvider.System, environment) { CommandLog = command => Log.SpeedCommand(logger, command) };
         return await engine.RunAsync(ServerEngineOptions(mediaEncoder, paths), speed, backends, progress, cancellationToken);
     }
 

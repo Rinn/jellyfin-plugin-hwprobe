@@ -27,15 +27,16 @@ public sealed class ServerArgumentSourceFactory(
     ServerEnvironmentBaseline baseline) : IArgumentSourceFactory
 {
     /// <inheritdoc/>
-    /// <remarks>The capabilities are ignored: the server's encoder already knows its build.</remarks>
+    /// <remarks>Only the capabilities' low-priority flag is read, which MediaEncoder keeps to itself: the server's encoder already knows its build.</remarks>
     public IArgumentSource Create(FfmpegCapabilities capabilities, DeviceTraits traits)
     {
+        ArgumentNullException.ThrowIfNull(capabilities);
         ArgumentNullException.ThrowIfNull(traits);
 
         var encoder = TraitMediaEncoder.Create(mediaEncoder, traits);
         var helper = new ProbeEncodingHelper(appPaths, encoder, subtitleEncoder, configuration, configurationManager, pathManager);
         var rules = EnvironmentRules.InServer(baseline.Values, ServerOwnedVariables());
-        return new ArgumentSource(helper, encoder, rules, new CallRecorder());
+        return new ArgumentSource(helper, encoder, rules, new CallRecorder()) { LowPriorityHwDecode = capabilities.LowPriorityHwDecode };
     }
 
     /// <summary>Returns the variables the server's own transcodes set, from its configuration and device.</summary>
