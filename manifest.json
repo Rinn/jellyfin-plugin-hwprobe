@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "1.1.1.0",
+        "changelog": "- Custom Test no longer selects audio codecs before an audio input is chosen.",
+        "targetAbi": "12.2.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v1.1.1/hwprobe-plugin_1.1.1.0.zip",
+        "checksum": "b007269d95119584e8b45a0b5390293c",
+        "timestamp": "2026-10-07T17:11:53Z"
+      },
+      {
         "version": "1.1.0.0",
         "changelog": "- Performance Tests measure trickplay image generation on each backend and in software, with the Trickplay page's settings.\n- Performance Tests measure audio transcoding of 21 audio formats in software, with a new Audio formats suite.\n- Power is measured for AMD GPUs.",
         "targetAbi": "12.2.0.0",
