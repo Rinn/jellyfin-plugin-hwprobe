@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
+using Jellyfin.Plugin.HwProbe.Core.Verdict;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 
@@ -198,10 +199,12 @@ public static partial class SpeedMeter
     /// <summary>Describes a run that produced no fps.</summary>
     /// <param name="result">The run.</param>
     /// <param name="byContent">Whether speed is read from the content, which only a finished run gives.</param>
-    /// <returns>The reason, with ffmpeg's last stderr line when there is one, its memory addresses left out so the same failure reads the same every run.</returns>
+    /// <returns>The reason, with ffmpeg's last stderr line that names a cause (else its last line) when there is one, its memory addresses left out so the same failure reads the same every run.</returns>
     private static string Failure(FfmpegRunResult result, bool byContent)
     {
-        var last = result.Stderr.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).LastOrDefault() is { } line ? Address().Replace(line, string.Empty) : null;
+        var lines = result.Stderr.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var cause = lines.LastOrDefault(l => !StderrMarkers.Consequences.Any(c => l.Contains(c, StringComparison.Ordinal))) ?? lines.LastOrDefault();
+        var last = cause is null ? null : Address().Replace(cause, string.Empty);
         var ended = result.Status switch
         {
             FfmpegRunStatus.LaunchFailed => $"ffmpeg didn't start: {result.LaunchError}",
