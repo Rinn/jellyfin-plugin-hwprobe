@@ -12,7 +12,7 @@
       },
       {
         "version": "1.0.2.0",
-        "changelog": "Says when an output is too slow on every backend tested, with the fastest one. Falls behind real time no longer appears when every backend tested falls behind too. The Help tab lists test results and measurements with their size, each with its own delete, and deleting clips keeps measurements. Deleting a clip no longer redraws the whole page. Test results take less disk space.",
+        "changelog": "- Says when an output is too slow on every backend tested, with the fastest one.\n- The Help tab lists test results and measurements with their size, each with its own delete.\n- Deleting test clips keeps measurements.\n- Test results take less disk space.",
         "targetAbi": "12.2.0.0",
         "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v1.0.2/hwprobe-plugin_1.0.2.0.zip",
         "checksum": "4d3f76d067528edee98fc8153a6c7c83",
@@ -20,7 +20,7 @@
       },
       {
         "version": "1.0.1.0",
-        "changelog": "Suggestions show as tables comparing each choice, with the recommended one marked, Jellyfin's description of each setting, and a reason. Related settings such as deinterlacing and tone mapping are compared in one table. Adds a 4K test suite. Fixes Intel low-power and library-video comparisons, suite steps that overwrote each other, and downloaded samples labelled as generated.",
+        "changelog": "- Suggestions show as tables comparing each choice, with the recommended one marked and a reason.\n- Related settings, such as deinterlacing and tone mapping, share one table.\n- Adds a 4K test suite.\n- Fixes Intel low-power, library video, and test suite comparisons.",
         "targetAbi": "12.2.0.0",
         "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v1.0.1/hwprobe-plugin_1.0.1.0.zip",
         "checksum": "af714f7618114d37ad979cd72dcd71f6",
@@ -28,7 +28,7 @@
       },
       {
         "version": "1.0.0.0",
-        "changelog": "First stable release, replacing 0.19.0. Requires Jellyfin 12.2 or newer. Third-party notices ship in each release archive with exact versions and licence texts, and release files carry build provenance attestations, checked with gh attestation verify.",
+        "changelog": "- First stable release. Requires Jellyfin 12.2 or newer.\n- Tests each hardware acceleration backend with short real transcodes, shows which ones work, and gives a fix for each one that doesn't.\n- Says when Jellyfin can't open the GPU because of permissions, when a backend requires another platform or GPU vendor, and when Jellyfin, not the GPU, falls back to software.\n- Tests QSV on every Intel adapter and AMF on the first AMD adapter on Windows, as Jellyfin picks them.\n- Recommended Settings for each working backend and for software, including trickplay, deinterlacing, tone mapping, and Intel low power, with Apply, Revert, and a history.\n- Warns when Jellyfin is set to a backend that doesn't work.\n- Performance tests measure transcode speed and concurrent streams for each backend on test videos, film samples from 1080p to 8K, or a library file, with optional CPU, memory, GPU, and power use.\n- Test suites compare encoder presets, qualities, tone mapping, deinterlacing, decoding, subtitle burn-in, audio, legacy formats, thread count, and Intel low power.\n- Performance tests can reuse earlier measurements and pause while the server transcodes for a player.\n- Test Results suggests a faster backend, flags outputs that fall behind real time, and suggests settings worth changing, with Apply and Revert.\n- The Help tab has a diagnostics zip and a prefilled form for hardware reports, the cached test clips, Delete all data, and third-party notices.\n- In the dashboard sidebar, fits phone screens, and works in any server language.\n- A command-line version for Windows, macOS, and Linux.",
         "targetAbi": "12.2.0.0",
         "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v1.0.0/hwprobe-plugin_1.0.0.0.zip",
         "checksum": "491177570ac119c5f8ce766a8dd91761",
