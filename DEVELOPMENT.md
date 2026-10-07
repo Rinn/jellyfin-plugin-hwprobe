@@ -76,10 +76,18 @@ A user's zip (**Download diagnostics** on the Help tab, or `--diagnostics`) is l
 ## Releasing
 
 ```sh
-gh workflow run release.yml --ref main -f version=1.2.3 -f notes="What changed"
+gh workflow run release.yml --ref main -f version=1.2.3 -f notes="- What changed.
+- Another change."
 ```
 
 The workflow requires a passing `CI` check on the commit, runs `container-plugin.sh` in both install modes against each Jellyfin version in its matrix, builds the plugin zip and CLI builds, publishes release `v1.2.3`, and adds it to `manifest.json` on the `manifest` branch. The notes become the plugin's changelog. `-f prerelease=true` publishes without adding it to the plugin repository. Releases are immutable, so a version can't be reused.
+
+Changelog notes:
+
+- One Markdown bullet per change a user notices, as a short plain sentence. Jellyfin's plugin page renders the changelog as Markdown (jellyfin-web `PluginRevisions.tsx`, v12.2).
+- No version or issue numbers, internal names, or build and release details.
+- Release notes stay editable on immutable releases, but the manifest keeps the text it was released with. Edit `manifest.json` on the `manifest` branch to change it.
+- The manifest starts at 1.0.0, whose entry sums up every earlier change that still applies.
 
 Every release file has a build provenance attestation, checked with `gh attestation verify <file> -R Rinn/jellyfin-plugin-hwprobe`. Builds are reproducible. To check a release, build its tag from a fresh clone and compare hashes:
 
