@@ -212,12 +212,13 @@ public sealed partial class FixtureBuilder
         }
 
         var path = Path.Combine(directory, spec.FileName);
-        if (await IsValidAsync(path, spec, cancellationToken))
+        if (!await IsValidAsync(path, spec, cancellationToken))
         {
-            _verified.Add(path);
+            return true;
         }
 
-        return !_verified.Contains(path);
+        _verified.Add(path);
+        return false;
     }
 
     /// <summary>Returns where a download is cached.</summary>

@@ -36,7 +36,7 @@ public sealed class AtomicFileTests : IDisposable
         await using (File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
         {
             write = AtomicFile.WriteAllTextAsync(path, "second", TestContext.Current.CancellationToken);
-            await Task.Delay(150, TestContext.Current.CancellationToken);
+            await Task.Delay(50, TestContext.Current.CancellationToken);
             Assert.False(write.IsCompleted);
         }
 

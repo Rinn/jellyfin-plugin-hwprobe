@@ -74,6 +74,6 @@ public static partial class PluginLog
 
     /// <summary>Matches the start of a Jellyfin log entry: <c>[time] [LVL] [thread] Category: message</c>.</summary>
     /// <returns>The pattern.</returns>
-    [GeneratedRegex(@"^\[[^\]]+\] \[[A-Z]{3}\] \[[^\]]*\] (?<category>[^:\s]+): ")]
+    [GeneratedRegex(@"^\[[^\]]+\] \[[A-Z]{3}\] \[[^\]]*\] [^:\s]+: ")]
     private static partial Regex Entry();
 }

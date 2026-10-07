@@ -369,17 +369,12 @@ public sealed partial class ProbeService : IDisposable
     /// <returns>The JSON, or null when none was measured with this HwProbe and ffmpeg.</returns>
     public async Task<string?> LatestSpeedJsonAsync(CancellationToken cancellationToken)
     {
-        if (!File.Exists(SpeedPath))
-        {
-            return null;
-        }
-
         string json;
         try
         {
             json = await File.ReadAllTextAsync(SpeedPath, cancellationToken);
         }
-        catch (FileNotFoundException)
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
         {
             return null;
         }
