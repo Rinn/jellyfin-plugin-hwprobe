@@ -12,4 +12,7 @@ public sealed record MeterPace(TimeSpan Content, TimeSpan Shortest, TimeSpan Tar
 
     /// <summary>Gets the pace of images at an interval, read from the content.</summary>
     public static MeterPace Images { get; } = Frames with { ByContent = true };
+
+    /// <summary>Gets the pace of audio, read from the content, which has no frames: a minute of it, as audio runs hundreds of times real time, and a longer run aims for two seconds.</summary>
+    public static MeterPace Audio { get; } = new(TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2), true);
 }

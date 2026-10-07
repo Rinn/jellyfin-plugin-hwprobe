@@ -4,7 +4,7 @@ Operating manual for this repo: what it is, commands, conventions, the traps tha
 
 ## What this is
 
-A device-verified hardware-transcode detector for Jellyfin, shipped as a CLI (`src/HwProbe.Cli`) and a plugin (`src/HwProbe.Plugin`) over a shared engine (`src/HwProbe.Core`, with Jellyfin's own `EncodingHelper` wired in by `src/HwProbe.Jellyfin`). Jellyfin's hardware acceleration dropdown is a fixed list in jellyfin-web, so it offers backends that fail every job; HwProbe runs small real transcodes and reports what works, with a fix for each failure. The page has five tabs: Hardware Probe, Recommended Settings (per working backend and software, with Apply, history and Revert), Performance Tests and Test Results (transcode and trickplay speed per backend, single runs or test suites, driven by `src/HwProbe.Core/Data/catalog.yaml`; "speed" in code, "performance" in user-facing text), and Help (diagnostics zip with HwProbe's log lines, saved runs, measurements, and cache contents, each with its own delete, Delete clips, and Delete all data).
+A device-verified hardware-transcode detector for Jellyfin, shipped as a CLI (`src/HwProbe.Cli`) and a plugin (`src/HwProbe.Plugin`) over a shared engine (`src/HwProbe.Core`, with Jellyfin's own `EncodingHelper` wired in by `src/HwProbe.Jellyfin`). Jellyfin's hardware acceleration dropdown is a fixed list in jellyfin-web, so it offers backends that fail every job; HwProbe runs small real transcodes and reports what works, with a fix for each failure. The page has five tabs: Hardware Probe, Recommended Settings (per working backend and software, with Apply, history and Revert), Performance Tests and Test Results (transcode and trickplay speed per backend, and audio speed in software, single runs or test suites, driven by `src/HwProbe.Core/Data/catalog.yaml`; "speed" in code, "performance" in user-facing text), and Help (diagnostics zip with HwProbe's log lines, saved runs, measurements, and cache contents, each with its own delete, Delete clips, and Delete all data).
 
 Public at https://github.com/Rinn/jellyfin-plugin-hwprobe (`origin`).
 
@@ -99,6 +99,7 @@ The page should look and behave like a native Jellyfin dashboard page, stay calm
 - CUDA is probed at index 0 only; `EncodingHelper` hard-codes device 0.
 - Intel low power is untested on real hardware: the Intel NAS has no HuC firmware, so the Intel low power suite and its per-codec comparisons rest on unit tests alone.
 - AMD GPU power (amdgpu hwmon `power1_input` or `power1_average`, sampled every 200 ms and summed by `EnergySpan`) is untested, as no AMD hardware is available. On APUs the reading includes the CPU, so it overlaps the CPU package's.
+- Audio inputs leave out DSD (ffmpeg has no DSD encoder and FATE has no `.dsf` sample) and Shorten (FATE's sample is cut mid-frame and stops instead of looping).
 - macOS has no power figures: IOReport is a private API whose CPU channels read 0 on macOS 27.
 - v4l2m2m is confirmed from a recorded Raspberry Pi run (`Using device /dev/videoN`), not yet through Jellyfin.
 - Page and CLI text are English only. Behaviour doesn't depend on locale: ffmpeg runs with `LC_ALL=C`, numbers are formatted and parsed invariantly, and the page reads structured fields rather than message text. `CultureScope` tests and `HWPROBE_LOCALE` in `container-plugin.sh` check it.

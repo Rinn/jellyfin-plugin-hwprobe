@@ -64,6 +64,28 @@ internal static class SpeedVariants
         };
     }
 
+    /// <summary>Returns the cell for an audio test at the run's settings.</summary>
+    /// <param name="test">The audio test.</param>
+    /// <param name="settings">The settings.</param>
+    /// <param name="clips">Clip paths by file name.</param>
+    /// <returns>The cell.</returns>
+    public static AudioCell Audio(SpeedTest test, SpeedSettings settings, IReadOnlyDictionary<string, string> clips)
+    {
+        ArgumentNullException.ThrowIfNull(test);
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(clips);
+        var audio = test.AudioInput ?? throw new ArgumentException($"Test {test.Key} isn't an audio test.", nameof(test));
+        return new AudioCell(clips[audio.Fixture.FileName], audio.Codec, audio.Channels, audio.SampleRate)
+        {
+            OutputCodec = test.OutputCodec,
+            OutputChannels = test.OutputChannels,
+            AudioVbr = settings.AudioVbr,
+            DownmixAlgorithm = settings.DownmixAlgorithm,
+            DownmixBoost = settings.DownmixBoost,
+            EncodingThreadCount = settings.EncodingThreadCount,
+        };
+    }
+
     /// <summary>Returns a test's cell for one backend: QSV takes the run's own low-power choice.</summary>
     /// <param name="type">The backend.</param>
     /// <param name="test">The test.</param>
@@ -118,10 +140,10 @@ internal static class SpeedVariants
         _ => null,
     };
 
-    /// <summary>Returns whether a test burns in the run's subtitles: a transcode does, a decode and images don't.</summary>
+    /// <summary>Returns whether a test burns in the run's subtitles: a video transcode does; a decode, images, and audio don't.</summary>
     /// <param name="test">The test.</param>
     /// <returns>True for a transcode.</returns>
-    private static bool Burns(SpeedTest test) => !test.DecodeOnly && !test.Images;
+    private static bool Burns(SpeedTest test) => !test.DecodeOnly && !test.Images && !test.AudioOnly;
 
     /// <summary>Describes a generated clip.</summary>
     /// <param name="fixture">The clip.</param>

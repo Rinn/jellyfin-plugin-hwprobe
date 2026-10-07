@@ -25,4 +25,9 @@ public interface IArgumentSource
     /// <returns>The arguments: <see cref="ProbeArguments.InputArgument"/> holds the whole input, <see cref="ProbeArguments.EncoderArgs"/> what follows the encoder.</returns>
     /// <exception cref="ArgumentConstructionException">The server would make them in software with this backend.</exception>
     ProbeArguments BuildImages(HwType type, string? device, ProbeCell cell, ImageJob job);
+
+    /// <summary>Builds the arguments the server runs to transcode an audio file for a client, as it does for music; always in software.</summary>
+    /// <param name="cell">The file and what the client asks for.</param>
+    /// <returns>The arguments; decode-only cells get the input alone.</returns>
+    AudioArguments BuildAudio(AudioCell cell);
 }

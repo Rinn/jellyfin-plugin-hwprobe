@@ -111,7 +111,7 @@ public sealed class SpeedVariantsTests
         Assert.All(SpeedCatalog.DefaultOutputs, k => Assert.NotNull(SpeedCatalog.FindOutput(k)));
         Assert.Null(SpeedCatalog.Find("pattern"));
         Assert.Equal("Test video, H.264 \u2192 HEVC, 720 kbps", Test("pattern|hevc-720kbps").Label);
-        Assert.Equal((Catalog.Default.Codecs.Count * Catalog.Default.Qualities.Count) + 1 + Catalog.Default.Images.Count, SpeedCatalog.Outputs.Count);
+        Assert.Equal((Catalog.Default.Codecs.Count * Catalog.Default.Qualities.Count) + 1 + Catalog.Default.Images.Count + Catalog.Default.AudioOutputs.Count, SpeedCatalog.Outputs.Count);
     }
 
     /// <summary>Every chosen output runs on every chosen video, video by video; the library video needs a file.</summary>
@@ -127,6 +127,37 @@ public sealed class SpeedVariantsTests
         Assert.True(withFile[2].Tonemap);
         Assert.False(withFile[3].Tonemap);
         Assert.Equal(TimeSpan.FromMinutes(10), withFile[2].StartAt);
+    }
+
+    /// <summary>Video inputs pair with video outputs and audio inputs with audio outputs, videos first; a key pairing one with the other isn't found.</summary>
+    [Fact]
+    public void AudioPairsWithAudioOutputs()
+    {
+        var options = new SpeedOptions(SpeedMethod.Quick, ["pattern"], ["h264-4mbps", "audio-aac", "audio-decode"], new SpeedSettings()) { Audios = ["flac", "nope"] };
+        var tests = options.Resolve();
+
+        Assert.Equal(["pattern|h264-4mbps", "flac|audio-aac", "flac|audio-decode"], tests.Select(t => t.Key));
+        Assert.True(tests[1].AudioOnly);
+        Assert.Equal(("aac", 2, 1f, SpeedOutputKind.Audio), (tests[1].OutputCodec, tests[1].OutputChannels, tests[1].FrameRate, tests[1].Kind));
+        Assert.True(tests[2].DecodeOnly);
+        Assert.Equal("16-bit, 44.1 kHz, stereo", SpeedTestText.Input(tests[1]));
+        Assert.Equal("AC-3, 5.1", SpeedTestText.Output(Test("dts|audio-ac3")));
+        Assert.Null(SpeedCatalog.Find("pattern|audio-aac"));
+        Assert.Null(SpeedCatalog.Find("flac|h264-4mbps"));
+    }
+
+    /// <summary>An audio cell carries the input, what the client asks for, and the server's audio settings.</summary>
+    [Fact]
+    public void AudioCellCarriesTheAudioSettings()
+    {
+        var test = Test("ac3|audio-aac");
+        var settings = new SpeedSettings { AudioVbr = true, DownmixAlgorithm = "Dave750", DownmixBoost = 1, EncodingThreadCount = 2, BurnIn = "text" };
+        var clips = SpeedVariants.Clips([test], settings).ToDictionary(f => f.FileName, f => "/c/" + f.FileName, StringComparer.Ordinal);
+
+        var cell = SpeedVariants.Audio(test, settings, clips);
+
+        Assert.Equal(new AudioCell("/c/audio_ac3.ac3", "ac3", 6, 48000) { OutputCodec = "aac", OutputChannels = 2, AudioVbr = true, DownmixAlgorithm = "Dave750", DownmixBoost = 1, EncodingThreadCount = 2 }, cell);
+        Assert.DoesNotContain(SpeedCatalog.TextSubtitles, SpeedVariants.Clips([test], settings));
     }
 
     /// <summary>Inputs and outputs read plainly.</summary>

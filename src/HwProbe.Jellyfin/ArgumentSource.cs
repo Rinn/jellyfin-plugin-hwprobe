@@ -6,7 +6,9 @@ using MediaBrowser.Controller.IO;
 using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Model.Configuration;
 using MediaBrowser.Model.Dlna;
+using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Entities;
+using MediaBrowser.Model.MediaInfo;
 using Microsoft.Extensions.Configuration;
 
 namespace Jellyfin.Plugin.HwProbe.Jellyfin;
@@ -16,6 +18,9 @@ public sealed class ArgumentSource : IArgumentSource
 {
     // Emitted by EncodingHelper.GetVideoQualityParam (v12.2, L2185) when it allows low-power encoding.
     private const string LowPowerArg = "-low_power 1";
+
+    // Stands for the output file in an audio command line, which the caller replaces.
+    private const string AudioOutput = "hwprobe-output";
 
     private static readonly Dictionary<string, Func<object?[], object?>> _noHandlers = [];
 
@@ -295,6 +300,52 @@ public sealed class ArgumentSource : IArgumentSource
             HardwareDecoder = _helper.HardwareDecoder(state, options),
             HardwareEncoder = !string.Equals(encoder, state.OutputVideoCodec, StringComparison.Ordinal),
         };
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// The job is set up as UniversalAudioController and StreamingHelpers.GetStreamingState set it for a progressive stream with no
+    /// bitrate asked (v12.2), and the command is AudioHelper's: EncodingHelper.GetProgressiveAudioFullCommandLine, split at its input.
+    /// </remarks>
+    public AudioArguments BuildAudio(AudioCell cell)
+    {
+        ArgumentNullException.ThrowIfNull(cell);
+        var options = new EncodingOptions
+        {
+            EnableAudioVbr = cell.AudioVbr,
+            DownMixStereoAlgorithm = Enum.Parse<DownMixStereoAlgorithms>(cell.DownmixAlgorithm),
+            DownMixAudioBoost = cell.DownmixBoost,
+            EncodingThreadCount = cell.EncodingThreadCount,
+        };
+        var stream = new MediaStream { Index = 0, Type = MediaStreamType.Audio, Codec = cell.Codec, Channels = cell.Channels, SampleRate = cell.SampleRate };
+        var state = new EncodingJobInfo(TranscodingJobType.Progressive)
+        {
+            MediaSource = new MediaSourceInfo { Id = "hwprobe", Protocol = MediaProtocol.File, Path = cell.SourcePath, MediaStreams = [stream] },
+            MediaPath = cell.SourcePath,
+            AudioStream = stream,
+            OutputAudioCodec = cell.OutputCodec,
+            OutputContainer = cell.OutputCodec,
+            BaseRequest = new BaseEncodingJobOptions { AudioCodec = cell.OutputCodec, MaxAudioChannels = cell.OutputChannels, AudioChannels = cell.OutputChannels, EnableAudioVbrEncoding = true },
+        };
+        var ((modifier, input), environment) = Generate(HwType.none, () => (_helper.GetInputModifier(state, options, null), _helper.GetInputArgument(state, options, null)));
+        var head = $"{modifier} {input}".Trim();
+        if (cell.OutputCodec is not { } codec)
+        {
+            return new AudioArguments(head, string.Empty, environment);
+        }
+
+        state.OutputAudioChannels = _helper.GetNumAudioChannelsParam(state, stream, codec);
+        state.OutputAudioBitrate = EncodingHelper.LosslessAudioCodecs.Contains(codec, StringComparer.OrdinalIgnoreCase)
+            ? stream.BitRate ?? 0
+            : _helper.GetAudioBitrateParam(null, codec, stream, state.OutputAudioChannels) ?? 0;
+        var (full, _) = Generate(HwType.none, () => _helper.GetProgressiveAudioFullCommandLine(state, options, AudioOutput));
+        var tail = $" -y \"{AudioOutput}\"";
+        if (!full.StartsWith(head, StringComparison.Ordinal) || !full.EndsWith(tail, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException($"EncodingHelper.GetProgressiveAudioFullCommandLine no longer starts with the input and ends with the output; upstream changed: {full}");
+        }
+
+        return new AudioArguments(head, full[head.Length..^tail.Length].Trim(), environment);
     }
 
     /// <summary>Returns the quality option and value image extraction passes to an encoder, as MediaEncoder.ExtractVideoImagesOnIntervalInternal maps the quality scale (v12.2).</summary>

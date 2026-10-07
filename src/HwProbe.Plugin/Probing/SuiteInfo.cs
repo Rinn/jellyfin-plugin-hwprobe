@@ -12,5 +12,9 @@ namespace Jellyfin.Plugin.HwProbe.Probing;
 /// <param name="Offered">Whether it can run here: a probe has run and the server has what it needs.</param>
 /// <param name="Method">The accuracy its steps measure at.</param>
 /// <param name="Note">Advice shown with the suite and its results, or null.</param>
-/// <param name="Measurements">How many measurements its steps make together: inputs times outputs times backends, per step.</param>
-public sealed record SuiteInfo(string Key, string Name, string Description, IReadOnlyList<string> Steps, IReadOnlyList<HwType> Backends, bool Offered, int Measurements, SpeedMethod Method, string? Note);
+/// <param name="Measurements">How many video measurements its steps make together: videos times video outputs times backends, per step.</param>
+public sealed record SuiteInfo(string Key, string Name, string Description, IReadOnlyList<string> Steps, IReadOnlyList<HwType> Backends, bool Offered, int Measurements, SpeedMethod Method, string? Note)
+{
+    /// <summary>Gets how many audio measurements its steps make together: audio inputs times audio outputs, in software, per step.</summary>
+    public int AudioMeasurements { get; init; }
+}

@@ -266,19 +266,21 @@ public sealed partial class ProbeService : IDisposable
             return ProbeRunResult.Invalid;
         }
 
-        var backends = SpeedSuites.Backends(suite, configured).Select(b => b.ToString()).ToList();
+        var suiteBackends = SpeedSuites.Backends(suite, configured);
+        var backends = suiteBackends.Select(b => b.ToString()).ToList();
         var runs = SpeedSuites.Steps(suite, Environment.ProcessorCount, ServerSpeedSettings(), configured)
             .Select(step =>
             {
                 List<string> stepBackends = [.. backends.Where(b => !step.HardwareOnly || b != nameof(HwType.none))];
-                return ((string?)suite.Name, (string?)step.Label, new SpeedRequest(Catalog.Default.SuiteMethod.ToString(), step.Videos, step.Outputs)
+                return ((string?)suite.Name, (string?)step.Label, new SpeedRequest((suite.Method ?? Catalog.Default.SuiteMethod).ToString(), step.Videos, step.Outputs)
                 {
                     Backends = stepBackends,
+                    Audios = step.Audios,
                     Options = step.Options,
                     MeasureResources = request.MeasureResources,
                     WhenTranscoding = request.WhenTranscoding,
                     ReuseResults = request.ReuseResults,
-                }, step.Videos.Count * step.Outputs.Count * stepBackends.Count);
+                }, step.VideoMeasurements(suiteBackends) + step.AudioMeasurements(suiteBackends));
             })
             .ToList();
         return await StartRunsAsync(runs, request.WhenTranscoding, cancellationToken);
@@ -302,9 +304,12 @@ public sealed partial class ProbeService : IDisposable
                 [.. steps.Select(step => step.Label)],
                 backends,
                 report is not null && SpeedSuites.Offered(s, report, configured),
-                steps.Sum(step => step.Videos.Count * step.Outputs.Count * backends.Count(b => !step.HardwareOnly || b != HwType.none)),
-                Catalog.Default.SuiteMethod,
-                s.Note);
+                steps.Sum(step => step.VideoMeasurements(backends)),
+                s.Method ?? Catalog.Default.SuiteMethod,
+                s.Note)
+            {
+                AudioMeasurements = steps.Sum(step => step.AudioMeasurements(backends)),
+            };
         })];
     }
 
@@ -788,7 +793,8 @@ public sealed partial class ProbeService : IDisposable
         var videos = request.Videos.Count == 0 ? SpeedCatalog.DefaultVideos : request.Videos;
         var outputs = request.Outputs.Count == 0 ? SpeedCatalog.DefaultOutputs : request.Outputs;
         if (videos.Any(v => SpeedCatalog.FindVideo(v) is null && !(v == SpeedCatalog.LibraryKey && file is not null))
-            || outputs.Any(o => SpeedCatalog.FindOutput(o) is null))
+            || outputs.Any(o => SpeedCatalog.FindOutput(o) is null)
+            || request.Audios.Any(a => SpeedCatalog.FindAudio(a) is null))
         {
             return null;
         }
@@ -804,6 +810,7 @@ public sealed partial class ProbeService : IDisposable
         return new SpeedOptions(method, videos, outputs, new SpeedSettings())
         {
             File = file,
+            Audios = request.Audios,
             Backends = request.Backends?.Select(Enum.Parse<HwType>).ToList(),
             Repeats = request.Repeats,
             TimeLimit = request.TimeLimitSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null,

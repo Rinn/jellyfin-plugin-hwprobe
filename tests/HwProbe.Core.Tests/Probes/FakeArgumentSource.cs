@@ -74,6 +74,14 @@ internal sealed class FakeArgumentSource : IArgumentSource, IArgumentSourceFacto
         };
     }
 
+    /// <inheritdoc/>
+    public AudioArguments BuildAudio(AudioCell cell)
+    {
+        ArgumentNullException.ThrowIfNull(cell);
+        var output = cell.OutputCodec is { } codec ? $"-threads 0 -vn -ab 256000 -ac {cell.OutputChannels} -acodec {codec}" : string.Empty;
+        return new AudioArguments($"-i file:\"{cell.SourcePath}\"", output, Environment);
+    }
+
     /// <summary>Returns the VideoToolbox device and decode arguments for a cell.</summary>
     /// <param name="cell">The cell.</param>
     /// <returns>The arguments.</returns>

@@ -11,4 +11,10 @@ public enum SpeedOutputKind
 
     /// <summary>Images at an interval, as Jellyfin extracts them for trickplay.</summary>
     Images,
+
+    /// <summary>An audio codec, as a client asks for it.</summary>
+    Audio,
+
+    /// <summary>Nothing: the audio is decoded only.</summary>
+    AudioDecode,
 }

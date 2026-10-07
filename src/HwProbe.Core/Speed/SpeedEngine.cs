@@ -90,11 +90,14 @@ public sealed class SpeedEngine : IDisposable
         bool Chosen(HwType type) => speed.Backends?.Contains(type) != false;
         List<(HwType Type, string Device)> measured = [.. backends.Where(b => b.Type != HwType.none && Chosen(b.Type)), .. Chosen(HwType.none) ? [(HwType.none, string.Empty)] : Array.Empty<(HwType, string)>()];
 
+        // Audio is decoded and encoded on the CPU whatever the backend, so it's measured in software alone.
+        static bool Runs(HwType type, SpeedTest test) => type == HwType.none || !test.AudioOnly;
+
         // Planned before any clip exists, so the page can show the whole table from the start.
-        var total = measured.Count * tests.Count;
+        var total = measured.Sum(b => tests.Count(t => Runs(b.Type, t)));
         progress?.Report(new SpeedProgress(0, total, null)
         {
-            Planned = [.. measured.SelectMany(b => tests.Select(t => Describe(t, new SpeedResult(b.Type, b.Device, t.Key, string.Empty, null, null, false, null) { Pending = true })))],
+            Planned = [.. measured.SelectMany(b => tests.Where(t => Runs(b.Type, t)).Select(t => Describe(t, new SpeedResult(b.Type, b.Device, t.Key, string.Empty, null, null, false, null) { Pending = true })))],
         });
 
         var host = new HostInfoReader(_platform).Read();
@@ -145,7 +148,7 @@ public sealed class SpeedEngine : IDisposable
 
                 var traits = await OpenAsync(options, type, device, host.Os, cancellationToken);
                 var source = traits is null ? null : _arguments.Create(caps, traits);
-                foreach (var test in tests)
+                foreach (var test in tests.Where(t => Runs(type, t)))
                 {
                     if (speed.Pause is { } pause)
                     {
@@ -153,6 +156,18 @@ public sealed class SpeedEngine : IDisposable
                     }
 
                     var missing = MissingClip(test, speed.Settings, clips);
+                    if (test.AudioOnly)
+                    {
+                        var audio = missing is null ? SpeedVariants.Audio(test, speed.Settings, Paths(clips)) : null;
+                        var measuredAudio = source is null ? new SpeedResult(type, device, test.Key, string.Empty, null, null, false, "The device didn't open.")
+                            : audio is null ? new SpeedResult(type, device, test.Key, string.Empty, null, null, false, missing)
+                            : await MeasureOrReuseAsync(options, speed, caps.VersionLine, resultsCache, type, device, test, ct => AudioCommandAsync(source, audio, ct), (timeUp, ct) => MeasureAudioAsync(options, speed.Method, speed.MeasureResources, source, test, audio, timeUp, ct), cancellationToken);
+                        var describedAudio = Describe(test, measuredAudio);
+                        results.Add(describedAudio);
+                        progress?.Report(new SpeedProgress(++done, total, describedAudio) { ClipsDone = clipsTotal, ClipsTotal = clipsTotal });
+                        continue;
+                    }
+
                     var cell = SpeedVariants.ForBackend(type, test, SpeedVariants.Base(test, speed.Settings, Paths(clips)), speed.Settings);
 
                     // A codec the probe found this GPU can't decode is left unticked, as the probe advises, so Jellyfin decodes it in software.
@@ -171,7 +186,7 @@ public sealed class SpeedEngine : IDisposable
                     var result = source is null ? new SpeedResult(type, device, test.Key, string.Empty, null, null, false, "The device didn't open.")
                         : missing is not null ? new SpeedResult(type, device, test.Key, string.Empty, null, null, false, missing)
                         : noLowPower is not null ? new SpeedResult(type, device, test.Key, string.Empty, null, null, false, noLowPower)
-                        : await MeasureOrReuseAsync(options, speed, caps.VersionLine, resultsCache, source, type, device, test, cell, cancellationToken);
+                        : await MeasureOrReuseAsync(options, speed, caps.VersionLine, resultsCache, type, device, test, ct => CommandAsync(source, type, device, test, cell, ct), (timeUp, ct) => MeasureAsync(options, speed.Method, speed.MeasureResources, source, type, device, test, cell, timeUp, ct), cancellationToken);
                     var described = Describe(test, result);
                     results.Add(described);
                     progress?.Report(new SpeedProgress(++done, total, described) { ClipsDone = clipsTotal, ClipsTotal = clipsTotal });
@@ -316,6 +331,42 @@ public sealed class SpeedEngine : IDisposable
     /// <returns>The pace.</returns>
     private static MeterPace Pace(SpeedTest test) => test.Images ? MeterPace.Images : MeterPace.Frames;
 
+    /// <summary>Measures a variant as many times as asked and reports the median.</summary>
+    /// <param name="speed">What to measure, for the repeats and time limit.</param>
+    /// <param name="measure">Measures once, given when the time limit has passed.</param>
+    /// <param name="cancellationToken">Cancels the measurement.</param>
+    /// <returns>The median result, by fps.</returns>
+    private static async Task<SpeedResult> MeasureRepeatedAsync(SpeedOptions speed, Func<Func<bool>, CancellationToken, Task<SpeedResult>> measure, CancellationToken cancellationToken)
+    {
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        bool TimeUp() => speed.TimeLimit is { } limit && clock.Elapsed >= limit;
+        List<SpeedResult> runs = [];
+        for (var i = 0; i < Math.Max(1, speed.Repeats); i++)
+        {
+            var run = await measure(TimeUp, cancellationToken);
+            runs.Add(run);
+
+            // Nothing to repeat when it couldn't be measured.
+            if (run.Fps is null)
+            {
+                return run;
+            }
+
+            if (TimeUp())
+            {
+                break;
+            }
+        }
+
+        var sorted = runs.OrderBy(r => r.Fps).ToList();
+        var median = sorted[sorted.Count / 2];
+        var streams = runs.Select(r => r.Streams ?? 0).Order().ToList()[runs.Count / 2];
+
+        // Fewer repeats than asked, because the time limit came first, count as cut off too.
+        var interrupted = runs.Count < Math.Max(1, speed.Repeats) || runs.Any(r => r.Interrupted);
+        return median with { Streams = median.Streams is null ? null : streams, Interrupted = interrupted };
+    }
+
     /// <summary>Describes a clip being made or downloaded.</summary>
     /// <param name="step">The step.</param>
     /// <param name="names">Video names by clip file name.</param>
@@ -382,70 +433,40 @@ public sealed class SpeedEngine : IDisposable
         return open.Outcome == ProbeOutcome.Pass ? new DeviceTraits(open.Driver) : null;
     }
 
-    /// <summary>Measures a variant as many times as asked and reports the median.</summary>
-    /// <param name="options">The ffmpeg.</param>
-    /// <param name="speed">What to measure, for the method and repeats.</param>
-    /// <param name="source">The device's argument source.</param>
-    /// <param name="type">The backend.</param>
-    /// <param name="device">The device.</param>
-    /// <param name="test">The test.</param>
-    /// <param name="cell">The cell to generate.</param>
-    /// <param name="cancellationToken">Cancels the measurement.</param>
-    /// <returns>The median result, by fps.</returns>
-    private async Task<SpeedResult> MeasureRepeatedAsync(EngineOptions options, SpeedOptions speed, IArgumentSource source, HwType type, string device, SpeedTest test, ProbeCell cell, CancellationToken cancellationToken)
-    {
-        var clock = System.Diagnostics.Stopwatch.StartNew();
-        bool TimeUp() => speed.TimeLimit is { } limit && clock.Elapsed >= limit;
-        List<SpeedResult> runs = [];
-        for (var i = 0; i < Math.Max(1, speed.Repeats); i++)
-        {
-            var run = await MeasureAsync(options, speed.Method, speed.MeasureResources, source, type, device, test, cell, TimeUp, cancellationToken);
-            runs.Add(run);
-
-            // Nothing to repeat when it couldn't be measured.
-            if (run.Fps is null)
-            {
-                return run;
-            }
-
-            if (TimeUp())
-            {
-                break;
-            }
-        }
-
-        var sorted = runs.OrderBy(r => r.Fps).ToList();
-        var median = sorted[sorted.Count / 2];
-        var streams = runs.Select(r => r.Streams ?? 0).Order().ToList()[runs.Count / 2];
-
-        // Fewer repeats than asked, because the time limit came first, count as cut off too.
-        var interrupted = runs.Count < Math.Max(1, speed.Repeats) || runs.Any(r => r.Interrupted);
-        return median with { Streams = median.Streams is null ? null : streams, Interrupted = interrupted };
-    }
-
     /// <summary>Reuses a measurement an earlier run saved with exactly the same inputs when asked, or measures and saves it.</summary>
     /// <param name="options">The ffmpeg.</param>
     /// <param name="speed">The run.</param>
     /// <param name="ffmpegVersion">The ffmpeg version line.</param>
     /// <param name="cache">The saved measurements.</param>
-    /// <param name="source">The device's argument source.</param>
     /// <param name="type">The backend.</param>
     /// <param name="device">The device.</param>
     /// <param name="test">The test.</param>
-    /// <param name="cell">The cell to generate.</param>
+    /// <param name="commandFor">Generates the command and environment for the reuse key, or null when none can be built.</param>
+    /// <param name="measure">Measures once, given when the time limit has passed.</param>
     /// <param name="cancellationToken">Cancels the measurement.</param>
     /// <returns>The result.</returns>
-    private async Task<SpeedResult> MeasureOrReuseAsync(EngineOptions options, SpeedOptions speed, string ffmpegVersion, SpeedResultCache cache, IArgumentSource source, HwType type, string device, SpeedTest test, ProbeCell cell, CancellationToken cancellationToken)
+    private async Task<SpeedResult> MeasureOrReuseAsync(
+        EngineOptions options,
+        SpeedOptions speed,
+        string ffmpegVersion,
+        SpeedResultCache cache,
+        HwType type,
+        string device,
+        SpeedTest test,
+        Func<CancellationToken, Task<string?>> commandFor,
+        Func<Func<bool>, CancellationToken, Task<SpeedResult>> measure,
+        CancellationToken cancellationToken)
     {
         // Keyed on the command Jellyfin's EncodingHelper generates, so any setting, server or plugin change that alters it misses.
-        var command = await CommandAsync(source, type, device, test, cell, cancellationToken);
+        var command = await commandFor(cancellationToken);
         var key = command is null ? null : SpeedResultCache.Key(options.Ffmpeg.Path, ffmpegVersion, type, device, test, command, speed);
         if (key is not null && speed.ReuseResults && await cache.GetAsync(key, cancellationToken) is { } earlier)
         {
             return earlier.Result with { ReusedFromUtc = earlier.MeasuredUtc };
         }
 
-        if (_lastMeasured is { } last && speed.TestDelay - (_time.GetUtcNow() - last) is { Ticks: > 0 } wait)
+        // Audio keeps one CPU core busy for a second or two, so it doesn't wait for the system to wind down.
+        if (!test.AudioOnly && _lastMeasured is { } last && speed.TestDelay - (_time.GetUtcNow() - last) is { Ticks: > 0 } wait)
         {
             await Task.Delay(wait, _time, cancellationToken);
         }
@@ -453,7 +474,7 @@ public sealed class SpeedEngine : IDisposable
         SpeedResult result;
         try
         {
-            result = await MeasureDeferringAsync(speed.Pause, ct => MeasureRepeatedAsync(options, speed, source, type, device, test, cell, ct), cancellationToken);
+            result = await MeasureDeferringAsync(speed.Pause, ct => MeasureRepeatedAsync(speed, measure, ct), cancellationToken);
         }
         finally
         {
@@ -493,6 +514,61 @@ public sealed class SpeedEngine : IDisposable
                 }
             },
             cancellationToken);
+
+    /// <summary>Generates an audio test's command and environment, inside the probe lock, for the reuse key.</summary>
+    /// <param name="source">The argument source.</param>
+    /// <param name="audio">The cell to generate.</param>
+    /// <param name="cancellationToken">Cancels waiting for the lock.</param>
+    /// <returns>The command line and environment.</returns>
+    private Task<string?> AudioCommandAsync(IArgumentSource source, AudioCell audio, CancellationToken cancellationToken) =>
+        _gate.RunAsync(
+            ct =>
+            {
+                var args = source.BuildAudio(audio);
+                var environment = string.Join('\n', args.Environment.OrderBy(e => e.Key, StringComparer.Ordinal).Select(e => e.Key + "=" + e.Value));
+                return Task.FromResult<string?>(SpeedCommandLine.BuildAudio(args, MeterPace.Audio.Content) + "\n" + environment);
+            },
+            cancellationToken);
+
+    /// <summary>Generates an audio test's arguments and measures them in software, inside the probe lock.</summary>
+    /// <param name="options">The ffmpeg.</param>
+    /// <param name="method">How streams are counted.</param>
+    /// <param name="measureResources">Whether the single copy is measured for CPU and memory usage.</param>
+    /// <param name="source">The argument source.</param>
+    /// <param name="test">The test.</param>
+    /// <param name="audio">The cell to generate.</param>
+    /// <param name="timeUp">Reports when the measurement's time limit has passed.</param>
+    /// <param name="cancellationToken">Cancels the measurement.</param>
+    /// <returns>The result, with fps as the seconds of audio done each second.</returns>
+    private Task<SpeedResult> MeasureAudioAsync(EngineOptions options, SpeedMethod method, bool measureResources, IArgumentSource source, SpeedTest test, AudioCell audio, Func<bool> timeUp, CancellationToken cancellationToken) =>
+        _gate.RunAsync(
+            async ct =>
+            {
+                var args = source.BuildAudio(audio);
+                var pace = MeterPace.Audio;
+                string Command(TimeSpan content) => SpeedCommandLine.BuildAudio(args, content);
+                CommandLog?.Invoke($"{options.Ffmpeg.Path} {Command(pace.Content)}");
+                var measured = await SpeedMeter.MeasureAsync(Launcher(options, Command, args.Environment, measureResources, pace, null), method, test.FrameRate, !test.DecodeOnly, ct, timeUp, pace);
+                return new SpeedResult(HwType.none, string.Empty, test.Key, string.Empty, measured.Fps, measured.Streams, measured.Capped, measured.Note) { Interrupted = measured.Interrupted, Command = CommandHash(Command(pace.Content)), Resources = measured.Resources, FrameRate = test.FrameRate };
+            },
+            cancellationToken);
+
+    /// <summary>Returns what launches a measurement's copies together, each processing as much content as asked.</summary>
+    /// <param name="options">The ffmpeg.</param>
+    /// <param name="command">Builds the command line for an amount of content.</param>
+    /// <param name="environment">The environment the copies run with.</param>
+    /// <param name="measureResources">Whether a single copy is measured for resource usage.</param>
+    /// <param name="pace">The pace, for the copies' timeout.</param>
+    /// <param name="inspect">Sees each launch's results, or null.</param>
+    /// <returns>The launcher.</returns>
+    private Func<int, TimeSpan, CancellationToken, Task<IReadOnlyList<FfmpegRunResult>>> Launcher(EngineOptions options, Func<TimeSpan, string> command, IReadOnlyDictionary<string, string?> environment, bool measureResources, MeterPace pace, Action<IReadOnlyList<FfmpegRunResult>>? inspect) =>
+        async (copies, content, token) =>
+        {
+            var invocation = new FfmpegInvocation(options.Ffmpeg.Path, command(content), environment, copies == 1 ? _singleTimeout : pace.Content + _copiesGrace) { MeasureResources = measureResources && copies == 1 };
+            var runs = await Task.WhenAll(Enumerable.Range(0, copies).Select(_ => _runner.RunAsync(invocation, token)));
+            inspect?.Invoke(runs);
+            return runs;
+        };
 
     /// <summary>Generates one variant's arguments and measures them, inside the probe lock.</summary>
     /// <param name="options">The ffmpeg.</param>
@@ -562,19 +638,13 @@ public sealed class SpeedEngine : IDisposable
 
                 // jellyfin-ffmpeg's qsvenc drops low-power mode it can't use and carries on (debian/patches/0071), so the run measures normal mode.
                 var lowPowerDropped = false;
-                async Task<IReadOnlyList<FfmpegRunResult>> LaunchAsync(int copies, TimeSpan content, CancellationToken token)
-                {
-                    var invocation = new FfmpegInvocation(options.Ffmpeg.Path, Command(content), args.Environment, copies == 1 ? _singleTimeout : pace.Content + _copiesGrace) { MeasureResources = measureResources && copies == 1 };
-                    var runs = await Task.WhenAll(Enumerable.Range(0, copies).Select(_ => _runner.RunAsync(invocation, token)));
-                    lowPowerDropped |= cell.LowPower && runs.Any(r => StderrMarkers.LowPowerDisabled.Any(m => r.Stderr.Contains(m, StringComparison.Ordinal)));
-                    return runs;
-                }
+                var launch = Launcher(options, Command, args.Environment, measureResources, pace, runs => lowPowerDropped |= cell.LowPower && runs.Any(r => StderrMarkers.LowPowerDisabled.Any(m => r.Stderr.Contains(m, StringComparison.Ordinal))));
 
                 // Double-rate deinterlacing makes a frame per field, so real time is twice the source rate (EncodingHelper.GetSwDeinterlaceFilter and the hardware deinterlace filters, v12.2: interlaced sources of 30 fps or less).
                 // Images are extracted ahead of playback, so their speed has no real time to keep up with, and no streams are counted.
                 var outputRate = cell.DoubleRate && test.Interlaced && !test.DecodeOnly && !test.Images && test.FrameRate <= 30 ? test.FrameRate * 2 : test.FrameRate;
                 CommandLog?.Invoke($"{options.Ffmpeg.Path} {Command(pace.Content)}");
-                var measured = await SpeedMeter.MeasureAsync(LaunchAsync, method, outputRate, !test.DecodeOnly && !test.Images, ct, timeUp, pace);
+                var measured = await SpeedMeter.MeasureAsync(launch, method, outputRate, !test.DecodeOnly && !test.Images, ct, timeUp, pace);
                 note = lowPowerDropped ? Data.Catalog.Text("noteLowPowerDropped") : note;
                 return new SpeedResult(type, device, test.Key, string.Empty, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note) { OutputSize = size, Interrupted = measured.Interrupted, Command = CommandHash(Command(pace.Content)), Resources = measured.Resources, LowPowerDropped = lowPowerDropped, FrameRate = outputRate };
             },

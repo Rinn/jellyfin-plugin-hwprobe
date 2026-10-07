@@ -3,10 +3,10 @@ using Jellyfin.Plugin.HwProbe.Core.Speed;
 
 namespace Jellyfin.Plugin.HwProbe.Probing;
 
-/// <summary>A speed run as the plugin page asks for it: every chosen output from every chosen video.</summary>
+/// <summary>A speed run as the plugin page asks for it: every chosen video output from every chosen video, and every chosen audio output from every chosen audio input.</summary>
 /// <param name="Method">quick, confirm or full.</param>
 /// <param name="Videos">Video keys; <c>library</c> for <see cref="ItemId"/>. Empty for the default.</param>
-/// <param name="Outputs">Output keys; empty for the default.</param>
+/// <param name="Outputs">Output keys, video and audio; empty for the default.</param>
 public sealed record SpeedRequest(string Method, IReadOnlyList<string> Videos, IReadOnlyList<string> Outputs)
 {
     /// <summary>Gets how many times each measurement runs, one of the catalog's repeats; more than once reports the median.</summary>
@@ -20,6 +20,9 @@ public sealed record SpeedRequest(string Method, IReadOnlyList<string> Videos, I
 
     /// <summary>Gets the backends to measure, by type, with <c>none</c> for software; null for every working backend and software.</summary>
     public IReadOnlyList<string>? Backends { get; init; }
+
+    /// <summary>Gets the audio input keys.</summary>
+    public IReadOnlyList<string> Audios { get; init; } = [];
 
     /// <summary>Gets the library item the <c>library</c> video reads, or null.</summary>
     public Guid? ItemId { get; init; }

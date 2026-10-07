@@ -80,6 +80,20 @@ public sealed class SpeedCommandLineTests
         Assert.Throws<ArgumentException>(() => SpeedCommandLine.BuildImages(images with { Threads = null }, TimeSpan.FromSeconds(10)));
     }
 
+    /// <summary>An audio run loops the input and bounds the output; a decode run keeps the input alone and drops any video.</summary>
+    [Fact]
+    public void AudioBoundsTheOutput()
+    {
+        var aac = new AudioArguments("-i file:\"/c/a.flac\"", "-threads 0 -vn -ab 256000 -ac 2 -acodec aac -id3v2_version 3 -write_id3v1 1", new Dictionary<string, string?>());
+
+        Assert.Equal(
+            "-hide_banner -v warning -nostats -progress pipe:1 -stream_loop -1 -i file:\"/c/a.flac\" -t 60 -threads 0 -vn -ab 256000 -ac 2 -acodec aac -id3v2_version 3 -write_id3v1 1 -f null -",
+            SpeedCommandLine.BuildAudio(aac, TimeSpan.FromMinutes(1)));
+        Assert.Equal(
+            "-hide_banner -v warning -nostats -progress pipe:1 -stream_loop -1 -i file:\"/c/a.flac\" -t 60 -vn -f null -",
+            SpeedCommandLine.BuildAudio(aac with { Output = string.Empty }, TimeSpan.FromMinutes(1)));
+    }
+
     /// <summary>Arguments generated without the input can't be measured.</summary>
     [Fact]
     public void InputIsRequired() =>

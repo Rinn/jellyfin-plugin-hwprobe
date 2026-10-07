@@ -168,6 +168,13 @@ check "delete an unknown run" 404 "$(code -X DELETE "$base/HwProbe/SpeedHistory/
 check "cache size" True "$(curl -sf "$base/HwProbe/Cache" -H "$h" | json 'j["Files"] > 0')"
 check "cache contents named" True "$(curl -sf "$base/HwProbe/Cache/Contents" -H "$h" | json 'len(j) > 0 and any(e["Description"] for e in j)')"
 check "software decode measured" True "$(curl -sf "$base/HwProbe/Speed" -H "$h" | json 'any(r["type"] == "none" and r["test"] == "pattern|decode" and (r.get("fps") or 0) > 0 for r in j["results"])')"
+check "start an audio run" 202 "$(code -X POST "$base/HwProbe/Speed" -H "$h" -H 'Content-Type: application/json' -d '{"Method":"Quick","Videos":["pattern"],"Audios":["flac","ac3"],"Outputs":["audio-aac","audio-decode"]}')"
+for _ in $(seq 1 150); do
+    [ "$(curl -sf "$base/HwProbe/Status" -H "$h" | json 'j["State"]')" = Idle ] && break
+    sleep 2
+done
+check "audio measured in software only" True "$(curl -sf "$base/HwProbe/Speed" -H "$h" | json 'sorted(r["test"] for r in j["results"] if (r.get("fps") or 0) > 0) == ["ac3|audio-aac", "ac3|audio-decode", "flac|audio-aac", "flac|audio-decode"] and all(r["type"] == "none" for r in j["results"])')"
+
 # Image extraction is a pinned copy of MediaEncoder's wrapper: Jellyfin's own trickplay command and HwProbe's for the same file
 # must match once HwProbe's wrapper (progress, seek, length, loop, null output) and Jellyfin's (log level, image files) are taken off.
 if [ "$install" != existing ]; then

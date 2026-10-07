@@ -43,6 +43,17 @@ public static class SpeedCommandLine
         return string.Create(CultureInfo.InvariantCulture, $"{Progress} {Loop(input, startAt, content)} -an -sn {args.FilterArgs} -threads {threads} -c:v {args.VideoEncoder} {args.EncoderArgs} -f null -");
     }
 
+    /// <summary>Builds an audio run's argument string: the server's own with the output discarded, or the input alone, decoded, for a decode test.</summary>
+    /// <param name="args">Arguments from <see cref="IArgumentSource.BuildAudio"/>.</param>
+    /// <param name="content">How much of the looped source to process.</param>
+    /// <returns>The ffmpeg argument string.</returns>
+    public static string BuildAudio(AudioArguments args, TimeSpan content)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        var output = args.Output.Length > 0 ? " " + args.Output : " -vn";
+        return $"{Progress} {Loop(args.Input, TimeSpan.Zero, null)} -t {Seconds(content)}{output} -f null -";
+    }
+
     /// <summary>Loops every input, so the clip and an external subtitle both run as long as asked, and seeks and bounds the first (the video) only, as an external subtitle costs the same to draw from its start.</summary>
     /// <param name="input">The input arguments.</param>
     /// <param name="startAt">Where in the first input to start.</param>

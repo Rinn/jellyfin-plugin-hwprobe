@@ -24,15 +24,23 @@ public sealed class FixtureCacheContentsTests : IDisposable
         Write("sha256_abc", FixtureCatalog.Hevc10.FileName + ".sha256", 64);
         Write("sha256_abc", "old_clip.mp4", 10);
         Write("downloads", pgs.Sha256 + ".sup", 50);
+        var musepack = SpeedCatalog.FindAudio("musepack");
+        var flac = SpeedCatalog.FindAudio("flac");
+        Assert.NotNull(musepack);
+        Assert.NotNull(flac);
+        Write("downloads", musepack.Fixture.Sha256 + ".mpc", 20);
+        Write("sha256_abc", flac.Fixture.FileName, 30);
 
         var entries = FixtureCacheContents.List(_root);
 
-        Assert.Equal(3, entries.Count);
+        Assert.Equal(5, entries.Count);
+        Assert.Equal("Audio, Musepack", Assert.Single(entries, e => e.File.EndsWith(".mpc", StringComparison.Ordinal)).Description);
+        Assert.Equal("Audio, FLAC", Assert.Single(entries, e => e.File == "audio_flac.flac").Description);
         var clip = Assert.Single(entries, e => e.File == FixtureCatalog.Hevc10.FileName);
         Assert.Equal(164, clip.Bytes);
         Assert.Equal("Probe clip: hevc 10-bit", clip.Description);
         Assert.Null(Assert.Single(entries, e => e.File == "old_clip.mp4").Description);
-        Assert.Equal("Subtitles, PGS", Assert.Single(entries, e => e.Folder == "downloads").Description);
+        Assert.Equal("Subtitles, PGS", Assert.Single(entries, e => e.Folder == "downloads" && e.File.EndsWith(".sup", StringComparison.Ordinal)).Description);
     }
 
     /// <summary>Files still being written are labelled as such rather than as unused.</summary>

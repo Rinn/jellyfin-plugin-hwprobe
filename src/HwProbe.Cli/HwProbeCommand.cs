@@ -38,9 +38,16 @@ internal sealed class HwProbeCommand
         DefaultValueFactory = _ => SpeedCatalog.DefaultVideos,
     };
 
+    private readonly Option<IReadOnlyList<string>> _speedAudio = new("--speed-audio")
+    {
+        Description = $"Audio inputs to measure in software, comma-separated, with the audio outputs in --speed-outputs. Default: none. All: {string.Join(',', SpeedCatalog.Audios.Select(a => a.Key))}.",
+        CustomParser = r => ParseKeys(r, k => SpeedCatalog.FindAudio(k) is not null, "audio input", SpeedCatalog.Audios.Select(a => a.Key)),
+        DefaultValueFactory = _ => [],
+    };
+
     private readonly Option<IReadOnlyList<string>> _speedOutputs = new("--speed-outputs")
     {
-        Description = $"Outputs to make from every video, comma-separated. Default: {string.Join(',', SpeedCatalog.DefaultOutputs)}. All: {string.Join(',', SpeedCatalog.Outputs.Select(o => o.Key))}.",
+        Description = $"Outputs to make from every video and audio input, comma-separated: video outputs from videos, audio outputs from audio inputs. Default: {string.Join(',', SpeedCatalog.DefaultOutputs)}. All: {string.Join(',', SpeedCatalog.Outputs.Select(o => o.Key))}.",
         CustomParser = r => ParseKeys(r, k => SpeedCatalog.FindOutput(k) is not null, "output", SpeedCatalog.Outputs.Select(o => o.Key)),
         DefaultValueFactory = _ => SpeedCatalog.DefaultOutputs,
     };
@@ -127,7 +134,7 @@ internal sealed class HwProbeCommand
 
         Root = new RootCommand("Device-verified hardware transcode detection for Jellyfin.")
         {
-            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _speed, _suite, _speedVideos, _speedOutputs, _speedBackends, _speedFile, _speedRepeats, _speedOption, _speedTimeLimit, _speedResources, _speedJson, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
+            _ffmpeg, _stage, _types, _device, _format, _json, _diagnostics, _speed, _suite, _speedVideos, _speedAudio, _speedOutputs, _speedBackends, _speedFile, _speedRepeats, _speedOption, _speedTimeLimit, _speedResources, _speedJson, _timeout, _fixtureTimeout, _refresh, _fixtures, _expectHw, _verbose,
         };
     }
 
@@ -156,7 +163,7 @@ internal sealed class HwProbeCommand
             result.GetValue(_verbose))
         {
             DiagnosticsPath = result.GetValue(_diagnostics),
-            Speed = result.GetValue(_speed) is { } method ? SpeedFrom(result, method) : result.GetValue(_suite) is not null ? SpeedFrom(result, Catalog.Default.SuiteMethod) : null,
+            Speed = result.GetValue(_speed) is { } method ? SpeedFrom(result, method) : result.GetValue(_suite) is { } suite ? SpeedFrom(result, Catalog.Default.Suites.FirstOrDefault(s => s.Key == suite)?.Method ?? Catalog.Default.SuiteMethod) : null,
             Suite = result.GetValue(_suite),
             SpeedJsonPath = result.GetValue(_speedJson),
             SpeedFilePath = result.GetValue(_speedFile) is { } file ? Path.GetFullPath(file) : null,
@@ -187,7 +194,7 @@ internal sealed class HwProbeCommand
         return types;
     }
 
-    /// <summary>Parses a comma-separated list of video or output keys.</summary>
+    /// <summary>Parses a comma-separated list of video, audio input, or output keys.</summary>
     /// <param name="result">The option's argument result.</param>
     /// <param name="known">Whether a key exists.</param>
     /// <param name="kind">What the keys name, for the error.</param>
@@ -252,6 +259,7 @@ internal sealed class HwProbeCommand
 
         return new(method, result.GetRequiredValue(_speedVideos), result.GetRequiredValue(_speedOutputs), settings)
         {
+            Audios = result.GetRequiredValue(_speedAudio),
             Backends = result.GetValue(_speedBackends) is { Length: > 0 } names ? [.. names.SelectMany(n => n.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).Select(Enum.Parse<HwType>)] : null,
             Repeats = result.GetValue(_speedRepeats),
             TimeLimit = result.GetValue(_speedTimeLimit) is { } seconds ? TimeSpan.FromSeconds(seconds) : null,
