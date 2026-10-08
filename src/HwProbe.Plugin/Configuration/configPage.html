@@ -1912,7 +1912,8 @@
                             const caveat = option ? option.Caveat : null;
                             const partner = suggestionCounterpart(list, s);
                             if (partner) {
-                                const sides = [s, partner];
+                                // A bitrate pair lists its numbers ascending, no limit (0) first.
+                                const sides = isBitrate(s) ? [s, partner].sort((a, b) => Number(a.Value) - Number(b.Value)) : [s, partner];
                                 const rows = sides.map(settingRow);
                                 const better = sides.findIndex(x => x.Kind === 'HigherQuality');
                                 const bestSide = better >= 0 ? better : sides.findIndex(x => x.Kind !== 'Compatible');
