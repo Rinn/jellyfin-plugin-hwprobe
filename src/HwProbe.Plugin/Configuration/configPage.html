@@ -1795,16 +1795,12 @@
                         for (const s of list.filter(isBitrate)) {
                             s.Current = remoteLimit === Number(s.Value);
                         }
-                        // A stricter Internet streaming limit already set keeps streams within the suggested one, so it isn't offered.
+                        // A stricter Internet streaming limit already set is noted under the table.
                         const stricter = s => s.Kind === 'BitrateLimit' && remoteLimit > 0 && remoteLimit < Number(s.Value);
-                        // Any value but the server's own can be applied, unless it falls behind real time on an output, which the server refuses; a bitrate limit as suggested.
-                        const behind = (speeds, speed) => {
-                            const slowest = speeds && speeds.length ? Math.min(...speeds.map(x => x.Speed)) : speed;
-                            return typeof slowest === 'number' && slowest < 1;
-                        };
-                        const applyValue = (s, value, current, speeds, speed) => current || stricter(s) || (!isBitrate(s) && behind(speeds, speed)) ? null
+                        // Any value but the server's own can be applied, even one that falls behind real time.
+                        const applyValue = (s, value, current) => current ? null
                             : idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: value, Run: speedViewing }, true), 'raised');
-                        const apply = s => s.Kind === 'NoChange' ? null : applyValue(s, s.Value, s.Current, s.Speeds, s.Speed);
+                        const apply = s => s.Kind === 'NoChange' ? null : applyValue(s, s.Value, s.Current);
                         const settingRow = s => ({ text: optionValueText(s.Setting, s.Value), value: s.Value, speed: s.Speed, streams: s.Streams, capped: s.StreamsCapped, speeds: s.Speeds, savings: s.Savings, lower: s.LowerQuality, current: s.Current, action: apply(s) });
                         const testVideos = 'Measured on test videos only, which encode faster than real video; measure a film sample or library video to confirm.';
                         // Why the tinted row is recommended, the first line of the table's last row: the suggestion's name for it and for what it was compared with.
@@ -1846,11 +1842,11 @@
                                     add({ text: c.Row, value: c.Value, speed: c.Speed, streams: c.Streams, capped: c.StreamsCapped, speeds: c.Speeds, savings: [], lower: null, current: false, action: null });
                                 }
                             }
-                            // Apply on a row sets every setting the choice needs; a row without conditions, or one that falls behind real time, can't be applied.
+                            // Apply on a row sets every setting the choice needs; a row without conditions, or for another backend, can't be applied.
                             rows.forEach(r => {
                                 r.current = r.text === serverRow;
                                 const choice = group.Rows.find(x => x.Label === r.text);
-                                r.action = !r.current && choice && choice.When && !(r.speed < 1)
+                                r.action = !r.current && choice && choice.When && (!choice.Backends || choice.Backends.includes(backend))
                                     ? idleAction('Apply', () => post('HwProbe/ApplyMeasuredRow', { Group: key, Row: r.text, Run: speedViewing }, true), 'raised')
                                     : null;
                             });
@@ -1946,7 +1942,7 @@
                             main.best = true;
                             const others = s.Compared.map(c => {
                                 const current = isBitrate(s) ? remoteLimit === Number(c.Value) : c.Current;
-                                return { text: optionValueText(s.Setting, c.Value), value: c.Value, speed: c.Speed, streams: c.Streams, capped: c.StreamsCapped, speeds: c.Speeds, savings: [], lower: c.LowerQuality, current, action: applyValue(s, c.Value, current, c.Speeds, c.Speed) };
+                                return { text: optionValueText(s.Setting, c.Value), value: c.Value, speed: c.Speed, streams: c.Streams, capped: c.StreamsCapped, speeds: c.Speeds, savings: [], lower: c.LowerQuality, current, action: applyValue(s, c.Value, current) };
                             });
                             // The recommended value's quality is shown where every other value is better, or every other worse.
                             const lowers = others.map(r => r.lower);

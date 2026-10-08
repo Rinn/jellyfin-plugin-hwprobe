@@ -33,10 +33,10 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.Equal([new AppliedChange("EncoderPreset", "auto", "medium") { Label = Catalog.Default.Options.Single(o => o.Key == "EncoderPreset").Label }], applied.Changes);
     }
 
-    /// <summary>Any value a setting's table lists can be applied but the server's own, unless it falls behind real time on an output.</summary>
+    /// <summary>Any value a setting's table lists can be applied but the server's own, even one that falls behind real time on an output.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
-    public async Task AppliesAnyListedValueThatKeepsUp()
+    public async Task AppliesAnyListedValue()
     {
         var ct = TestContext.Current.CancellationToken;
         static IReadOnlyList<OutputSpeed> Speeds(double h264, double hevc) => [new("a", "Live action", "H.264, 8 Mbps", h264, null, false), new("b", "Live action", "HEVC, 8 Mbps", hevc, null, false)];
@@ -58,42 +58,47 @@ public sealed class SettingsServiceTests : IDisposable
         ];
 
         Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange("EncoderPreset", "faster"), "admin", ct)).Outcome);
-        Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange("EncoderPreset", "veryslow"), "admin", ct)).Outcome);
+        Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange("EncoderPreset", "slow"), "admin", ct)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange("EncoderPreset", "veryslow"), "admin", ct)).Outcome);
+        Assert.Equal(EncoderPreset.veryslow, _harness.Saved.EncoderPreset);
         Assert.Equal(ApplyOutcome.Applied, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange("EncoderPreset", "medium"), "admin", ct)).Outcome);
         Assert.Equal(EncoderPreset.medium, _harness.Saved.EncoderPreset);
         Assert.Equal(ApplyOutcome.Applied, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange("EncoderPreset", "auto"), "admin", ct)).Outcome);
         Assert.Equal(EncoderPreset.auto, _harness.Saved.EncoderPreset);
     }
 
-    /// <summary>A measured choice in a setting group sets every setting it needs in one change; a row no suggestion shows is refused, and tone mapping off can be applied.</summary>
+    /// <summary>A measured choice in a setting group sets every setting it needs in one change, even one that falls behind real time; a row no suggestion shows is refused, and tone mapping off can be applied.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
     public async Task AppliesAGroupChoice()
     {
         var ct = TestContext.Current.CancellationToken;
         const string Double = "Bob Weaver DeInterlacing Filter (BWDIF), double rate";
+        const string Single = "Bob Weaver DeInterlacing Filter (BWDIF), single rate";
         _harness.Suggestions =
         [
             new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, ["a"]) { Setting = "DoubleRate", Value = "false", Current = true, Group = "deinterlace", Row = "Yet Another DeInterlacing Filter (YADIF), single rate", Compared = [new SpeedComparedValue("true", 2, null, false) { Row = Double }] },
             new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, ["a"]) { Setting = "Tonemap", Value = "true", Current = true, Group = "tonemap", Row = "General", Compared = [new SpeedComparedValue("false", 2, null, false) { Row = "Off" }] },
         ];
 
-        Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredRowAsync(new MeasuredRow("deinterlace", "Bob Weaver DeInterlacing Filter (BWDIF), single rate"), "admin", ct)).Outcome);
+        Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredRowAsync(new MeasuredRow("deinterlace", Single), "admin", ct)).Outcome);
         Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredRowAsync(new MeasuredRow("tonemap", "VPP"), "admin", ct)).Outcome);
-        _harness.Suggestions = [.. _harness.Suggestions, new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, ["a"]) { Setting = "DeinterlaceMethod", Value = "yadif", Group = "deinterlace", Row = "Yet Another DeInterlacing Filter (YADIF), single rate", Compared = [new SpeedComparedValue("bwdif", 0.5, null, false) { Row = "Bob Weaver DeInterlacing Filter (BWDIF), single rate" }] }];
-        Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredRowAsync(new MeasuredRow("deinterlace", "Bob Weaver DeInterlacing Filter (BWDIF), single rate"), "admin", ct)).Outcome);
         var applied = await _harness.Service.ApplyMeasuredRowAsync(new MeasuredRow("deinterlace", Double), "admin", ct);
 
         Assert.Equal(ApplyOutcome.Applied, applied.Outcome);
         Assert.Equal((DeinterlaceMethod.bwdif, true), (_harness.Saved.DeinterlaceMethod, _harness.Saved.DeinterlaceDoubleRate));
         Assert.Equal(2, applied.Changes.Count);
 
+        _harness.Suggestions = [.. _harness.Suggestions, new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, ["a"]) { Setting = "DeinterlaceMethod", Value = "yadif", Group = "deinterlace", Row = "Yet Another DeInterlacing Filter (YADIF), single rate", Compared = [new SpeedComparedValue("bwdif", 0.5, null, false) { Row = Single }] }];
+        Assert.Equal(ApplyOutcome.Applied, (await _harness.Service.ApplyMeasuredRowAsync(new MeasuredRow("deinterlace", Single), "admin", ct)).Outcome);
+        Assert.Equal((DeinterlaceMethod.bwdif, false), (_harness.Saved.DeinterlaceMethod, _harness.Saved.DeinterlaceDoubleRate));
+
         _harness.Saved.EnableTonemapping = true;
         Assert.Equal(ApplyOutcome.Applied, (await _harness.Service.ApplyMeasuredRowAsync(new MeasuredRow("tonemap", "Off"), "admin", ct)).Outcome);
         Assert.False(_harness.Saved.EnableTonemapping);
     }
 
-    /// <summary>A suggested bitrate limit is saved to the streaming settings and reverted from there; one at or above a stricter limit already set is refused, as is a suggestion that only confirms the server's value.</summary>
+    /// <summary>A suggested bitrate limit is saved to the streaming settings and reverted from there, even over a stricter limit already set; a suggestion that only confirms the server's value is refused.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
     public async Task AppliesAndRevertsABitrateLimit()
@@ -114,8 +119,8 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.Equal(0, _harness.SavedBitrateLimit);
 
         _harness.SavedBitrateLimit = 8000000;
-        Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange(SpeedAdvisor.BitrateLimitKey, "20000000"), "admin", ct)).Outcome);
-        Assert.Equal(8000000, _harness.SavedBitrateLimit);
+        Assert.Equal(ApplyOutcome.Applied, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange(SpeedAdvisor.BitrateLimitKey, "20000000"), "admin", ct)).Outcome);
+        Assert.Equal(20000000, _harness.SavedBitrateLimit);
     }
 
     /// <summary>Changes matching the advice are saved; other options are left as they were.</summary>

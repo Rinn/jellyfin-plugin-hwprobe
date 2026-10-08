@@ -148,7 +148,7 @@ public sealed class SettingsService : IDisposable
     }
 
     /// <summary>Applies a setting value a performance test measured.</summary>
-    /// <param name="change">The option and value; a current suggestion must show it, and it must keep real time.</param>
+    /// <param name="change">The option and value; a current suggestion must show it.</param>
     /// <param name="user">The admin making the change.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>The result.</returns>
@@ -158,27 +158,17 @@ public sealed class SettingsService : IDisposable
         return LockedAsync(
             async () =>
             {
-                // A setting's table offers every value it lists but the server's own, unless it falls behind real time; a bitrate limit only as suggested.
-                var bitrate = change.Setting == SpeedAdvisor.BitrateLimitKey;
+                // A setting's table offers every value it lists but the server's own, even one that falls behind real time.
                 var offered = (await Suggestions(change.Run, cancellationToken)).Where(s => s.Setting == change.Setting).Any(s =>
                     (s.Kind is SpeedSuggestionKind.FasterSetting or SpeedSuggestionKind.HigherQuality or SpeedSuggestionKind.Compatible or SpeedSuggestionKind.EfficientSetting or SpeedSuggestionKind.BitrateLimit or SpeedSuggestionKind.RecommendedValue
-                        && !s.Current && s.Value == change.Value && (bitrate || KeepsUp(s.Speeds, s.Speed)))
-                    || (!bitrate && s.Group is null && s.Compared.Any(c => c.Value == change.Value && !c.Current && KeepsUp(c.Speeds, c.Speed))));
+                        && !s.Current && s.Value == change.Value)
+                    || (s.Group is null && s.Compared.Any(c => c.Value == change.Value && !c.Current)));
                 if (!offered || MeasuredSettings.ToSetting(change.Setting, change.Value) is not { } setting)
                 {
                     return Refuse($"{change.Setting} = {change.Value} isn't a measured value the server can switch to.");
                 }
 
-                // A limit the admin set lower already keeps streams within what the backend handles; raising it isn't the suggestion's to make.
-                var options = _read();
-                if (StreamingSettings.IsKnown(setting.Setting)
-                    && options.Streaming.RemoteClientBitrateLimit is > 0 and var limit
-                    && limit <= int.Parse(setting.Value, System.Globalization.CultureInfo.InvariantCulture))
-                {
-                    return Refuse("A bitrate limit at or below the suggested one is already set.");
-                }
-
-                return await WriteAsync(options, [setting], HistoryKind.Apply, user, cancellationToken);
+                return await WriteAsync(_read(), [setting], HistoryKind.Apply, user, cancellationToken);
             },
             cancellationToken);
     }
@@ -194,13 +184,7 @@ public sealed class SettingsService : IDisposable
         return LockedAsync(
             async () =>
             {
-                // Measured, and keeping real time: a choice that falls behind would make players buffer.
-                var speeds = (await Suggestions(choice.Run, cancellationToken))
-                    .Where(s => s.Group == choice.Group)
-                    .SelectMany(s => s.Compared.Where(c => c.Row == choice.Row).Select(c => (double?)c.Speed).Append(s.Row == choice.Row ? s.Speed : null))
-                    .OfType<double>()
-                    .ToList();
-                var measured = speeds.Count > 0 && speeds.Min() >= 1;
+                var measured = (await Suggestions(choice.Run, cancellationToken)).Any(s => s.Group == choice.Group && (s.Row == choice.Row || s.Compared.Any(c => c.Row == choice.Row)));
                 var options = _read();
                 var changes = measured ? SpeedAdvisor.GroupRowChanges(choice.Group, choice.Row, Probing.ProbeService.SettingsFrom(options.Encoding), Probing.ProbeService.BackendFrom(options.Encoding).Type) : null;
                 List<(string Setting, string Value)> settings = [.. (changes ?? []).Select(c => MeasuredSettings.ToSetting(c.Key, c.Value)).OfType<(string Setting, string Value)>()];
@@ -353,13 +337,6 @@ public sealed class SettingsService : IDisposable
     /// <param name="reason">Why.</param>
     /// <returns>The result.</returns>
     private static ApplyResult Refuse(string reason) => new(ApplyOutcome.Rejected, [], reason);
-
-    /// <summary>Reports whether a measured value keeps real time on every output, so players wouldn't buffer.</summary>
-    /// <param name="speeds">Its slowest speed per output, or empty.</param>
-    /// <param name="speed">Its slowest speed, used when no output's was recorded, or null when not measured.</param>
-    /// <returns>True when no measured speed falls below real time.</returns>
-    private static bool KeepsUp(IReadOnlyList<OutputSpeed> speeds, double? speed) =>
-        speeds.Count > 0 ? speeds.Min(s => s.Speed) >= 1 : speed is not < 1;
 
     /// <summary>Runs a write while holding the gate, refusing if a probe or another write is running.</summary>
     /// <param name="write">The write.</param>
