@@ -120,8 +120,8 @@ public sealed class SettingsAdvisorTests
         var advice = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Decode = decode }, _docker), a => a.Setting == "PreferSystemNativeHwDecoder");
         var both = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Decode = two }, _docker), a => a.Setting == "PreferSystemNativeHwDecoder");
 
-        Assert.Equal((SettingState.TurnOn, "VC1 requires QSV decoders"), (advice.State, advice.Note));
-        Assert.Equal("MPEG2 and VC1 require QSV decoders", both.Note);
+        Assert.Equal((SettingState.TurnOn, "VC1 decodes in hardware only with QSV decoders"), (advice.State, advice.Note));
+        Assert.Equal("MPEG2 and VC1 decode in hardware only with QSV decoders", both.Note);
     }
 
     /// <summary>Options with no test are marked untested rather than guessed.</summary>
@@ -262,7 +262,7 @@ public sealed class SettingsAdvisorTests
         var advice = SettingsAdvisor.For(nvenc, _docker);
 
         var nvdec = Assert.Single(advice, a => a.Setting == "EnableEnhancedNvdecDecoder");
-        Assert.Equal((SettingState.TurnOn, "VC1 requires cuvid decoders"), (nvdec.State, nvdec.Note));
+        Assert.Equal((SettingState.TurnOn, "VC1 decodes in hardware only with cuvid decoders"), (nvdec.State, nvdec.Note));
         Assert.Equal(SettingState.NotTested, Assert.Single(advice, a => a.Setting == "Trickplay:EnableKeyFrameOnlyExtraction").State);
         Assert.Equal(SettingState.TurnOn, Assert.Single(SettingsAdvisor.For(nvenc with { Decode = new Dictionary<string, ProbeOutcome> { ["h264"] = P, ["h264_cuvid"] = P } }, _docker), a => a.Setting == "EnableEnhancedNvdecDecoder").State);
     }

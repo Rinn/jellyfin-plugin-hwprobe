@@ -1950,9 +1950,9 @@
                                 const recommended = 'Recommendation: ' + backendName(s.Type) + ' \u2013 ';
                                 const savings = s.Savings.length ? 'Uses ' + savingsText(s.Savings) + '.' : '';
                                 const reasons = !configured || configured === 'none' ? [recommended + 'offloads transcoding from the CPU.']
-                                    : s.Preferred ? [recommended + 'preferred on mainstream Intel GPUs, for better performance.', 'As fast as ' + backendName(configured) + '.', savings]
+                                    : s.Preferred ? [recommended + 'preferred on mainstream Intel GPUs, for better performance.', 'Measured as fast as ' + backendName(configured) + ' here.', savings]
                                     : savings ? [recommended + 'as fast as ' + backendName(configured) + '.', savings]
-                                    : [recommended + 'the fastest hardware acceleration measured.'];
+                                    : [recommended + 'the fastest hardware backend measured.'];
                                 section.appendChild(suggestionTable('Hardware acceleration', rows, null, [...reasons, ...(s.TestVideosOnly ? testVideos : [])]));
                                 continue;
                             }

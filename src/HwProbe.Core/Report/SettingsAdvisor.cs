@@ -337,7 +337,7 @@ public static class SettingsAdvisor
             .Select(p => CellLabel(p.On))
             .ToList();
         var codecs = onlyOff.Count > 2 ? string.Join(", ", onlyOff.Take(onlyOff.Count - 1)) + ", and " + onlyOff[^1] : string.Join(" and ", onlyOff);
-        return new(DecodingSection, setting, label, SettingState.TurnOn, onlyOff.Count == 0 ? string.Empty : $"{codecs} {(onlyOff.Count == 1 ? "requires" : "require")} {other} decoders");
+        return new(DecodingSection, setting, label, SettingState.TurnOn, onlyOff.Count == 0 ? string.Empty : $"{codecs} {(onlyOff.Count == 1 ? "decodes" : "decode")} in hardware only with {other} decoders");
     }
 
     /// <summary>Advice for a tone-mapping option, from any tone-map test except VPP.</summary>
