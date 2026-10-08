@@ -531,7 +531,7 @@ public static class SpeedAdvisor
 
         if (Catalog.Default.Option(key)?.Recommended is { } recommended && values.Any(v => v.Value == recommended))
         {
-            return Listing(SpeedSuggestionKind.RecommendedValue, recommended);
+            return Listing(SpeedSuggestionKind.RecommendedValue, recommended) with { BestQuality = BestQuality(key, recommended, values, against, type) };
         }
 
         // A value as fast as the server's within noise isn't worth switching to when the server's measured faster than it by more.
@@ -544,6 +544,22 @@ public static class SpeedAdvisor
                 .ThenByDescending(s => s.Gain)
                 .FirstOrDefault()
             ?? Listing(SpeedSuggestionKind.NoChange, values[0].Value);
+    }
+
+    /// <summary>Finds the best-quality value that keeps the headroom real time on real video, for a setting the catalog recommends a value of whatever the measurements.</summary>
+    /// <param name="key">The option key.</param>
+    /// <param name="recommended">The value recommended.</param>
+    /// <param name="values">Every value compared with the server's, the server's first.</param>
+    /// <param name="against">The comparisons with the server's value.</param>
+    /// <param name="type">The configured backend, for the quality order.</param>
+    /// <returns>The value, or null when none that keeps up is better than the recommended one.</returns>
+    private static string? BestQuality(string key, string recommended, List<(string Value, IReadOnlyList<OutputSpeed> Speeds)> values, List<SettingComparison> against, HwType type)
+    {
+        // Headroom is judged on real video only, as for a better-quality suggestion.
+        List<double> Real(string value) => [.. value == values[0].Value ? against.Where(c => !c.Generated).Select(c => c.OtherSpeed) : against.Where(c => c.Value == value && !c.Generated).Select(c => c.Speed)];
+        var keeping = values.Select(v => v.Value).Where(v => Real(v) is { Count: > 0 } real && real.Min() >= Headroom).ToList();
+        var best = keeping.FirstOrDefault(v => !keeping.Any(o => IsBetterQuality(key, o, v, type)));
+        return best is not null && IsBetterQuality(key, best, recommended, type) ? best : null;
     }
 
     /// <summary>Returns each output's slowest speed and fewest concurrent streams, in the order the outputs were first measured.</summary>

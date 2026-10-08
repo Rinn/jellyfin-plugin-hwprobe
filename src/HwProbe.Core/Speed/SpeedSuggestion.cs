@@ -29,6 +29,9 @@ public sealed record SpeedSuggestion(SpeedSuggestionKind Kind, IReadOnlyList<str
     /// <summary>Gets a value indicating whether the value gives a worse picture than the values it was compared with, e.g. a faster preset or a bitrate limit.</summary>
     public bool LowerQuality { get; init; }
 
+    /// <summary>Gets the best-quality value that keeps the headroom real time on real video, when the catalog recommends a lower-quality one whatever the measurements; null otherwise.</summary>
+    public string? BestQuality { get; init; }
+
     /// <summary>Gets a value indicating whether a suggested backend measured alike with the configured one and is suggested as the one Jellyfin prefers, QSV over VAAPI.</summary>
     public bool Preferred { get; init; }
 

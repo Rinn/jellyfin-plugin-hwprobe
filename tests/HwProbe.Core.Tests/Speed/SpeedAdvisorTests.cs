@@ -291,7 +291,7 @@ public sealed class SpeedAdvisorTests
         Assert.Equal([("veryfast", true, true), ("fast", false, true)], quality.Compared.Select(c => (c.Value, c.Current, c.LowerQuality == true)));
     }
 
-    /// <summary>Auto is the encoding preset recommended whenever it was measured, with every other preset compared listed beside it: on the Intel NAS, faster measured faster than Auto on HEVC but slower on H.264.</summary>
+    /// <summary>Auto is the encoding preset recommended whenever it was measured, with every other preset compared listed beside it and the slowest that keeps up named: on the Intel NAS, faster measured faster than Auto on HEVC but slower on H.264.</summary>
     [Fact]
     public void AlwaysRecommendsAuto()
     {
@@ -307,18 +307,19 @@ public sealed class SpeedAdvisorTests
         var onFaster = SpeedAdvisor.Advise(runs[0], runs, HwType.qsv, "/dev/dri/renderD128", new SpeedSettings { EncoderPreset = "faster" });
 
         var preset = Assert.Single(onAuto, s => s.Setting == "EncoderPreset");
-        Assert.Equal((SpeedSuggestionKind.RecommendedValue, "auto", true), (preset.Kind, preset.Value, preset.Current));
+        Assert.Equal((SpeedSuggestionKind.RecommendedValue, "auto", true, "faster"), (preset.Kind, preset.Value, preset.Current, preset.BestQuality));
         Assert.Equal(["fast", "faster", "medium", "slow"], preset.Compared.Select(c => c.Value).Order(StringComparer.Ordinal));
         Assert.All(preset.Compared, c => Assert.Equal([H264, Hevc], c.Speeds.Select(o => o.Label)));
         Assert.Equal((4.47, 5), (Math.Round(preset.Compared.Single(c => c.Value == "faster").Speeds[1].Speed, 2), preset.Compared.Single(c => c.Value == "faster").Speeds[1].Streams));
 
         var switchBack = Assert.Single(onFaster, s => s.Setting == "EncoderPreset");
-        Assert.Equal((SpeedSuggestionKind.RecommendedValue, "auto", false), (switchBack.Kind, switchBack.Value, switchBack.Current));
+        Assert.Equal((SpeedSuggestionKind.RecommendedValue, "auto", false, "faster"), (switchBack.Kind, switchBack.Value, switchBack.Current, switchBack.BestQuality));
         Assert.True(switchBack.Compared.Single(c => c.Value == "faster").Current);
 
         // VAAPI leaves Auto to the driver, so no preset is better or worse than it there.
         var onVaapi = Assert.Single(SpeedAdvisor.Advise(runs[0], runs, HwType.vaapi, "/dev/dri/renderD128", new SpeedSettings()), s => s.Setting == "EncoderPreset");
         Assert.All(onVaapi.Compared, c => Assert.Null(c.LowerQuality));
+        Assert.Null(onVaapi.BestQuality);
     }
 
     /// <summary>A value only as fast as the server's within noise isn't recommended for using less when the server's value measured faster than it by more.</summary>

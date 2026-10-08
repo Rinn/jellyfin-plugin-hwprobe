@@ -630,8 +630,11 @@ options:
       - { key: ultrafast, label: ultrafast }
     qualityOrder: [veryslow, slower, slow, medium, fast, faster, veryfast, superfast, ultrafast]
     # Auto is recommended whenever measured: runs don't measure picture quality, and preset speeds can differ more between runs than between presets.
+    # bestQualityNote names the slowest preset that keeps the headroom real time on real video; {value} and {headroom} are filled in.
     recommended: auto
     recommendedReason: "Jellyfin's default, which picks a preset for each encoder."
+    bestQualityNote: "{value} is the slowest preset that keeps {headroom}× real time on real video, for better quality."
+    note: "Performance tests don't measure picture quality."
   - { key: H265Crf, label: H.265 encoding CRF, server: H265Crf, outputCodec: hevc, range: [0, 51], lowerIsBetter: true, description: "The 'Constant Rate Factor' (CRF) is the default quality setting for the x264 and x265 software encoders. You can set the values between 0 and 51, where lower values would result in better quality (at the expense of higher file sizes). Sane values are between 18 and 28. The default for x264 is 23, and for x265 is 28, so you can use this as a starting point. Hardware encoders do not use these settings." }
   - { key: H264Crf, label: H.264 encoding CRF, server: H264Crf, outputCodec: h264, range: [0, 51], lowerIsBetter: true, help: CRF only applies to software encoders., description: "The 'Constant Rate Factor' (CRF) is the default quality setting for the x264 and x265 software encoders. You can set the values between 0 and 51, where lower values would result in better quality (at the expense of higher file sizes). Sane values are between 18 and 28. The default for x264 is 23, and for x265 is 28, so you can use this as a starting point. Hardware encoders do not use these settings." }
   - key: DeinterlaceMethod

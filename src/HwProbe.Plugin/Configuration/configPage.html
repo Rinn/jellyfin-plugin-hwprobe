@@ -1817,7 +1817,10 @@
                             const lower = x.LowerQuality ? 'Lower picture quality than ' + versus + '.' : '';
                             const option = runOptions.find(o => o.Key === x.Setting);
                             const recommended = 'Recommendation: ' + name + ' \u2013 ';
-                            return x.Kind === 'RecommendedValue' ? [recommended + (option ? option.RecommendedReason : '')]
+                            // What a recommended Auto is on the configured backend, and the best-quality value that keeps up beside it.
+                            const backendNote = option && option.BackendNotes ? option.BackendNotes[configured || 'none'] : null;
+                            const best = x.BestQuality && option && option.BestQualityNote ? option.BestQualityNote.replace('{value}', optionValueText(x.Setting, x.BestQuality)).replace('{headroom}', advice.Headroom) : '';
+                            return x.Kind === 'RecommendedValue' ? [recommended + (option ? option.RecommendedReason : ''), backendNote ? name + ' on ' + backendNote + '.' : '', best]
                                 : x.Kind === 'FasterSetting' ? [recommended + percent + ' faster than ' + versus + '.', lower]
                                 : x.Kind === 'EfficientSetting' ? [recommended + 'as fast as ' + versus + '.', 'Uses ' + savingsText(x.Savings) + '.', lower]
                                 : x.Kind === 'HigherQuality' ? [recommended + 'better quality than ' + versus + '.', 'Still ' + x.Speed.toFixed(2) + '\u00d7 real time on real video.']
