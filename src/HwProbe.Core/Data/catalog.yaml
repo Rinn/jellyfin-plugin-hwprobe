@@ -758,7 +758,13 @@ suites:
     name: Subtitle burn-in
     description: Encodes H.264 with no subtitles, then text and PGS subtitles burned in.
     # Burn-in is the client's choice, so no server setting is compared; the labels are jellyfin-web's (en-us.json).
-    note: "Burn-in costs speed, so avoid it where possible: keep Allow subtitle extraction on the fly on (Transcoding), and in clients set Burn subtitles to Auto, turn on Experimental PGS and VobSub subtitle rendering where offered, and leave Always burn in subtitle when transcoding off."
+    # The first line is jellyfin-web's own (BurnSubtitlesHelp).
+    notes:
+      - Avoiding burn-in will greatly improve performance.
+      - "Server: keep Allow subtitle extraction on the fly on (Transcoding)."
+      - "Clients: set Burn subtitles to Auto."
+      - "Clients: turn on Experimental PGS and VobSub subtitle rendering where offered."
+      - "Clients: leave Always burn in subtitle when transcoding off."
     videos: [drama]
     outputs: [h264-8mbps]
     options: { Audio: copy }

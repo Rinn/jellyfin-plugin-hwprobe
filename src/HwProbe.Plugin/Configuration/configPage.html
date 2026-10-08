@@ -327,6 +327,13 @@
                 // Which sections were opened or closed, by key, kept across redraws.
                 const foldOpen = new Map();
 
+                // A notice banner with a line per note.
+                function noteBanner(notes) {
+                    const banner = el('div', null, 'infoBanner');
+                    notes.forEach(n => banner.appendChild(el('div', n)));
+                    return banner;
+                }
+
                 // A collapsible section with Jellyfin's heading style; emby-collapse isn't loaded on plugin pages.
                 // The key defaults to the title without a trailing count.
                 function fold(container, title, open, level, key) {
@@ -1561,8 +1568,8 @@
                     Promise.all(steps.map(load)).then(reports => {
                         const section = fold(div, 'Detailed statistics', true, null, 'suite');
                         const listed = suiteList.find(x => x.Name === shown.suite);
-                        if (listed && listed.Note) {
-                            section.appendChild(el('div', listed.Note, 'infoBanner'));
+                        if (listed && listed.Notes) {
+                            section.appendChild(noteBanner(listed.Notes));
                         }
                         const keyOf = x => [x.type, x.device, x.test, x.variant || ''].join('|');
                         const rows = [];
@@ -2165,8 +2172,8 @@
                             const suite = suites.find(x => x.Key === chosenSuite);
                             details.replaceChildren();
                             details.appendChild(el('div', suite.Description, 'fieldDescription'));
-                            if (suite.Note) {
-                                details.appendChild(el('div', suite.Note, 'infoBanner'));
+                            if (suite.Notes) {
+                                details.appendChild(noteBanner(suite.Notes));
                             }
                             const list = el('ul', null, 'fieldDescription hwprobe-notes');
                             list.appendChild(el('li', 'Steps: ' + suite.Steps.join(', ')));
