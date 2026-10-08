@@ -1802,7 +1802,7 @@
                             : idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: value, Run: speedViewing }, true), 'raised');
                         const apply = s => s.Kind === 'NoChange' ? null : applyValue(s, s.Value, s.Current);
                         const settingRow = s => ({ text: optionValueText(s.Setting, s.Value), value: s.Value, speed: s.Speed, streams: s.Streams, capped: s.StreamsCapped, speeds: s.Speeds, savings: s.Savings, lower: s.LowerQuality, current: s.Current, action: apply(s) });
-                        const testVideos = 'Measured on test videos only, which encode faster than real video; measure a film sample or library video to confirm.';
+                        const testVideos = ['Measured on test videos only, which encode faster than real video.', 'Measure a film sample or library video to confirm.'];
                         // Why the tinted row is recommended, the first lines of the table's last row: the suggestion's name for it and for what it was compared with, one point per line.
                         const reasonFor = (x, name, others) => {
                             const percent = x.Gain === null || x.Gain === undefined ? '' : Math.round(Math.abs(x.Gain) * 100) + '%';
@@ -1872,7 +1872,7 @@
                             return suggestionTable(group.Label, [...rows.values()].sort((a, b) => order(a) - order(b)), null, [
                                 ...(why ? reasonFor(why, why.Row, why.Compared.map(c => c.Row)) : []),
                                 ...new Set(group.Rows.filter(x => x.Note && rows.has(x.Label)).map(x => x.Note)),
-                                members.some(m => m.TestVideosOnly) ? testVideos : '',
+                                ...(members.some(m => m.TestVideosOnly) ? testVideos : []),
                             ]);
                         };
                         // Outputs none of the backends measured keeps real time on, in one table.
@@ -1919,7 +1919,7 @@
                                     limit ? backendName(limit.Type) + ' keeps real time on H.264 up to ' + optionValueText(limit.Setting, limit.Value) + '.' : '',
                                     sides.some(stricter) ? 'A stricter limit of ' + remoteLimit / 1e6 + ' Mbps is already set.' : '',
                                     caveat,
-                                    sides.some(x => x.TestVideosOnly) ? testVideos : '',
+                                    ...(sides.some(x => x.TestVideosOnly) ? testVideos : []),
                                 ], serverLabels[s.Setting + 'Description']));
                                 continue;
                             }
@@ -1927,7 +1927,7 @@
                             if (s.Kind === 'FallsBehind') {
                                 const rows = s.Speeds.map(o => ({ text: o.Label, speed: o.Speed, streams: o.Streams, capped: o.StreamsCapped, savings: [], lower: null, current: false, action: null, glyph: '\u274c', glyphTitle: 'Falls behind' }));
                                 const these = rows.length === 1 ? 'this output' : 'these outputs';
-                                section.appendChild(suggestionTable('Falls behind real time', rows, null, [backendName(s.Type) + ' falls behind real time on ' + these + ', so players that require a transcode will buffer.', 'Direct play is unaffected.', s.TestVideosOnly ? testVideos : '']));
+                                section.appendChild(suggestionTable('Falls behind real time', rows, null, [backendName(s.Type) + ' falls behind real time on ' + these + ', so players that require a transcode will buffer.', 'Direct play is unaffected.', ...(s.TestVideosOnly ? testVideos : [])]));
                                 continue;
                             }
                             if (s.Kind === 'FastestBackend') {
@@ -1941,7 +1941,7 @@
                                     : s.Preferred ? [recommended + 'preferred on mainstream Intel GPUs, for better performance.', 'As fast as ' + backendName(configured) + '.', savings]
                                     : savings ? [recommended + 'as fast as ' + backendName(configured) + '.', savings]
                                     : [recommended + 'the fastest hardware acceleration measured.'];
-                                section.appendChild(suggestionTable('Hardware acceleration', rows, null, [...reasons, s.TestVideosOnly ? testVideos : '']));
+                                section.appendChild(suggestionTable('Hardware acceleration', rows, null, [...reasons, ...(s.TestVideosOnly ? testVideos : [])]));
                                 continue;
                             }
                             // A setting: the recommended value and every other value compared with the server's, in Jellyfin's order.
@@ -1965,10 +1965,12 @@
                                 stricter(s) ? 'A stricter limit of ' + remoteLimit / 1e6 + ' Mbps is already set.' : '',
                                 measuredOn,
                                 caveat,
-                                s.TestVideosOnly ? testVideos : '',
+                                ...(s.TestVideosOnly ? testVideos : []),
                             ], serverLabels[s.Setting + 'Description']));
                         }
-                        section.appendChild(el('div', 'Settings are compared between saved runs that differ in that setting alone. Software is never recommended over a working hardware backend.' + (advice.Headroom ? ' Better quality is recommended only while it keeps ' + advice.Headroom + '\u00d7 real time on real video and at least ' + Math.round((1 - advice.MaxStreamLoss) * 100) + '% of the concurrent streams.' : ''), 'fieldDescription'));
+                        const footer = section.appendChild(el('div', null, 'fieldDescription'));
+                        ['Settings are compared between saved runs that differ in that setting alone.', 'Software is never recommended over a working hardware backend.', advice.Headroom ? 'Better quality is recommended only while it keeps ' + advice.Headroom + '\u00d7 real time on real video and at least ' + Math.round((1 - advice.MaxStreamLoss) * 100) + '% of the concurrent streams.' : '']
+                            .filter(t => t).forEach(t => footer.appendChild(el('div', t)));
                     };
                     const cached = suggestionCache.get(key);
                     if (cached) {
