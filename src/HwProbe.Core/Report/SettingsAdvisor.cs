@@ -357,7 +357,7 @@ public static class SettingsAdvisor
         ProbeOutcome? outcome = cells.Count == 0 ? null : cells.Contains(ProbeOutcome.Pass) ? ProbeOutcome.Pass : cells[0];
 
         // The engine only tone-maps after a 10-bit decode passes.
-        var notTested = Cell(backend.Decode, "hevc_10bit") == ProbeOutcome.Pass ? "Not used with this setup" : "Requires HEVC 10bit decoding";
+        var notTested = Cell(backend.Decode, "hevc_10bit") == ProbeOutcome.Pass ? NotTested : "Requires HEVC 10bit decoding";
         return Advise(TonemapSection, setting, label, outcome, notTested);
     }
 
