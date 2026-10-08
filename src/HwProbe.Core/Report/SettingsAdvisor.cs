@@ -324,7 +324,8 @@ public static class SettingsAdvisor
     /// <param name="label">The option's label.</param>
     /// <param name="suffix">The suffix of the decode cells run with the option off.</param>
     /// <param name="other">Names the decoders used with the option off.</param>
-    /// <returns>Leave off when some codec decodes only with the option off.</returns>
+    /// <returns>Turn on, naming any codec that decodes only with the option off.</returns>
+    /// <remarks>On is Jellyfin's default and required for Dolby Vision tone mapping (EncodingOptions, v12.2; Jellyfin's Intel guide).</remarks>
     private static SettingAdvice DecoderChoice(BackendReport backend, string setting, string label, string suffix, string other)
     {
         var pairs = backend.Decode.Keys
@@ -338,11 +339,11 @@ public static class SettingsAdvisor
 
         var onlyOff = pairs
             .Where(p => backend.Decode[p.Off] == ProbeOutcome.Pass && Cell(backend.Decode, p.On) != ProbeOutcome.Pass)
+            .OrderBy(p => Array.FindIndex(_codecs, c => c.Codec == p.On) is var i and >= 0 ? i : int.MaxValue)
             .Select(p => CellLabel(p.On))
             .ToList();
-        return onlyOff.Count == 0
-            ? new(DecodingSection, setting, label, SettingState.TurnOn, string.Empty)
-            : new(DecodingSection, setting, label, SettingState.LeaveOff, $"{other} decoders needed for " + string.Join(", ", onlyOff));
+        var codecs = onlyOff.Count > 2 ? string.Join(", ", onlyOff.Take(onlyOff.Count - 1)) + ", and " + onlyOff[^1] : string.Join(" and ", onlyOff);
+        return new(DecodingSection, setting, label, SettingState.TurnOn, onlyOff.Count == 0 ? string.Empty : $"{codecs} {(onlyOff.Count == 1 ? "requires" : "require")} {other} decoders");
     }
 
     /// <summary>Advice for a tone-mapping option, from any tone-map test except VPP.</summary>

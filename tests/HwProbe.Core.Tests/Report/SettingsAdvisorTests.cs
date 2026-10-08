@@ -110,15 +110,18 @@ public sealed class SettingsAdvisorTests
         Assert.Equal((state, note), (advice.State, advice.Note));
     }
 
-    /// <summary>A codec only the QSV decoders handle means the native-decoder option should stay off.</summary>
+    /// <summary>Native decoders stay on, as Dolby Vision tone mapping requires, naming the codecs only the QSV decoders handle.</summary>
     [Fact]
-    public void QsvOnlyCodecKeepsNativeDecodersOff()
+    public void QsvOnlyCodecIsNamedWithNativeDecodersOn()
     {
         var decode = new Dictionary<string, ProbeOutcome>(_apolloLakeQsv.Decode) { ["vc1"] = U, ["vc1_qsvdecoder"] = P };
+        var two = new Dictionary<string, ProbeOutcome>(decode) { ["mpeg2video"] = U, ["mpeg2video_qsvdecoder"] = P };
 
         var advice = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Decode = decode }, _docker), a => a.Setting == "PreferSystemNativeHwDecoder");
+        var both = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Decode = two }, _docker), a => a.Setting == "PreferSystemNativeHwDecoder");
 
-        Assert.Equal((SettingState.LeaveOff, "QSV decoders needed for VC1"), (advice.State, advice.Note));
+        Assert.Equal((SettingState.TurnOn, "VC1 requires QSV decoders"), (advice.State, advice.Note));
+        Assert.Equal("MPEG2 and VC1 require QSV decoders", both.Note);
     }
 
     /// <summary>Options with no test are marked untested rather than guessed.</summary>
@@ -236,10 +239,7 @@ public sealed class SettingsAdvisorTests
     public void KeyFrameOnlyFollowsItsTestAndTheDecoder()
     {
         const string Setting = "Trickplay:EnableKeyFrameOnlyExtraction";
-        var qsvOnly = new Dictionary<string, ProbeOutcome>(_apolloLakeQsv.Decode) { ["vc1"] = U, ["vc1_qsvdecoder"] = P };
-
         var native = SettingsAdvisor.For(_apolloLakeQsv, _docker);
-        var qsvDecoders = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Decode = qsvOnly }, _docker), a => a.Setting == Setting);
 
         // With no cuvid results, enhanced NVDEC isn't tested, so key frames may drop to software.
         var nvenc = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Type = HwType.nvenc }, _docker), a => a.Setting == Setting);
@@ -249,11 +249,10 @@ public sealed class SettingsAdvisorTests
 
         Assert.Equal(SettingState.NotTested, Assert.Single(native, a => a.Setting == Setting).State);
         Assert.Equal((SettingState.Optional, "Faster, but less accurate timing"), (optional.State, optional.Note));
-        Assert.Equal((SettingState.LeaveOff, "Turns off hardware decoding with this backend"), (qsvDecoders.State, qsvDecoders.Note));
         Assert.Equal((SettingState.LeaveOff, "Turns off hardware decoding with this backend"), (nvenc.State, nvenc.Note));
     }
 
-    /// <summary>Enhanced NVDEC is advised like the native decoders: off only when a codec decodes with cuvid alone.</summary>
+    /// <summary>Enhanced NVDEC is advised like the native decoders: on, naming a codec that decodes with cuvid alone.</summary>
     [Fact]
     public void EnhancedNvdecFollowsCuvidResults()
     {
@@ -262,8 +261,8 @@ public sealed class SettingsAdvisorTests
         var advice = SettingsAdvisor.For(nvenc, _docker);
 
         var nvdec = Assert.Single(advice, a => a.Setting == "EnableEnhancedNvdecDecoder");
-        Assert.Equal((SettingState.LeaveOff, "cuvid decoders needed for VC1"), (nvdec.State, nvdec.Note));
-        Assert.Equal(SettingState.LeaveOff, Assert.Single(advice, a => a.Setting == "Trickplay:EnableKeyFrameOnlyExtraction").State);
+        Assert.Equal((SettingState.TurnOn, "VC1 requires cuvid decoders"), (nvdec.State, nvdec.Note));
+        Assert.Equal(SettingState.NotTested, Assert.Single(advice, a => a.Setting == "Trickplay:EnableKeyFrameOnlyExtraction").State);
         Assert.Equal(SettingState.TurnOn, Assert.Single(SettingsAdvisor.For(nvenc with { Decode = new Dictionary<string, ProbeOutcome> { ["h264"] = P, ["h264_cuvid"] = P } }, _docker), a => a.Setting == "EnableEnhancedNvdecDecoder").State);
     }
 
