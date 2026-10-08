@@ -1803,20 +1803,21 @@
                         const apply = s => s.Kind === 'NoChange' ? null : applyValue(s, s.Value, s.Current);
                         const settingRow = s => ({ text: optionValueText(s.Setting, s.Value), value: s.Value, speed: s.Speed, streams: s.Streams, capped: s.StreamsCapped, speeds: s.Speeds, savings: s.Savings, lower: s.LowerQuality, current: s.Current, action: apply(s) });
                         const testVideos = 'Measured on test videos only, which encode faster than real video; measure a film sample or library video to confirm.';
-                        // Why the tinted row is recommended, the first line of the table's last row: the suggestion's name for it and for what it was compared with.
+                        // Why the tinted row is recommended, the first lines of the table's last row: the suggestion's name for it and for what it was compared with, one point per line.
                         const reasonFor = (x, name, others) => {
                             const percent = x.Gain === null || x.Gain === undefined ? '' : Math.round(Math.abs(x.Gain) * 100) + '%';
                             const versus = orList(others);
-                            const quality = x.LowerQuality ? ', at lower quality.' : '.';
+                            const lower = x.LowerQuality ? 'Lower picture quality than ' + versus + '.' : '';
                             const option = runOptions.find(o => o.Key === x.Setting);
-                            return x.Kind === 'RecommendedValue' ? 'Recommendation: ' + name + ' \u2013 ' + (option ? option.RecommendedReason : '')
-                                : x.Kind === 'FasterSetting' ? 'Recommendation: ' + name + ' \u2013 ' + percent + ' faster than ' + versus + quality
-                                : x.Kind === 'EfficientSetting' ? 'Recommendation: ' + name + ' \u2013 as fast as ' + versus + ' with ' + savingsText(x.Savings) + quality
-                                : x.Kind === 'HigherQuality' ? 'Recommendation: ' + name + ' \u2013 better quality than ' + versus + ' while still ' + x.Speed.toFixed(2) + '\u00d7 real time on real video.'
-                                : x.Kind === 'Compatible' ? 'Recommendation: ' + name + ' \u2013 avoids the drawback below, at lower quality.'
-                                : x.Kind === 'BitrateLimit' ? 'Recommendation: ' + name + ' \u2013 out of network devices transcode any video whose bitrate exceeds the limit instead of direct playing it.'
-                                : x.Kind === 'NoChange' ? 'Recommendation: keep ' + name + ' \u2013 no other value measured is worth changing to.'
-                                : '';
+                            const recommended = 'Recommendation: ' + name + ' \u2013 ';
+                            return x.Kind === 'RecommendedValue' ? [recommended + (option ? option.RecommendedReason : '')]
+                                : x.Kind === 'FasterSetting' ? [recommended + percent + ' faster than ' + versus + '.', lower]
+                                : x.Kind === 'EfficientSetting' ? [recommended + 'as fast as ' + versus + '.', 'Uses ' + savingsText(x.Savings) + '.', lower]
+                                : x.Kind === 'HigherQuality' ? [recommended + 'better quality than ' + versus + '.', 'Still ' + x.Speed.toFixed(2) + '\u00d7 real time on real video.']
+                                : x.Kind === 'Compatible' ? [recommended + 'avoids the drawback below.', lower]
+                                : x.Kind === 'BitrateLimit' ? [recommended + 'out of network devices transcode any video whose bitrate exceeds the limit instead of direct playing it.']
+                                : x.Kind === 'NoChange' ? [recommended + 'no other value measured is better.']
+                                : [];
                         };
                         const paired = new Set(list.map(s => suggestionCounterpart(list, s)).filter(o => o));
                         // Settings that together pick one thing: one table for the group, a row per choice the runs made, in the catalog's order.
@@ -1869,7 +1870,7 @@
                             const why = members.find(m => m.Row === best && m.Kind === 'HigherQuality') || members.find(m => m.Row === best);
                             const order = r => group.Rows.findIndex(x => x.Label === r.text);
                             return suggestionTable(group.Label, [...rows.values()].sort((a, b) => order(a) - order(b)), null, [
-                                why ? reasonFor(why, why.Row, why.Compared.map(c => c.Row)) : '',
+                                ...(why ? reasonFor(why, why.Row, why.Compared.map(c => c.Row)) : []),
                                 ...new Set(group.Rows.filter(x => x.Note && rows.has(x.Label)).map(x => x.Note)),
                                 members.some(m => m.TestVideosOnly) ? testVideos : '',
                             ]);
@@ -1913,7 +1914,7 @@
                                 const chosen = sides[bestSide];
                                 const limit = sides.find(x => isBitrate(x) && x.Kind === 'Compatible');
                                 section.appendChild(suggestionTable(label, rows, option, [
-                                    chosen ? reasonFor(chosen, optionValueText(chosen.Setting, chosen.Value), chosen.Others.map(o => optionValueText(chosen.Setting, o))) : '',
+                                    ...(chosen ? reasonFor(chosen, optionValueText(chosen.Setting, chosen.Value), chosen.Others.map(o => optionValueText(chosen.Setting, o))) : []),
                                     option ? option.Note : '',
                                     limit ? backendName(limit.Type) + ' keeps real time on H.264 up to ' + optionValueText(limit.Setting, limit.Value) + '.' : '',
                                     sides.some(stricter) ? 'A stricter limit of ' + remoteLimit / 1e6 + ' Mbps is already set.' : '',
@@ -1956,7 +1957,7 @@
                             // Settings are compared on the configured backend's results alone.
                             const measuredOn = option && option.NamesBackend ? (!configured || configured === 'none' ? 'Measured in software.' : 'Measured on ' + backendName(configured) + '.') : '';
                             section.appendChild(suggestionTable(label, rows, option, [
-                                reasonFor(s, optionValueText(s.Setting, s.Value), s.Others.map(o => optionValueText(s.Setting, o))),
+                                ...reasonFor(s, optionValueText(s.Setting, s.Value), s.Others.map(o => optionValueText(s.Setting, o))),
                                 option ? option.Note : '',
                                 stricter(s) ? 'A stricter limit of ' + remoteLimit / 1e6 + ' Mbps is already set.' : '',
                                 measuredOn,
