@@ -306,7 +306,7 @@ public sealed class SettingsAdvisorTests
     /// <param name="label">The label, or null.</param>
     [Theory]
     [InlineData("HardwareDecodingCodecs:hevc", "Hardware decoding: HEVC")]
-    [InlineData("DeinterlaceMethod:bwdif", "Deinterlacing method: BWDIF")]
+    [InlineData("DeinterlaceMethod:bwdif", "Deinterlacing method: Bob Weaver DeInterlacing Filter (BWDIF)")]
     [InlineData("Trickplay:EnableHwAcceleration", "Trickplay: Enable hardware decoding")]
     [InlineData("QsvDevice", "QSV device")]
     [InlineData("VaapiDevice", "VA-API device")]

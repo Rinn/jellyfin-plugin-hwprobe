@@ -24,6 +24,7 @@ public static class SettingsAdvisor
     private const string NativeDecoder = "PreferSystemNativeHwDecoder";
     private const string NotUsed = "Not used with this backend";
     private const string MjpegLabel = "Enable hardware accelerated MJPEG encoding";
+    private const string BwdifLabel = "Deinterlacing method: Bob Weaver DeInterlacing Filter (BWDIF)";
 
     // Every label the advisor gives, gathered from advice for a backend of each type with no results, plus the
     // backend and device settings that "Use this backend" changes.
@@ -171,7 +172,7 @@ public static class SettingsAdvisor
         var bwdif = backend.Deinterlace.FirstOrDefault(c => c.Key.EndsWith("_bwdif", StringComparison.Ordinal));
         if (bwdif.Key is not null)
         {
-            advice.Add(Advise(DeinterlaceSection, "DeinterlaceMethod:bwdif", "Deinterlacing method: BWDIF", bwdif.Value));
+            advice.Add(Advise(DeinterlaceSection, "DeinterlaceMethod:bwdif", BwdifLabel, bwdif.Value));
         }
 
         advice.Add(SubtitleExtraction());
@@ -191,7 +192,7 @@ public static class SettingsAdvisor
         [
             new(FormatSection, "AllowHevcEncoding", "Allow encoding in HEVC format", SettingState.LeaveOff, Slow),
             new(FormatSection, "AllowAv1Encoding", "Allow encoding in AV1 format", SettingState.LeaveOff, Slow),
-            NoGpu(Advise(DeinterlaceSection, "DeinterlaceMethod:bwdif", "Deinterlacing method: BWDIF", Cell(backend.Deinterlace, "bwdif"))),
+            NoGpu(Advise(DeinterlaceSection, "DeinterlaceMethod:bwdif", BwdifLabel, Cell(backend.Deinterlace, "bwdif"))),
             SubtitleExtraction(),
         ];
         advice.AddRange(Trickplay(backend, context, advice));
