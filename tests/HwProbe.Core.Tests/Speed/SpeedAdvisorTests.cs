@@ -374,6 +374,7 @@ public sealed class SpeedAdvisorTests
         var behind = Assert.Single(SpeedAdvisor.Advise(run, [run], HwType.qsv, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.FallsBehind);
 
         Assert.Equal(["pattern|h264-8mbps", "pattern|vp9-8mbps"], behind.Outputs);
+        Assert.Equal([("pattern|h264-8mbps", 20.0 / 25), ("pattern|vp9-8mbps", 20.0 / 25)], behind.Speeds.Select(o => (o.Label, o.Speed)));
         Assert.True(behind.TestVideosOnly);
     }
 

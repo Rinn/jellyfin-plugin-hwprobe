@@ -1923,21 +1923,24 @@
                                 ], serverLabels[s.Setting + 'Description']));
                                 continue;
                             }
-                            if (s.Kind === 'FastestBackend' || s.Kind === 'FallsBehind') {
-                                const rows = [{ text: backendName(s.Type), value: s.Type, speed: s.Speed, streams: s.Streams, capped: s.StreamsCapped, savings: s.Savings, lower: null, current: s.Kind === 'FallsBehind', action: null }];
-                                let reasons = ['Falls behind real time, so a player would buffer.'];
-                                if (s.Kind === 'FastestBackend') {
-                                    rows[0].best = true;
-                                    rows[0].action = idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: s.Type, Device: s.Device }, true));
-                                    rows.push(...s.Compared.map(c => ({ text: backendName(c.Value), value: c.Value, speed: c.Speed, streams: c.Streams, capped: c.StreamsCapped, savings: [], lower: null, current: true, action: null })));
-                                    // Measured alike, it's suggested when it is more efficient, or as Jellyfin's preferred Intel backend; the wording is Jellyfin's hardware acceleration guides'.
-                                    const recommended = 'Recommendation: ' + backendName(s.Type) + ' \u2013 ';
-                                    const savings = s.Savings.length ? 'Uses ' + savingsText(s.Savings) + '.' : '';
-                                    reasons = !configured || configured === 'none' ? [recommended + 'offloads transcoding from the CPU.']
-                                        : s.Preferred ? [recommended + 'preferred on mainstream Intel GPUs, for better performance.', 'As fast as ' + backendName(configured) + '.', savings]
-                                        : savings ? [recommended + 'as fast as ' + backendName(configured) + '.', savings]
-                                        : [recommended + 'the fastest hardware acceleration measured.'];
-                                }
+                            // Outputs the configured backend falls behind on, a row each, as in Too slow on every backend.
+                            if (s.Kind === 'FallsBehind') {
+                                const rows = s.Speeds.map(o => ({ text: o.Label, speed: o.Speed, streams: o.Streams, capped: o.StreamsCapped, savings: [], lower: null, current: false, action: null, glyph: '\u274c', glyphTitle: 'Falls behind' }));
+                                const these = rows.length === 1 ? 'this output' : 'these outputs';
+                                section.appendChild(suggestionTable('Falls behind real time', rows, null, [backendName(s.Type) + ' falls behind real time on ' + these + ', so players that require a transcode will buffer.', 'Direct play is unaffected.', s.TestVideosOnly ? testVideos : '']));
+                                continue;
+                            }
+                            if (s.Kind === 'FastestBackend') {
+                                const rows = [{ text: backendName(s.Type), value: s.Type, speed: s.Speed, streams: s.Streams, capped: s.StreamsCapped, savings: s.Savings, lower: null, current: false, action: null, best: true }];
+                                rows[0].action = idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: s.Type, Device: s.Device }, true));
+                                rows.push(...s.Compared.map(c => ({ text: backendName(c.Value), value: c.Value, speed: c.Speed, streams: c.Streams, capped: c.StreamsCapped, savings: [], lower: null, current: true, action: null })));
+                                // Measured alike, it's suggested when it is more efficient, or as Jellyfin's preferred Intel backend; the wording is Jellyfin's hardware acceleration guides'.
+                                const recommended = 'Recommendation: ' + backendName(s.Type) + ' \u2013 ';
+                                const savings = s.Savings.length ? 'Uses ' + savingsText(s.Savings) + '.' : '';
+                                const reasons = !configured || configured === 'none' ? [recommended + 'offloads transcoding from the CPU.']
+                                    : s.Preferred ? [recommended + 'preferred on mainstream Intel GPUs, for better performance.', 'As fast as ' + backendName(configured) + '.', savings]
+                                    : savings ? [recommended + 'as fast as ' + backendName(configured) + '.', savings]
+                                    : [recommended + 'the fastest hardware acceleration measured.'];
                                 section.appendChild(suggestionTable('Hardware acceleration', rows, null, [...reasons, s.TestVideosOnly ? testVideos : '']));
                                 continue;
                             }

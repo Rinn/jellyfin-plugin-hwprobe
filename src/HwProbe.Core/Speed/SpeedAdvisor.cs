@@ -161,7 +161,16 @@ public static class SpeedAdvisor
         var behind = playback.Where(r => Configured(r) && !KeepsUp(r) && !tooSlow.Any(g => g.Key == r.Test)).ToList();
         if (behind.Count > 0)
         {
-            suggestions.Add(new SpeedSuggestion(SpeedSuggestionKind.FallsBehind, [.. behind.Select(r => Label(r, shown.Settings))]) { Type = type, Device = device, Speed = behind.Min(Speed), Streams = Fewest(behind), StreamsCapped = FewestCapped(behind), TestVideosOnly = behind.All(IsGenerated) });
+            suggestions.Add(new SpeedSuggestion(SpeedSuggestionKind.FallsBehind, [.. behind.Select(r => Label(r, shown.Settings))])
+            {
+                Type = type,
+                Device = device,
+                Speed = behind.Min(Speed),
+                Streams = Fewest(behind),
+                StreamsCapped = FewestCapped(behind),
+                Speeds = [.. behind.Select(r => new OutputSpeed(Label(r, shown.Settings), r.Video, r.Output, Speed(r), r.Streams, r.Capped))],
+                TestVideosOnly = behind.All(IsGenerated),
+            });
         }
 
         foreach (var fastest in tooSlow.Select(g => g.Aggregate(Better)))
