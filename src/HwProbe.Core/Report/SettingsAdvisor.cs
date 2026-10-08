@@ -205,9 +205,9 @@ public static class SettingsAdvisor
     private static SettingAdvice NoGpu(SettingAdvice advice) => advice.Note == NotSupported ? advice with { Note = "Test failed" } : advice;
 
     /// <summary>Advice for "Allow subtitle extraction on the fly", which applies with every backend.</summary>
-    /// <returns>Turn on: text subtitles are then sent to the client instead of burned into the video, which costs a transcode.</returns>
+    /// <returns>Turn on: text subtitles are then sent to the client instead of burned into the video, which costs a transcode; the note is jellyfin-web's (AllowOnTheFlySubtitleExtractionHelp).</returns>
     private static SettingAdvice SubtitleExtraction() =>
-        new(SubtitlesSection, "EnableSubtitleExtraction", "Allow subtitle extraction on the fly", SettingState.TurnOn, "Avoids burning in text subtitles");
+        new(SubtitlesSection, "EnableSubtitleExtraction", "Allow subtitle extraction on the fly", SettingState.TurnOn, "Helps prevent video transcoding");
 
     /// <summary>Advice for the Trickplay page's hardware options, which reuse the Transcoding page's settings.</summary>
     /// <param name="backend">The backend's results.</param>

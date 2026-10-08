@@ -81,7 +81,7 @@ public sealed class SettingsAdvisorTests
                 ("AllowHevcEncoding", SettingState.LeaveOff, "Slow on the CPU"),
                 ("AllowAv1Encoding", SettingState.LeaveOff, "Slow on the CPU"),
                 ("DeinterlaceMethod:bwdif", SettingState.LeaveOff, "Test failed"),
-                ("EnableSubtitleExtraction", SettingState.TurnOn, "Avoids burning in text subtitles"),
+                ("EnableSubtitleExtraction", SettingState.TurnOn, "Helps prevent video transcoding"),
                 ("Trickplay:EnableHwAcceleration", SettingState.LeaveOff, "Not used with this backend"),
                 ("Trickplay:EnableHwEncoding", SettingState.LeaveOff, "Not used with this backend"),
                 ("Trickplay:EnableKeyFrameOnlyExtraction", SettingState.Optional, "Faster, but less accurate timing"),
