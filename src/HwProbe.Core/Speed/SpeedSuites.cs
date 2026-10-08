@@ -32,7 +32,7 @@ public static class SpeedSuites
         return suite.Backends switch
         {
             "software" => [HwType.none],
-            "configured" => configured == HwType.none ? [] : [configured],
+            "configured" => [configured],
             _ => configured == HwType.none ? [HwType.none] : [configured, HwType.none],
         };
     }

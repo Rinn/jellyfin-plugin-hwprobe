@@ -199,7 +199,7 @@ public sealed class ProbeServiceTests : IDisposable
 
         var presets = Catalog.Default.Suites.Single(s => s.Key == "presets");
         Assert.Equal(presets.Steps.Select(s => s.Options["EncoderPreset"] is var p && p == "auto" ? null : p), asked.Select(a => a.Settings.EncoderPreset));
-        Assert.All(asked, a => Assert.Equal([HwType.vaapi, HwType.none], a.Backends));
+        Assert.All(asked, a => Assert.Equal([HwType.vaapi], a.Backends));
         Assert.All(asked, a => Assert.Equal((SpeedMethod.Confirm, true, true), (a.Method, a.MeasureResources, a.ReuseResults)));
         var history = await service.SpeedHistoryAsync(ct);
         Assert.Equal(presets.Steps.Select(s => s.Label).Reverse(), history.Select(h => h.SuiteStep));

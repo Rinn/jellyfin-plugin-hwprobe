@@ -671,24 +671,31 @@ links:
   fateSuite: https://fate-suite.ffmpeg.org/
 
 # Test suites: a sequence of performance runs that differ in one setting, saved to Test Results like any run, so the
-# suggestions compare them. backends: configuredAndSoftware (default), configured, or software. requires: lowPower offers
+# suggestions compare them. backends: configuredAndSoftware (default), configured (software when that's the server's), or software. requires: lowPower offers
 # the suite only when the configured backend is QSV and its probe found a low-power encoder. threadSteps adds Auto, then
 # 1, 2, 4 ... and the server's logical CPU count. A step's videos or outputs replace the suite's for that step. options sets
 # settings every step shares; suites copy the audio, so only video is measured, except the VBR suite, which compares audio
 # encoding, and the audio suite, which has no video. method replaces suiteMethod.
 suites:
+  # Every preset, in the Encoding preset dropdown's order, on the configured backend alone.
   - key: presets
     name: Encoder presets
     description: Encodes H.264 and HEVC at each encoder preset.
     videos: [drama]
     outputs: [h264-8mbps, hevc-8mbps]
     options: { Audio: copy }
+    backends: configured
     steps:
       - { label: Auto, options: { EncoderPreset: auto } }
-      - { label: faster, options: { EncoderPreset: faster } }
-      - { label: fast, options: { EncoderPreset: fast } }
-      - { label: medium, options: { EncoderPreset: medium } }
+      - { label: veryslow, options: { EncoderPreset: veryslow } }
+      - { label: slower, options: { EncoderPreset: slower } }
       - { label: slow, options: { EncoderPreset: slow } }
+      - { label: medium, options: { EncoderPreset: medium } }
+      - { label: fast, options: { EncoderPreset: fast } }
+      - { label: faster, options: { EncoderPreset: faster } }
+      - { label: veryfast, options: { EncoderPreset: veryfast } }
+      - { label: superfast, options: { EncoderPreset: superfast } }
+      - { label: ultrafast, options: { EncoderPreset: ultrafast } }
   - key: quality
     name: Quality ladder
     description: Encodes H.264 and HEVC at each player quality.
