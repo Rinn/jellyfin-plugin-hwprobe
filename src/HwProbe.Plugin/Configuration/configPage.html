@@ -1952,9 +1952,12 @@
                             // A choice's place in the option's dropdown, a number's value; a switch keeps the recommended value first.
                             const order = r => option && option.Choices ? option.Choices.findIndex(c => c.Key === r.value) : option && option.Range ? Number(r.value) : 0;
                             const rows = [main].concat(others).sort((a, b) => order(a) - order(b));
+                            // Settings are compared on the configured backend's results alone.
+                            const measuredOn = option && option.NamesBackend ? (!configured || configured === 'none' ? 'Measured in software.' : 'Measured on ' + backendName(configured) + '.') : '';
                             section.appendChild(suggestionTable(label, rows, option, [
                                 reasonFor(s, optionValueText(s.Setting, s.Value), s.Others.map(o => optionValueText(s.Setting, o))),
                                 stricter(s) ? 'A stricter limit of ' + remoteLimit / 1e6 + ' Mbps is already set.' : '',
+                                measuredOn,
                                 caveat,
                                 s.TestVideosOnly ? testVideos : '',
                             ], serverLabels[s.Setting + 'Description']));

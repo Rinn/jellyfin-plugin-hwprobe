@@ -59,6 +59,9 @@ public sealed class CatalogSetting
     /// <summary>Gets why <see cref="Recommended"/> is, shown as the recommendation's reason, or null.</summary>
     public string? RecommendedReason { get; init; }
 
+    /// <summary>Gets a value indicating whether its suggestion says which backend measured it, as for a suite that runs in software alone.</summary>
+    public bool NamesBackend { get; init; }
+
     /// <summary>Returns whether one value gives a better picture than another.</summary>
     /// <param name="value">The value.</param>
     /// <param name="other">The other value.</param>

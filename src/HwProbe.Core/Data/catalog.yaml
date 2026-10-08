@@ -551,12 +551,16 @@ options:
       - { key: "0", label: "0" }
       - { key: "0.5", label: "0.5" }
       - { key: "1", label: "1" }
-  # EncodingHelper.GetNumberOfThreads treats Auto (-1) and Max (0) alike: ffmpeg picks (v12.2).
+  # EncodingHelper.GetNumberOfThreads treats Auto (-1) and Max (0) alike: ffmpeg picks (v12.2). The caveat is jellyfin-web's own (LabelTranscodingThreadCountHelp).
   - key: EncodingThreadCount
     description: "Select the maximum number of threads to use when transcoding. Reducing the thread count will lower CPU usage but may not convert fast enough for a smooth playback experience."
     label: Transcoding thread count
     server: EncodingThreadCount
     help: The most CPU threads each transcode uses.
+    recommended: "-1"
+    recommendedReason: "Jellyfin's default, which lets ffmpeg pick the number of threads."
+    namesBackend: true
+    caveat: "Reducing the thread count will lower CPU usage but may not convert fast enough for a smooth playback experience."
     choices:
       - { key: "-1", label: Auto }
       - { key: "1", label: "1" }
