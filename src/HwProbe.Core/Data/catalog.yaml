@@ -1015,6 +1015,18 @@ verdicts:
   DevicePresentPipelineBroken: Device found, test transcode failed
   Untested: Not tested
 
+# A probe test's result note, as Recommended Settings and the probe's results show it; keyed by ProbeOutcome, all but Pass.
+outcomes:
+  DeviceUnavailable: Device unavailable
+  PermissionDenied: No permission to use the device
+  CodecUnsupported: Not supported by this GPU
+  FilterUnsupported: Filter missing from ffmpeg
+  Timeout: Timed out
+  SoftwareFallback: Fell back to software
+  Skipped: Not tested
+  Untested: Not tested
+  NotUsed: Software only in this ffmpeg
+
 # Keyed by the report's finding codes.
 findings:
   opencl-unavailable: "OpenCL unavailable: OpenCL tone mapping fails"

@@ -102,6 +102,9 @@ public sealed partial class Catalog
     /// <summary>Gets the descriptions of backends that don't work.</summary>
     public required IReadOnlyDictionary<BackendVerdict, string> Verdicts { get; init; }
 
+    /// <summary>Gets each probe test outcome's result note, all but a pass.</summary>
+    public required IReadOnlyDictionary<ProbeOutcome, string> Outcomes { get; init; }
+
     /// <summary>Gets the descriptions of the report's findings, by code.</summary>
     public required IReadOnlyDictionary<string, string> Findings { get; init; }
 
@@ -291,6 +294,7 @@ public sealed partial class Catalog
         RequireAll("backends", Backends.Select(b => b.Type), HwType.none);
         RequireAll("tiers", Tiers.Keys, PipelineTier.Unknown);
         RequireAll("verdicts", Verdicts.Keys, BackendVerdict.Viable, BackendVerdict.NotBuilt);
+        RequireAll("outcomes", Outcomes.Keys, ProbeOutcome.Pass);
         RequireKeys("videos", [.. Videos.Select(v => v.Key), SpeedCatalog.LibraryKey], DefaultVideos);
         if (DecodeEntry is null)
         {

@@ -261,6 +261,7 @@
                 let armOnly = {};
                 let tiers = {};
                 let verdicts = {};
+                let outcomeNotes = {};
                 let notes = {};
                 let settingLabels = {};
                 const methodName = m => (methods[m] || [m])[0];
@@ -285,6 +286,7 @@
                     armOnly = Object.fromEntries(c.Backends.filter(b => b.ArmNote).map(b => [b.Type, b.ArmNote]));
                     tiers = c.Tiers;
                     verdicts = c.Verdicts;
+                    outcomeNotes = c.Outcomes;
                     notes = c.Findings;
                     settingLabels = c.Settings;
                     gpuEngines = c.GpuEngines;
@@ -680,7 +682,7 @@
 
                 function outcomeRow(table, label, outcome) {
                     const state = outcome === 'Pass' ? 'TurnOn' : (outcome ? 'LeaveOff' : 'NotTested');
-                    const reason = outcome === 'Pass' ? '' : !outcome ? 'Not tested' : ({ SoftwareFallback: 'Hardware not used', FilterUnsupported: 'Filter missing from ffmpeg', CodecUnsupported: 'Not supported by this GPU', Timeout: 'Timed out', DeviceUnavailable: 'Device unavailable', PermissionDenied: 'No permission to use the device', NotUsed: 'Software only' }[outcome] || 'Test failed');
+                    const reason = outcome === 'Pass' ? '' : outcomeNotes[outcome || 'Untested'];
                     row(table, [mark(state), label, el('td', reason, 'secondaryText'), el('td')]);
                 }
 

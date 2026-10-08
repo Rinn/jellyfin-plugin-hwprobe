@@ -288,7 +288,7 @@ public sealed class SettingsAdvisorTests
     [InlineData(ProbeOutcome.NotUsed, ProbeOutcome.Pass, SettingState.TurnOn, "")]
     [InlineData(ProbeOutcome.Pass, ProbeOutcome.CodecUnsupported, SettingState.LeaveOff, "Not supported by this GPU")]
     [InlineData(ProbeOutcome.Pass, null, SettingState.NotTested, "Not tested")]
-    [InlineData(ProbeOutcome.NotUsed, ProbeOutcome.NotUsed, SettingState.LeaveOff, "Software only")]
+    [InlineData(ProbeOutcome.NotUsed, ProbeOutcome.NotUsed, SettingState.LeaveOff, "Software only in this ffmpeg")]
     public void RextNeedsEveryFormatJellyfinDecodesInHardware(ProbeOutcome yuv422, ProbeOutcome? yuv444, SettingState state, string note)
     {
         var decode = new Dictionary<string, ProbeOutcome>(_apolloLakeQsv.Decode) { ["hevc_rext_10bit"] = yuv422 };

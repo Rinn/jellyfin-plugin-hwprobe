@@ -23,8 +23,6 @@ public static class SettingsAdvisor
     private const string EnhancedNvdec = "EnableEnhancedNvdecDecoder";
     private const string NativeDecoder = "PreferSystemNativeHwDecoder";
     private const string NotUsed = "Not used with this backend";
-    private const string NotSupported = "Not supported by this GPU";
-    private const string NotTested = "Not tested";
     private const string MjpegLabel = "Enable hardware accelerated MJPEG encoding";
 
     // Every label the advisor gives, gathered from advice for a backend of each type with no results, plus the
@@ -76,6 +74,12 @@ public static class SettingsAdvisor
         ("HEVC RExt 8/10bit", "EnableDecodingColorDepth10HevcRext", ["hevc_rext_10bit", "hevc_rext_444_10bit"], _rextTypes),
         ("HEVC RExt 12bit", "EnableDecodingColorDepth12HevcRext", ["hevc_rext_12bit", "hevc_rext_422_12bit"], _rextTypes),
     ];
+
+    /// <summary>Gets the note for a codec the GPU doesn't support.</summary>
+    private static string NotSupported => Data.Catalog.Default.Outcomes[ProbeOutcome.CodecUnsupported];
+
+    /// <summary>Gets the note for an option nothing tested.</summary>
+    private static string NotTested => Data.Catalog.Default.Outcomes[ProbeOutcome.Untested];
 
     /// <summary>Returns the label for a setting HwProbe can change, e.g. <c>Hardware decoding: HEVC</c> for <c>HardwareDecodingCodecs:hevc</c>.</summary>
     /// <param name="setting">The setting key.</param>
@@ -287,21 +291,14 @@ public static class SettingsAdvisor
     /// <param name="setting">The option's key.</param>
     /// <param name="label">The option's label.</param>
     /// <param name="outcome">The test's outcome, or null when there was no test.</param>
-    /// <param name="notTested">The reason when nothing was tested.</param>
+    /// <param name="notTested">The reason when nothing was tested, or null for the catalog's.</param>
     /// <returns>The advice.</returns>
-    private static SettingAdvice Advise(string section, string setting, string label, ProbeOutcome? outcome, string notTested = NotTested) =>
+    private static SettingAdvice Advise(string section, string setting, string label, ProbeOutcome? outcome, string? notTested = null) =>
         outcome switch
         {
             ProbeOutcome.Pass => new(section, setting, label, SettingState.TurnOn, string.Empty),
-            null or ProbeOutcome.Skipped or ProbeOutcome.Untested => new(section, setting, label, SettingState.NotTested, notTested),
-            ProbeOutcome.CodecUnsupported => new(section, setting, label, SettingState.LeaveOff, NotSupported),
-            ProbeOutcome.NotUsed => new(section, setting, label, SettingState.LeaveOff, "Software only"),
-            ProbeOutcome.SoftwareFallback => new(section, setting, label, SettingState.LeaveOff, "Hardware not used"),
-            ProbeOutcome.FilterUnsupported => new(section, setting, label, SettingState.LeaveOff, "Filter missing from ffmpeg"),
-            ProbeOutcome.Timeout => new(section, setting, label, SettingState.LeaveOff, "Timed out"),
-            ProbeOutcome.DeviceUnavailable => new(section, setting, label, SettingState.LeaveOff, "Device unavailable"),
-            ProbeOutcome.PermissionDenied => new(section, setting, label, SettingState.LeaveOff, "No permission to use the device"),
-            _ => new(section, setting, label, SettingState.LeaveOff, "Test failed"),
+            null or ProbeOutcome.Skipped or ProbeOutcome.Untested => new(section, setting, label, SettingState.NotTested, notTested ?? NotTested),
+            { } failed => new(section, setting, label, SettingState.LeaveOff, Data.Catalog.Default.Outcomes[failed]),
         };
 
     /// <summary>Attaches a fix to advice that says to leave an option off.</summary>
