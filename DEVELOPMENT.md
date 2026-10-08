@@ -72,7 +72,7 @@ A user's zip (**Download diagnostics** on the Help tab, or `--diagnostics`) is l
 - `jellyfin.log` (plugin only): HwProbe's entries from Jellyfin's log files, and entries naming it such as the plugin manager loading it, with their stack traces; read when the zip is downloaded.
 - `test-results/*.json` and `measurements/*.json` (plugin only, when **Include test results and measurements** is ticked): the saved performance test runs and the measurements runs reuse, as saved.
 
-**Report on GitHub** (Help tab) and the link the CLI prints open the hardware-report form with the OS, versions, and working backends filled in (`IssueLink`; GitHub fills an issue form's fields from query parameters named after their ids). Zips aren't anonymised. Remove user names, host names, and home paths before committing anything from one.
+**Report on GitHub** (Help tab) and the link the CLI prints open the hardware-report form with the GPU, OS, versions, ffmpeg (and whether it's jellyfin-ffmpeg), and working backends filled in (`IssueLink`; GitHub fills an issue form's fields from query parameters named after their ids). The GPU comes from the report's `gpus`: the Direct3D adapter's name on Windows, and on Linux the render node's PCI IDs and VA-API driver line, whose Mesa form names the model. Zips aren't anonymised. Remove user names, host names, and home paths before committing anything from one.
 
 ## Releasing
 

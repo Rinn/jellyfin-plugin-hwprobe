@@ -54,8 +54,29 @@ public sealed class DiagnosticsBundleTests
 
         Assert.StartsWith(IssueLink.Form + "&os=", link, StringComparison.Ordinal);
         Assert.Contains("&jellyfin=12.1.0", link, StringComparison.Ordinal);
-        Assert.Contains("&ffmpeg=8.1.2%20%28%2Fusr%2Flib%2Fjellyfin-ffmpeg%2Fffmpeg%29", link, StringComparison.Ordinal);
+        Assert.Contains("&ffmpeg=8.1.2%2C%20jellyfin-ffmpeg", link, StringComparison.Ordinal);
+        Assert.Contains("&ffmpeg=9.0.2%2C%20not%20jellyfin-ffmpeg", IssueLink.For(Sample() with { Ffmpeg = new FfmpegSummary("/opt/homebrew/bin/ffmpeg", "SystemPath", "9.0.2", IsJellyfinBuild: false) }, null), StringComparison.Ordinal);
         Assert.DoesNotContain("&jellyfin=", IssueLink.For(Sample(), null), StringComparison.Ordinal);
+        Assert.DoesNotContain("&gpu=", link, StringComparison.Ordinal);
+    }
+
+    /// <summary>The GPU field names each GPU as the system does: the Windows adapter's name, the model Mesa's driver line gives, else the maker, PCI IDs, and driver line; the software adapter is left out.</summary>
+    /// <param name="device">The device.</param>
+    /// <param name="vendor">Its PCI vendor ID.</param>
+    /// <param name="id">Its PCI device ID.</param>
+    /// <param name="name">Its name or driver line.</param>
+    /// <param name="expected">The field, or null when it isn't filled.</param>
+    [Theory]
+    [InlineData("dx11:0", "0x10de", "0x2c02", "NVIDIA GeForce RTX 5080", "NVIDIA GeForce RTX 5080")]
+    [InlineData("/dev/dri/renderD128", "0x1002", "0x7480", "Mesa Gallium driver 24.0.5 for AMD Radeon RX 7600 (radeonsi, navi33, LLVM 17.0.6, DRM 3.57, 6.8.0-45-generic)", "AMD Radeon RX 7600 (1002:7480)")]
+    [InlineData("/dev/dri/renderD128", "0x8086", "0x5a85", "Intel iHD driver for Intel(R) Gen Graphics - 24.1.0 (1b5e662)", "Intel 8086:5a85, Intel iHD driver for Intel(R) Gen Graphics - 24.1.0")]
+    [InlineData("/dev/dri/renderD129", "0x10de", "0x2c02", null, "NVIDIA 10de:2c02")]
+    [InlineData("dx11:2", "0x1414", "0x008c", "Microsoft Basic Render Driver", null)]
+    public void IssueLinkNamesTheGpu(string device, string vendor, string id, string? name, string? expected)
+    {
+        var link = IssueLink.For(Sample() with { Gpus = [new GpuInfo(device, vendor, id, name)] }, null);
+
+        Assert.Equal(expected is null ? null : "&gpu=" + Uri.EscapeDataString(expected), System.Text.RegularExpressions.Regex.Match(link, "&gpu=[^&]*") is { Success: true } m ? m.Value : null);
     }
 
     /// <summary>The report inside a bundle reads back; anything that isn't a bundle reads as null.</summary>
