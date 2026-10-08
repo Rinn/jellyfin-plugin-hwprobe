@@ -1870,7 +1870,7 @@
                             const order = r => group.Rows.findIndex(x => x.Label === r.text);
                             return suggestionTable(group.Label, [...rows.values()].sort((a, b) => order(a) - order(b)), null, [
                                 why ? reasonFor(why, why.Row, why.Compared.map(c => c.Row)) : '',
-                                ...group.Rows.filter(x => x.Note && rows.has(x.Label)).map(x => x.Note),
+                                ...new Set(group.Rows.filter(x => x.Note && rows.has(x.Label)).map(x => x.Note)),
                                 members.some(m => m.TestVideosOnly) ? testVideos : '',
                             ]);
                         };

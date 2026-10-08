@@ -809,16 +809,16 @@ defaultMeasureResources: true
 # Settings that together pick one thing, suggested as one table with a row per choice the runs used, in this order; a run is the first row whose backends and conditions it meets.
 # applies: settings Apply on the row also sets, beyond its conditions. note: a line under the table when the row is in it.
 # Tone mapping: VPP on Intel and VideoToolbox on Apple take precedence over Enable Tone mapping when on, and work with it off; it tone maps the HDR formats they don't (EncodingHelper IsIntelVppTonemapAvailable, IsVideoToolboxTonemapAvailable, IsHwTonemapAvailable, v12.2).
-# The notes are jellyfin-web's help for each switch (en-us.json, v12.2).
+# The notes are jellyfin-web's help for each setting (en-us.json, v12.2); its deinterlacing method help is left out, as it says the method only applies to software, but CUDA, OpenCL, and VideoToolbox use it too (EncodingHelper.GetHwDeinterlaceFilter).
 settingGroups:
   - key: deinterlace
     label: Deinterlacing
     settings: [DeinterlaceMethod, DoubleRate]
     rows:
       - { label: "Yet Another DeInterlacing Filter (YADIF), single rate", describes: DeinterlaceMethod, when: { DeinterlaceMethod: yadif, DoubleRate: "false" } }
-      - { label: "Yet Another DeInterlacing Filter (YADIF), double rate", describes: DoubleRate, when: { DeinterlaceMethod: yadif, DoubleRate: "true" } }
+      - { label: "Yet Another DeInterlacing Filter (YADIF), double rate", describes: DoubleRate, when: { DeinterlaceMethod: yadif, DoubleRate: "true" }, note: "Double rate: This setting uses the field rate when deinterlacing, often referred to as bob deinterlacing, which doubles the frame rate of the video to provide full motion like what you would see when viewing interlaced video on a TV." }
       - { label: "Bob Weaver DeInterlacing Filter (BWDIF), single rate", describes: DeinterlaceMethod, when: { DeinterlaceMethod: bwdif, DoubleRate: "false" } }
-      - { label: "Bob Weaver DeInterlacing Filter (BWDIF), double rate", describes: DoubleRate, when: { DeinterlaceMethod: bwdif, DoubleRate: "true" } }
+      - { label: "Bob Weaver DeInterlacing Filter (BWDIF), double rate", describes: DoubleRate, when: { DeinterlaceMethod: bwdif, DoubleRate: "true" }, note: "Double rate: This setting uses the field rate when deinterlacing, often referred to as bob deinterlacing, which doubles the frame rate of the video to provide full motion like what you would see when viewing interlaced video on a TV." }
   - key: tonemap
     label: Tone mapping
     settings: [Tonemap, VppTonemap, VideoToolboxTonemap]
