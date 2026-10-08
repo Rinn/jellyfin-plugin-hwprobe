@@ -12,9 +12,12 @@ public sealed class CatalogGroupRow
     /// <summary>Gets the option whose description the row shows on hover, or null.</summary>
     public string? Describes { get; init; }
 
-    /// <summary>Gets a warning shown under the table when the row is in it, or null.</summary>
-    public string? Caveat { get; init; }
+    /// <summary>Gets a line shown under the table when the row is in it, or null.</summary>
+    public string? Note { get; init; }
 
     /// <summary>Gets the values the run's settings must have, by option key, or null for any.</summary>
     public IReadOnlyDictionary<string, string>? When { get; init; }
+
+    /// <summary>Gets values Apply on the row also sets, beyond its conditions, by option key, or null.</summary>
+    public IReadOnlyDictionary<string, string>? Applies { get; init; }
 }

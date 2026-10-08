@@ -38,29 +38,32 @@ public sealed class SpeedSuitesTests
     [Fact]
     public void AddsTheServersValue()
     {
-        var presets = SpeedSuites.Steps(Suite("presets"), 8, new SpeedSettings { EncoderPreset = "veryfast" });
         var threads = SpeedSuites.Steps(Suite("threads"), 8, new SpeedSettings { EncodingThreadCount = 6 });
 
-        var presetChoices = Option("EncoderPreset").Choices;
-        Assert.NotNull(presetChoices);
-        var veryfast = presetChoices.Single(c => c.Key == "veryfast").Label;
-
-        Assert.Equal(($"{veryfast} ({Catalog.Default.Labels["ServerSettingAfter"]})", "veryfast"), (presets[^1].Label, presets[^1].Options["EncoderPreset"]));
-        Assert.Equal(Suite("presets").Steps.Count + 1, presets.Count);
-        Assert.Equal("6", threads[^1].Options["EncodingThreadCount"]);
-        Assert.Equal(Suite("presets").Steps.Count, SpeedSuites.Steps(Suite("presets"), 8, new SpeedSettings { EncoderPreset = "medium" }).Count);
+        Assert.Equal(($"6 ({Catalog.Default.Labels["ServerSettingAfter"]})", "6"), (threads[^1].Label, threads[^1].Options["EncodingThreadCount"]));
         Assert.Equal(Suite("lowpower").Steps.Count, SpeedSuites.Steps(Suite("lowpower"), 8, new SpeedSettings()).Count);
+    }
+
+    /// <summary>The encoder presets suite has every preset in the dropdown's order, so it never adds the server's.</summary>
+    [Fact]
+    public void PresetsSuiteHasEveryPreset()
+    {
+        var choices = Option("EncoderPreset").Choices;
+        Assert.NotNull(choices);
+
+        Assert.Equal(choices.Select(c => c.Key), Suite("presets").Steps.Select(s => s.Options["EncoderPreset"]));
+        Assert.All(choices, c => Assert.Equal(choices.Count, SpeedSuites.Steps(Suite("presets"), 8, new SpeedSettings { EncoderPreset = c.Key }).Count));
     }
 
     /// <summary>Every video suite but VBR audio copies the audio, so only video is measured, including the server's added step; VBR transcodes it.</summary>
     [Fact]
     public void SuitesCopyAudioExceptVbr()
     {
-        var steps = Catalog.Default.Suites.Where(s => s.Key != "decode").ToDictionary(s => s.Key, s => SpeedSuites.Steps(s, 8, new SpeedSettings { EncoderPreset = "veryfast" }));
+        var steps = Catalog.Default.Suites.Where(s => s.Key != "decode").ToDictionary(s => s.Key, s => SpeedSuites.Steps(s, 8, new SpeedSettings { EncodingThreadCount = 6 }));
 
         Assert.All(steps.Where(s => s.Key is not ("audio" or "audio-formats")).SelectMany(s => s.Value), step => Assert.Equal("copy", step.Options["Audio"]));
         Assert.All(steps["audio"], step => Assert.Equal("transcode", step.Options["Audio"]));
-        Assert.Equal(("veryfast", "copy"), (steps["presets"][^1].Options["EncoderPreset"], steps["presets"][^1].Options["Audio"]));
+        Assert.Equal(("6", "copy"), (steps["threads"][^1].Options["EncodingThreadCount"], steps["threads"][^1].Options["Audio"]));
     }
 
     /// <summary>The audio suite is one fast step in software: every audio input with every audio output, and no video.</summary>
@@ -126,10 +129,11 @@ public sealed class SpeedSuitesTests
     [Fact]
     public void BackendsFollowTheSuite()
     {
-        Assert.Equal([HwType.qsv, HwType.none], SpeedSuites.Backends(Suite("presets"), HwType.qsv));
+        Assert.Equal([HwType.qsv, HwType.none], SpeedSuites.Backends(Suite("tonemap"), HwType.qsv));
+        Assert.Equal([HwType.qsv], SpeedSuites.Backends(Suite("presets"), HwType.qsv));
         Assert.Equal([HwType.none], SpeedSuites.Backends(Suite("presets"), HwType.none));
         Assert.Equal([HwType.none], SpeedSuites.Backends(Suite("threads"), HwType.nvenc));
-        Assert.Empty(SpeedSuites.Backends(Suite("lowpower"), HwType.none));
+        Assert.False(SpeedSuites.Offered(Suite("lowpower"), Report(ProbeOutcome.Pass), HwType.none));
     }
 
     /// <summary>The low-power suite is offered only on QSV with a low-power encoder that passed its probe.</summary>

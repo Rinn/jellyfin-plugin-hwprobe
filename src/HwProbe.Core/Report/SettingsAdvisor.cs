@@ -23,9 +23,8 @@ public static class SettingsAdvisor
     private const string EnhancedNvdec = "EnableEnhancedNvdecDecoder";
     private const string NativeDecoder = "PreferSystemNativeHwDecoder";
     private const string NotUsed = "Not used with this backend";
-    private const string NotSupported = "Not supported by this GPU";
-    private const string NotTested = "Not tested";
     private const string MjpegLabel = "Enable hardware accelerated MJPEG encoding";
+    private const string BwdifLabel = "Deinterlacing method: Bob Weaver DeInterlacing Filter (BWDIF)";
 
     // Every label the advisor gives, gathered from advice for a backend of each type with no results, plus the
     // backend and device settings that "Use this backend" changes.
@@ -76,6 +75,12 @@ public static class SettingsAdvisor
         ("HEVC RExt 8/10bit", "EnableDecodingColorDepth10HevcRext", ["hevc_rext_10bit", "hevc_rext_444_10bit"], _rextTypes),
         ("HEVC RExt 12bit", "EnableDecodingColorDepth12HevcRext", ["hevc_rext_12bit", "hevc_rext_422_12bit"], _rextTypes),
     ];
+
+    /// <summary>Gets the note for a codec the GPU doesn't support.</summary>
+    private static string NotSupported => Data.Catalog.Default.Outcomes[ProbeOutcome.CodecUnsupported];
+
+    /// <summary>Gets the note for an option nothing tested.</summary>
+    private static string NotTested => Data.Catalog.Default.Outcomes[ProbeOutcome.Untested];
 
     /// <summary>Returns the label for a setting HwProbe can change, e.g. <c>Hardware decoding: HEVC</c> for <c>HardwareDecodingCodecs:hevc</c>.</summary>
     /// <param name="setting">The setting key.</param>
@@ -167,7 +172,7 @@ public static class SettingsAdvisor
         var bwdif = backend.Deinterlace.FirstOrDefault(c => c.Key.EndsWith("_bwdif", StringComparison.Ordinal));
         if (bwdif.Key is not null)
         {
-            advice.Add(Advise(DeinterlaceSection, "DeinterlaceMethod:bwdif", "Deinterlacing method: BWDIF", bwdif.Value));
+            advice.Add(Advise(DeinterlaceSection, "DeinterlaceMethod:bwdif", BwdifLabel, bwdif.Value));
         }
 
         advice.Add(SubtitleExtraction());
@@ -187,7 +192,7 @@ public static class SettingsAdvisor
         [
             new(FormatSection, "AllowHevcEncoding", "Allow encoding in HEVC format", SettingState.LeaveOff, Slow),
             new(FormatSection, "AllowAv1Encoding", "Allow encoding in AV1 format", SettingState.LeaveOff, Slow),
-            NoGpu(Advise(DeinterlaceSection, "DeinterlaceMethod:bwdif", "Deinterlacing method: BWDIF", Cell(backend.Deinterlace, "bwdif"))),
+            NoGpu(Advise(DeinterlaceSection, "DeinterlaceMethod:bwdif", BwdifLabel, Cell(backend.Deinterlace, "bwdif"))),
             SubtitleExtraction(),
         ];
         advice.AddRange(Trickplay(backend, context, advice));
@@ -200,9 +205,9 @@ public static class SettingsAdvisor
     private static SettingAdvice NoGpu(SettingAdvice advice) => advice.Note == NotSupported ? advice with { Note = "Test failed" } : advice;
 
     /// <summary>Advice for "Allow subtitle extraction on the fly", which applies with every backend.</summary>
-    /// <returns>Turn on: text subtitles are then sent to the client instead of burned into the video, which costs a transcode.</returns>
+    /// <returns>Turn on: text subtitles are then sent to the client instead of burned into the video, which costs a transcode; the note is jellyfin-web's (AllowOnTheFlySubtitleExtractionHelp).</returns>
     private static SettingAdvice SubtitleExtraction() =>
-        new(SubtitlesSection, "EnableSubtitleExtraction", "Allow subtitle extraction on the fly", SettingState.TurnOn, "Avoids burning in text subtitles");
+        new(SubtitlesSection, "EnableSubtitleExtraction", "Allow subtitle extraction on the fly", SettingState.TurnOn, "Helps prevent video transcoding");
 
     /// <summary>Advice for the Trickplay page's hardware options, which reuse the Transcoding page's settings.</summary>
     /// <param name="backend">The backend's results.</param>
@@ -233,15 +238,8 @@ public static class SettingsAdvisor
         // Key-frame-only extraction quietly drops to software decoding on backends that can't do it.
         const string KeyFrameSetting = "Trickplay:EnableKeyFrameOnlyExtraction";
         const string KeyFrameLabel = "Only generate images from key frames";
-        const string SoftwareNote = "Turns off hardware decoding with this backend";
-        var decoder = type switch
-        {
-            HwType.qsv => NativeDecoder,
-            HwType.nvenc => EnhancedNvdec,
-            _ => null,
-        };
-        if ((decoder is not null && transcoding.Find(a => a.Setting == decoder)?.State != SettingState.TurnOn)
-            || (type == HwType.amf && context.Os != HostOs.Windows))
+        const string SoftwareNote = "Uses the software decoder with this backend";
+        if (type == HwType.amf && context.Os != HostOs.Windows)
         {
             yield return new(TrickplaySection, KeyFrameSetting, KeyFrameLabel, SettingState.LeaveOff, SoftwareNote);
             yield break;
@@ -251,7 +249,7 @@ public static class SettingsAdvisor
         var keyFrames = Advise(TrickplaySection, KeyFrameSetting, KeyFrameLabel, Cell(backend.Decode, "h264_keyframes"));
         keyFrames = type == HwType.none ? NoGpu(keyFrames) : keyFrames;
         yield return keyFrames.State == SettingState.TurnOn
-            ? keyFrames with { State = SettingState.Optional, Note = "Faster, but less accurate timing" }
+            ? keyFrames with { State = SettingState.Optional, Note = "Significantly faster, less accurate timing" }
             : keyFrames;
     }
 
@@ -287,21 +285,14 @@ public static class SettingsAdvisor
     /// <param name="setting">The option's key.</param>
     /// <param name="label">The option's label.</param>
     /// <param name="outcome">The test's outcome, or null when there was no test.</param>
-    /// <param name="notTested">The reason when nothing was tested.</param>
+    /// <param name="notTested">The reason when nothing was tested, or null for the catalog's.</param>
     /// <returns>The advice.</returns>
-    private static SettingAdvice Advise(string section, string setting, string label, ProbeOutcome? outcome, string notTested = NotTested) =>
+    private static SettingAdvice Advise(string section, string setting, string label, ProbeOutcome? outcome, string? notTested = null) =>
         outcome switch
         {
             ProbeOutcome.Pass => new(section, setting, label, SettingState.TurnOn, string.Empty),
-            null or ProbeOutcome.Skipped or ProbeOutcome.Untested => new(section, setting, label, SettingState.NotTested, notTested),
-            ProbeOutcome.CodecUnsupported => new(section, setting, label, SettingState.LeaveOff, NotSupported),
-            ProbeOutcome.NotUsed => new(section, setting, label, SettingState.LeaveOff, "Software only"),
-            ProbeOutcome.SoftwareFallback => new(section, setting, label, SettingState.LeaveOff, "Hardware not used"),
-            ProbeOutcome.FilterUnsupported => new(section, setting, label, SettingState.LeaveOff, "Filter missing from ffmpeg"),
-            ProbeOutcome.Timeout => new(section, setting, label, SettingState.LeaveOff, "Timed out"),
-            ProbeOutcome.DeviceUnavailable => new(section, setting, label, SettingState.LeaveOff, "Device unavailable"),
-            ProbeOutcome.PermissionDenied => new(section, setting, label, SettingState.LeaveOff, "No permission to use the device"),
-            _ => new(section, setting, label, SettingState.LeaveOff, "Test failed"),
+            null or ProbeOutcome.Skipped or ProbeOutcome.Untested => new(section, setting, label, SettingState.NotTested, notTested ?? NotTested),
+            { } failed => new(section, setting, label, SettingState.LeaveOff, Data.Catalog.Default.Outcomes[failed]),
         };
 
     /// <summary>Attaches a fix to advice that says to leave an option off.</summary>
@@ -327,7 +318,8 @@ public static class SettingsAdvisor
     /// <param name="label">The option's label.</param>
     /// <param name="suffix">The suffix of the decode cells run with the option off.</param>
     /// <param name="other">Names the decoders used with the option off.</param>
-    /// <returns>Leave off when some codec decodes only with the option off.</returns>
+    /// <returns>Turn on, naming any codec that decodes only with the option off.</returns>
+    /// <remarks>On is Jellyfin's default and required for Dolby Vision tone mapping (EncodingOptions, v12.2; Jellyfin's Intel guide).</remarks>
     private static SettingAdvice DecoderChoice(BackendReport backend, string setting, string label, string suffix, string other)
     {
         var pairs = backend.Decode.Keys
@@ -341,11 +333,11 @@ public static class SettingsAdvisor
 
         var onlyOff = pairs
             .Where(p => backend.Decode[p.Off] == ProbeOutcome.Pass && Cell(backend.Decode, p.On) != ProbeOutcome.Pass)
+            .OrderBy(p => Array.FindIndex(_codecs, c => c.Codec == p.On) is var i and >= 0 ? i : int.MaxValue)
             .Select(p => CellLabel(p.On))
             .ToList();
-        return onlyOff.Count == 0
-            ? new(DecodingSection, setting, label, SettingState.TurnOn, string.Empty)
-            : new(DecodingSection, setting, label, SettingState.LeaveOff, $"{other} decoders needed for " + string.Join(", ", onlyOff));
+        var codecs = onlyOff.Count > 2 ? string.Join(", ", onlyOff.Take(onlyOff.Count - 1)) + ", and " + onlyOff[^1] : string.Join(" and ", onlyOff);
+        return new(DecodingSection, setting, label, SettingState.TurnOn, onlyOff.Count == 0 ? string.Empty : $"{codecs} {(onlyOff.Count == 1 ? "decodes" : "decode")} in hardware only with {other} decoders");
     }
 
     /// <summary>Advice for a tone-mapping option, from any tone-map test except VPP.</summary>
@@ -359,7 +351,7 @@ public static class SettingsAdvisor
         ProbeOutcome? outcome = cells.Count == 0 ? null : cells.Contains(ProbeOutcome.Pass) ? ProbeOutcome.Pass : cells[0];
 
         // The engine only tone-maps after a 10-bit decode passes.
-        var notTested = Cell(backend.Decode, "hevc_10bit") == ProbeOutcome.Pass ? "Not used with this setup" : "Requires HEVC 10bit decoding";
+        var notTested = Cell(backend.Decode, "hevc_10bit") == ProbeOutcome.Pass ? NotTested : "Requires HEVC 10bit decoding";
         return Advise(TonemapSection, setting, label, outcome, notTested);
     }
 

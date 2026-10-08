@@ -24,11 +24,11 @@ public sealed class CatalogSuite
     /// <summary>Gets the accuracy its steps measure at, or null for the catalog's <c>suiteMethod</c>.</summary>
     public Speed.SpeedMethod? Method { get; init; }
 
-    /// <summary>Gets which backends it runs on: <c>configuredAndSoftware</c>, <c>configured</c>, or <c>software</c>.</summary>
+    /// <summary>Gets which backends it runs on: <c>configuredAndSoftware</c>, <c>configured</c> (software when the server uses it), or <c>software</c>.</summary>
     public string Backends { get; init; } = "configuredAndSoftware";
 
-    /// <summary>Gets advice shown with the suite and its results, for what no setting comparison can suggest, or null.</summary>
-    public string? Note { get; init; }
+    /// <summary>Gets advice shown with the suite and its results, a line each, for what no setting comparison can suggest, or null.</summary>
+    public IReadOnlyList<string>? Notes { get; init; }
 
     /// <summary>Gets what the server needs for the suite to be offered, e.g. <c>lowPower</c>, or null.</summary>
     public string? Requires { get; init; }

@@ -97,6 +97,9 @@ public sealed class CatalogTests
     [InlineData("testDelay: 1\n", "testDelay: -1\n")]
     [InlineData("  - { key: AudioVbr,", "  - { key: AudioVbr, label: Enable VBR audio encoding, server: EnableAudioVbr, switch: true, qualityOrder: [\"true\", \"false\"], caveat: \"In some rare cases VBR may cause buffering and compatibility issues.\", compatibleValue: \"false\", description: \"Variable bitrate offers better quality to average bitrate ratio, but in some rare cases may cause buffering and compatibility issues.\" }\n  - { key: AudioVbr,")]
     [InlineData("decode: { key: decode, label: Decode only }\n", "")]
+    [InlineData("when: { VppTonemap: \"true\" }, applies: { Tonemap: \"true\" }", "when: { VppTonemap: \"true\" }, applies: { VppTonemap: \"true\" }")]
+    [InlineData("when: { VppTonemap: \"true\" }, applies: { Tonemap: \"true\" }", "when: { VppTonemap: \"true\" }, applies: { Bogus: \"true\" }")]
+    [InlineData("  Timeout: Timed out\n", "")]
     [InlineData("testAudio: { file: speed_audio_51.mka, codec: aac, encoder: aac, arguments: \"{quiet} -f lavfi -i sine=frequency=440:sample_rate=48000 -t 10 -ac 6 -c:a aac -b:a 384k\" }\n", "")]
     public void BrokenFileIsRefused(string find, string replace)
     {

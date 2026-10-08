@@ -75,11 +75,26 @@ public sealed class SpeedAdvisorTests
         var mixed = Run(new SpeedSettings(), Used(Result(HwType.vaapi, Film, 100), 8, 400_000_000), Used(Result(HwType.nvenc, Film, 100 * (1 + (_advice.Noise / 2))), 4, 800_000_000) with { Device = string.Empty });
         Assert.DoesNotContain(SpeedAdvisor.Advise(mixed, [mixed], HwType.vaapi, "/dev/dri/renderD128", new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.FastestBackend);
 
-        var auto = Run(new SpeedSettings(), Used(Result(HwType.none, Film, 100), 40, 600_000_000) with { Command = "auto" });
-        var four = Run(new SpeedSettings { EncodingThreadCount = 4 }, Used(Result(HwType.none, Film, 100 * (1 - (_advice.Noise / 2))), 40 * (1 - (_advice.ResourceMargin * 2)), (long)(600_000_000 * (1 - (_advice.ResourceMargin * 1.5)))) with { Command = "four" });
-        var efficient = Assert.Single(SpeedAdvisor.Advise(four, [auto, four], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.EfficientSetting);
-        Assert.Equal(("EncodingThreadCount", "4"), (efficient.Setting, efficient.Value));
+        var on = Run(new SpeedSettings(), Used(Result(HwType.none, Film, 100), 40, 600_000_000) with { Command = "on" });
+        var off = Run(new SpeedSettings { EnhancedNvdec = false }, Used(Result(HwType.none, Film, 100 * (1 - (_advice.Noise / 2))), 40 * (1 - (_advice.ResourceMargin * 2)), (long)(600_000_000 * (1 - (_advice.ResourceMargin * 1.5)))) with { Command = "off" });
+        var efficient = Assert.Single(SpeedAdvisor.Advise(off, [on, off], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.EfficientSetting);
+        Assert.Equal(("EnhancedNvdec", "false"), (efficient.Setting, efficient.Value));
         Assert.Equal(["Cpu", "Memory"], efficient.Savings.Select(x => x.Resource));
+    }
+
+    /// <summary>The thread count recommends Auto whenever it was measured, even beside a limit that measured as fast with less CPU.</summary>
+    [Fact]
+    public void RecommendsAutoThreads()
+    {
+        const string Film = "live-action|h264-8mbps";
+        static SpeedResult Used(SpeedResult r, double cpuSeconds) => r with { Resources = new Core.Resources.ResourceUsage(10, cpuSeconds, 400_000_000) };
+        var auto = Run(new SpeedSettings(), Used(Result(HwType.none, Film, 100), 40) with { Command = "auto" });
+        var four = Run(new SpeedSettings { EncodingThreadCount = 4 }, Used(Result(HwType.none, Film, 100), 20) with { Command = "four" });
+
+        var threads = Assert.Single(SpeedAdvisor.Advise(four, [auto, four], HwType.none, string.Empty, new SpeedSettings { EncodingThreadCount = 4 }), s => s.Setting == "EncodingThreadCount");
+
+        Assert.Equal((SpeedSuggestionKind.RecommendedValue, "-1"), (threads.Kind, threads.Value));
+        Assert.Equal("4", Assert.Single(threads.Compared).Value);
     }
 
     /// <summary>VBR audio is suggested as the better-quality value when it still keeps up, beside VBR off, which avoids its caveat.</summary>
@@ -158,13 +173,14 @@ public sealed class SpeedAdvisorTests
         Assert.Equal(["drama|hevc-8mbps"], Assert.Single(advice, s => s.Setting == "QsvLowPowerHevc" && s.Value == "true").Outputs);
     }
 
-    /// <summary>Switching to a group's choice sets its conditions and turns off a method that would still take precedence.</summary>
+    /// <summary>Switching to a group's choice sets its conditions and the values it applies, and turns off a method that would still take precedence.</summary>
     [Fact]
     public void WorksOutTheChangesForAGroupChoice()
     {
         var server = new SpeedSettings { Tonemap = true, VideoToolboxTonemap = true };
 
-        Assert.Equal([("VideoToolboxTonemap", "false")], SpeedAdvisor.GroupRowChanges("tonemap", "General", server, HwType.videotoolbox));
+        Assert.Equal([("VideoToolboxTonemap", "false")], SpeedAdvisor.GroupRowChanges("tonemap", "Tone mapping", server, HwType.videotoolbox));
+        Assert.Equal([("VppTonemap", "true"), ("Tonemap", "true")], SpeedAdvisor.GroupRowChanges("tonemap", "VPP", new SpeedSettings { Tonemap = false }, HwType.qsv));
         Assert.Equal([("Tonemap", "false"), ("VideoToolboxTonemap", "false")], SpeedAdvisor.GroupRowChanges("tonemap", "Off", server, HwType.videotoolbox));
         Assert.Null(SpeedAdvisor.GroupRowChanges("tonemap", "VPP", server, HwType.videotoolbox));
         Assert.Equal([("DeinterlaceMethod", "yadif"), ("DoubleRate", "false")], SpeedAdvisor.GroupRowChanges("deinterlace", "Yet Another DeInterlacing Filter (YADIF), single rate", new SpeedSettings { Bwdif = true, DoubleRate = true }, HwType.none));
@@ -213,21 +229,21 @@ public sealed class SpeedAdvisorTests
         var advice = SpeedAdvisor.Advise(general, [general, vpp, off], HwType.vaapi, "/dev/dri/renderD128", new SpeedSettings { Tonemap = true });
 
         var method = Assert.Single(advice, s => s.Setting == "VppTonemap");
-        Assert.Equal(("tonemap", "General", "VPP"), (method.Group, method.Row, Assert.Single(method.Compared).Row));
+        Assert.Equal(("tonemap", "Tone mapping", "VPP"), (method.Group, method.Row, Assert.Single(method.Compared).Row));
         Assert.Equal("Off", Assert.Single(Assert.Single(advice, s => s.Setting == "Tonemap").Compared).Row);
     }
 
-    /// <summary>When higher H.264 qualities fall behind, the highest that keeps up is suggested as the Internet streaming bitrate limit, beside no limit at the slowest speed.</summary>
+    /// <summary>When higher H.264 qualities fall behind, no Internet streaming bitrate limit is suggested at the slowest speed, beside the highest quality that keeps up as the limit.</summary>
     [Fact]
     public void SuggestsABitrateLimit()
     {
         var run = Run(new SpeedSettings(), Result(HwType.none, "drama|h264-40mbps", 20), Result(HwType.none, "drama|h264-20mbps", 30), Result(HwType.none, "drama|h264-8mbps", 60));
         var fine = Run(new SpeedSettings(), Result(HwType.none, "drama|h264-40mbps", 30), Result(HwType.none, "drama|h264-8mbps", 60));
 
-        var limit = Assert.Single(SpeedAdvisor.Advise(run, [run], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.BitrateLimit);
-        Assert.Equal((SpeedAdvisor.BitrateLimitKey, "20000000", true), (limit.Setting, limit.Value, limit.LowerQuality));
-        var none = Assert.Single(SpeedAdvisor.Advise(run, [run], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.Compatible);
+        var none = Assert.Single(SpeedAdvisor.Advise(run, [run], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.BitrateLimit);
         Assert.Equal((SpeedAdvisor.BitrateLimitKey, "0", false, 20.0 / 25), (none.Setting, none.Value, none.LowerQuality, none.Speed));
+        var limit = Assert.Single(SpeedAdvisor.Advise(run, [run], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.Compatible);
+        Assert.Equal((SpeedAdvisor.BitrateLimitKey, "20000000", true), (limit.Setting, limit.Value, limit.LowerQuality));
         Assert.DoesNotContain(SpeedAdvisor.Advise(fine, [fine], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.BitrateLimit);
     }
 
@@ -275,7 +291,7 @@ public sealed class SpeedAdvisorTests
         Assert.Equal([("veryfast", true, true), ("fast", false, true)], quality.Compared.Select(c => (c.Value, c.Current, c.LowerQuality == true)));
     }
 
-    /// <summary>Auto is the encoding preset recommended whenever it was measured, with every other preset compared listed beside it: on the Intel NAS, faster measured faster than Auto on HEVC but slower on H.264.</summary>
+    /// <summary>Auto is the encoding preset recommended whenever it was measured, with every other preset compared listed beside it and the slowest that keeps up named: on the Intel NAS, faster measured faster than Auto on HEVC but slower on H.264.</summary>
     [Fact]
     public void AlwaysRecommendsAuto()
     {
@@ -291,18 +307,34 @@ public sealed class SpeedAdvisorTests
         var onFaster = SpeedAdvisor.Advise(runs[0], runs, HwType.qsv, "/dev/dri/renderD128", new SpeedSettings { EncoderPreset = "faster" });
 
         var preset = Assert.Single(onAuto, s => s.Setting == "EncoderPreset");
-        Assert.Equal((SpeedSuggestionKind.RecommendedValue, "auto", true), (preset.Kind, preset.Value, preset.Current));
+        Assert.Equal((SpeedSuggestionKind.RecommendedValue, "auto", true, "faster"), (preset.Kind, preset.Value, preset.Current, preset.BestQuality));
         Assert.Equal(["fast", "faster", "medium", "slow"], preset.Compared.Select(c => c.Value).Order(StringComparer.Ordinal));
         Assert.All(preset.Compared, c => Assert.Equal([H264, Hevc], c.Speeds.Select(o => o.Label)));
         Assert.Equal((4.47, 5), (Math.Round(preset.Compared.Single(c => c.Value == "faster").Speeds[1].Speed, 2), preset.Compared.Single(c => c.Value == "faster").Speeds[1].Streams));
 
         var switchBack = Assert.Single(onFaster, s => s.Setting == "EncoderPreset");
-        Assert.Equal((SpeedSuggestionKind.RecommendedValue, "auto", false), (switchBack.Kind, switchBack.Value, switchBack.Current));
+        Assert.Equal((SpeedSuggestionKind.RecommendedValue, "auto", false, "faster"), (switchBack.Kind, switchBack.Value, switchBack.Current, switchBack.BestQuality));
         Assert.True(switchBack.Compared.Single(c => c.Value == "faster").Current);
 
         // VAAPI leaves Auto to the driver, so no preset is better or worse than it there.
         var onVaapi = Assert.Single(SpeedAdvisor.Advise(runs[0], runs, HwType.vaapi, "/dev/dri/renderD128", new SpeedSettings()), s => s.Setting == "EncoderPreset");
         Assert.All(onVaapi.Compared, c => Assert.Null(c.LowerQuality));
+        Assert.Null(onVaapi.BestQuality);
+    }
+
+    /// <summary>Beside Auto, the slowest preset named keeps the headroom on real video and the concurrent streams; none is named when no better preset does.</summary>
+    [Fact]
+    public void NamesTheSlowestPresetThatKeepsUp()
+    {
+        const string Film = "live-action|h264-8mbps";
+        static SpeedReport Preset(string preset, double fps, int streams) => Run(new SpeedSettings { EncoderPreset = preset }, Result(HwType.none, Film, fps) with { Command = preset, Streams = streams });
+        SpeedReport[] lost = [Preset("auto", 200, 10), Preset("fast", 75, 3), Preset("medium", 30, 2)];
+        SpeedReport[] kept = [Preset("auto", 200, 10), Preset("fast", 75, 6), Preset("medium", 30, 2)];
+
+        string? Best(SpeedReport[] runs) => Assert.Single(SpeedAdvisor.Advise(runs[0], runs, HwType.none, string.Empty, new SpeedSettings()), s => s.Setting == "EncoderPreset").BestQuality;
+
+        Assert.Null(Best(lost));
+        Assert.Equal("fast", Best(kept));
     }
 
     /// <summary>A value only as fast as the server's within noise isn't recommended for using less when the server's value measured faster than it by more.</summary>
@@ -358,6 +390,7 @@ public sealed class SpeedAdvisorTests
         var behind = Assert.Single(SpeedAdvisor.Advise(run, [run], HwType.qsv, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.FallsBehind);
 
         Assert.Equal(["pattern|h264-8mbps", "pattern|vp9-8mbps"], behind.Outputs);
+        Assert.Equal([("pattern|h264-8mbps", 20.0 / 25), ("pattern|vp9-8mbps", 20.0 / 25)], behind.Speeds.Select(o => (o.Label, o.Speed)));
         Assert.True(behind.TestVideosOnly);
     }
 
@@ -389,13 +422,13 @@ public sealed class SpeedAdvisorTests
         const string Film = "live-action|h264-8mbps";
         var medium = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.none, Film, 125), Result(HwType.none, "pattern|h264-8mbps", 375));
         var fast = Run(new SpeedSettings { EncoderPreset = "fast" }, Result(HwType.none, Film, 150), Result(HwType.none, "pattern|h264-8mbps", 450));
-        var threads = Run(new SpeedSettings { EncoderPreset = "fast", EncodingThreadCount = 4 }, Result(HwType.none, Film, 150));
+        var nvdec = Run(new SpeedSettings { EncoderPreset = "fast", EnhancedNvdec = false }, Result(HwType.none, Film, 150));
         var slowMedium = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.none, Film, 30), Result(HwType.none, "pattern|h264-8mbps", 90));
         var slowFast = Run(new SpeedSettings { EncoderPreset = "fast" }, Result(HwType.none, Film, 36), Result(HwType.none, "pattern|h264-8mbps", 108));
 
         // Medium below the headroom a better-quality value needs, so fast is recommended for its speed.
         var onMedium = SpeedAdvisor.Advise(slowFast, [slowMedium, slowFast], HwType.none, string.Empty, new SpeedSettings { EncoderPreset = "medium" });
-        var onFast = SpeedAdvisor.Advise(fast, [medium, fast, threads], HwType.none, string.Empty, new SpeedSettings { EncoderPreset = "fast" });
+        var onFast = SpeedAdvisor.Advise(fast, [medium, fast, nvdec], HwType.none, string.Empty, new SpeedSettings { EncoderPreset = "fast" });
 
         var faster = Assert.Single(onMedium, s => s.Kind == SpeedSuggestionKind.FasterSetting);
         Assert.Equal(("EncoderPreset", "fast", "medium", 0.2, false), (faster.Setting, faster.Value, Assert.Single(faster.Others), Math.Round(Assert.NotNull(faster.Gain), 2), faster.TestVideosOnly));
@@ -404,7 +437,7 @@ public sealed class SpeedAdvisorTests
         var quality = Assert.Single(onFast, s => s.Kind == SpeedSuggestionKind.HigherQuality);
         Assert.Equal(("medium", 5.0), (quality.Value, Assert.NotNull(quality.Speed)));
         Assert.Equal([Film], quality.Outputs);
-        Assert.Equal(SpeedSuggestionKind.NoChange, Assert.Single(onFast, s => s.Setting == "EncodingThreadCount").Kind);
+        Assert.Equal(SpeedSuggestionKind.NoChange, Assert.Single(onFast, s => s.Setting == "EnhancedNvdec").Kind);
     }
 
     /// <summary>Several runs that suggest the same value become one suggestion, and only comparisons with the server's value count.</summary>

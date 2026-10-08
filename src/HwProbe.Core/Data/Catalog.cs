@@ -66,7 +66,7 @@ public sealed partial class Catalog
     /// <summary>Gets what the page calls each measured resource, keyed as <see cref="Speed.ResourceSaving.Resource"/> is, in sentence case.</summary>
     public required IReadOnlyDictionary<string, string> ResourceNames { get; init; }
 
-    /// <summary>Gets labels for server settings suggestions change that aren't run options, keyed as suggestions name them, with any caveat under <c>{key}Caveat</c>.</summary>
+    /// <summary>Gets labels for server settings suggestions change that aren't run options, keyed as suggestions name them, with any description under <c>{key}Description</c>.</summary>
     public required IReadOnlyDictionary<string, string> Labels { get; init; }
 
     /// <summary>Gets the Resource Usage view's column header for each resource, keyed as <see cref="ResourceNames"/> is.</summary>
@@ -101,6 +101,9 @@ public sealed partial class Catalog
 
     /// <summary>Gets the descriptions of backends that don't work.</summary>
     public required IReadOnlyDictionary<BackendVerdict, string> Verdicts { get; init; }
+
+    /// <summary>Gets each probe test outcome's result note, all but a pass.</summary>
+    public required IReadOnlyDictionary<ProbeOutcome, string> Outcomes { get; init; }
 
     /// <summary>Gets the descriptions of the report's findings, by code.</summary>
     public required IReadOnlyDictionary<string, string> Findings { get; init; }
@@ -291,6 +294,7 @@ public sealed partial class Catalog
         RequireAll("backends", Backends.Select(b => b.Type), HwType.none);
         RequireAll("tiers", Tiers.Keys, PipelineTier.Unknown);
         RequireAll("verdicts", Verdicts.Keys, BackendVerdict.Viable, BackendVerdict.NotBuilt);
+        RequireAll("outcomes", Outcomes.Keys, ProbeOutcome.Pass);
         RequireKeys("videos", [.. Videos.Select(v => v.Key), SpeedCatalog.LibraryKey], DefaultVideos);
         if (DecodeEntry is null)
         {
@@ -355,14 +359,15 @@ public sealed partial class Catalog
         foreach (var group in SettingGroups)
         {
             var known = group.Settings.All(k => Option(k) is not null);
-            var conditions = group.Rows.SelectMany(r => r.When ?? new Dictionary<string, string>()).ToList();
+            var conditions = group.Rows.SelectMany(r => (r.When ?? new Dictionary<string, string>()).Concat(r.Applies ?? new Dictionary<string, string>())).ToList();
             var valid = known
                 && conditions.All(c => group.Settings.Contains(c.Key) && Option(c.Key)?.Takes(c.Value) == true)
                 && group.Rows.All(r => r.Describes is null || group.Settings.Contains(r.Describes))
+                && group.Rows.All(r => r.Applies is null || r.When is null || !r.Applies.Keys.Intersect(r.When.Keys, StringComparer.Ordinal).Any())
                 && group.Rows.Select(r => r.Label).Distinct(StringComparer.Ordinal).Count() == group.Rows.Count;
             if (!known || !valid || group.Rows.Count == 0 || SettingGroups.Count(g => g.Settings.Intersect(group.Settings).Any()) > 1)
             {
-                throw new InvalidDataException($"catalog.yaml: setting group {group.Key} requires rows with distinct labels, options the catalog has, in no other group, and conditions on its own settings.");
+                throw new InvalidDataException($"catalog.yaml: setting group {group.Key} requires rows with distinct labels, options the catalog has, in no other group, and conditions and applied values on its own settings, none applied that a row's conditions set.");
             }
         }
 

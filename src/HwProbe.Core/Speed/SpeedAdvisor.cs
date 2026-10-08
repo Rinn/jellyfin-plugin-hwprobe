@@ -56,7 +56,7 @@ public static class SpeedAdvisor
     /// <returns>The value.</returns>
     public static string ValueOf(SpeedSettings settings, string key) => _values[key](settings);
 
-    /// <summary>Returns the settings to change so the server makes a group's choice: the row's own conditions, and any switch an earlier row that would still take precedence needs turned off.</summary>
+    /// <summary>Returns the settings to change so the server makes a group's choice: the row's own conditions and the values it applies, and any switch an earlier row that would still take precedence needs turned off.</summary>
     /// <param name="groupKey">The group's key.</param>
     /// <param name="row">The row's label.</param>
     /// <param name="server">The server's settings now.</param>
@@ -72,7 +72,7 @@ public static class SpeedAdvisor
             return null;
         }
 
-        var changes = new Dictionary<string, string>(when, StringComparer.Ordinal);
+        var changes = new Dictionary<string, string>(when.Concat(target.Applies ?? new Dictionary<string, string>()), StringComparer.Ordinal);
         for (var attempt = 0; attempt < group.Rows.Count; attempt++)
         {
             var trial = changes.Aggregate((SpeedSettings?)server, (s, c) => s is null ? null : SpeedSettingsOptions.Apply(s, c.Key, c.Value));
@@ -144,11 +144,11 @@ public static class SpeedAdvisor
             }
         }
 
-        // No limit is the alternative: higher qualities for devices outside the network, at the speeds that fall behind.
+        // No limit is suggested: a limit makes out of network devices transcode any video whose bitrate exceeds it instead of direct playing it (MediaInfoHelper.GetMaxBitrate, StreamBuilder.IsBitrateLimitExceeded, v12.2).
         if (BitrateLimit([.. measured.Where(Configured)], shown.Settings) is { } limit)
         {
-            suggestions.Add(limit.Limit with { Type = type, Device = device });
             suggestions.Add(limit.NoLimit with { Type = type, Device = device });
+            suggestions.Add(limit.Limit with { Type = type, Device = device });
         }
 
         // Outputs that two or more backends measured and none kept real time on; one backend alone, as suites measure, doesn't show the others would fall behind.
@@ -161,7 +161,16 @@ public static class SpeedAdvisor
         var behind = playback.Where(r => Configured(r) && !KeepsUp(r) && !tooSlow.Any(g => g.Key == r.Test)).ToList();
         if (behind.Count > 0)
         {
-            suggestions.Add(new SpeedSuggestion(SpeedSuggestionKind.FallsBehind, [.. behind.Select(r => Label(r, shown.Settings))]) { Type = type, Device = device, Speed = behind.Min(Speed), Streams = Fewest(behind), StreamsCapped = FewestCapped(behind), TestVideosOnly = behind.All(IsGenerated) });
+            suggestions.Add(new SpeedSuggestion(SpeedSuggestionKind.FallsBehind, [.. behind.Select(r => Label(r, shown.Settings))])
+            {
+                Type = type,
+                Device = device,
+                Speed = behind.Min(Speed),
+                Streams = Fewest(behind),
+                StreamsCapped = FewestCapped(behind),
+                Speeds = [.. behind.Select(r => new OutputSpeed(Label(r, shown.Settings), r.Video, r.Output, Speed(r), r.Streams, r.Capped))],
+                TestVideosOnly = behind.All(IsGenerated),
+            });
         }
 
         foreach (var fastest in tooSlow.Select(g => g.Aggregate(Better)))
@@ -522,7 +531,7 @@ public static class SpeedAdvisor
 
         if (Catalog.Default.Option(key)?.Recommended is { } recommended && values.Any(v => v.Value == recommended))
         {
-            return Listing(SpeedSuggestionKind.RecommendedValue, recommended);
+            return Listing(SpeedSuggestionKind.RecommendedValue, recommended) with { BestQuality = BestQuality(key, recommended, values, against, type) };
         }
 
         // A value as fast as the server's within noise isn't worth switching to when the server's measured faster than it by more.
@@ -537,18 +546,35 @@ public static class SpeedAdvisor
             ?? Listing(SpeedSuggestionKind.NoChange, values[0].Value);
     }
 
+    /// <summary>Finds the best-quality value that keeps the headroom real time on real video, for a setting the catalog recommends a value of whatever the measurements.</summary>
+    /// <param name="key">The option key.</param>
+    /// <param name="recommended">The value recommended.</param>
+    /// <param name="values">Every value compared with the server's, the server's first.</param>
+    /// <param name="against">The comparisons with the server's value.</param>
+    /// <param name="type">The configured backend, for the quality order.</param>
+    /// <returns>The value, or null when none that keeps up is better than the recommended one.</returns>
+    private static string? BestQuality(string key, string recommended, List<(string Value, IReadOnlyList<OutputSpeed> Speeds)> values, List<SettingComparison> against, HwType type)
+    {
+        // Headroom is judged on real video only, and streams against the server's value, as for a better-quality suggestion.
+        List<double> Real(string value) => [.. value == values[0].Value ? against.Where(c => !c.Generated).Select(c => c.OtherSpeed) : against.Where(c => c.Value == value && !c.Generated).Select(c => c.Speed)];
+        bool KeepsStreams(string value) => against.Where(c => c.Value == value).All(c => c is not { Streams: { } mine, OtherStreams: { } theirs } || mine >= theirs * (1 - MaxStreamLoss));
+        var keeping = values.Select(v => v.Value).Where(v => Real(v) is { Count: > 0 } real && real.Min() >= Headroom && KeepsStreams(v)).ToList();
+        var best = keeping.FirstOrDefault(v => !keeping.Any(o => IsBetterQuality(key, o, v, type)));
+        return best is not null && IsBetterQuality(key, best, recommended, type) ? best : null;
+    }
+
     /// <summary>Returns each output's slowest speed and fewest concurrent streams, in the order the outputs were first measured.</summary>
     /// <param name="speeds">Speeds from one or more runs.</param>
     /// <returns>One per output.</returns>
     private static IReadOnlyList<OutputSpeed> Slowest(IEnumerable<OutputSpeed> speeds) =>
         [.. speeds.GroupBy(s => s.Label, StringComparer.Ordinal).Select(g => g.First() with { Speed = g.Min(s => s.Speed), Streams = Fewest(g.ToList()), StreamsCapped = FewestCapped(g.ToList()) })];
 
-    /// <summary>Finds the highest quality the configured backend keeps at real time when higher ones of the same codec fall behind, as an Internet streaming bitrate limit.</summary>
+    /// <summary>Finds the highest quality the configured backend keeps at real time when higher ones of the same codec fall behind, as the Internet streaming bitrate limit beside no limit.</summary>
     /// <param name="configured">The configured backend's measured results.</param>
     /// <param name="settings">The run's settings, for the outputs' labels.</param>
-    /// <returns>The limit and the suggestion to set none, or null when every quality keeps up or fewer than two were measured.</returns>
+    /// <returns>No limit, suggested, and the limit beside it; null when every quality keeps up or fewer than two were measured.</returns>
     /// <remarks>H.264 decides, as the codec Jellyfin encodes to unless HEVC encoding is allowed (EncodingOptions.AllowHevcEncoding, off by default, v12.2).</remarks>
-    private static (SpeedSuggestion Limit, SpeedSuggestion NoLimit)? BitrateLimit(List<SpeedResult> configured, SpeedSettings? settings)
+    private static (SpeedSuggestion NoLimit, SpeedSuggestion Limit)? BitrateLimit(List<SpeedResult> configured, SpeedSettings? settings)
     {
         List<(SpeedResult Result, SpeedTest Output)> found = [];
         foreach (var result in configured)
@@ -577,7 +603,20 @@ public static class SpeedAdvisor
         var value = best.Output.Bitrate.ToString(CultureInfo.InvariantCulture);
         var outputs = behind.Select(x => Label(x.Result, settings)).Distinct(StringComparer.Ordinal).ToList();
         var slowest = behind.MinBy(x => Speed(x.Result)).Result;
-        var limit = new SpeedSuggestion(SpeedSuggestionKind.BitrateLimit, outputs)
+        var none = new SpeedSuggestion(SpeedSuggestionKind.BitrateLimit, outputs)
+        {
+            Setting = BitrateLimitKey,
+            Value = "0",
+            Others = [value],
+            Speed = Speed(slowest),
+            Streams = slowest.Streams,
+            StreamsCapped = slowest.Capped,
+            OtherStreams = best.Result.Streams,
+            OtherStreamsCapped = best.Result.Capped,
+            Compared = [new SpeedComparedValue(value, Speed(best.Result), best.Result.Streams, best.Result.Capped)],
+            TestVideosOnly = behind.All(x => IsGenerated(x.Result)),
+        };
+        return (none, new SpeedSuggestion(SpeedSuggestionKind.Compatible, outputs)
         {
             Setting = BitrateLimitKey,
             Value = value,
@@ -589,20 +628,7 @@ public static class SpeedAdvisor
             OtherStreamsCapped = slowest.Capped,
             Compared = [new SpeedComparedValue("0", Speed(slowest), slowest.Streams, slowest.Capped)],
             LowerQuality = true,
-            TestVideosOnly = behind.All(x => IsGenerated(x.Result)),
-        };
-        return (limit, new SpeedSuggestion(SpeedSuggestionKind.Compatible, outputs)
-        {
-            Setting = BitrateLimitKey,
-            Value = "0",
-            Others = [value],
-            Speed = Speed(slowest),
-            Streams = slowest.Streams,
-            StreamsCapped = slowest.Capped,
-            OtherStreams = best.Result.Streams,
-            OtherStreamsCapped = best.Result.Capped,
-            Compared = [new SpeedComparedValue(value, Speed(best.Result), best.Result.Streams, best.Result.Capped)],
-            TestVideosOnly = limit.TestVideosOnly,
+            TestVideosOnly = none.TestVideosOnly,
         });
     }
 

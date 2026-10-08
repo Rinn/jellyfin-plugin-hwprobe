@@ -306,7 +306,7 @@ public sealed partial class ProbeService : IDisposable
                 report is not null && SpeedSuites.Offered(s, report, configured),
                 steps.Sum(step => step.VideoMeasurements(backends)),
                 s.Method ?? Catalog.Default.SuiteMethod,
-                s.Note)
+                s.Notes)
             {
                 AudioMeasurements = steps.Sum(step => step.AudioMeasurements(backends)),
             };

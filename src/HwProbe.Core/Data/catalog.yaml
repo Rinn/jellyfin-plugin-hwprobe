@@ -485,9 +485,9 @@ repeats:
 # The run's settings, in the order of Jellyfin's Transcoding page (transcoding.tsx, v12.2), then the client's choices. Labels are jellyfin-web's (en-us.json).
 # server: the EncodingOptions property a setting defaults to; switch: on or off; range: whole numbers from low to high; choices: keyed values. Keys are applied by SpeedSettingsOptions.
 options:
-  # Shown with the backends when QSV works and its probe found the encoder; applied to QSV alone, so VAAPI keeps the server's.
-  - { key: QsvLowPowerH264, label: Enable Intel Low-Power H.264 hardware encoder, server: EnableIntelLowPowerH264HwEncoder, outputCodec: h264, backend: qsv, report: EnableIntelLowPowerH264HwEncoder, switch: true, description: "Low-Power Encoding can keep unnecessary CPU-GPU sync. On Linux they must be disabled if the i915 HuC firmware is not configured." }
-  - { key: QsvLowPowerHevc, label: Enable Intel Low-Power HEVC hardware encoder, server: EnableIntelLowPowerHevcHwEncoder, outputCodec: hevc, backend: qsv, report: EnableIntelLowPowerHevcHwEncoder, switch: true, description: "Low-Power Encoding can keep unnecessary CPU-GPU sync. On Linux they must be disabled if the i915 HuC firmware is not configured." }
+  # Shown with the backends when QSV works and its probe found the encoder; applied to QSV alone, so VAAPI keeps the server's. note: a line under any suggestion for it, here Jellyfin's Intel guide (Low-Power Encoding).
+  - { key: QsvLowPowerH264, label: Enable Intel Low-Power H.264 hardware encoder, server: EnableIntelLowPowerH264HwEncoder, outputCodec: h264, backend: qsv, report: EnableIntelLowPowerH264HwEncoder, switch: true, note: "Low-Power encoding can offload the GPU usage with the help of the HuC firmware. This can be useful for speeding up the OpenCL based HDR/DV tone-mapping.", description: "Low-Power Encoding can keep unnecessary CPU-GPU sync. On Linux they must be disabled if the i915 HuC firmware is not configured." }
+  - { key: QsvLowPowerHevc, label: Enable Intel Low-Power HEVC hardware encoder, server: EnableIntelLowPowerHevcHwEncoder, outputCodec: hevc, backend: qsv, report: EnableIntelLowPowerHevcHwEncoder, switch: true, note: "Low-Power encoding can offload the GPU usage with the help of the HuC firmware. This can be useful for speeding up the OpenCL based HDR/DV tone-mapping.", description: "Low-Power Encoding can keep unnecessary CPU-GPU sync. On Linux they must be disabled if the i915 HuC firmware is not configured." }
   - { key: EnhancedNvdec, label: Enable enhanced NVDEC decoder, server: EnableEnhancedNvdecDecoder, switch: true, description: "Enhanced NVDEC implementation, disable this option to use CUVID if you encounter decoding errors." }
   - { key: PreferNativeDecoder, label: Prefer OS native DXVA or VA-API hardware decoders, server: PreferSystemNativeHwDecoder, switch: true }
   - { key: VppTonemap, label: Enable VPP Tone mapping, server: EnableVppTonemapping, switch: true, description: "Full Intel driver based tone-mapping. Currently works only on certain hardware with HDR10 videos. This has a higher priority compared to another OpenCL implementation." }
@@ -551,12 +551,16 @@ options:
       - { key: "0", label: "0" }
       - { key: "0.5", label: "0.5" }
       - { key: "1", label: "1" }
-  # EncodingHelper.GetNumberOfThreads treats Auto (-1) and Max (0) alike: ffmpeg picks (v12.2).
+  # EncodingHelper.GetNumberOfThreads treats Auto (-1) and Max (0) alike: ffmpeg picks (v12.2). The caveat is jellyfin-web's own (LabelTranscodingThreadCountHelp).
   - key: EncodingThreadCount
     description: "Select the maximum number of threads to use when transcoding. Reducing the thread count will lower CPU usage but may not convert fast enough for a smooth playback experience."
     label: Transcoding thread count
     server: EncodingThreadCount
     help: The most CPU threads each transcode uses.
+    recommended: "-1"
+    recommendedReason: "Jellyfin's default, which lets ffmpeg pick the number of threads."
+    namesBackend: true
+    caveat: "Reducing the thread count will lower CPU usage but may not convert fast enough for a smooth playback experience."
     choices:
       - { key: "-1", label: Auto }
       - { key: "1", label: "1" }
@@ -576,8 +580,8 @@ options:
       - { key: "15", label: "15" }
       - { key: "16", label: "16" }
       - { key: "0", label: Max }
-  # caveat: jellyfin-web's own warning (LabelEnableAudioVbrHelp), shown with any suggestion to change it; compatibleValue: the value without it, suggested beside the better-quality one.
-  - { key: AudioVbr, label: Enable VBR audio encoding, server: EnableAudioVbr, switch: true, qualityOrder: ["true", "false"], caveat: "In some rare cases VBR may cause buffering and compatibility issues.", compatibleValue: "false", description: "Variable bitrate offers better quality to average bitrate ratio, but in some rare cases may cause buffering and compatibility issues." }
+  # caveat: jellyfin-web's own help (LabelEnableAudioVbrHelp), shown with any suggestion to change it; compatibleValue: the value without it, suggested beside the better-quality one.
+  - { key: AudioVbr, label: Enable VBR audio encoding, server: EnableAudioVbr, switch: true, qualityOrder: ["true", "false"], caveat: "Variable bitrate offers better quality to average bitrate ratio, but in some rare cases may cause buffering and compatibility issues.", compatibleValue: "false", description: "Variable bitrate offers better quality to average bitrate ratio, but in some rare cases may cause buffering and compatibility issues." }
   # Downmixing only changes transcoded 5.1 audio.
   - key: DownmixBoost
     description: "Boost audio when downmixing. A value of one will preserve the original volume."
@@ -626,8 +630,11 @@ options:
       - { key: ultrafast, label: ultrafast }
     qualityOrder: [veryslow, slower, slow, medium, fast, faster, veryfast, superfast, ultrafast]
     # Auto is recommended whenever measured: runs don't measure picture quality, and preset speeds can differ more between runs than between presets.
+    # bestQualityNote names the slowest preset that keeps the headroom real time on real video; {value} and {headroom} are filled in.
     recommended: auto
     recommendedReason: "Jellyfin's default, which picks a preset for each encoder."
+    bestQualityNote: "{value} is the slowest preset that keeps {headroom}× real time on real video, for better quality."
+    note: "Performance tests don't measure picture quality."
   - { key: H265Crf, label: H.265 encoding CRF, server: H265Crf, outputCodec: hevc, range: [0, 51], lowerIsBetter: true, description: "The 'Constant Rate Factor' (CRF) is the default quality setting for the x264 and x265 software encoders. You can set the values between 0 and 51, where lower values would result in better quality (at the expense of higher file sizes). Sane values are between 18 and 28. The default for x264 is 23, and for x265 is 28, so you can use this as a starting point. Hardware encoders do not use these settings." }
   - { key: H264Crf, label: H.264 encoding CRF, server: H264Crf, outputCodec: h264, range: [0, 51], lowerIsBetter: true, help: CRF only applies to software encoders., description: "The 'Constant Rate Factor' (CRF) is the default quality setting for the x264 and x265 software encoders. You can set the values between 0 and 51, where lower values would result in better quality (at the expense of higher file sizes). Sane values are between 18 and 28. The default for x264 is 23, and for x265 is 28, so you can use this as a starting point. Hardware encoders do not use these settings." }
   - key: DeinterlaceMethod
@@ -667,24 +674,31 @@ links:
   fateSuite: https://fate-suite.ffmpeg.org/
 
 # Test suites: a sequence of performance runs that differ in one setting, saved to Test Results like any run, so the
-# suggestions compare them. backends: configuredAndSoftware (default), configured, or software. requires: lowPower offers
+# suggestions compare them. backends: configuredAndSoftware (default), configured (software when that's the server's), or software. requires: lowPower offers
 # the suite only when the configured backend is QSV and its probe found a low-power encoder. threadSteps adds Auto, then
 # 1, 2, 4 ... and the server's logical CPU count. A step's videos or outputs replace the suite's for that step. options sets
 # settings every step shares; suites copy the audio, so only video is measured, except the VBR suite, which compares audio
 # encoding, and the audio suite, which has no video. method replaces suiteMethod.
 suites:
+  # Every preset, in the Encoding preset dropdown's order, on the configured backend alone.
   - key: presets
     name: Encoder presets
     description: Encodes H.264 and HEVC at each encoder preset.
     videos: [drama]
     outputs: [h264-8mbps, hevc-8mbps]
     options: { Audio: copy }
+    backends: configured
     steps:
       - { label: Auto, options: { EncoderPreset: auto } }
-      - { label: faster, options: { EncoderPreset: faster } }
-      - { label: fast, options: { EncoderPreset: fast } }
-      - { label: medium, options: { EncoderPreset: medium } }
+      - { label: veryslow, options: { EncoderPreset: veryslow } }
+      - { label: slower, options: { EncoderPreset: slower } }
       - { label: slow, options: { EncoderPreset: slow } }
+      - { label: medium, options: { EncoderPreset: medium } }
+      - { label: fast, options: { EncoderPreset: fast } }
+      - { label: faster, options: { EncoderPreset: faster } }
+      - { label: veryfast, options: { EncoderPreset: veryfast } }
+      - { label: superfast, options: { EncoderPreset: superfast } }
+      - { label: ultrafast, options: { EncoderPreset: ultrafast } }
   - key: quality
     name: Quality ladder
     description: Encodes H.264 and HEVC at each player quality.
@@ -754,7 +768,13 @@ suites:
     name: Subtitle burn-in
     description: Encodes H.264 with no subtitles, then text and PGS subtitles burned in.
     # Burn-in is the client's choice, so no server setting is compared; the labels are jellyfin-web's (en-us.json).
-    note: "Burn-in costs speed, so avoid it where possible: keep Allow subtitle extraction on the fly on (Transcoding), and in clients set Burn subtitles to Auto, turn on Experimental PGS and VobSub subtitle rendering where offered, and leave Always burn in subtitle when transcoding off."
+    # The first line follows jellyfin-web's BurnSubtitlesHelp ("Avoiding this will greatly improve performance").
+    notes:
+      - Avoiding burn-in will greatly improve performance.
+      - "Server: keep Allow subtitle extraction on the fly on (Transcoding)."
+      - "Clients: set Burn subtitles to Auto."
+      - "Clients: turn on Experimental PGS and VobSub subtitle rendering where offered."
+      - "Clients: leave Always burn in subtitle when transcoding off."
     videos: [drama]
     outputs: [h264-8mbps]
     options: { Audio: copy }
@@ -807,25 +827,26 @@ defaultMeasureResources: true
 
 # description: jellyfin-web's own help text for an option (src/strings/en-us.json, v12.2), shown when hovering its name in a suggestion.
 # Settings that together pick one thing, suggested as one table with a row per choice the runs used, in this order; a run is the first row whose backends and conditions it meets.
-# Tone mapping: VPP on Intel and VideoToolbox on Apple take precedence over the general method when on, and work with Enable Tone mapping off (EncodingHelper IsIntelVppTonemapAvailable, IsVideoToolboxTonemapAvailable, v12.2).
+# applies: settings Apply on the row also sets, beyond its conditions. note: a line under the table when the row is in it.
+# Tone mapping: VPP on Intel and VideoToolbox on Apple take precedence over Enable Tone mapping when on, and work with it off; it tone maps the HDR formats they don't (EncodingHelper IsIntelVppTonemapAvailable, IsVideoToolboxTonemapAvailable, IsHwTonemapAvailable, v12.2).
+# The notes but Off's are jellyfin-web's help for each setting (en-us.json, v12.2), double rate's cut before it turns to the reader; its deinterlacing method help is left out, as it says the method only applies to software, but CUDA, OpenCL, and VideoToolbox use it too (EncodingHelper.GetHwDeinterlaceFilter).
 settingGroups:
   - key: deinterlace
     label: Deinterlacing
     settings: [DeinterlaceMethod, DoubleRate]
     rows:
       - { label: "Yet Another DeInterlacing Filter (YADIF), single rate", describes: DeinterlaceMethod, when: { DeinterlaceMethod: yadif, DoubleRate: "false" } }
-      - { label: "Yet Another DeInterlacing Filter (YADIF), double rate", describes: DoubleRate, when: { DeinterlaceMethod: yadif, DoubleRate: "true" } }
+      - { label: "Yet Another DeInterlacing Filter (YADIF), double rate", describes: DoubleRate, when: { DeinterlaceMethod: yadif, DoubleRate: "true" }, note: "Double rate: This setting uses the field rate when deinterlacing, often referred to as bob deinterlacing, which doubles the frame rate of the video." }
       - { label: "Bob Weaver DeInterlacing Filter (BWDIF), single rate", describes: DeinterlaceMethod, when: { DeinterlaceMethod: bwdif, DoubleRate: "false" } }
-      - { label: "Bob Weaver DeInterlacing Filter (BWDIF), double rate", describes: DoubleRate, when: { DeinterlaceMethod: bwdif, DoubleRate: "true" } }
+      - { label: "Bob Weaver DeInterlacing Filter (BWDIF), double rate", describes: DoubleRate, when: { DeinterlaceMethod: bwdif, DoubleRate: "true" }, note: "Double rate: This setting uses the field rate when deinterlacing, often referred to as bob deinterlacing, which doubles the frame rate of the video." }
   - key: tonemap
     label: Tone mapping
     settings: [Tonemap, VppTonemap, VideoToolboxTonemap]
-    note: "VPP and VideoToolbox: the backend's own tone mapping. General: Enable Tone mapping, with the tone-mapping settings."
     rows:
-      - { label: VPP, describes: VppTonemap, backends: [qsv, vaapi], when: { VppTonemap: "true" } }
-      - { label: VideoToolbox, describes: VideoToolboxTonemap, backends: [videotoolbox], when: { VideoToolboxTonemap: "true" } }
-      - { label: General, describes: Tonemap, when: { Tonemap: "true" } }
-      - { label: "Off", describes: Tonemap, when: { Tonemap: "false" }, caveat: "Off: HDR video reaches SDR players unconverted, so colours and brightness look wrong." }
+      - { label: VPP, describes: VppTonemap, backends: [qsv, vaapi], when: { VppTonemap: "true" }, applies: { Tonemap: "true" }, note: "VPP: Full Intel driver based tone-mapping. Currently works only on certain hardware with HDR10 videos." }
+      - { label: VideoToolbox, describes: VideoToolboxTonemap, backends: [videotoolbox], when: { VideoToolboxTonemap: "true" }, applies: { Tonemap: "true" }, note: "VideoToolbox: Hardware-accelerated tone-mapping provided by VideoToolbox. It works with most HDR formats, including HDR10, HDR10+, and HLG, but does not work with Dolby Vision Profile 5." }
+      - { label: Tone mapping, describes: Tonemap, when: { Tonemap: "true" }, note: "Tone mapping: Currently works only with 10bit HDR10, HLG and DoVi videos. This requires the corresponding GPGPU runtime." }
+      - { label: "Off", describes: Tonemap, when: { Tonemap: "false" }, note: "Off: HDR videos aren't tone mapped, so their colors look wrong on SDR players." }
 
 # Seconds between one measurement ending and the next starting, so the system winds down from the last; a result reused from an earlier run doesn't wait.
 testDelay: 1
@@ -858,14 +879,13 @@ resourceHeaders: { Cpu: CPU, Memory: Mem, Gpu: GPU, GpuMemory: GPU mem, Power: P
 # Energy meters' domains, as the Resource Usage view names them.
 powerDomains: { Cpu: CPU package, Gpu: GPU }
 
-# Server settings suggestions change that aren't run options; labels and caveats are jellyfin-web's (en-us.json).
+# Server settings suggestions change that aren't run options; labels are jellyfin-web's (en-us.json).
 labels:
   # The server's own value: as a run option's first choice, and after a suite step or suggestion's value.
   ServerSetting: Server setting
   ServerSettingAfter: server setting
   RemoteClientBitrateLimit: Internet streaming bitrate limit
   RemoteClientBitrateLimitDescription: An optional per-stream bitrate limit for all out of network devices. This is useful to prevent devices from requesting a higher bitrate than your internet connection can handle. This may result in increased CPU load on your server in order to transcode videos on the fly to a lower bitrate.
-  RemoteClientBitrateLimitCaveat: Applies to devices outside the network only, lowering their picture quality; Jellyfin notes it can raise the server's load by transcoding streams that could otherwise play directly.
 
 # The report's remedies, fix links, and findings, by key; {name} is filled in by the code that picks the text.
 texts:
@@ -994,6 +1014,18 @@ verdicts:
   PermissionDenied: No permission to open the device
   DevicePresentPipelineBroken: Device found, test transcode failed
   Untested: Not tested
+
+# A probe test's result note, as Recommended Settings and the probe's results show it; keyed by ProbeOutcome, all but Pass.
+outcomes:
+  DeviceUnavailable: Device unavailable
+  PermissionDenied: No permission to use the device
+  CodecUnsupported: Not supported by this GPU
+  FilterUnsupported: Filter missing from ffmpeg
+  Timeout: Timed out
+  SoftwareFallback: Fell back to software
+  Skipped: Not tested
+  Untested: Not tested
+  NotUsed: Software only in this ffmpeg
 
 # Keyed by the report's finding codes.
 findings:

@@ -251,7 +251,7 @@
                 let resourceNames = {};
                 let powerDomains = {};
                 let resourceHeaders = {};
-                // Labels and caveats for server settings suggestions change that aren't run options.
+                // Labels and descriptions for server settings suggestions change that aren't run options.
                 let serverLabels = {};
                 // The server's Internet streaming bitrate limit, to mark a suggested limit already set.
                 let remoteLimit = null;
@@ -261,6 +261,7 @@
                 let armOnly = {};
                 let tiers = {};
                 let verdicts = {};
+                let outcomeNotes = {};
                 let notes = {};
                 let settingLabels = {};
                 const methodName = m => (methods[m] || [m])[0];
@@ -285,6 +286,7 @@
                     armOnly = Object.fromEntries(c.Backends.filter(b => b.ArmNote).map(b => [b.Type, b.ArmNote]));
                     tiers = c.Tiers;
                     verdicts = c.Verdicts;
+                    outcomeNotes = c.Outcomes;
                     notes = c.Findings;
                     settingLabels = c.Settings;
                     gpuEngines = c.GpuEngines;
@@ -326,6 +328,13 @@
 
                 // Which sections were opened or closed, by key, kept across redraws.
                 const foldOpen = new Map();
+
+                // A notice banner with a line per note.
+                function noteBanner(notes) {
+                    const banner = el('div', null, 'infoBanner');
+                    notes.forEach(n => banner.appendChild(el('div', n)));
+                    return banner;
+                }
 
                 // A collapsible section with Jellyfin's heading style; emby-collapse isn't loaded on plugin pages.
                 // The key defaults to the title without a trailing count.
@@ -672,8 +681,8 @@
                 }
 
                 function outcomeRow(table, label, outcome) {
-                    const state = outcome === 'Pass' ? 'TurnOn' : (outcome ? 'LeaveOff' : 'NotTested');
-                    const reason = outcome === 'Pass' ? '' : !outcome ? 'Not tested' : ({ SoftwareFallback: 'Hardware not used', FilterUnsupported: 'Filter missing from ffmpeg', CodecUnsupported: 'Not supported by this GPU', Timeout: 'Timed out', DeviceUnavailable: 'Device unavailable', PermissionDenied: 'No permission to use the device', NotUsed: 'Software only' }[outcome] || 'Test failed');
+                    const state = outcome === 'Pass' ? 'TurnOn' : !outcome || outcome === 'Untested' || outcome === 'Skipped' ? 'NotTested' : 'LeaveOff';
+                    const reason = outcome === 'Pass' ? '' : outcomeNotes[outcome || 'Untested'];
                     row(table, [mark(state), label, el('td', reason, 'secondaryText'), el('td')]);
                 }
 
@@ -1561,8 +1570,8 @@
                     Promise.all(steps.map(load)).then(reports => {
                         const section = fold(div, 'Detailed statistics', true, null, 'suite');
                         const listed = suiteList.find(x => x.Name === shown.suite);
-                        if (listed && listed.Note) {
-                            section.appendChild(el('div', listed.Note, 'infoBanner'));
+                        if (listed && listed.Notes) {
+                            section.appendChild(noteBanner(listed.Notes));
                         }
                         const keyOf = x => [x.type, x.device, x.test, x.variant || ''].join('|');
                         const rows = [];
@@ -1795,32 +1804,32 @@
                         for (const s of list.filter(isBitrate)) {
                             s.Current = remoteLimit === Number(s.Value);
                         }
-                        // A stricter Internet streaming limit already set keeps streams within the suggested one, so it isn't offered.
-                        const stricter = s => s.Kind === 'BitrateLimit' && remoteLimit > 0 && remoteLimit < Number(s.Value);
-                        // Any value but the server's own can be applied, unless it falls behind real time on an output, which the server refuses; a bitrate limit as suggested.
-                        const behind = (speeds, speed) => {
-                            const slowest = speeds && speeds.length ? Math.min(...speeds.map(x => x.Speed)) : speed;
-                            return typeof slowest === 'number' && slowest < 1;
-                        };
-                        const applyValue = (s, value, current, speeds, speed) => current || stricter(s) || (!isBitrate(s) && behind(speeds, speed)) ? null
+                        // A stricter Internet streaming limit already set is noted under the table.
+                        const stricter = s => isBitrate(s) && Number(s.Value) > 0 && remoteLimit > 0 && remoteLimit < Number(s.Value);
+                        // Any value but the server's own can be applied, even one that falls behind real time.
+                        const applyValue = (s, value, current) => current ? null
                             : idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: value, Run: speedViewing }, true), 'raised');
-                        const apply = s => s.Kind === 'NoChange' ? null : applyValue(s, s.Value, s.Current, s.Speeds, s.Speed);
+                        const apply = s => s.Kind === 'NoChange' ? null : applyValue(s, s.Value, s.Current);
                         const settingRow = s => ({ text: optionValueText(s.Setting, s.Value), value: s.Value, speed: s.Speed, streams: s.Streams, capped: s.StreamsCapped, speeds: s.Speeds, savings: s.Savings, lower: s.LowerQuality, current: s.Current, action: apply(s) });
-                        const testVideos = 'Measured on test videos only, which encode faster than real video; measure a film sample or library video to confirm.';
-                        // Why the tinted row is recommended, the first line of the table's last row: the suggestion's name for it and for what it was compared with.
+                        const testVideos = ['Measured on test videos only, which encode faster than real video.', 'Measure a film sample or library video to confirm.'];
+                        // Why the tinted row is recommended, the first lines of the table's last row: the suggestion's name for it and for what it was compared with, one point per line.
                         const reasonFor = (x, name, others) => {
                             const percent = x.Gain === null || x.Gain === undefined ? '' : Math.round(Math.abs(x.Gain) * 100) + '%';
                             const versus = orList(others);
-                            const quality = x.LowerQuality ? ', at lower quality.' : '.';
+                            const lower = x.LowerQuality ? 'Lower picture quality than ' + versus + '.' : '';
                             const option = runOptions.find(o => o.Key === x.Setting);
-                            return x.Kind === 'RecommendedValue' ? 'Recommendation: ' + name + ' \u2013 ' + (option ? option.RecommendedReason : '')
-                                : x.Kind === 'FasterSetting' ? 'Recommendation: ' + name + ' \u2013 ' + percent + ' faster than ' + versus + quality
-                                : x.Kind === 'EfficientSetting' ? 'Recommendation: ' + name + ' \u2013 as fast as ' + versus + ' with ' + savingsText(x.Savings) + quality
-                                : x.Kind === 'HigherQuality' ? 'Recommendation: ' + name + ' \u2013 better quality than ' + versus + ' while still ' + x.Speed.toFixed(2) + '\u00d7 real time on real video.'
-                                : x.Kind === 'Compatible' ? 'Recommendation: ' + name + ' \u2013 avoids the drawback below, at lower quality.'
-                                : x.Kind === 'BitrateLimit' ? 'Recommendation: ' + name + ' \u2013 the highest H.264 quality that keeps real time on ' + backendName(x.Type) + '.'
-                                : x.Kind === 'NoChange' ? 'Recommendation: keep ' + name + ' \u2013 no other value measured is worth changing to.'
-                                : '';
+                            const recommended = 'Recommendation: ' + name + ' \u2013 ';
+                            // What a recommended Auto is on the configured backend, and the best-quality value that keeps up beside it.
+                            const backendNote = option && option.BackendNotes ? option.BackendNotes[configured || 'none'] : null;
+                            const best = x.BestQuality && option && option.BestQualityNote ? option.BestQualityNote.replace('{value}', optionValueText(x.Setting, x.BestQuality)).replace('{headroom}', advice.Headroom) : '';
+                            return x.Kind === 'RecommendedValue' ? [recommended + (option ? option.RecommendedReason : ''), backendNote ? name + ' on ' + backendNote + '.' : '', best]
+                                : x.Kind === 'FasterSetting' ? [recommended + percent + ' faster than ' + versus + '.', lower]
+                                : x.Kind === 'EfficientSetting' ? [recommended + 'as fast as ' + versus + '.', 'Uses ' + savingsText(x.Savings) + '.', lower]
+                                : x.Kind === 'HigherQuality' ? [recommended + 'better quality than ' + versus + '.', 'Still ' + x.Speed.toFixed(2) + '\u00d7 real time on real video.']
+                                : x.Kind === 'Compatible' ? [recommended + 'avoids the drawback below.', lower]
+                                : x.Kind === 'BitrateLimit' ? [recommended + 'out of network devices transcode any video whose bitrate exceeds the limit instead of direct playing it.']
+                                : x.Kind === 'NoChange' ? [recommended + 'no other value measured is better.']
+                                : [];
                         };
                         const paired = new Set(list.map(s => suggestionCounterpart(list, s)).filter(o => o));
                         // Settings that together pick one thing: one table for the group, a row per choice the runs made, in the catalog's order.
@@ -1846,11 +1855,11 @@
                                     add({ text: c.Row, value: c.Value, speed: c.Speed, streams: c.Streams, capped: c.StreamsCapped, speeds: c.Speeds, savings: [], lower: null, current: false, action: null });
                                 }
                             }
-                            // Apply on a row sets every setting the choice needs; a row without conditions, or one that falls behind real time, can't be applied.
+                            // Apply on a row sets every setting the choice needs; a row without conditions, or for another backend, can't be applied.
                             rows.forEach(r => {
                                 r.current = r.text === serverRow;
                                 const choice = group.Rows.find(x => x.Label === r.text);
-                                r.action = !r.current && choice && choice.When && !(r.speed < 1)
+                                r.action = !r.current && choice && choice.When && (!choice.Backends || choice.Backends.includes(backend))
                                     ? idleAction('Apply', () => post('HwProbe/ApplyMeasuredRow', { Group: key, Row: r.text, Run: speedViewing }, true), 'raised')
                                     : null;
                             });
@@ -1873,18 +1882,17 @@
                             const why = members.find(m => m.Row === best && m.Kind === 'HigherQuality') || members.find(m => m.Row === best);
                             const order = r => group.Rows.findIndex(x => x.Label === r.text);
                             return suggestionTable(group.Label, [...rows.values()].sort((a, b) => order(a) - order(b)), null, [
-                                why ? reasonFor(why, why.Row, why.Compared.map(c => c.Row)) : '',
-                                group.Note,
-                                ...group.Rows.filter(x => x.Caveat && rows.has(x.Label)).map(x => x.Caveat),
-                                members.some(m => m.TestVideosOnly) ? testVideos : '',
+                                ...(why ? reasonFor(why, why.Row, why.Compared.map(c => c.Row)) : []),
+                                ...new Set(group.Rows.filter(x => x.Note && rows.has(x.Label)).map(x => x.Note)),
+                                ...(members.some(m => m.TestVideosOnly) ? testVideos : []),
                             ]);
                         };
                         // Outputs none of the backends measured keeps real time on, in one table.
                         const tooSlow = list.filter(s => s.Kind === 'TooSlowEverywhere');
                         if (tooSlow.length) {
-                            const rows = tooSlow.map(s => ({ text: s.Outputs[0], backend: backendName(s.Type), speed: s.Speed, streams: s.Streams, capped: s.StreamsCapped, savings: [], lower: null, current: false, action: null, glyph: '\u274c', glyphTitle: 'Too slow' }));
+                            const rows = tooSlow.map(s => ({ text: s.Outputs[0], backend: backendName(s.Type), speed: s.Speed, streams: s.Streams, capped: s.StreamsCapped, savings: [], lower: null, current: false, action: null, glyph: '\u274c', glyphTitle: 'Falls behind' }));
                             const these = tooSlow.length === 1 ? 'this output' : 'these outputs';
-                            section.appendChild(suggestionTable('Too slow on every backend', rows, null, ['No backend measured keeps real time on ' + these + ', so players that require a transcode will buffer. Direct play is unaffected.']));
+                            section.appendChild(suggestionTable('Falls behind on every backend', rows, null, ['Every backend measured falls behind real time on ' + these + ', so players that require a transcode will buffer.', 'Direct play is unaffected.']));
                         }
                         const drawnGroups = new Set();
                         for (const s of list.filter(x => x.Kind !== 'TooSlowEverywhere')) {
@@ -1901,10 +1909,11 @@
                             }
                             const option = s.Setting ? runOptions.find(o => o.Key === s.Setting) : null;
                             const label = option ? option.Label : serverLabels[s.Setting] || s.Setting;
-                            const caveat = option ? option.Caveat : s.Setting ? serverLabels[s.Setting + 'Caveat'] : null;
+                            const caveat = option ? option.Caveat : null;
                             const partner = suggestionCounterpart(list, s);
                             if (partner) {
-                                const sides = [s, partner];
+                                // A bitrate pair lists its numbers ascending, no limit (0) first.
+                                const sides = isBitrate(s) ? [s, partner].sort((a, b) => Number(a.Value) - Number(b.Value)) : [s, partner];
                                 const rows = sides.map(settingRow);
                                 const better = sides.findIndex(x => x.Kind === 'HigherQuality');
                                 const bestSide = better >= 0 ? better : sides.findIndex(x => x.Kind !== 'Compatible');
@@ -1916,29 +1925,36 @@
                                     rows.forEach(r => { r.lower = null; });
                                 }
                                 const chosen = sides[bestSide];
+                                const limit = sides.find(x => isBitrate(x) && x.Kind === 'Compatible');
                                 section.appendChild(suggestionTable(label, rows, option, [
-                                    chosen ? reasonFor(chosen, optionValueText(chosen.Setting, chosen.Value), chosen.Others.map(o => optionValueText(chosen.Setting, o))) : '',
+                                    ...(chosen ? reasonFor(chosen, optionValueText(chosen.Setting, chosen.Value), chosen.Others.map(o => optionValueText(chosen.Setting, o))) : []),
+                                    option ? option.Note : '',
+                                    limit ? backendName(limit.Type) + ' keeps real time on H.264 up to ' + optionValueText(limit.Setting, limit.Value) + '.' : '',
                                     sides.some(stricter) ? 'A stricter limit of ' + remoteLimit / 1e6 + ' Mbps is already set.' : '',
                                     caveat,
-                                    sides.some(x => x.TestVideosOnly) ? testVideos : '',
+                                    ...(sides.some(x => x.TestVideosOnly) ? testVideos : []),
                                 ], serverLabels[s.Setting + 'Description']));
                                 continue;
                             }
-                            if (s.Kind === 'FastestBackend' || s.Kind === 'FallsBehind') {
-                                const rows = [{ text: backendName(s.Type), value: s.Type, speed: s.Speed, streams: s.Streams, capped: s.StreamsCapped, savings: s.Savings, lower: null, current: s.Kind === 'FallsBehind', action: null }];
-                                let reason = 'Falls behind real time, so a player would buffer.';
-                                if (s.Kind === 'FastestBackend') {
-                                    rows[0].best = true;
-                                    rows[0].action = idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: s.Type, Device: s.Device }, true));
-                                    rows.push(...s.Compared.map(c => ({ text: backendName(c.Value), value: c.Value, speed: c.Speed, streams: c.Streams, capped: c.StreamsCapped, savings: [], lower: null, current: true, action: null })));
-                                    // Measured alike, it's suggested when it is more efficient, or as Jellyfin's preferred Intel backend.
-                                    const alike = [s.Savings.length ? 'with ' + savingsText(s.Savings) : '', s.Preferred ? 'Jellyfin prefers it on mainstream Intel GPUs' : ''].filter(t => t);
-                                    reason = 'Recommendation: ' + backendName(s.Type) + (!configured || configured === 'none'
-                                        ? ' \u2013 works on this server; a hardware backend draws less power than software for the same work.'
-                                        : alike.length ? ' \u2013 as fast as ' + backendName(configured) + ' here, ' + alike.join('; ') + '.'
-                                        : ' \u2013 the fastest hardware backend measured.');
-                                }
-                                section.appendChild(suggestionTable('Hardware acceleration', rows, null, [reason, s.TestVideosOnly ? testVideos : '']));
+                            // Outputs the configured backend falls behind on, a row each, as in Falls behind on every backend.
+                            if (s.Kind === 'FallsBehind') {
+                                const rows = s.Speeds.map(o => ({ text: o.Label, speed: o.Speed, streams: o.Streams, capped: o.StreamsCapped, savings: [], lower: null, current: false, action: null, glyph: '\u274c', glyphTitle: 'Falls behind' }));
+                                const these = rows.length === 1 ? 'this output' : 'these outputs';
+                                section.appendChild(suggestionTable('Falls behind real time', rows, null, [backendName(s.Type) + ' falls behind real time on ' + these + ', so players that require a transcode will buffer.', 'Direct play is unaffected.', ...(s.TestVideosOnly ? testVideos : [])]));
+                                continue;
+                            }
+                            if (s.Kind === 'FastestBackend') {
+                                const rows = [{ text: backendName(s.Type), value: s.Type, speed: s.Speed, streams: s.Streams, capped: s.StreamsCapped, savings: s.Savings, lower: null, current: false, action: null, best: true }];
+                                rows[0].action = idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: s.Type, Device: s.Device }, true));
+                                rows.push(...s.Compared.map(c => ({ text: backendName(c.Value), value: c.Value, speed: c.Speed, streams: c.Streams, capped: c.StreamsCapped, savings: [], lower: null, current: true, action: null })));
+                                // Measured alike, it's suggested when it is more efficient, or as Jellyfin's preferred Intel backend; the wording is Jellyfin's hardware acceleration guides'.
+                                const recommended = 'Recommendation: ' + backendName(s.Type) + ' \u2013 ';
+                                const savings = s.Savings.length ? 'Uses ' + savingsText(s.Savings) + '.' : '';
+                                const reasons = !configured || configured === 'none' ? [recommended + 'offloads transcoding from the CPU.']
+                                    : s.Preferred ? [recommended + 'preferred on mainstream Intel GPUs, for better performance.', 'Measured as fast as ' + backendName(configured) + ' here.', savings]
+                                    : savings ? [recommended + 'as fast as ' + backendName(configured) + '.', savings]
+                                    : [recommended + 'the fastest hardware backend measured.'];
+                                section.appendChild(suggestionTable('Hardware acceleration', rows, null, [...reasons, ...(s.TestVideosOnly ? testVideos : [])]));
                                 continue;
                             }
                             // A setting: the recommended value and every other value compared with the server's, in Jellyfin's order.
@@ -1946,7 +1962,7 @@
                             main.best = true;
                             const others = s.Compared.map(c => {
                                 const current = isBitrate(s) ? remoteLimit === Number(c.Value) : c.Current;
-                                return { text: optionValueText(s.Setting, c.Value), value: c.Value, speed: c.Speed, streams: c.Streams, capped: c.StreamsCapped, speeds: c.Speeds, savings: [], lower: c.LowerQuality, current, action: applyValue(s, c.Value, current, c.Speeds, c.Speed) };
+                                return { text: optionValueText(s.Setting, c.Value), value: c.Value, speed: c.Speed, streams: c.Streams, capped: c.StreamsCapped, speeds: c.Speeds, savings: [], lower: c.LowerQuality, current, action: applyValue(s, c.Value, current) };
                             });
                             // The recommended value's quality is shown where every other value is better, or every other worse.
                             const lowers = others.map(r => r.lower);
@@ -1954,14 +1970,20 @@
                             // A choice's place in the option's dropdown, a number's value; a switch keeps the recommended value first.
                             const order = r => option && option.Choices ? option.Choices.findIndex(c => c.Key === r.value) : option && option.Range ? Number(r.value) : 0;
                             const rows = [main].concat(others).sort((a, b) => order(a) - order(b));
+                            // Settings are compared on the configured backend's results alone.
+                            const measuredOn = option && option.NamesBackend ? (!configured || configured === 'none' ? 'Measured in software.' : 'Measured on ' + backendName(configured) + '.') : '';
                             section.appendChild(suggestionTable(label, rows, option, [
-                                reasonFor(s, optionValueText(s.Setting, s.Value), s.Others.map(o => optionValueText(s.Setting, o))),
+                                ...reasonFor(s, optionValueText(s.Setting, s.Value), s.Others.map(o => optionValueText(s.Setting, o))),
+                                option ? option.Note : '',
                                 stricter(s) ? 'A stricter limit of ' + remoteLimit / 1e6 + ' Mbps is already set.' : '',
+                                measuredOn,
                                 caveat,
-                                s.TestVideosOnly ? testVideos : '',
+                                ...(s.TestVideosOnly ? testVideos : []),
                             ], serverLabels[s.Setting + 'Description']));
                         }
-                        section.appendChild(el('div', 'Settings are compared between saved runs that differ in that setting alone. Software is never recommended over a working hardware backend.' + (advice.Headroom ? ' Better quality is recommended only while it keeps ' + advice.Headroom + '\u00d7 real time on real video and at least ' + Math.round((1 - advice.MaxStreamLoss) * 100) + '% of the concurrent streams.' : ''), 'fieldDescription'));
+                        const footer = section.appendChild(el('div', null, 'fieldDescription'));
+                        ['Settings are compared between saved runs that differ in that setting alone.', 'Software is never recommended over a working hardware backend.', advice.Headroom ? 'Better quality is recommended only while it keeps ' + advice.Headroom + '\u00d7 real time on real video and at least ' + Math.round((1 - advice.MaxStreamLoss) * 100) + '% of the concurrent streams.' : '']
+                            .filter(t => t).forEach(t => footer.appendChild(el('div', t)));
                     };
                     const cached = suggestionCache.get(key);
                     if (cached) {
@@ -2156,8 +2178,8 @@
                             const suite = suites.find(x => x.Key === chosenSuite);
                             details.replaceChildren();
                             details.appendChild(el('div', suite.Description, 'fieldDescription'));
-                            if (suite.Note) {
-                                details.appendChild(el('div', suite.Note, 'infoBanner'));
+                            if (suite.Notes) {
+                                details.appendChild(noteBanner(suite.Notes));
                             }
                             const list = el('ul', null, 'fieldDescription hwprobe-notes');
                             list.appendChild(el('li', 'Steps: ' + suite.Steps.join(', ')));

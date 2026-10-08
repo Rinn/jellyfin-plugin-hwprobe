@@ -19,7 +19,7 @@ namespace Jellyfin.Plugin.HwProbe.Api;
 /// <param name="DefaultMeasureResources">Whether a run measures resource usage by default.</param>
 /// <param name="Advice">The thresholds measurements are judged by.</param>
 /// <param name="SoftwareName">What the page calls software encoding.</param>
-/// <param name="Labels">Labels and caveats for server settings suggestions change that aren't run options.</param>
+/// <param name="Labels">Labels and descriptions for server settings suggestions change that aren't run options.</param>
 /// <param name="ResourceHeaders">The Resource Usage view's column header for each resource.</param>
 /// <param name="PowerDomains">What each energy meter's domain is called.</param>
 /// <param name="ResourceNames">What the page calls each measured resource, in sentence case.</param>
@@ -28,6 +28,7 @@ namespace Jellyfin.Plugin.HwProbe.Api;
 /// <param name="Links">The links the page points to, by name.</param>
 /// <param name="Tiers">The pipeline tiers' descriptions.</param>
 /// <param name="Verdicts">The descriptions of backends that don't work.</param>
+/// <param name="Outcomes">Each probe test outcome's result note, all but a pass.</param>
 /// <param name="Findings">The descriptions of findings, by code.</param>
 /// <param name="Settings">The names of a speed run's starting settings.</param>
 /// <param name="SettingGroups">The settings that together pick one thing, each suggested as one table.</param>
@@ -57,6 +58,7 @@ public sealed record CatalogInfo(
     IReadOnlyDictionary<string, string> Links,
     IReadOnlyDictionary<PipelineTier, string> Tiers,
     IReadOnlyDictionary<BackendVerdict, string> Verdicts,
+    IReadOnlyDictionary<ProbeOutcome, string> Outcomes,
     IReadOnlyDictionary<string, string> Findings,
     IReadOnlyDictionary<string, string> Settings,
     IReadOnlyList<CatalogSettingGroup> SettingGroups,
@@ -93,6 +95,7 @@ public sealed record CatalogInfo(
             catalog.Links,
             catalog.Tiers,
             catalog.Verdicts,
+            catalog.Outcomes,
             catalog.Findings,
             catalog.Settings,
             catalog.SettingGroups,

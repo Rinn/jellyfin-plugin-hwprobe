@@ -47,6 +47,9 @@ public sealed class CatalogSetting
     /// <summary>Gets a known drawback, shown with any suggestion to change it, or null.</summary>
     public string? Caveat { get; init; }
 
+    /// <summary>Gets a line shown under any suggestion for it, or null.</summary>
+    public string? Note { get; init; }
+
     /// <summary>Gets the value without the caveat's drawback, suggested beside a better-quality value that has it, or null.</summary>
     public string? CompatibleValue { get; init; }
 
@@ -58,6 +61,12 @@ public sealed class CatalogSetting
 
     /// <summary>Gets why <see cref="Recommended"/> is, shown as the recommendation's reason, or null.</summary>
     public string? RecommendedReason { get; init; }
+
+    /// <summary>Gets the line naming the best-quality value that keeps up beside <see cref="Recommended"/>, with <c>{value}</c> and <c>{headroom}</c> filled in, or null.</summary>
+    public string? BestQualityNote { get; init; }
+
+    /// <summary>Gets a value indicating whether its suggestion says which backend measured it, as for a suite that runs in software alone.</summary>
+    public bool NamesBackend { get; init; }
 
     /// <summary>Returns whether one value gives a better picture than another.</summary>
     /// <param name="value">The value.</param>
