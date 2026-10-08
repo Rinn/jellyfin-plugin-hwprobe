@@ -31,7 +31,7 @@ internal static class SuggestionRenderer
             {
                 SpeedSuggestionKind.FastestBackend when s.Type is { } type => $"hardware acceleration: {SpeedRenderer.Name(type)}{(s.Savings.Count > 0 ? $", as fast with {savings}" : string.Empty)}",
                 SpeedSuggestionKind.FallsBehind when s.Type is { } type => $"{SpeedRenderer.Name(type)} falls behind real time",
-                SpeedSuggestionKind.TooSlowEverywhere when s.Type is { } type => string.Create(CultureInfo.InvariantCulture, $"too slow on every backend: {s.Outputs[0]}, fastest {SpeedRenderer.Name(type)} at {s.Speed:0.00}x real time"),
+                SpeedSuggestionKind.TooSlowEverywhere when s.Type is { } type => string.Create(CultureInfo.InvariantCulture, $"falls behind on every backend: {s.Outputs[0]}, fastest {SpeedRenderer.Name(type)} at {s.Speed:0.00}x real time"),
                 SpeedSuggestionKind.FasterSetting => string.Create(CultureInfo.InvariantCulture, $"{label}: {value}{current}, {Math.Abs(s.Gain ?? 0):0%} faster than {others}{(s.LowerQuality ? ", at lower quality" : string.Empty)}"),
                 SpeedSuggestionKind.EfficientSetting => $"{label}: {value}{current}, as fast as {others} with {savings}{(s.LowerQuality ? ", at lower quality" : string.Empty)}",
                 SpeedSuggestionKind.HigherQuality => string.Create(CultureInfo.InvariantCulture, $"{label}: {value}{current}, better quality than {others}, still {s.Speed:0.0}x real time"),

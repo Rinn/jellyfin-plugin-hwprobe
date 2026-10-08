@@ -1878,9 +1878,9 @@
                         // Outputs none of the backends measured keeps real time on, in one table.
                         const tooSlow = list.filter(s => s.Kind === 'TooSlowEverywhere');
                         if (tooSlow.length) {
-                            const rows = tooSlow.map(s => ({ text: s.Outputs[0], backend: backendName(s.Type), speed: s.Speed, streams: s.Streams, capped: s.StreamsCapped, savings: [], lower: null, current: false, action: null, glyph: '\u274c', glyphTitle: 'Too slow' }));
+                            const rows = tooSlow.map(s => ({ text: s.Outputs[0], backend: backendName(s.Type), speed: s.Speed, streams: s.Streams, capped: s.StreamsCapped, savings: [], lower: null, current: false, action: null, glyph: '\u274c', glyphTitle: 'Falls behind' }));
                             const these = tooSlow.length === 1 ? 'this output' : 'these outputs';
-                            section.appendChild(suggestionTable('Too slow on every backend', rows, null, ['No backend measured keeps real time on ' + these + ', so players that require a transcode will buffer. Direct play is unaffected.']));
+                            section.appendChild(suggestionTable('Falls behind on every backend', rows, null, ['Every backend measured falls behind real time on ' + these + ', so players that require a transcode will buffer.', 'Direct play is unaffected.']));
                         }
                         const drawnGroups = new Set();
                         for (const s of list.filter(x => x.Kind !== 'TooSlowEverywhere')) {
@@ -1923,7 +1923,7 @@
                                 ], serverLabels[s.Setting + 'Description']));
                                 continue;
                             }
-                            // Outputs the configured backend falls behind on, a row each, as in Too slow on every backend.
+                            // Outputs the configured backend falls behind on, a row each, as in Falls behind on every backend.
                             if (s.Kind === 'FallsBehind') {
                                 const rows = s.Speeds.map(o => ({ text: o.Label, speed: o.Speed, streams: o.Streams, capped: o.StreamsCapped, savings: [], lower: null, current: false, action: null, glyph: '\u274c', glyphTitle: 'Falls behind' }));
                                 const these = rows.length === 1 ? 'this output' : 'these outputs';
