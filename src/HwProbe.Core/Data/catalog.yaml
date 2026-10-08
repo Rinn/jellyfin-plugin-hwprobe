@@ -768,7 +768,7 @@ suites:
     name: Subtitle burn-in
     description: Encodes H.264 with no subtitles, then text and PGS subtitles burned in.
     # Burn-in is the client's choice, so no server setting is compared; the labels are jellyfin-web's (en-us.json).
-    # The first line is jellyfin-web's own (BurnSubtitlesHelp).
+    # The first line follows jellyfin-web's BurnSubtitlesHelp ("Avoiding this will greatly improve performance").
     notes:
       - Avoiding burn-in will greatly improve performance.
       - "Server: keep Allow subtitle extraction on the fly on (Transcoding)."
@@ -829,7 +829,7 @@ defaultMeasureResources: true
 # Settings that together pick one thing, suggested as one table with a row per choice the runs used, in this order; a run is the first row whose backends and conditions it meets.
 # applies: settings Apply on the row also sets, beyond its conditions. note: a line under the table when the row is in it.
 # Tone mapping: VPP on Intel and VideoToolbox on Apple take precedence over Enable Tone mapping when on, and work with it off; it tone maps the HDR formats they don't (EncodingHelper IsIntelVppTonemapAvailable, IsVideoToolboxTonemapAvailable, IsHwTonemapAvailable, v12.2).
-# The notes are jellyfin-web's help for each setting (en-us.json, v12.2); its deinterlacing method help is left out, as it says the method only applies to software, but CUDA, OpenCL, and VideoToolbox use it too (EncodingHelper.GetHwDeinterlaceFilter).
+# The notes but Off's are jellyfin-web's help for each setting (en-us.json, v12.2); its deinterlacing method help is left out, as it says the method only applies to software, but CUDA, OpenCL, and VideoToolbox use it too (EncodingHelper.GetHwDeinterlaceFilter).
 settingGroups:
   - key: deinterlace
     label: Deinterlacing

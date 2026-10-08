@@ -251,7 +251,7 @@
                 let resourceNames = {};
                 let powerDomains = {};
                 let resourceHeaders = {};
-                // Labels and caveats for server settings suggestions change that aren't run options.
+                // Labels and descriptions for server settings suggestions change that aren't run options.
                 let serverLabels = {};
                 // The server's Internet streaming bitrate limit, to mark a suggested limit already set.
                 let remoteLimit = null;
@@ -681,7 +681,7 @@
                 }
 
                 function outcomeRow(table, label, outcome) {
-                    const state = outcome === 'Pass' ? 'TurnOn' : (outcome ? 'LeaveOff' : 'NotTested');
+                    const state = outcome === 'Pass' ? 'TurnOn' : !outcome || outcome === 'Untested' || outcome === 'Skipped' ? 'NotTested' : 'LeaveOff';
                     const reason = outcome === 'Pass' ? '' : outcomeNotes[outcome || 'Untested'];
                     row(table, [mark(state), label, el('td', reason, 'secondaryText'), el('td')]);
                 }

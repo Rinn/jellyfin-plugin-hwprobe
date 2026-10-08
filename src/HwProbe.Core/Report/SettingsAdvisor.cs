@@ -239,14 +239,7 @@ public static class SettingsAdvisor
         const string KeyFrameSetting = "Trickplay:EnableKeyFrameOnlyExtraction";
         const string KeyFrameLabel = "Only generate images from key frames";
         const string SoftwareNote = "Uses the software decoder with this backend";
-        var decoder = type switch
-        {
-            HwType.qsv => NativeDecoder,
-            HwType.nvenc => EnhancedNvdec,
-            _ => null,
-        };
-        if ((decoder is not null && transcoding.Find(a => a.Setting == decoder)?.State != SettingState.TurnOn)
-            || (type == HwType.amf && context.Os != HostOs.Windows))
+        if (type == HwType.amf && context.Os != HostOs.Windows)
         {
             yield return new(TrickplaySection, KeyFrameSetting, KeyFrameLabel, SettingState.LeaveOff, SoftwareNote);
             yield break;

@@ -130,6 +130,8 @@ public sealed class SettingsServiceTests : IDisposable
         ];
 
         Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange("EncoderPreset", "fast"), "admin", ct)).Outcome);
+        var unchanged = await _harness.Service.ApplyMeasuredAsync(new MeasuredChange(SpeedAdvisor.BitrateLimitKey, "0"), "admin", ct);
+        Assert.Equal((ApplyOutcome.Rejected, $"{SpeedAdvisor.BitrateLimitKey} = 0 is already the server's setting."), (unchanged.Outcome, unchanged.Reason));
         var applied = await _harness.Service.ApplyMeasuredAsync(new MeasuredChange(SpeedAdvisor.BitrateLimitKey, "20000000"), "admin", ct);
         Assert.Equal((ApplyOutcome.Applied, 20000000), (applied.Outcome, _harness.SavedBitrateLimit));
         Assert.Equal(Catalog.Default.Labels[SpeedAdvisor.BitrateLimitKey], Assert.Single(applied.Changes).Label);

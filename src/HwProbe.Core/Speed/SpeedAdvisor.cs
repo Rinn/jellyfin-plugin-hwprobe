@@ -555,9 +555,10 @@ public static class SpeedAdvisor
     /// <returns>The value, or null when none that keeps up is better than the recommended one.</returns>
     private static string? BestQuality(string key, string recommended, List<(string Value, IReadOnlyList<OutputSpeed> Speeds)> values, List<SettingComparison> against, HwType type)
     {
-        // Headroom is judged on real video only, as for a better-quality suggestion.
+        // Headroom is judged on real video only, and streams against the server's value, as for a better-quality suggestion.
         List<double> Real(string value) => [.. value == values[0].Value ? against.Where(c => !c.Generated).Select(c => c.OtherSpeed) : against.Where(c => c.Value == value && !c.Generated).Select(c => c.Speed)];
-        var keeping = values.Select(v => v.Value).Where(v => Real(v) is { Count: > 0 } real && real.Min() >= Headroom).ToList();
+        bool KeepsStreams(string value) => against.Where(c => c.Value == value).All(c => c is not { Streams: { } mine, OtherStreams: { } theirs } || mine >= theirs * (1 - MaxStreamLoss));
+        var keeping = values.Select(v => v.Value).Where(v => Real(v) is { Count: > 0 } real && real.Min() >= Headroom && KeepsStreams(v)).ToList();
         var best = keeping.FirstOrDefault(v => !keeping.Any(o => IsBetterQuality(key, o, v, type)));
         return best is not null && IsBetterQuality(key, best, recommended, type) ? best : null;
     }

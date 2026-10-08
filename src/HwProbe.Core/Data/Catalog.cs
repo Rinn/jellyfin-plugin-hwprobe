@@ -363,10 +363,11 @@ public sealed partial class Catalog
             var valid = known
                 && conditions.All(c => group.Settings.Contains(c.Key) && Option(c.Key)?.Takes(c.Value) == true)
                 && group.Rows.All(r => r.Describes is null || group.Settings.Contains(r.Describes))
+                && group.Rows.All(r => r.Applies is null || r.When is null || !r.Applies.Keys.Intersect(r.When.Keys, StringComparer.Ordinal).Any())
                 && group.Rows.Select(r => r.Label).Distinct(StringComparer.Ordinal).Count() == group.Rows.Count;
             if (!known || !valid || group.Rows.Count == 0 || SettingGroups.Count(g => g.Settings.Intersect(group.Settings).Any()) > 1)
             {
-                throw new InvalidDataException($"catalog.yaml: setting group {group.Key} requires rows with distinct labels, options the catalog has, in no other group, and conditions on its own settings.");
+                throw new InvalidDataException($"catalog.yaml: setting group {group.Key} requires rows with distinct labels, options the catalog has, in no other group, and conditions and applied values on its own settings, none applied that a row's conditions set.");
             }
         }
 

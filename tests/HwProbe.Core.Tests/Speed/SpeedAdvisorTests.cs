@@ -322,6 +322,21 @@ public sealed class SpeedAdvisorTests
         Assert.Null(onVaapi.BestQuality);
     }
 
+    /// <summary>Beside Auto, the slowest preset named keeps the headroom on real video and the concurrent streams; none is named when no better preset does.</summary>
+    [Fact]
+    public void NamesTheSlowestPresetThatKeepsUp()
+    {
+        const string Film = "live-action|h264-8mbps";
+        static SpeedReport Preset(string preset, double fps, int streams) => Run(new SpeedSettings { EncoderPreset = preset }, Result(HwType.none, Film, fps) with { Command = preset, Streams = streams });
+        SpeedReport[] lost = [Preset("auto", 200, 10), Preset("fast", 75, 3), Preset("medium", 30, 2)];
+        SpeedReport[] kept = [Preset("auto", 200, 10), Preset("fast", 75, 6), Preset("medium", 30, 2)];
+
+        string? Best(SpeedReport[] runs) => Assert.Single(SpeedAdvisor.Advise(runs[0], runs, HwType.none, string.Empty, new SpeedSettings()), s => s.Setting == "EncoderPreset").BestQuality;
+
+        Assert.Null(Best(lost));
+        Assert.Equal("fast", Best(kept));
+    }
+
     /// <summary>A value only as fast as the server's within noise isn't recommended for using less when the server's value measured faster than it by more.</summary>
     [Fact]
     public void KeepsAServerValueThatMeasuredFaster()

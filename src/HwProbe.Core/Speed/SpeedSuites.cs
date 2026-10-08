@@ -48,7 +48,7 @@ public static class SpeedSuites
         ArgumentNullException.ThrowIfNull(report);
         var backends = Backends(suite, configured);
         var working = backends.All(b => b == HwType.none || report.Backends.Any(r => r.Type == b && r.Verdict == BackendVerdict.Viable));
-        return backends.Count > 0 && working && suite.Requires switch
+        return working && suite.Requires switch
         {
             "lowPower" => configured == HwType.qsv && report.Backends.Any(b => b.Type == HwType.qsv && b.Encode.Any(e => e.Key.EndsWith("_lowpower", StringComparison.Ordinal) && e.Value == ProbeOutcome.Pass)),
             _ => true,

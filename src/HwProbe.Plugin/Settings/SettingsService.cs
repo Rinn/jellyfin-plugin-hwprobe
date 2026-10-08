@@ -163,12 +163,16 @@ public sealed class SettingsService : IDisposable
                     (s.Kind is SpeedSuggestionKind.FasterSetting or SpeedSuggestionKind.HigherQuality or SpeedSuggestionKind.Compatible or SpeedSuggestionKind.EfficientSetting or SpeedSuggestionKind.BitrateLimit or SpeedSuggestionKind.RecommendedValue
                         && !s.Current && s.Value == change.Value)
                     || s.Compared.Any(c => c.Value == change.Value && !c.Current));
-                var options = _read();
-
-                // Suggestions don't know the bitrate limit, so the server's own value is checked here too.
-                if (!offered || MeasuredSettings.ToSetting(change.Setting, change.Value) is not { } setting || options.Read(setting.Setting) == setting.Value)
+                if (!offered || MeasuredSettings.ToSetting(change.Setting, change.Value) is not { } setting)
                 {
                     return Refuse($"{change.Setting} = {change.Value} isn't a measured value the server can switch to.");
+                }
+
+                // Suggestions don't know the bitrate limit, so the server's own value is checked here too.
+                var options = _read();
+                if (options.Read(setting.Setting) == setting.Value)
+                {
+                    return Refuse($"{change.Setting} = {change.Value} is already the server's setting.");
                 }
 
                 return await WriteAsync(options, [setting], HistoryKind.Apply, user, cancellationToken);

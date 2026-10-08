@@ -234,22 +234,23 @@ public sealed class SettingsAdvisorTests
         Assert.Equal((SettingState.LeaveOff, "Not used with this backend"), (advice.State, advice.Note));
     }
 
-    /// <summary>Key-frame-only trickplay is flagged where it would turn hardware decoding off, and optional where its test passes.</summary>
+    /// <summary>Key-frame-only trickplay follows its own test, also beside a codec that requires the QSV decoders, and is flagged on AMF off Windows, which can't decode it in hardware.</summary>
     [Fact]
-    public void KeyFrameOnlyFollowsItsTestAndTheDecoder()
+    public void KeyFrameOnlyFollowsItsTest()
     {
         const string Setting = "Trickplay:EnableKeyFrameOnlyExtraction";
         var native = SettingsAdvisor.For(_apolloLakeQsv, _docker);
-
-        // With no cuvid results, enhanced NVDEC isn't tested, so key frames may drop to software.
-        var nvenc = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Type = HwType.nvenc }, _docker), a => a.Setting == Setting);
+        var amf = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Type = HwType.amf }, _docker), a => a.Setting == Setting);
 
         var passed = new Dictionary<string, ProbeOutcome>(_apolloLakeQsv.Decode) { ["h264_keyframes"] = P };
         var optional = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Type = HwType.vaapi, Decode = passed }, _docker), a => a.Setting == Setting);
+        var qsvOnly = new Dictionary<string, ProbeOutcome>(passed) { ["vc1"] = U, ["vc1_qsvdecoder"] = P };
+        var besideQsvDecoders = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Decode = qsvOnly }, _docker), a => a.Setting == Setting);
 
         Assert.Equal(SettingState.NotTested, Assert.Single(native, a => a.Setting == Setting).State);
         Assert.Equal((SettingState.Optional, "Significantly faster, less accurate timing"), (optional.State, optional.Note));
-        Assert.Equal((SettingState.LeaveOff, "Uses the software decoder with this backend"), (nvenc.State, nvenc.Note));
+        Assert.Equal(SettingState.Optional, besideQsvDecoders.State);
+        Assert.Equal((SettingState.LeaveOff, "Uses the software decoder with this backend"), (amf.State, amf.Note));
     }
 
     /// <summary>Enhanced NVDEC is advised like the native decoders: on, naming a codec that decodes with cuvid alone.</summary>

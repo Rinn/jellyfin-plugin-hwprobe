@@ -38,7 +38,7 @@ internal static class SuggestionRenderer
                 SpeedSuggestionKind.Compatible when s.Setting == SpeedAdvisor.BitrateLimitKey && s.Value is { } limit => string.Create(CultureInfo.InvariantCulture, $"{label}: {int.Parse(limit, CultureInfo.InvariantCulture) / 1e6:0.#} Mbps, the highest H.264 quality that keeps real time"),
                 SpeedSuggestionKind.Compatible => string.Create(CultureInfo.InvariantCulture, $"{label}: {value}{current}, more compatible than {others}, at lower quality, {s.Speed:0.0}x real time"),
                 SpeedSuggestionKind.BitrateLimit => $"{label}: no limit, out of network devices transcode any video whose bitrate exceeds the limit instead of direct playing it",
-                SpeedSuggestionKind.NoChange => $"{label}: {value}{current}, nothing compared is worth changing to ({others})",
+                SpeedSuggestionKind.NoChange => $"{label}: {value}{current}, no other value measured is better ({others})",
                 SpeedSuggestionKind.RecommendedValue when s.Setting is { } key && Catalog.Default.Option(key)?.RecommendedReason is { } reason => $"{label}: {value}{current}, {reason.TrimEnd('.')}",
                 _ => s.Kind.ToString(),
             };
