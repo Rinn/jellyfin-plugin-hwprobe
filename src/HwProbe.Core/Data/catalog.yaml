@@ -580,8 +580,8 @@ options:
       - { key: "15", label: "15" }
       - { key: "16", label: "16" }
       - { key: "0", label: Max }
-  # caveat: jellyfin-web's own warning (LabelEnableAudioVbrHelp), shown with any suggestion to change it; compatibleValue: the value without it, suggested beside the better-quality one.
-  - { key: AudioVbr, label: Enable VBR audio encoding, server: EnableAudioVbr, switch: true, qualityOrder: ["true", "false"], caveat: "In some rare cases VBR may cause buffering and compatibility issues.", compatibleValue: "false", description: "Variable bitrate offers better quality to average bitrate ratio, but in some rare cases may cause buffering and compatibility issues." }
+  # caveat: jellyfin-web's own help (LabelEnableAudioVbrHelp), shown with any suggestion to change it; compatibleValue: the value without it, suggested beside the better-quality one.
+  - { key: AudioVbr, label: Enable VBR audio encoding, server: EnableAudioVbr, switch: true, qualityOrder: ["true", "false"], caveat: "Variable bitrate offers better quality to average bitrate ratio, but in some rare cases may cause buffering and compatibility issues.", compatibleValue: "false", description: "Variable bitrate offers better quality to average bitrate ratio, but in some rare cases may cause buffering and compatibility issues." }
   # Downmixing only changes transcoded 5.1 audio.
   - key: DownmixBoost
     description: "Boost audio when downmixing. A value of one will preserve the original volume."
