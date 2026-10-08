@@ -153,6 +153,11 @@ public sealed class ProbeEngine : IDisposable
             HwProbeVersion = CapabilityReport.CurrentHwProbeVersion,
             Seconds = _time.GetElapsedTime(started).TotalSeconds,
             Software = softwareRow,
+            Gpus =
+            [
+                .. run.Devices.RenderNodes.Select(n => new GpuInfo(n.Node, n.Vendor, n.Device, run.DriverLines.GetValueOrDefault(n.Node))),
+                .. run.Adapters.Select((a, i) => new GpuInfo("dx11:" + i.ToString(CultureInfo.InvariantCulture), a.Vendor, a.Device, a.Name)),
+            ],
         };
 
         if (options.StopAfter == StopStage.Matrix)
@@ -825,7 +830,7 @@ public sealed class ProbeEngine : IDisposable
         public Dictionary<string, string> DriverLines { get; } = new(StringComparer.Ordinal);
 
         /// <summary>Gets the Direct3D adapters on Windows, in index order; empty elsewhere or when the build lacks d3d11va.</summary>
-        public List<(string Vendor, string Device)> Adapters { get; } = [];
+        public List<(string Vendor, string Device, string Name)> Adapters { get; } = [];
 
         /// <summary>Gets or sets fixtures by file name.</summary>
         public Dictionary<string, FixtureResult> Fixtures { get; set; } = new(StringComparer.Ordinal);

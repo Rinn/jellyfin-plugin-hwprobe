@@ -33,14 +33,15 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     }
 
     /// <summary>Returns a zip of the latest probe's report and ffmpeg logs, to attach to an issue.</summary>
+    /// <param name="includeTestResults">Whether the saved performance test runs and measurements are added.</param>
     /// <param name="cancellationToken">Cancels the check.</param>
     /// <returns>The zip, or 404 when no probe has completed.</returns>
     [HttpGet("Diagnostics")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> GetDiagnosticsAsync(CancellationToken cancellationToken)
+    public async Task<ActionResult> GetDiagnosticsAsync([FromQuery] bool includeTestResults, CancellationToken cancellationToken)
     {
-        var zip = await service.LatestDiagnosticsAsync(cancellationToken);
+        var zip = await service.LatestDiagnosticsAsync(includeTestResults, cancellationToken);
         return zip is null ? NotFound() : File(zip, "application/zip", "hwprobe-diagnostics.zip");
     }
 
@@ -219,12 +220,12 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
 
     /// <summary>Deletes the measurements saved for reuse, keeping the cached clips.</summary>
     /// <param name="cancellationToken">Cancels waiting.</param>
-    /// <returns>204 when deleted; 409 while a probe or speed run is running.</returns>
+    /// <returns>204 when deleted; 409 while a probe or speed run is running, or a file was in use.</returns>
     [HttpDelete("SpeedResults")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult> DeleteSpeedResultsAsync(CancellationToken cancellationToken) =>
-        await service.DeleteSavedMeasurementsAsync(cancellationToken) ? NoContent() : Conflict("A probe or performance test is running.");
+        await service.DeleteSavedMeasurementsAsync(cancellationToken) ? NoContent() : Conflict("A probe or performance test is running, or a file was in use.");
 
     /// <summary>Returns suggestions drawn from a performance test and the runs saved with this version and ffmpeg.</summary>
     /// <param name="id">The run shown, or none for the latest.</param>
@@ -379,6 +380,6 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     {
         DeleteOutcome.Deleted => NoContent(),
         DeleteOutcome.NotFound => NotFound(),
-        _ => Conflict("A probe or performance test is running."),
+        _ => Conflict("A probe or performance test is running, or a file was in use."),
     };
 }

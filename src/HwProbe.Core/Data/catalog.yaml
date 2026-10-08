@@ -662,6 +662,9 @@ options:
       - { key: text, label: Text (ASS) }
       - { key: image, label: Image (PGS) }
 
+# GPU makers by PCI vendor ID, as the issue form names a GPU the system gives no name for.
+pciVendors: { "0x8086": Intel, "0x1002": AMD, "0x10de": NVIDIA }
+
 # Links the page, the CLI, and the advice point to.
 links:
   # The project's home, given as the contact in the User-Agent of downloads, as Wikimedia asks.

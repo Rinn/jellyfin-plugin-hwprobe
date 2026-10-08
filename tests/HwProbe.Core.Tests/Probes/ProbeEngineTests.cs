@@ -124,6 +124,7 @@ public sealed class ProbeEngineTests : IDisposable
         Assert.Equal(4, runner.Calls.Count(c => c.Contains("-init_hw_device d3d11va=dx11:", StringComparison.Ordinal) && !c.Contains("qsv", StringComparison.Ordinal)));
         var amf = Assert.Single(report.Backends, b => b.Type == HwType.amf);
         Assert.Equal((BackendVerdict.NotPresent, Catalog.Text("noVendorAdapter", ("maker", "AMD"))), (amf.Verdict, amf.Hint));
+        Assert.Equal(["dx11:0 NVIDIA GeForce RTX 5080", "dx11:1 Intel(R) UHD Graphics 770", "dx11:2 Microsoft Basic Render Driver"], report.Gpus.Select(g => g.Device + " " + g.Name));
     }
 
     /// <summary>With the adapters listed, a failed Intel adapter doesn't hide the next, and AMF tests only the first AMD adapter.</summary>

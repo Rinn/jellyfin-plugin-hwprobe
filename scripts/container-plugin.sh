@@ -158,6 +158,10 @@ done
 check "speed run finished" Idle "$state"
 check "speed run error" None "$(curl -sf "$base/HwProbe/Status" -H "$h" | json 'j.get("LastError")')"
 check "speed run in history" True "$(curl -sf "$base/HwProbe/SpeedHistory" -H "$h" | json 'len(j) >= 1')"
+curl -sf "$base/HwProbe/Diagnostics?includeTestResults=true" -H "$h" -o "$work/diagnostics-results.zip"
+check "diagnostics with test results" True "$(python3 -c "import sys,zipfile; n=zipfile.ZipFile(sys.argv[1]).namelist(); print(any(x.startswith('test-results/') for x in n) and any(x.startswith('measurements/') for x in n))" "$work/diagnostics-results.zip")"
+curl -sf "$base/HwProbe/Diagnostics" -H "$h" -o "$work/diagnostics-plain.zip"
+check "diagnostics without test results" False "$(python3 -c "import sys,zipfile; n=zipfile.ZipFile(sys.argv[1]).namelist(); print(any(x.startswith(('test-results/', 'measurements/')) for x in n))" "$work/diagnostics-plain.zip")"
 check "start a reusing run" 202 "$(code -X POST "$base/HwProbe/Speed" -H "$h" -H 'Content-Type: application/json' -d '{"Method":"Quick","Videos":["pattern"],"Outputs":["decode"],"ReuseResults":true}')"
 for _ in $(seq 1 150); do
     [ "$(curl -sf "$base/HwProbe/Status" -H "$h" | json 'j["State"]')" = Idle ] && break

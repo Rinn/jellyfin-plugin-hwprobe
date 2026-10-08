@@ -90,6 +90,9 @@ public sealed partial class Catalog
     /// <summary>Gets the settings that together pick one thing, each suggested as one table.</summary>
     public IReadOnlyList<CatalogSettingGroup> SettingGroups { get; init; } = [];
 
+    /// <summary>Gets GPU makers' names by PCI vendor ID, e.g. Intel for <c>0x8086</c>.</summary>
+    public required IReadOnlyDictionary<string, string> PciVendors { get; init; }
+
     /// <summary>Gets the links the page, the CLI, and the advice point to, by name: <c>repository</c>, <c>issueForm</c>, <c>notices</c>, <c>jellyfinGuides</c>, <c>intelLowPowerGuide</c>, <c>fateSuite</c>.</summary>
     public required IReadOnlyDictionary<string, string> Links { get; init; }
 
