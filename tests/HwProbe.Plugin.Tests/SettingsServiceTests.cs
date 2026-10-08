@@ -91,8 +91,8 @@ public sealed class SettingsServiceTests : IDisposable
         _harness.Suggestions =
         [
             new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, ["a"]) { Setting = "DoubleRate", Value = "false", Current = true, Group = "deinterlace", Row = "Yet Another DeInterlacing Filter (YADIF), single rate", Compared = [new SpeedComparedValue("true", 2, null, false) { Row = Double }] },
-            new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, ["a"]) { Setting = "Tonemap", Value = "true", Current = true, Group = "tonemap", Row = "General", Compared = [new SpeedComparedValue("false", 2, null, false) { Row = "Off" }] },
-            new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, ["a"]) { Setting = "VideoToolboxTonemap", Value = "true", Group = "tonemap", Row = "VideoToolbox", Compared = [new SpeedComparedValue("false", 1, null, false) { Row = "General" }] },
+            new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, ["a"]) { Setting = "Tonemap", Value = "true", Current = true, Group = "tonemap", Row = "Tone mapping", Compared = [new SpeedComparedValue("false", 2, null, false) { Row = "Off" }] },
+            new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, ["a"]) { Setting = "VideoToolboxTonemap", Value = "true", Group = "tonemap", Row = "VideoToolbox", Compared = [new SpeedComparedValue("false", 1, null, false) { Row = "Tone mapping" }] },
         ];
 
         Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredRowAsync(new MeasuredRow("deinterlace", Single), "admin", ct)).Outcome);

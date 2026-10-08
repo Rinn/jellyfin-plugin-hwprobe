@@ -14,7 +14,4 @@ public sealed class CatalogSettingGroup
 
     /// <summary>Gets the choices, in the order the table lists them; a run is the first whose conditions its settings meet.</summary>
     public required IReadOnlyList<CatalogGroupRow> Rows { get; init; }
-
-    /// <summary>Gets a line shown under the table, or null.</summary>
-    public string? Note { get; init; }
 }

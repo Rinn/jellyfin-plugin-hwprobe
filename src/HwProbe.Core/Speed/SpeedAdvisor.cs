@@ -56,7 +56,7 @@ public static class SpeedAdvisor
     /// <returns>The value.</returns>
     public static string ValueOf(SpeedSettings settings, string key) => _values[key](settings);
 
-    /// <summary>Returns the settings to change so the server makes a group's choice: the row's own conditions, and any switch an earlier row that would still take precedence needs turned off.</summary>
+    /// <summary>Returns the settings to change so the server makes a group's choice: the row's own conditions and the values it applies, and any switch an earlier row that would still take precedence needs turned off.</summary>
     /// <param name="groupKey">The group's key.</param>
     /// <param name="row">The row's label.</param>
     /// <param name="server">The server's settings now.</param>
@@ -72,7 +72,7 @@ public static class SpeedAdvisor
             return null;
         }
 
-        var changes = new Dictionary<string, string>(when, StringComparer.Ordinal);
+        var changes = new Dictionary<string, string>(when.Concat(target.Applies ?? new Dictionary<string, string>()), StringComparer.Ordinal);
         for (var attempt = 0; attempt < group.Rows.Count; attempt++)
         {
             var trial = changes.Aggregate((SpeedSettings?)server, (s, c) => s is null ? null : SpeedSettingsOptions.Apply(s, c.Key, c.Value));

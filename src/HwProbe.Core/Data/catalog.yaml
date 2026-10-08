@@ -807,7 +807,9 @@ defaultMeasureResources: true
 
 # description: jellyfin-web's own help text for an option (src/strings/en-us.json, v12.2), shown when hovering its name in a suggestion.
 # Settings that together pick one thing, suggested as one table with a row per choice the runs used, in this order; a run is the first row whose backends and conditions it meets.
-# Tone mapping: VPP on Intel and VideoToolbox on Apple take precedence over the general method when on, and work with Enable Tone mapping off (EncodingHelper IsIntelVppTonemapAvailable, IsVideoToolboxTonemapAvailable, v12.2).
+# applies: settings Apply on the row also sets, beyond its conditions. note: a line under the table when the row is in it.
+# Tone mapping: VPP on Intel and VideoToolbox on Apple take precedence over Enable Tone mapping when on, and work with it off; it tone maps the HDR formats they don't (EncodingHelper IsIntelVppTonemapAvailable, IsVideoToolboxTonemapAvailable, IsHwTonemapAvailable, v12.2).
+# The notes are jellyfin-web's help for each switch (en-us.json, v12.2).
 settingGroups:
   - key: deinterlace
     label: Deinterlacing
@@ -820,12 +822,11 @@ settingGroups:
   - key: tonemap
     label: Tone mapping
     settings: [Tonemap, VppTonemap, VideoToolboxTonemap]
-    note: "VPP and VideoToolbox: the backend's own tone mapping. General: Enable Tone mapping, with the tone-mapping settings."
     rows:
-      - { label: VPP, describes: VppTonemap, backends: [qsv, vaapi], when: { VppTonemap: "true" } }
-      - { label: VideoToolbox, describes: VideoToolboxTonemap, backends: [videotoolbox], when: { VideoToolboxTonemap: "true" } }
-      - { label: General, describes: Tonemap, when: { Tonemap: "true" } }
-      - { label: "Off", describes: Tonemap, when: { Tonemap: "false" }, caveat: "Off: HDR video reaches SDR players unconverted, so colours and brightness look wrong." }
+      - { label: VPP, describes: VppTonemap, backends: [qsv, vaapi], when: { VppTonemap: "true" }, applies: { Tonemap: "true" }, note: "VPP: Full Intel driver based tone-mapping. Currently works only on certain hardware with HDR10 videos." }
+      - { label: VideoToolbox, describes: VideoToolboxTonemap, backends: [videotoolbox], when: { VideoToolboxTonemap: "true" }, applies: { Tonemap: "true" }, note: "VideoToolbox: Hardware-accelerated tone-mapping provided by VideoToolbox. It works with most HDR formats, including HDR10, HDR10+, and HLG, but does not work with Dolby Vision Profile 5." }
+      - { label: Tone mapping, describes: Tonemap, when: { Tonemap: "true" }, note: "Tone mapping: Currently works only with 10bit HDR10, HLG and DoVi videos. This requires the corresponding GPGPU runtime." }
+      - { label: "Off", describes: Tonemap, when: { Tonemap: "false" }, note: "Off: HDR videos aren't tone mapped, so their colors look wrong on SDR players." }
 
 # Seconds between one measurement ending and the next starting, so the system winds down from the last; a result reused from an earlier run doesn't wait.
 testDelay: 1

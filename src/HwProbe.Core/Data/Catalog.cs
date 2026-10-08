@@ -66,7 +66,7 @@ public sealed partial class Catalog
     /// <summary>Gets what the page calls each measured resource, keyed as <see cref="Speed.ResourceSaving.Resource"/> is, in sentence case.</summary>
     public required IReadOnlyDictionary<string, string> ResourceNames { get; init; }
 
-    /// <summary>Gets labels for server settings suggestions change that aren't run options, keyed as suggestions name them, with any caveat under <c>{key}Caveat</c>.</summary>
+    /// <summary>Gets labels for server settings suggestions change that aren't run options, keyed as suggestions name them, with any description under <c>{key}Description</c>.</summary>
     public required IReadOnlyDictionary<string, string> Labels { get; init; }
 
     /// <summary>Gets the Resource Usage view's column header for each resource, keyed as <see cref="ResourceNames"/> is.</summary>
@@ -355,7 +355,7 @@ public sealed partial class Catalog
         foreach (var group in SettingGroups)
         {
             var known = group.Settings.All(k => Option(k) is not null);
-            var conditions = group.Rows.SelectMany(r => r.When ?? new Dictionary<string, string>()).ToList();
+            var conditions = group.Rows.SelectMany(r => (r.When ?? new Dictionary<string, string>()).Concat(r.Applies ?? new Dictionary<string, string>())).ToList();
             var valid = known
                 && conditions.All(c => group.Settings.Contains(c.Key) && Option(c.Key)?.Takes(c.Value) == true)
                 && group.Rows.All(r => r.Describes is null || group.Settings.Contains(r.Describes))

@@ -158,13 +158,14 @@ public sealed class SpeedAdvisorTests
         Assert.Equal(["drama|hevc-8mbps"], Assert.Single(advice, s => s.Setting == "QsvLowPowerHevc" && s.Value == "true").Outputs);
     }
 
-    /// <summary>Switching to a group's choice sets its conditions and turns off a method that would still take precedence.</summary>
+    /// <summary>Switching to a group's choice sets its conditions and the values it applies, and turns off a method that would still take precedence.</summary>
     [Fact]
     public void WorksOutTheChangesForAGroupChoice()
     {
         var server = new SpeedSettings { Tonemap = true, VideoToolboxTonemap = true };
 
-        Assert.Equal([("VideoToolboxTonemap", "false")], SpeedAdvisor.GroupRowChanges("tonemap", "General", server, HwType.videotoolbox));
+        Assert.Equal([("VideoToolboxTonemap", "false")], SpeedAdvisor.GroupRowChanges("tonemap", "Tone mapping", server, HwType.videotoolbox));
+        Assert.Equal([("VppTonemap", "true"), ("Tonemap", "true")], SpeedAdvisor.GroupRowChanges("tonemap", "VPP", new SpeedSettings { Tonemap = false }, HwType.qsv));
         Assert.Equal([("Tonemap", "false"), ("VideoToolboxTonemap", "false")], SpeedAdvisor.GroupRowChanges("tonemap", "Off", server, HwType.videotoolbox));
         Assert.Null(SpeedAdvisor.GroupRowChanges("tonemap", "VPP", server, HwType.videotoolbox));
         Assert.Equal([("DeinterlaceMethod", "yadif"), ("DoubleRate", "false")], SpeedAdvisor.GroupRowChanges("deinterlace", "Yet Another DeInterlacing Filter (YADIF), single rate", new SpeedSettings { Bwdif = true, DoubleRate = true }, HwType.none));
@@ -213,7 +214,7 @@ public sealed class SpeedAdvisorTests
         var advice = SpeedAdvisor.Advise(general, [general, vpp, off], HwType.vaapi, "/dev/dri/renderD128", new SpeedSettings { Tonemap = true });
 
         var method = Assert.Single(advice, s => s.Setting == "VppTonemap");
-        Assert.Equal(("tonemap", "General", "VPP"), (method.Group, method.Row, Assert.Single(method.Compared).Row));
+        Assert.Equal(("tonemap", "Tone mapping", "VPP"), (method.Group, method.Row, Assert.Single(method.Compared).Row));
         Assert.Equal("Off", Assert.Single(Assert.Single(advice, s => s.Setting == "Tonemap").Compared).Row);
     }
 
