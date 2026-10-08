@@ -124,8 +124,8 @@ public sealed class SettingsServiceTests : IDisposable
         var ct = TestContext.Current.CancellationToken;
         _harness.Suggestions =
         [
-            new SpeedSuggestion(SpeedSuggestionKind.BitrateLimit, ["a"]) { Setting = SpeedAdvisor.BitrateLimitKey, Value = "20000000", Others = ["0"], Compared = [new SpeedComparedValue("0", 0.5, null, false)] },
-            new SpeedSuggestion(SpeedSuggestionKind.Compatible, ["a"]) { Setting = SpeedAdvisor.BitrateLimitKey, Value = "0", Others = ["20000000"], Compared = [new SpeedComparedValue("20000000", 1.2, null, false)] },
+            new SpeedSuggestion(SpeedSuggestionKind.BitrateLimit, ["a"]) { Setting = SpeedAdvisor.BitrateLimitKey, Value = "0", Others = ["20000000"], Compared = [new SpeedComparedValue("20000000", 1.2, null, false)] },
+            new SpeedSuggestion(SpeedSuggestionKind.Compatible, ["a"]) { Setting = SpeedAdvisor.BitrateLimitKey, Value = "20000000", Others = ["0"], Compared = [new SpeedComparedValue("0", 0.5, null, false)] },
             new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, ["a"]) { Setting = "EncoderPreset", Value = "fast", Current = true },
         ];
 

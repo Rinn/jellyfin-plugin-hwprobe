@@ -1796,7 +1796,7 @@
                             s.Current = remoteLimit === Number(s.Value);
                         }
                         // A stricter Internet streaming limit already set is noted under the table.
-                        const stricter = s => s.Kind === 'BitrateLimit' && remoteLimit > 0 && remoteLimit < Number(s.Value);
+                        const stricter = s => isBitrate(s) && Number(s.Value) > 0 && remoteLimit > 0 && remoteLimit < Number(s.Value);
                         // Any value but the server's own can be applied, even one that falls behind real time.
                         const applyValue = (s, value, current) => current ? null
                             : idleAction('Apply', () => post('HwProbe/ApplyMeasured', { Setting: s.Setting, Value: value, Run: speedViewing }, true), 'raised');
@@ -1814,7 +1814,7 @@
                                 : x.Kind === 'EfficientSetting' ? 'Recommendation: ' + name + ' \u2013 as fast as ' + versus + ' with ' + savingsText(x.Savings) + quality
                                 : x.Kind === 'HigherQuality' ? 'Recommendation: ' + name + ' \u2013 better quality than ' + versus + ' while still ' + x.Speed.toFixed(2) + '\u00d7 real time on real video.'
                                 : x.Kind === 'Compatible' ? 'Recommendation: ' + name + ' \u2013 avoids the drawback below, at lower quality.'
-                                : x.Kind === 'BitrateLimit' ? 'Recommendation: ' + name + ' \u2013 the highest H.264 quality that keeps real time on ' + backendName(x.Type) + '.'
+                                : x.Kind === 'BitrateLimit' ? 'Recommendation: ' + name + ' \u2013 out of network devices transcode any video whose bitrate exceeds the limit instead of direct playing it.'
                                 : x.Kind === 'NoChange' ? 'Recommendation: keep ' + name + ' \u2013 no other value measured is worth changing to.'
                                 : '';
                         };
@@ -1897,7 +1897,7 @@
                             }
                             const option = s.Setting ? runOptions.find(o => o.Key === s.Setting) : null;
                             const label = option ? option.Label : serverLabels[s.Setting] || s.Setting;
-                            const caveat = option ? option.Caveat : s.Setting ? serverLabels[s.Setting + 'Caveat'] : null;
+                            const caveat = option ? option.Caveat : null;
                             const partner = suggestionCounterpart(list, s);
                             if (partner) {
                                 const sides = [s, partner];
@@ -1912,8 +1912,10 @@
                                     rows.forEach(r => { r.lower = null; });
                                 }
                                 const chosen = sides[bestSide];
+                                const limit = sides.find(x => isBitrate(x) && x.Kind === 'Compatible');
                                 section.appendChild(suggestionTable(label, rows, option, [
                                     chosen ? reasonFor(chosen, optionValueText(chosen.Setting, chosen.Value), chosen.Others.map(o => optionValueText(chosen.Setting, o))) : '',
+                                    limit ? backendName(limit.Type) + ' keeps real time on H.264 up to ' + optionValueText(limit.Setting, limit.Value) + '.' : '',
                                     sides.some(stricter) ? 'A stricter limit of ' + remoteLimit / 1e6 + ' Mbps is already set.' : '',
                                     caveat,
                                     sides.some(x => x.TestVideosOnly) ? testVideos : '',

@@ -858,14 +858,13 @@ resourceHeaders: { Cpu: CPU, Memory: Mem, Gpu: GPU, GpuMemory: GPU mem, Power: P
 # Energy meters' domains, as the Resource Usage view names them.
 powerDomains: { Cpu: CPU package, Gpu: GPU }
 
-# Server settings suggestions change that aren't run options; labels and caveats are jellyfin-web's (en-us.json).
+# Server settings suggestions change that aren't run options; labels are jellyfin-web's (en-us.json).
 labels:
   # The server's own value: as a run option's first choice, and after a suite step or suggestion's value.
   ServerSetting: Server setting
   ServerSettingAfter: server setting
   RemoteClientBitrateLimit: Internet streaming bitrate limit
   RemoteClientBitrateLimitDescription: An optional per-stream bitrate limit for all out of network devices. This is useful to prevent devices from requesting a higher bitrate than your internet connection can handle. This may result in increased CPU load on your server in order to transcode videos on the fly to a lower bitrate.
-  RemoteClientBitrateLimitCaveat: Applies to devices outside the network only, lowering their picture quality; Jellyfin notes it can raise the server's load by transcoding streams that could otherwise play directly.
 
 # The report's remedies, fix links, and findings, by key; {name} is filled in by the code that picks the text.
 texts:

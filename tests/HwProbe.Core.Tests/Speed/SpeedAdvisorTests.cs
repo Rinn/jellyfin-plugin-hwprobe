@@ -217,17 +217,17 @@ public sealed class SpeedAdvisorTests
         Assert.Equal("Off", Assert.Single(Assert.Single(advice, s => s.Setting == "Tonemap").Compared).Row);
     }
 
-    /// <summary>When higher H.264 qualities fall behind, the highest that keeps up is suggested as the Internet streaming bitrate limit, beside no limit at the slowest speed.</summary>
+    /// <summary>When higher H.264 qualities fall behind, no Internet streaming bitrate limit is suggested at the slowest speed, beside the highest quality that keeps up as the limit.</summary>
     [Fact]
     public void SuggestsABitrateLimit()
     {
         var run = Run(new SpeedSettings(), Result(HwType.none, "drama|h264-40mbps", 20), Result(HwType.none, "drama|h264-20mbps", 30), Result(HwType.none, "drama|h264-8mbps", 60));
         var fine = Run(new SpeedSettings(), Result(HwType.none, "drama|h264-40mbps", 30), Result(HwType.none, "drama|h264-8mbps", 60));
 
-        var limit = Assert.Single(SpeedAdvisor.Advise(run, [run], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.BitrateLimit);
-        Assert.Equal((SpeedAdvisor.BitrateLimitKey, "20000000", true), (limit.Setting, limit.Value, limit.LowerQuality));
-        var none = Assert.Single(SpeedAdvisor.Advise(run, [run], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.Compatible);
+        var none = Assert.Single(SpeedAdvisor.Advise(run, [run], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.BitrateLimit);
         Assert.Equal((SpeedAdvisor.BitrateLimitKey, "0", false, 20.0 / 25), (none.Setting, none.Value, none.LowerQuality, none.Speed));
+        var limit = Assert.Single(SpeedAdvisor.Advise(run, [run], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.Compatible);
+        Assert.Equal((SpeedAdvisor.BitrateLimitKey, "20000000", true), (limit.Setting, limit.Value, limit.LowerQuality));
         Assert.DoesNotContain(SpeedAdvisor.Advise(fine, [fine], HwType.none, string.Empty, new SpeedSettings()), s => s.Kind == SpeedSuggestionKind.BitrateLimit);
     }
 
