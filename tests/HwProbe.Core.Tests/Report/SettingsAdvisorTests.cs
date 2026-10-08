@@ -84,7 +84,7 @@ public sealed class SettingsAdvisorTests
                 ("EnableSubtitleExtraction", SettingState.TurnOn, "Helps prevent video transcoding"),
                 ("Trickplay:EnableHwAcceleration", SettingState.LeaveOff, "Not used with this backend"),
                 ("Trickplay:EnableHwEncoding", SettingState.LeaveOff, "Not used with this backend"),
-                ("Trickplay:EnableKeyFrameOnlyExtraction", SettingState.Optional, "Faster, but less accurate timing"),
+                ("Trickplay:EnableKeyFrameOnlyExtraction", SettingState.Optional, "Significantly faster, less accurate timing"),
             ],
             advice);
     }
@@ -248,8 +248,8 @@ public sealed class SettingsAdvisorTests
         var optional = Assert.Single(SettingsAdvisor.For(_apolloLakeQsv with { Type = HwType.vaapi, Decode = passed }, _docker), a => a.Setting == Setting);
 
         Assert.Equal(SettingState.NotTested, Assert.Single(native, a => a.Setting == Setting).State);
-        Assert.Equal((SettingState.Optional, "Faster, but less accurate timing"), (optional.State, optional.Note));
-        Assert.Equal((SettingState.LeaveOff, "Turns off hardware decoding with this backend"), (nvenc.State, nvenc.Note));
+        Assert.Equal((SettingState.Optional, "Significantly faster, less accurate timing"), (optional.State, optional.Note));
+        Assert.Equal((SettingState.LeaveOff, "Uses the software decoder with this backend"), (nvenc.State, nvenc.Note));
     }
 
     /// <summary>Enhanced NVDEC is advised like the native decoders: on, naming a codec that decodes with cuvid alone.</summary>

@@ -238,7 +238,7 @@ public static class SettingsAdvisor
         // Key-frame-only extraction quietly drops to software decoding on backends that can't do it.
         const string KeyFrameSetting = "Trickplay:EnableKeyFrameOnlyExtraction";
         const string KeyFrameLabel = "Only generate images from key frames";
-        const string SoftwareNote = "Turns off hardware decoding with this backend";
+        const string SoftwareNote = "Uses the software decoder with this backend";
         var decoder = type switch
         {
             HwType.qsv => NativeDecoder,
@@ -256,7 +256,7 @@ public static class SettingsAdvisor
         var keyFrames = Advise(TrickplaySection, KeyFrameSetting, KeyFrameLabel, Cell(backend.Decode, "h264_keyframes"));
         keyFrames = type == HwType.none ? NoGpu(keyFrames) : keyFrames;
         yield return keyFrames.State == SettingState.TurnOn
-            ? keyFrames with { State = SettingState.Optional, Note = "Faster, but less accurate timing" }
+            ? keyFrames with { State = SettingState.Optional, Note = "Significantly faster, less accurate timing" }
             : keyFrames;
     }
 
