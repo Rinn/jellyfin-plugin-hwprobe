@@ -47,6 +47,9 @@ public sealed class CatalogSetting
     /// <summary>Gets a known drawback, shown with any suggestion to change it, or null.</summary>
     public string? Caveat { get; init; }
 
+    /// <summary>Gets a line shown under any suggestion for it, or null.</summary>
+    public string? Note { get; init; }
+
     /// <summary>Gets the value without the caveat's drawback, suggested beside a better-quality value that has it, or null.</summary>
     public string? CompatibleValue { get; init; }
 
