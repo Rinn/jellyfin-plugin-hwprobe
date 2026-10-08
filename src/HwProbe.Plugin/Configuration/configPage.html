@@ -206,7 +206,7 @@
                 let speedMethod = null;
                 let speedRepeats = 1;
                 let speedReuse = true;
-                // Whether the diagnostics zip adds the saved runs and measurements; off until chosen.
+                // Off on each page load.
                 let diagnosticsTestResults = false;
                 let speedResources = null;
                 let speedWhenTranscoding = null;
@@ -2757,11 +2757,14 @@
                 function renderReporting() {
                     const div = el('div');
                     div.appendChild(el('p', 'The report and every ffmpeg log of the last probe, to attach to a GitHub issue.', 'secondaryText'));
-                    div.appendChild(el('div', 'The archive may include file paths, user names, and host names from this server.', 'infoBanner hwprobe-warning'));
-                    const include = jf('<label class="checkboxContainer"><input is="emby-checkbox" type="checkbox"><span>Include test results and measurements</span></label>');
+                    const warning = div.appendChild(el('div', null, 'infoBanner hwprobe-warning'));
+                    warning.appendChild(el('div', 'The archive may include file paths, user names, and host names from this server.'));
+                    const named = warning.appendChild(el('div', 'Test results include the names of the library videos measured.'));
+                    const include = jf('<div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox"><span>Include test results and measurements</span></label></div>');
                     const includeBox = include.querySelector('input');
                     includeBox.checked = diagnosticsTestResults;
-                    includeBox.addEventListener('change', () => { diagnosticsTestResults = includeBox.checked; });
+                    named.hidden = !diagnosticsTestResults;
+                    includeBox.addEventListener('change', () => { diagnosticsTestResults = includeBox.checked; named.hidden = !includeBox.checked; });
                     div.appendChild(include);
                     const buttons = el('p');
                     const download = action('Download diagnostics', () => {
@@ -2774,7 +2777,7 @@
                                 a.download = 'hwprobe-diagnostics.zip';
                                 a.click();
                                 setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-                            }, () => { setMessage('Could not download diagnostics: run a probe first.'); })
+                            }, r => { setMessage(r && r.status === 404 ? 'Could not download diagnostics: run a probe first.' : 'Could not download diagnostics.'); })
                             .then(() => { download.disabled = false; });
                     }, 'raised button-submit');
                     buttons.appendChild(download);

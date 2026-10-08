@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 using Jellyfin.Plugin.HwProbe.Configuration;
 using Jellyfin.Plugin.HwProbe.Core.Data;
@@ -440,7 +441,7 @@ public sealed partial class ProbeService : IDisposable
         }
 
         // Read when downloaded, so it holds what happened since the probe too.
-        List<(string Name, string Text)> files = [("jellyfin.log", await PluginLog.ReadAsync(LogDirectory, cancellationToken))];
+        List<(string Name, byte[] Content)> files = [("jellyfin.log", Encoding.UTF8.GetBytes(await PluginLog.ReadAsync(LogDirectory, cancellationToken)))];
         if (includeTestResults)
         {
             files.AddRange(await SavedFilesAsync(SpeedHistoryDirectory, "test-results", cancellationToken));
@@ -515,25 +516,29 @@ public sealed partial class ProbeService : IDisposable
             }
 
             var newest = files.Count > 0 ? files[^1] : null;
-            foreach (var file in doomed)
-            {
-                File.Delete(file);
-            }
 
-            if (newest is not null && doomed.Contains(newest))
+            // A diagnostics download reading a run on Windows holds it open, so the delete waits for another try.
+            var deleted = TryDelete(() =>
             {
-                var next = files.LastOrDefault(f => !doomed.Contains(f));
-                if (next is null)
+                foreach (var file in doomed)
                 {
-                    File.Delete(SpeedPath);
+                    File.Delete(file);
                 }
-                else
-                {
-                    File.Copy(next, SpeedPath, overwrite: true);
-                }
-            }
 
-            return DeleteOutcome.Deleted;
+                if (newest is not null && doomed.Contains(newest))
+                {
+                    var next = files.LastOrDefault(f => !doomed.Contains(f));
+                    if (next is null)
+                    {
+                        File.Delete(SpeedPath);
+                    }
+                    else
+                    {
+                        File.Copy(next, SpeedPath, overwrite: true);
+                    }
+                }
+            });
+            return deleted ? DeleteOutcome.Deleted : DeleteOutcome.Busy;
         }
         finally
         {
@@ -625,7 +630,7 @@ public sealed partial class ProbeService : IDisposable
 
     /// <summary>Deletes the measurements saved for reuse, keeping the cached clips; the next run measures everything again.</summary>
     /// <param name="cancellationToken">Cancels waiting.</param>
-    /// <returns>False when a probe or speed run is running.</returns>
+    /// <returns>False when a probe or speed run is running, or a file was in use.</returns>
     public async Task<bool> DeleteSavedMeasurementsAsync(CancellationToken cancellationToken)
     {
         if (!await _gate.WaitAsync(0, cancellationToken))
@@ -635,12 +640,7 @@ public sealed partial class ProbeService : IDisposable
 
         try
         {
-            if (SpeedResultsDirectory is { } directory && Directory.Exists(directory))
-            {
-                Directory.Delete(directory, recursive: true);
-            }
-
-            return true;
+            return SpeedResultsDirectory is not { } directory || !Directory.Exists(directory) || TryDelete(() => Directory.Delete(directory, recursive: true));
         }
         finally
         {
@@ -772,23 +772,29 @@ public sealed partial class ProbeService : IDisposable
     /// <param name="folder">The folder they go in, in the zip.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>Each file's name in the zip and its contents, by name; none when the directory doesn't exist.</returns>
-    private static async Task<List<(string Name, string Text)>> SavedFilesAsync(string directory, string folder, CancellationToken cancellationToken)
+    /// <remarks>The download doesn't hold the gate, so a delete can remove or lock a file meanwhile; it's left out rather than failing the download.</remarks>
+    private static async Task<List<(string Name, byte[] Content)>> SavedFilesAsync(string directory, string folder, CancellationToken cancellationToken)
     {
-        List<(string Name, string Text)> files = [];
-        if (!Directory.Exists(directory))
+        List<(string Name, byte[] Content)> files = [];
+        List<string> paths;
+        try
+        {
+            paths = Directory.Exists(directory) ? [.. Directory.EnumerateFiles(directory, "*.json").Order(StringComparer.Ordinal)] : [];
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
             return files;
         }
 
-        foreach (var path in Directory.EnumerateFiles(directory, "*.json").Order(StringComparer.Ordinal))
+        foreach (var path in paths)
         {
             try
             {
-                files.Add((folder + "/" + Path.GetFileName(path), await File.ReadAllTextAsync(path, cancellationToken)));
+                files.Add((folder + "/" + Path.GetFileName(path), await File.ReadAllBytesAsync(path, cancellationToken)));
             }
-            catch (FileNotFoundException)
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
-                // Deleted since it was listed.
+                // Deleted or locked since it was listed.
             }
         }
 

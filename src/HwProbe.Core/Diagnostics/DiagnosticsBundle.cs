@@ -88,12 +88,12 @@ public static partial class DiagnosticsBundle
         }
     }
 
-    /// <summary>Returns a copy of a bundle with text files added, such as log lines read when it's downloaded.</summary>
+    /// <summary>Returns a copy of a bundle with files added, such as log lines read when it's downloaded.</summary>
     /// <param name="zip">The bundle.</param>
     /// <param name="files">Each file's name in the zip and its contents; a file already there by that name is replaced.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>The new bundle.</returns>
-    public static async Task<byte[]> WithFilesAsync(byte[] zip, IReadOnlyList<(string Name, string Text)> files, CancellationToken cancellationToken)
+    public static async Task<byte[]> WithFilesAsync(byte[] zip, IReadOnlyList<(string Name, byte[] Content)> files, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(zip);
         ArgumentNullException.ThrowIfNull(files);
@@ -101,10 +101,10 @@ public static partial class DiagnosticsBundle
         await stream.WriteAsync(zip, cancellationToken);
         using (var archive = new ZipArchive(stream, ZipArchiveMode.Update, leaveOpen: true))
         {
-            foreach (var (name, text) in files)
+            foreach (var (name, content) in files)
             {
                 archive.GetEntry(name)?.Delete();
-                await AddAsync(archive, name, text, cancellationToken);
+                await AddAsync(archive, name, content, cancellationToken);
             }
         }
 
@@ -165,10 +165,11 @@ public static partial class DiagnosticsBundle
         report.json    The probe report.
         ffmpeg/        What this ffmpeg was built with: -version, -hwaccels, -encoders, -decoders, -filters, and the -h filter= pages Jellyfin reads.
         stderr/        Every ffmpeg launch in order: its arguments, environment and result, then its complete output.
-        test-results/  The saved performance test runs, when chosen at download.
-        measurements/  The saved measurements runs reuse, when chosen at download.
+        jellyfin.log   HwProbe's lines from Jellyfin's log, read at download (plugin only).
+        test-results/  The test results, when chosen at download (plugin only).
+        measurements/  Measurements saved for later runs to reuse, when chosen at download (plugin only).
 
-        Nothing has been removed: file paths, user and host names, device names and driver versions appear as ffmpeg and HwProbe saw them.
+        Nothing has been removed: file paths, user and host names, device names, driver versions, and the names of library videos in test results appear as ffmpeg and HwProbe saw them.
 
         """;
 
@@ -178,11 +179,20 @@ public static partial class DiagnosticsBundle
     /// <param name="text">The contents.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>A task that completes when the entry is written.</returns>
-    private static async Task AddAsync(ZipArchive zip, string name, string text, CancellationToken cancellationToken)
+    private static Task AddAsync(ZipArchive zip, string name, string text, CancellationToken cancellationToken) =>
+        AddAsync(zip, name, Encoding.UTF8.GetBytes(text), cancellationToken);
+
+    /// <summary>Adds an entry.</summary>
+    /// <param name="zip">The archive.</param>
+    /// <param name="name">The entry name.</param>
+    /// <param name="content">The contents.</param>
+    /// <param name="cancellationToken">Cancels the write.</param>
+    /// <returns>A task that completes when the entry is written.</returns>
+    private static async Task AddAsync(ZipArchive zip, string name, byte[] content, CancellationToken cancellationToken)
     {
         var entry = zip.CreateEntry(name, CompressionLevel.Optimal);
         await using var stream = await entry.OpenAsync(cancellationToken);
-        await stream.WriteAsync(Encoding.UTF8.GetBytes(text), cancellationToken);
+        await stream.WriteAsync(content, cancellationToken);
     }
 
     /// <summary>Matches characters not allowed in file names on every OS.</summary>

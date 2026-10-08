@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Diagnostics;
 using Jellyfin.Plugin.HwProbe.Core.Model;
@@ -98,7 +99,7 @@ public sealed class ProbeServiceTests : IDisposable
         Assert.Equal(offered, await service.LatestDiagnosticsAsync(false, TestContext.Current.CancellationToken) is not null);
     }
 
-    /// <summary>The saved runs and measurements go in the diagnostics zip only when asked for.</summary>
+    /// <summary>The saved runs and measurements go in the diagnostics zip, as saved, only when asked for; files that aren't saved runs are left out, and missing folders add nothing.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
     public async Task DiagnosticsIncludeTestResultsWhenAsked()
@@ -109,23 +110,27 @@ public sealed class ProbeServiceTests : IDisposable
         using var service = new ProbeService(_ => Task.FromResult(report), () => false, Path.Combine(_directory, "latest.json"), TimeProvider.System, TimeSpan.Zero, NullLogger.Instance) { SpeedResultsDirectory = results };
         await service.RunAsync(ct);
         await DiagnosticsBundle.WriteAsync(service.DiagnosticsPath, report, [], ct);
-        Directory.CreateDirectory(service.SpeedHistoryDirectory);
-        Directory.CreateDirectory(results);
-        await File.WriteAllTextAsync(Path.Combine(service.SpeedHistoryDirectory, "20261008T090000Z.json"), "{\"run\":1}", ct);
-        await File.WriteAllTextAsync(Path.Combine(results, "abc.json"), "{\"fps\":2}", ct);
 
-        static async Task<List<string>> EntriesAsync(byte[]? zip)
+        static Dictionary<string, string> Entries(byte[]? zip)
         {
             Assert.NotNull(zip);
-            using var archive = new System.IO.Compression.ZipArchive(new MemoryStream(zip), System.IO.Compression.ZipArchiveMode.Read);
-            return [.. archive.Entries.Select(e => e.FullName).Order(StringComparer.Ordinal)];
+            using var archive = new ZipArchive(new MemoryStream(zip), ZipArchiveMode.Read);
+            return archive.Entries.ToDictionary(e => e.FullName, e => new StreamReader(e.Open()).ReadToEnd(), StringComparer.Ordinal);
         }
 
-        var without = await EntriesAsync(await service.LatestDiagnosticsAsync(false, ct));
-        var with = await EntriesAsync(await service.LatestDiagnosticsAsync(true, ct));
+        var before = Entries(await service.LatestDiagnosticsAsync(true, ct));
+        Directory.CreateDirectory(service.SpeedHistoryDirectory);
+        Directory.CreateDirectory(results);
+        await File.WriteAllTextAsync(Path.Combine(service.SpeedHistoryDirectory, "20261008T090000Z.json"), "{\"video\":\"Amélie\"}", ct);
+        await File.WriteAllTextAsync(Path.Combine(service.SpeedHistoryDirectory, ".20261008T090100Z.json.tmp"), "{}", ct);
+        await File.WriteAllTextAsync(Path.Combine(results, "abc.json"), "{\"fps\":2}", ct);
 
-        Assert.DoesNotContain(without, e => e.StartsWith("test-results/", StringComparison.Ordinal) || e.StartsWith("measurements/", StringComparison.Ordinal));
-        Assert.Equal(without.Concat(["measurements/abc.json", "test-results/20261008T090000Z.json"]).Order(StringComparer.Ordinal), with);
+        var without = Entries(await service.LatestDiagnosticsAsync(false, ct));
+        var with = Entries(await service.LatestDiagnosticsAsync(true, ct));
+
+        Assert.Equal(without.Keys.Order(StringComparer.Ordinal), before.Keys.Order(StringComparer.Ordinal));
+        Assert.Equal(without.Keys.Concat(["measurements/abc.json", "test-results/20261008T090000Z.json"]).Order(StringComparer.Ordinal), with.Keys.Order(StringComparer.Ordinal));
+        Assert.Equal("{\"video\":\"Amélie\"}", with["test-results/20261008T090000Z.json"]);
     }
 
     /// <summary>A speed run needs a report, refuses unknown names, and saves its report over the viable backends.</summary>

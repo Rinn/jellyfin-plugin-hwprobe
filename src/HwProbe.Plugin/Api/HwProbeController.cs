@@ -220,12 +220,12 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
 
     /// <summary>Deletes the measurements saved for reuse, keeping the cached clips.</summary>
     /// <param name="cancellationToken">Cancels waiting.</param>
-    /// <returns>204 when deleted; 409 while a probe or speed run is running.</returns>
+    /// <returns>204 when deleted; 409 while a probe or speed run is running, or a file was in use.</returns>
     [HttpDelete("SpeedResults")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult> DeleteSpeedResultsAsync(CancellationToken cancellationToken) =>
-        await service.DeleteSavedMeasurementsAsync(cancellationToken) ? NoContent() : Conflict("A probe or performance test is running.");
+        await service.DeleteSavedMeasurementsAsync(cancellationToken) ? NoContent() : Conflict("A probe or performance test is running, or a file was in use.");
 
     /// <summary>Returns suggestions drawn from a performance test and the runs saved with this version and ffmpeg.</summary>
     /// <param name="id">The run shown, or none for the latest.</param>
@@ -380,6 +380,6 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     {
         DeleteOutcome.Deleted => NoContent(),
         DeleteOutcome.NotFound => NotFound(),
-        _ => Conflict("A probe or performance test is running."),
+        _ => Conflict("A probe or performance test is running, or a file was in use."),
     };
 }
