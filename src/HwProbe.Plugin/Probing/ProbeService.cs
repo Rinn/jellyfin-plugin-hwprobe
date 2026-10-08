@@ -411,10 +411,11 @@ public sealed partial class ProbeService : IDisposable
     }
 
     /// <summary>Returns the latest probe's diagnostics zip, if it was made by the probe that wrote the report shown.</summary>
+    /// <param name="includeTestResults">Whether the saved performance test runs and measurements are added.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The zip, or null when there's none, <see cref="LatestJsonAsync"/> returns null, or the zip is from another probe.</returns>
     /// <remarks>The zip and report are saved separately, so either can be left from an earlier probe when the other fails to save.</remarks>
-    public async Task<byte[]?> LatestDiagnosticsAsync(CancellationToken cancellationToken)
+    public async Task<byte[]?> LatestDiagnosticsAsync(bool includeTestResults, CancellationToken cancellationToken)
     {
         if (!File.Exists(DiagnosticsPath) || await LatestJsonAsync(cancellationToken) is not { } json)
         {
@@ -439,7 +440,17 @@ public sealed partial class ProbeService : IDisposable
         }
 
         // Read when downloaded, so it holds what happened since the probe too.
-        return await DiagnosticsBundle.WithFileAsync(bytes, "jellyfin.log", await PluginLog.ReadAsync(LogDirectory, cancellationToken), cancellationToken);
+        List<(string Name, string Text)> files = [("jellyfin.log", await PluginLog.ReadAsync(LogDirectory, cancellationToken))];
+        if (includeTestResults)
+        {
+            files.AddRange(await SavedFilesAsync(SpeedHistoryDirectory, "test-results", cancellationToken));
+            if (SpeedResultsDirectory is { } results)
+            {
+                files.AddRange(await SavedFilesAsync(results, "measurements", cancellationToken));
+            }
+        }
+
+        return await DiagnosticsBundle.WithFilesAsync(bytes, files, cancellationToken);
     }
 
     /// <summary>Lists the saved speed runs, newest first.</summary>
@@ -755,6 +766,34 @@ public sealed partial class ProbeService : IDisposable
         // HwType mirrors HardwareAccelerationType value-for-value.
         var other => ((HwType)(int)other, string.Empty),
     };
+
+    /// <summary>Reads the saved files in a directory for the diagnostics zip.</summary>
+    /// <param name="directory">The directory.</param>
+    /// <param name="folder">The folder they go in, in the zip.</param>
+    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <returns>Each file's name in the zip and its contents, by name; none when the directory doesn't exist.</returns>
+    private static async Task<List<(string Name, string Text)>> SavedFilesAsync(string directory, string folder, CancellationToken cancellationToken)
+    {
+        List<(string Name, string Text)> files = [];
+        if (!Directory.Exists(directory))
+        {
+            return files;
+        }
+
+        foreach (var path in Directory.EnumerateFiles(directory, "*.json").Order(StringComparer.Ordinal))
+        {
+            try
+            {
+                files.Add((folder + "/" + Path.GetFileName(path), await File.ReadAllTextAsync(path, cancellationToken)));
+            }
+            catch (FileNotFoundException)
+            {
+                // Deleted since it was listed.
+            }
+        }
+
+        return files;
+    }
 
     /// <summary>Runs a delete, treating a file in use or not permitted as left in place.</summary>
     /// <param name="delete">The delete.</param>

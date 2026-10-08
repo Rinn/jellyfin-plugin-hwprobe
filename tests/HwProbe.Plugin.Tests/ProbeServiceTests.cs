@@ -95,7 +95,37 @@ public sealed class ProbeServiceTests : IDisposable
             await DiagnosticsBundle.WriteAsync(service.DiagnosticsPath, bundled, [], TestContext.Current.CancellationToken);
         }
 
-        Assert.Equal(offered, await service.LatestDiagnosticsAsync(TestContext.Current.CancellationToken) is not null);
+        Assert.Equal(offered, await service.LatestDiagnosticsAsync(false, TestContext.Current.CancellationToken) is not null);
+    }
+
+    /// <summary>The saved runs and measurements go in the diagnostics zip only when asked for.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task DiagnosticsIncludeTestResultsWhenAsked()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var results = Path.Combine(_directory, "results");
+        var report = Reports.Sample();
+        using var service = new ProbeService(_ => Task.FromResult(report), () => false, Path.Combine(_directory, "latest.json"), TimeProvider.System, TimeSpan.Zero, NullLogger.Instance) { SpeedResultsDirectory = results };
+        await service.RunAsync(ct);
+        await DiagnosticsBundle.WriteAsync(service.DiagnosticsPath, report, [], ct);
+        Directory.CreateDirectory(service.SpeedHistoryDirectory);
+        Directory.CreateDirectory(results);
+        await File.WriteAllTextAsync(Path.Combine(service.SpeedHistoryDirectory, "20261008T090000Z.json"), "{\"run\":1}", ct);
+        await File.WriteAllTextAsync(Path.Combine(results, "abc.json"), "{\"fps\":2}", ct);
+
+        static async Task<List<string>> EntriesAsync(byte[]? zip)
+        {
+            Assert.NotNull(zip);
+            using var archive = new System.IO.Compression.ZipArchive(new MemoryStream(zip), System.IO.Compression.ZipArchiveMode.Read);
+            return [.. archive.Entries.Select(e => e.FullName).Order(StringComparer.Ordinal)];
+        }
+
+        var without = await EntriesAsync(await service.LatestDiagnosticsAsync(false, ct));
+        var with = await EntriesAsync(await service.LatestDiagnosticsAsync(true, ct));
+
+        Assert.DoesNotContain(without, e => e.StartsWith("test-results/", StringComparison.Ordinal) || e.StartsWith("measurements/", StringComparison.Ordinal));
+        Assert.Equal(without.Concat(["measurements/abc.json", "test-results/20261008T090000Z.json"]).Order(StringComparer.Ordinal), with);
     }
 
     /// <summary>A speed run needs a report, refuses unknown names, and saves its report over the viable backends.</summary>

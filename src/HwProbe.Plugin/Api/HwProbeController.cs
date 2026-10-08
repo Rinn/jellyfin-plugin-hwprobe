@@ -33,14 +33,15 @@ public sealed class HwProbeController(ProbeService service, SettingsService sett
     }
 
     /// <summary>Returns a zip of the latest probe's report and ffmpeg logs, to attach to an issue.</summary>
+    /// <param name="includeTestResults">Whether the saved performance test runs and measurements are added.</param>
     /// <param name="cancellationToken">Cancels the check.</param>
     /// <returns>The zip, or 404 when no probe has completed.</returns>
     [HttpGet("Diagnostics")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> GetDiagnosticsAsync(CancellationToken cancellationToken)
+    public async Task<ActionResult> GetDiagnosticsAsync([FromQuery] bool includeTestResults, CancellationToken cancellationToken)
     {
-        var zip = await service.LatestDiagnosticsAsync(cancellationToken);
+        var zip = await service.LatestDiagnosticsAsync(includeTestResults, cancellationToken);
         return zip is null ? NotFound() : File(zip, "application/zip", "hwprobe-diagnostics.zip");
     }
 

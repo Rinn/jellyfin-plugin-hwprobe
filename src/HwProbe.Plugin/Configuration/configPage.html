@@ -206,6 +206,8 @@
                 let speedMethod = null;
                 let speedRepeats = 1;
                 let speedReuse = true;
+                // Whether the diagnostics zip adds the saved runs and measurements; off until chosen.
+                let diagnosticsTestResults = false;
                 let speedResources = null;
                 let speedWhenTranscoding = null;
                 let suiteResources = null;
@@ -2756,10 +2758,15 @@
                     const div = el('div');
                     div.appendChild(el('p', 'The report and every ffmpeg log of the last probe, to attach to a GitHub issue.', 'secondaryText'));
                     div.appendChild(el('div', 'The archive may include file paths, user names, and host names from this server.', 'infoBanner hwprobe-warning'));
+                    const include = jf('<label class="checkboxContainer"><input is="emby-checkbox" type="checkbox"><span>Include test results and measurements</span></label>');
+                    const includeBox = include.querySelector('input');
+                    includeBox.checked = diagnosticsTestResults;
+                    includeBox.addEventListener('change', () => { diagnosticsTestResults = includeBox.checked; });
+                    div.appendChild(include);
                     const buttons = el('p');
                     const download = action('Download diagnostics', () => {
                         // ApiClient.ajax returns the raw response for a non-JSON request, with the session's token sent.
-                        ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Diagnostics') })
+                        ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('HwProbe/Diagnostics', diagnosticsTestResults ? { includeTestResults: true } : {}) })
                             .then(response => response.blob())
                             .then(blob => {
                                 const a = document.createElement('a');

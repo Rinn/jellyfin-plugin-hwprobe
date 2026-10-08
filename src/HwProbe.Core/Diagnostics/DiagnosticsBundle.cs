@@ -88,21 +88,24 @@ public static partial class DiagnosticsBundle
         }
     }
 
-    /// <summary>Returns a copy of a bundle with a text file added, such as log lines read when it's downloaded.</summary>
+    /// <summary>Returns a copy of a bundle with text files added, such as log lines read when it's downloaded.</summary>
     /// <param name="zip">The bundle.</param>
-    /// <param name="name">The file's name in the zip.</param>
-    /// <param name="text">Its contents.</param>
+    /// <param name="files">Each file's name in the zip and its contents; a file already there by that name is replaced.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>The new bundle.</returns>
-    public static async Task<byte[]> WithFileAsync(byte[] zip, string name, string text, CancellationToken cancellationToken)
+    public static async Task<byte[]> WithFilesAsync(byte[] zip, IReadOnlyList<(string Name, string Text)> files, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(zip);
+        ArgumentNullException.ThrowIfNull(files);
         using var stream = new MemoryStream();
         await stream.WriteAsync(zip, cancellationToken);
         using (var archive = new ZipArchive(stream, ZipArchiveMode.Update, leaveOpen: true))
         {
-            archive.GetEntry(name)?.Delete();
-            await AddAsync(archive, name, text, cancellationToken);
+            foreach (var (name, text) in files)
+            {
+                archive.GetEntry(name)?.Delete();
+                await AddAsync(archive, name, text, cancellationToken);
+            }
         }
 
         return stream.ToArray();
@@ -159,9 +162,11 @@ public static partial class DiagnosticsBundle
 
         To report results, attach this zip to an issue: {IssueLink.For(report, null)}
 
-        report.json  The probe report.
-        ffmpeg/      What this ffmpeg was built with: -version, -hwaccels, -encoders, -decoders, -filters, and the -h filter= pages Jellyfin reads.
-        stderr/      Every ffmpeg launch in order: its arguments, environment and result, then its complete output.
+        report.json    The probe report.
+        ffmpeg/        What this ffmpeg was built with: -version, -hwaccels, -encoders, -decoders, -filters, and the -h filter= pages Jellyfin reads.
+        stderr/        Every ffmpeg launch in order: its arguments, environment and result, then its complete output.
+        test-results/  The saved performance test runs, when chosen at download.
+        measurements/  The saved measurements runs reuse, when chosen at download.
 
         Nothing has been removed: file paths, user and host names, device names and driver versions appear as ffmpeg and HwProbe saw them.
 

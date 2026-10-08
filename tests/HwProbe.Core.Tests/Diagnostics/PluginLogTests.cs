@@ -39,8 +39,8 @@ public sealed class PluginLogTests
             await entry.WriteAsync("{}"u8.ToArray(), ct);
         }
 
-        var once = await DiagnosticsBundle.WithFileAsync(original.ToArray(), "jellyfin.log", "old", ct);
-        var twice = await DiagnosticsBundle.WithFileAsync(once, "jellyfin.log", "new", ct);
+        var once = await DiagnosticsBundle.WithFilesAsync(original.ToArray(), [("jellyfin.log", "old")], ct);
+        var twice = await DiagnosticsBundle.WithFilesAsync(once, [("jellyfin.log", "new")], ct);
 
         using var read = new ZipArchive(new MemoryStream(twice), ZipArchiveMode.Read);
         Assert.Equal(["jellyfin.log", "report.json"], read.Entries.Select(e => e.FullName).Order(StringComparer.Ordinal));

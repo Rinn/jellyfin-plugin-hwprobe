@@ -33,7 +33,7 @@ Open **HwProbe** in the dashboard sidebar.
 - **Recommended Settings**: the advised Transcoding and Trickplay settings for each working backend and for software. **Apply** changes a setting and **Revert** undoes the last change.
 - **Performance Tests**: measures transcode and audio speed, from a test suite (such as encoder presets, tone mapping, or deinterlacing) or a custom selection.
 - **Test Results**: speed and resource use (CPU, memory, GPU, and power) per run, with recommended settings that can be applied and reverted.
-- **Help**: a diagnostics zip for [hardware reports](../../issues/new?template=hardware-report.yml) (includes file paths and host names) and the cached test clips.
+- **Help**: a diagnostics zip for [hardware reports](../../issues/new?template=hardware-report.yml) (includes file paths and host names), optionally with the test results and measurements, and the cached test clips.
 
 No data leaves the server. Real videos are Creative Commons or public domain, and only a short clip of each is downloaded. Test videos are generated locally or taken from FFmpeg's test suite. Downloads occur only when requested and are verified against pinned hashes.
 
