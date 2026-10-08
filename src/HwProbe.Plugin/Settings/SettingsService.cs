@@ -158,17 +158,20 @@ public sealed class SettingsService : IDisposable
         return LockedAsync(
             async () =>
             {
-                // A setting's table offers every value it lists but the server's own, even one that falls behind real time.
-                var offered = (await Suggestions(change.Run, cancellationToken)).Where(s => s.Setting == change.Setting).Any(s =>
+                // A setting's table offers every value it lists but the server's own, even one that falls behind real time; a group's settings change together, through its rows.
+                var offered = (await Suggestions(change.Run, cancellationToken)).Where(s => s.Setting == change.Setting && s.Group is null).Any(s =>
                     (s.Kind is SpeedSuggestionKind.FasterSetting or SpeedSuggestionKind.HigherQuality or SpeedSuggestionKind.Compatible or SpeedSuggestionKind.EfficientSetting or SpeedSuggestionKind.BitrateLimit or SpeedSuggestionKind.RecommendedValue
                         && !s.Current && s.Value == change.Value)
-                    || (s.Group is null && s.Compared.Any(c => c.Value == change.Value && !c.Current)));
-                if (!offered || MeasuredSettings.ToSetting(change.Setting, change.Value) is not { } setting)
+                    || s.Compared.Any(c => c.Value == change.Value && !c.Current));
+                var options = _read();
+
+                // Suggestions don't know the bitrate limit, so the server's own value is checked here too.
+                if (!offered || MeasuredSettings.ToSetting(change.Setting, change.Value) is not { } setting || options.Read(setting.Setting) == setting.Value)
                 {
                     return Refuse($"{change.Setting} = {change.Value} isn't a measured value the server can switch to.");
                 }
 
-                return await WriteAsync(_read(), [setting], HistoryKind.Apply, user, cancellationToken);
+                return await WriteAsync(options, [setting], HistoryKind.Apply, user, cancellationToken);
             },
             cancellationToken);
     }

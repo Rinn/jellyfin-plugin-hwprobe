@@ -67,7 +67,20 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.Equal(EncoderPreset.auto, _harness.Saved.EncoderPreset);
     }
 
-    /// <summary>A measured choice in a setting group sets every setting it needs in one change, even one that falls behind real time; a row no suggestion shows is refused, and tone mapping off can be applied.</summary>
+    /// <summary>A table that keeps the server's value still offers the others it compared.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task AppliesAValueComparedWithAKeptOne()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        _harness.Suggestions = [new SpeedSuggestion(SpeedSuggestionKind.NoChange, ["a"]) { Setting = "EncoderPreset", Value = "auto", Current = true, Others = ["slow"], Compared = [new SpeedComparedValue("slow", 0.4, null, false)] }];
+
+        Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange("EncoderPreset", "auto"), "admin", ct)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange("EncoderPreset", "slow"), "admin", ct)).Outcome);
+        Assert.Equal(EncoderPreset.slow, _harness.Saved.EncoderPreset);
+    }
+
+    /// <summary>A measured choice in a setting group sets every setting it needs in one change, even one that falls behind real time; the server's own row, a row no suggestion shows, one for another backend, and a group's setting on its own are refused, and tone mapping off can be applied.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
     public async Task AppliesAGroupChoice()
@@ -79,10 +92,15 @@ public sealed class SettingsServiceTests : IDisposable
         [
             new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, ["a"]) { Setting = "DoubleRate", Value = "false", Current = true, Group = "deinterlace", Row = "Yet Another DeInterlacing Filter (YADIF), single rate", Compared = [new SpeedComparedValue("true", 2, null, false) { Row = Double }] },
             new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, ["a"]) { Setting = "Tonemap", Value = "true", Current = true, Group = "tonemap", Row = "General", Compared = [new SpeedComparedValue("false", 2, null, false) { Row = "Off" }] },
+            new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, ["a"]) { Setting = "VideoToolboxTonemap", Value = "true", Group = "tonemap", Row = "VideoToolbox", Compared = [new SpeedComparedValue("false", 1, null, false) { Row = "General" }] },
         ];
 
         Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredRowAsync(new MeasuredRow("deinterlace", Single), "admin", ct)).Outcome);
         Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredRowAsync(new MeasuredRow("tonemap", "VPP"), "admin", ct)).Outcome);
+        Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredRowAsync(new MeasuredRow("tonemap", "VideoToolbox"), "admin", ct)).Outcome);
+        Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredRowAsync(new MeasuredRow("deinterlace", "Yet Another DeInterlacing Filter (YADIF), single rate"), "admin", ct)).Outcome);
+        Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange("DoubleRate", "true"), "admin", ct)).Outcome);
+        Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange("VideoToolboxTonemap", "true"), "admin", ct)).Outcome);
         var applied = await _harness.Service.ApplyMeasuredRowAsync(new MeasuredRow("deinterlace", Double), "admin", ct);
 
         Assert.Equal(ApplyOutcome.Applied, applied.Outcome);
@@ -98,7 +116,7 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.False(_harness.Saved.EnableTonemapping);
     }
 
-    /// <summary>A suggested bitrate limit is saved to the streaming settings and reverted from there, even over a stricter limit already set; a suggestion that only confirms the server's value is refused.</summary>
+    /// <summary>A suggested bitrate limit, or no limit, is saved to the streaming settings and reverted from there, even over a stricter limit already set; the limit already saved, and a suggestion that only confirms the server's value, are refused.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
     public async Task AppliesAndRevertsABitrateLimit()
@@ -106,7 +124,8 @@ public sealed class SettingsServiceTests : IDisposable
         var ct = TestContext.Current.CancellationToken;
         _harness.Suggestions =
         [
-            new SpeedSuggestion(SpeedSuggestionKind.BitrateLimit, ["a"]) { Setting = SpeedAdvisor.BitrateLimitKey, Value = "20000000" },
+            new SpeedSuggestion(SpeedSuggestionKind.BitrateLimit, ["a"]) { Setting = SpeedAdvisor.BitrateLimitKey, Value = "20000000", Others = ["0"], Compared = [new SpeedComparedValue("0", 0.5, null, false)] },
+            new SpeedSuggestion(SpeedSuggestionKind.Compatible, ["a"]) { Setting = SpeedAdvisor.BitrateLimitKey, Value = "0", Others = ["20000000"], Compared = [new SpeedComparedValue("20000000", 1.2, null, false)] },
             new SpeedSuggestion(SpeedSuggestionKind.FasterSetting, ["a"]) { Setting = "EncoderPreset", Value = "fast", Current = true },
         ];
 
@@ -121,6 +140,9 @@ public sealed class SettingsServiceTests : IDisposable
         _harness.SavedBitrateLimit = 8000000;
         Assert.Equal(ApplyOutcome.Applied, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange(SpeedAdvisor.BitrateLimitKey, "20000000"), "admin", ct)).Outcome);
         Assert.Equal(20000000, _harness.SavedBitrateLimit);
+        Assert.Equal(ApplyOutcome.Rejected, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange(SpeedAdvisor.BitrateLimitKey, "20000000"), "admin", ct)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await _harness.Service.ApplyMeasuredAsync(new MeasuredChange(SpeedAdvisor.BitrateLimitKey, "0"), "admin", ct)).Outcome);
+        Assert.Equal(0, _harness.SavedBitrateLimit);
     }
 
     /// <summary>Changes matching the advice are saved; other options are left as they were.</summary>
