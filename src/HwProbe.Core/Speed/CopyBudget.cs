@@ -114,9 +114,11 @@ public sealed class CopyBudget : ICopyBudget
     private void Finish(CopyWatch watch, IReadOnlyList<FfmpegRunResult> runs)
     {
         LastStopped = watch.Tripped;
-        if (watch.Before is { } before && watch.Lowest is { } lowest)
+
+        // One copy's drop, or a stopped run's share each, which took more than one copy did alone; a run that finished
+        // already fit, and counting its share would add the margin twice.
+        if ((runs.Count == 1 || watch.Tripped) && watch.Before is { } before && watch.Lowest is { } lowest)
         {
-            // A run that ran out took more each than one copy did alone, which the next cap should know.
             _copyBytes = Math.Max(_copyBytes ?? _limits.MemoryMinimumCopyMiB * 1024L * 1024L, (before.Available - lowest) / runs.Count);
         }
 

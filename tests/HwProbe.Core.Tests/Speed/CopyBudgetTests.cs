@@ -14,6 +14,7 @@ public sealed class CopyBudgetTests
     private static readonly CatalogConcurrency _limits = new() { MemoryReserveShare = 0.25, MemoryReserveMinimumMiB = 1536, MemoryMargin = 1.5, MemoryMinimumCopyMiB = 64, MemoryStopShare = 0.5, CpuShare = 0.75 };
 
     private MemorySnapshot? _memory = new(7 * GiB, 8 * GiB);
+    private TaskCompletionSource _seen = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     /// <summary>Recorded on an 8 GB container: a 4K QSV copy takes about half a GB no process is charged for, so memory, not the CPU, caps the copies.</summary>
     /// <returns>A task representing the test.</returns>
@@ -132,7 +133,16 @@ public sealed class CopyBudgetTests
 
     /// <summary>Creates a budget over the scripted memory, for 12 cores, sampling every 5 ms.</summary>
     /// <returns>The budget.</returns>
-    private CopyBudget Budget() => new(() => _memory, () => null, 12, _limits, TimeProvider.System, TimeSpan.FromMilliseconds(5));
+    private CopyBudget Budget() => new(Read, () => null, 12, _limits, TimeProvider.System, TimeSpan.FromMilliseconds(5));
+
+    /// <summary>Reads the scripted memory, and tells a waiting copy a reading has been taken.</summary>
+    /// <returns>The memory now.</returns>
+    private MemorySnapshot? Read()
+    {
+        var now = _memory;
+        _seen.TrySetResult();
+        return now;
+    }
 
     /// <summary>Runs one copy through a budget: free memory drops by the copy's bytes while it runs, and it reports its CPU time.</summary>
     /// <param name="dropBytes">The memory the copy takes.</param>
@@ -147,8 +157,10 @@ public sealed class CopyBudgetTests
             1,
             async token =>
             {
+                // Holds the drop until a reading has seen it, so no timing decides what the budget measures.
+                _seen = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 _memory = before with { Available = before.Available - dropBytes };
-                await Task.Delay(50, token);
+                await _seen.Task.WaitAsync(token);
                 _memory = before;
                 return Ran(seconds, cpuSeconds);
             },

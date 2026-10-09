@@ -343,7 +343,10 @@ public sealed class SpeedEngine : IDisposable
 
         // Fewer repeats than asked, because the time limit came first, count as cut off too.
         var interrupted = runs.Count < Math.Max(1, speed.Repeats) || runs.Any(r => r.Interrupted);
-        return median with { Streams = median.Streams is null ? null : streams, Interrupted = interrupted, HostLimited = runs.Any(r => r.HostLimited) };
+
+        // A count's note can name the count, so it and the cap come from a run that kept the median count.
+        var counted = runs.First(r => (r.Streams ?? 0) == streams);
+        return median with { Streams = median.Streams is null ? null : streams, Capped = counted.Capped, Note = counted.Note, Interrupted = interrupted, HostLimited = counted.HostLimited };
     }
 
     /// <summary>Describes a clip being made or downloaded.</summary>
