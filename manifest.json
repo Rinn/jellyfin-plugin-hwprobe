@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "1.4.6.0",
+        "changelog": "- Counting concurrent streams stops before the server runs short of memory or CPU, instead of starting as many copies as one copy's speed suggests.\n- A count that memory or CPU stopped says which, and shows at least that many.",
+        "targetAbi": "12.2.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v1.4.6/hwprobe-plugin_1.4.6.0.zip",
+        "checksum": "6459cdb02fc2f0700d65bbf207ab37a9",
+        "timestamp": "2026-10-09T14:06:04Z"
+      },
+      {
         "version": "1.4.5.0",
         "changelog": "- A GPU whose OpenCL crashes while starting is reported as OpenCL not starting, instead of its tone mapping being not supported.\n- Rockchip RK3588 results are no longer marked as unvalidated.",
         "targetAbi": "12.2.0.0",
