@@ -31,7 +31,7 @@ Open **HwProbe** in the dashboard sidebar.
 
 - **Hardware Probe**: **Run probe** tests each hardware acceleration backend and provides a fix for each failure where available.
 - **Recommended Settings**: the advised Transcoding and Trickplay settings for each working backend and for software. **Apply** changes a setting and **Revert** undoes the last change.
-- **Performance Tests**: measures transcode and audio speed, from a test suite (such as encoder presets, tone mapping, or deinterlacing) or a custom selection.
+- **Performance Tests**: measures transcode and audio speed, and how many transcodes keep up at once (only as many as the server's memory and CPU leave room for), from a test suite (such as encoder presets, tone mapping, or deinterlacing) or a custom selection.
 - **Test Results**: speed and resource use (CPU, memory, GPU, and power) per run, with recommended settings that can be applied and reverted.
 - **Help**: a diagnostics zip for [hardware reports](../../issues/new?template=hardware-report.yml) (includes file paths and host names, and optionally the test results and measurements, which name the library videos measured), and the cached test clips.
 

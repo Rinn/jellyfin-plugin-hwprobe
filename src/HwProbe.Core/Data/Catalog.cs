@@ -54,6 +54,9 @@ public sealed partial class Catalog
     /// <summary>Gets the thresholds measurements are judged by.</summary>
     public required CatalogAdvice Advice { get; init; }
 
+    /// <summary>Gets how much memory and CPU counting concurrent streams leaves the server.</summary>
+    public required CatalogConcurrency Concurrency { get; init; }
+
     /// <summary>Gets the accuracy test suites measure at.</summary>
     public required SpeedMethod SuiteMethod { get; init; }
 
@@ -409,6 +412,11 @@ public sealed partial class Catalog
         if (Advice is not { Noise: > 0 and < 1, Headroom: >= 1, MaxStreamLoss: > 0 and < 1, ResourceMargin: > 0 and < 1 })
         {
             throw new InvalidDataException("catalog.yaml: advice requires noise, maxStreamLoss, and resourceMargin between 0 and 1, and headroom of at least 1.");
+        }
+
+        if (Concurrency is not { MemoryReserveShare: > 0 and < 1, MemoryReserveMinimumMiB: >= 0, MemoryMargin: >= 1, MemoryMinimumCopyMiB: > 0, MemoryStopShare: > 0 and <= 1, CpuShare: > 0 and <= 1 })
+        {
+            throw new InvalidDataException("catalog.yaml: concurrency requires memoryReserveShare between 0 and 1, memoryReserveMinimumMiB of 0 or more, memoryMargin of at least 1, memoryMinimumCopyMiB above 0, and memoryStopShare and cpuShare above 0 and at most 1.");
         }
 
         string[] resources = ["Cpu", "Memory", "Gpu", "GpuMemory", "Power"];

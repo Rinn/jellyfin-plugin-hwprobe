@@ -26,6 +26,7 @@ public static partial class SpeedMeter
     /// <param name="cancellationToken">Cancels the measurement.</param>
     /// <param name="timeUp">Reports when the measurement's time limit has passed; checked before each run of copies, never before the first run. Null for no limit.</param>
     /// <param name="pace">How much content the copies process and how speed is read; null for <see cref="MeterPace.Frames"/>.</param>
+    /// <param name="budget">What the server's memory and CPU leave room for, which caps the copies run at once; null for no limit but <see cref="MaxStreams"/>.</param>
     /// <returns>The fps and stream count.</returns>
     public static async Task<SpeedMeasurement> MeasureAsync(
         Func<int, TimeSpan, CancellationToken, Task<IReadOnlyList<FfmpegRunResult>>> launch,
@@ -34,7 +35,8 @@ public static partial class SpeedMeter
         bool countStreams,
         CancellationToken cancellationToken,
         Func<bool>? timeUp = null,
-        MeterPace? pace = null)
+        MeterPace? pace = null,
+        ICopyBudget? budget = null)
     {
         ArgumentNullException.ThrowIfNull(launch);
         pace ??= MeterPace.Frames;
@@ -76,8 +78,18 @@ public static partial class SpeedMeter
 
         var start = Math.Clamp((int)Math.Floor(fps.Value / frameRate), 1, MaxStreams);
 
+        // One copy already kept real time from start-up on, and there's room for no more.
+        if (budget?.MostCopies(fps.Value / frameRate) is { Copies: 1 } only && fps.Value >= frameRate)
+        {
+            return new SpeedMeasurement(fps, 1, true, LimitNote(only, 1)) { Resources = resources, Interrupted = cutOff, HostLimited = true };
+        }
+
         var erroredAt = 0;
         var keptUp = 0;
+
+        // The fewest copies the memory or CPU refused or stopped, and which; the count names it only when it's the next one up.
+        CopyLimit? refused = null;
+        void Refuse(int copies, bool byCpu) => refused = refused is null || copies < refused.Copies ? new CopyLimit(copies, byCpu) : refused;
         async Task<bool> KeepsUpAsync(int copies)
         {
             if (timeUp?.Invoke() == true)
@@ -85,7 +97,21 @@ public static partial class SpeedMeter
                 throw new TimeoutException();
             }
 
+            // Copies whose GPU memory no process is charged for can exhaust the host (a container's OOM killer then picks
+            // Jellyfin), and more than the CPU can keep at real time only slow the server down.
+            if (budget?.MostCopies(fps.Value / frameRate) is { } most && copies > most.Copies)
+            {
+                Refuse(copies, most.ByCpu);
+                return false;
+            }
+
             var runs = await launch(copies, pace.Content, cancellationToken);
+            if (budget?.LastStopped == true)
+            {
+                Refuse(copies, false);
+                return false;
+            }
+
             if (runs.Any(r => r.Status == FfmpegRunStatus.LaunchFailed || (r.Status == FfmpegRunStatus.Exited && r.ExitCode != 0)))
             {
                 erroredAt = erroredAt == 0 ? copies : Math.Min(erroredAt, copies);
@@ -111,13 +137,23 @@ public static partial class SpeedMeter
         }
 
         // Copies that fail rather than fall behind usually hit the driver's limit on sessions at once (NVENC has one).
-        var note = erroredAt == streams + 1
+        var hostLimited = refused is { } limit && limit.Copies == streams + 1 && streams > 0;
+        var note = hostLimited && refused is { } named
+            ? LimitNote(named, streams)
+            : erroredAt == streams + 1
             ? string.Create(CultureInfo.InvariantCulture, $"{erroredAt} at once failed to start, likely the driver's limit on sessions rather than speed.")
             : null;
 
         // A session limit stops the count as the cap does, so it's marked capped: at least that many keep up.
-        return new SpeedMeasurement(fps, streams, streams == MaxStreams || note is not null, note) { Resources = resources, Interrupted = cutOff };
+        return new SpeedMeasurement(fps, streams, streams == MaxStreams || note is not null, note) { Resources = resources, Interrupted = cutOff, HostLimited = hostLimited };
     }
+
+    /// <summary>Names what limited a count.</summary>
+    /// <param name="limit">What refused more copies.</param>
+    /// <param name="streams">The copies that kept up.</param>
+    /// <returns>The note.</returns>
+    private static string LimitNote(CopyLimit limit, int streams) =>
+        Data.Catalog.Text(limit.ByCpu ? "noteCpuLimited" : "noteMemoryLimited", ("streams", streams.ToString(CultureInfo.InvariantCulture)));
 
     /// <summary>Counts the streams that keep up: doubling from a starting count until they fall behind, then narrowing down.</summary>
     /// <param name="keepsUp">Runs that many copies and reports whether all kept real time.</param>

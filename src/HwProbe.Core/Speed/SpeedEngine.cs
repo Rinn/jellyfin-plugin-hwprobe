@@ -6,6 +6,7 @@ using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Pipeline;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
 using Jellyfin.Plugin.HwProbe.Core.Report;
+using Jellyfin.Plugin.HwProbe.Core.Resources;
 using Jellyfin.Plugin.HwProbe.Core.Storage;
 using Jellyfin.Plugin.HwProbe.Core.Verdict;
 
@@ -342,7 +343,10 @@ public sealed class SpeedEngine : IDisposable
 
         // Fewer repeats than asked, because the time limit came first, count as cut off too.
         var interrupted = runs.Count < Math.Max(1, speed.Repeats) || runs.Any(r => r.Interrupted);
-        return median with { Streams = median.Streams is null ? null : streams, Interrupted = interrupted };
+
+        // A count's note can name the count, so it and the cap come from a run that kept the median count.
+        var counted = runs.First(r => (r.Streams ?? 0) == streams);
+        return median with { Streams = median.Streams is null ? null : streams, Capped = counted.Capped, Note = counted.Note, Interrupted = interrupted, HostLimited = counted.HostLimited };
     }
 
     /// <summary>Describes a clip being made or downloaded.</summary>
@@ -459,8 +463,8 @@ public sealed class SpeedEngine : IDisposable
             _lastMeasured = _time.GetUtcNow();
         }
 
-        // Only a full measurement is worth reusing: a failure may be fixed by the next run, and a run cut off by a timeout or the time limit is short of what a full one measures.
-        if (key is not null && result.Fps is not null && !result.Interrupted)
+        // Only a full measurement is worth reusing: a failure may be fixed by the next run, a run cut off by a timeout or the time limit is short of what a full one measures, and a count the memory or CPU free at the time stopped may go further later.
+        if (key is not null && result.Fps is not null && !result.Interrupted && !result.HostLimited)
         {
             await cache.SaveAsync(key, new SpeedCacheEntry(_time.GetUtcNow(), SpeedResultCache.MeasurementVersion, ffmpegVersion, result), cancellationToken);
         }
@@ -540,12 +544,15 @@ public sealed class SpeedEngine : IDisposable
     /// <param name="measureResources">Whether a single copy is measured for resource usage.</param>
     /// <param name="pace">The pace, for the copies' timeout.</param>
     /// <param name="inspect">Sees each launch's results, or null.</param>
+    /// <param name="budget">Keeps runs of copies within the memory and CPU the server has to spare, or null for none.</param>
     /// <returns>The launcher.</returns>
-    private Func<int, TimeSpan, CancellationToken, Task<IReadOnlyList<FfmpegRunResult>>> Launcher(EngineOptions options, Func<TimeSpan, string> command, IReadOnlyDictionary<string, string?> environment, bool measureResources, MeterPace pace, Action<IReadOnlyList<FfmpegRunResult>>? inspect) =>
+    private Func<int, TimeSpan, CancellationToken, Task<IReadOnlyList<FfmpegRunResult>>> Launcher(EngineOptions options, Func<TimeSpan, string> command, IReadOnlyDictionary<string, string?> environment, bool measureResources, MeterPace pace, Action<IReadOnlyList<FfmpegRunResult>>? inspect, CopyBudget? budget = null) =>
         async (copies, content, token) =>
         {
             var invocation = new FfmpegInvocation(options.Ffmpeg.Path, command(content), environment, copies == 1 ? _singleTimeout : pace.Content + _copiesGrace) { MeasureResources = measureResources && copies == 1 };
-            var runs = await Task.WhenAll(Enumerable.Range(0, copies).Select(_ => _runner.RunAsync(invocation, token)));
+            var runs = budget is null
+                ? await Task.WhenAll(Enumerable.Range(0, copies).Select(_ => _runner.RunAsync(invocation, token)))
+                : await budget.RunAsync(copies, t => _runner.RunAsync(invocation, t), token);
             inspect?.Invoke(runs);
             return runs;
         };
@@ -618,14 +625,18 @@ public sealed class SpeedEngine : IDisposable
 
                 // jellyfin-ffmpeg's qsvenc drops low-power mode it can't use and carries on (debian/patches/0071), so the run measures normal mode.
                 var lowPowerDropped = false;
-                var launch = Launcher(options, Command, args.Environment, measureResources, pace, runs => lowPowerDropped |= cell.LowPower && runs.Any(r => StderrMarkers.LowPowerDisabled.Any(m => r.Stderr.Contains(m, StringComparison.Ordinal))));
+                var budget = test.DecodeOnly ? null : new CopyBudget(new MemoryHeadroom(_platform).Read, new ServerCpu(_platform).BusySeconds, Environment.ProcessorCount, Data.Catalog.Default.Concurrency, _time);
+                var launch = Launcher(options, Command, args.Environment, measureResources, pace, runs => lowPowerDropped |= cell.LowPower && runs.Any(r => StderrMarkers.LowPowerDisabled.Any(m => r.Stderr.Contains(m, StringComparison.Ordinal))), budget);
 
                 // Double-rate deinterlacing makes a frame per field, so real time is twice the source rate (EncodingHelper.GetSwDeinterlaceFilter and the hardware deinterlace filters, v12.2: interlaced sources of 30 fps or less).
                 var outputRate = cell.DoubleRate && test.Interlaced && !test.DecodeOnly && test.FrameRate <= 30 ? test.FrameRate * 2 : test.FrameRate;
                 CommandLog?.Invoke($"{options.Ffmpeg.Path} {Command(pace.Content)}");
-                var measured = await SpeedMeter.MeasureAsync(launch, method, outputRate, !test.DecodeOnly, ct, timeUp, pace);
+                var measured = await SpeedMeter.MeasureAsync(launch, method, outputRate, !test.DecodeOnly, ct, timeUp, pace, budget);
                 note = lowPowerDropped ? Data.Catalog.Text("noteLowPowerDropped") : note;
-                return new SpeedResult(type, device, test.Key, string.Empty, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note) { OutputSize = size, Interrupted = measured.Interrupted, Command = CommandHash(Command(pace.Content)), Resources = measured.Resources, LowPowerDropped = lowPowerDropped, FrameRate = outputRate };
+
+                // A failure's note replaces the rest; a count's limit is added to what Jellyfin does instead.
+                note = measured.Fps is null ? measured.Note ?? note : string.Join(' ', new[] { note, measured.Note }.OfType<string>()) is { Length: > 0 } both ? both : null;
+                return new SpeedResult(type, device, test.Key, string.Empty, measured.Fps, measured.Streams, measured.Capped, note) { OutputSize = size, Interrupted = measured.Interrupted, HostLimited = measured.HostLimited, Command = CommandHash(Command(pace.Content)), Resources = measured.Resources, LowPowerDropped = lowPowerDropped, FrameRate = outputRate };
             },
             cancellationToken);
 }
