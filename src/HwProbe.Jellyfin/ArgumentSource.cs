@@ -298,7 +298,7 @@ public sealed class ArgumentSource : IArgumentSource
         var effects = type == HwType.vaapi
             ? EncodingHelperEnvironment.Predict(type, _encoder.IsVaapiDeviceInteliHD, _encoder.IsVaapiDeviceInteli965, _encoder.IsVaapiDeviceAmd)
             : new Dictionary<string, string>();
-        RefuseForeignWrites(device, effects);
+        var foreign = ForeignWrites(device, effects);
 
         var before = Snapshot();
         T value;
@@ -313,6 +313,11 @@ public sealed class ArgumentSource : IArgumentSource
             if (_environment.RestoreAfterGeneration)
             {
                 Restore(before);
+            }
+            else
+            {
+                // The probe's ffmpeg gets these from the returned environment; the server's own transcodes never set them.
+                Restore(before.Where(v => foreign.Contains(v.Key)).ToDictionary(v => v.Key, v => v.Value, StringComparer.Ordinal));
             }
         }
 
@@ -331,20 +336,27 @@ public sealed class ArgumentSource : IArgumentSource
         return (value, environment);
     }
 
-    /// <summary>Inside the server, refuses generation that would set a variable the server's own configuration doesn't.</summary>
+    /// <summary>Inside the server, returns the variables generation would set that the server's own configuration doesn't, refusing any but AMD-only ones.</summary>
     /// <param name="device">Render node, or null.</param>
     /// <param name="effects">Variables generation will set.</param>
-    private void RefuseForeignWrites(string? device, IReadOnlyDictionary<string, string> effects)
+    /// <returns>The AMD-only variables to undo after generation; empty outside the server.</returns>
+    private HashSet<string> ForeignWrites(string? device, IReadOnlyDictionary<string, string> effects)
     {
         if (_environment.RestoreAfterGeneration)
         {
-            return;
+            return [];
         }
 
-        if (effects.Any(e => !_environment.ServerOwned.TryGetValue(e.Key, out var owned) || owned != e.Value))
+        var foreign = effects
+            .Where(e => !_environment.ServerOwned.TryGetValue(e.Key, out var owned) || owned != e.Value)
+            .Select(e => e.Key)
+            .ToHashSet(StringComparer.Ordinal);
+        if (foreign.Any(v => !EncodingHelperEnvironment.AmdOnly.Contains(v)))
         {
             throw new UnsafeProbeException(Catalog.Text("notServerDevice", ("device", device ?? string.Empty)));
         }
+
+        return foreign;
     }
 
     /// <summary>Returns the hardware filter family whose deinterlace filter appears in the generated chain.</summary>

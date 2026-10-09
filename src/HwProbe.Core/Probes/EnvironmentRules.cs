@@ -16,7 +16,7 @@ public sealed record EnvironmentRules(
     /// <summary>Rules inside the Jellyfin server, where its own transcodes share the environment.</summary>
     /// <param name="baseline">Values captured when the plugin loaded.</param>
     /// <param name="serverOwned">Variables the server's own configuration sets.</param>
-    /// <returns>The rules: never restore, and refuse to set anything the server doesn't.</returns>
+    /// <returns>The rules: refuse to set anything the server doesn't, except AMD-only variables, which are undone after generation.</returns>
     public static EnvironmentRules InServer(IReadOnlyDictionary<string, string?> baseline, IReadOnlyDictionary<string, string> serverOwned) =>
         new(baseline, false, serverOwned);
 }

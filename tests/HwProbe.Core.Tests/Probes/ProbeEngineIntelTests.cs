@@ -132,6 +132,35 @@ public sealed class ProbeEngineIntelTests : IDisposable
         Assert.Equal(denied, vaapi.Hint == Catalog.Text("permissionDeniedHost"));
     }
 
+    /// <summary>QSV skips a render node whose sysfs vendor isn't Intel, and still tries one whose vendor can't be read.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task QsvSkipsNonIntelNodes()
+    {
+        _runner.Probe = _ => EngineRunner.Exited(1, null, IntelDriver);
+        var host = new FakeHostPlatform(HostOs.Linux) { OsDescription = "Linux 6.8.0" };
+        host.Files[Node] = string.Empty;
+        host.Files["/sys/class/drm/renderD128/device/vendor"] = "0x8086\n";
+        host.Files["/dev/dri/renderD129"] = string.Empty;
+        host.Files["/sys/class/drm/renderD129/device/vendor"] = "0x1002\n";
+        host.Files["/dev/dri/renderD130"] = string.Empty;
+        var options = new EngineOptions(
+            new FfmpegLocation("/usr/lib/jellyfin-ffmpeg/ffmpeg", FfmpegSource.CommandLine),
+            StopStage.Devices,
+            new HashSet<HwType> { HwType.qsv },
+            null,
+            TimeSpan.FromSeconds(5),
+            TimeSpan.FromSeconds(5),
+            Path.Combine(_root, "fixtures"),
+            Path.Combine(_root, "reports"),
+            Refresh: true);
+
+        using var engine = new ProbeEngine(_runner, new FakeArgumentSource(), host, TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
+        var report = await engine.RunAsync(options, TestContext.Current.CancellationToken);
+
+        Assert.Equal([Node, "/dev/dri/renderD130"], report.Probes.Where(p => p.Stage == ProbeStage.DeviceOpen).Select(p => p.DevicePath));
+    }
+
     /// <inheritdoc/>
     public void Dispose() => Directory.Delete(_root, recursive: true);
 

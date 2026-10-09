@@ -899,7 +899,7 @@ texts:
   softwareFallback: ffmpeg finished but decoded in software. Jellyfin would silently use the CPU here.
   skipped: "Not run: a prerequisite is missing (a software encoder for the fixture, or the build lacks it)."
   untested: "Not verified: no hardware or sample was available to test this."
-  # Shown for an i965 or AMD device the server isn't set to: testing it would set LIBVA_DRIVER_NAME or AMD_DEBUG for the server's own transcodes. The server reads its device's driver only at start-up (MediaEncoder.SetFFmpegPath, from ApplicationHost.RunStartupTasksAsync, v12.2).
+  # Shown for an i965 device the server isn't set to: testing it would set LIBVA_DRIVER_NAME for the server's own transcodes. The server reads its device's driver only at start-up (MediaEncoder.SetFFmpegPath, from ApplicationHost.RunStartupTasksAsync, v12.2).
   notServerDevice: Testing this device would modify the environment of the server. To test it, set Hardware acceleration to Video Acceleration API (VAAPI) and VA-API Device to {device}, then restart Jellyfin.
   notUsed: Software only with this ffmpeg build, so the setting has no effect.
   permissionDeniedContainer: The render node is not accessible. Add the host's render group to the container (--group-add).

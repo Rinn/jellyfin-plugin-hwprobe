@@ -185,7 +185,19 @@ public sealed class ProbeEngine : IDisposable
 
             // Jellyfin picks the adapter by vendor: QSV any Intel one (vendor=0x8086 unless QsvDevice names an index, L965-971),
             // AMF always the first AMD one (vendor=0x1002, L1181; there's no AMF device setting).
-            .Where(c => run.Adapters.Count == 0 || c.Type is not (HwType.qsv or HwType.amf) || IsAdapterJellyfinUses(run, c));
+            .Where(c => run.Adapters.Count == 0 || c.Type is not (HwType.qsv or HwType.amf) || IsAdapterJellyfinUses(run, c))
+
+            // On Linux Jellyfin opens a QSV render node with the iHD driver (GetQsvDeviceArgs, v12.2, L953-959), so only an Intel one can work.
+            .Where(c => c.Type != HwType.qsv || run.Host.Os != HostOs.Linux || IsIntelOrUnknownNode(run, c.Device));
+
+    /// <summary>Reports whether a render node's sysfs vendor is Intel or couldn't be read.</summary>
+    /// <param name="run">The run, for its render nodes.</param>
+    /// <param name="node">The render node path.</param>
+    /// <returns>False only for a node whose vendor was read and isn't Intel.</returns>
+    private static bool IsIntelOrUnknownNode(Run run, string node) =>
+        run.Devices.RenderNodes.FirstOrDefault(n => n.Node == node)?.Vendor is not { } vendor
+            || vendor == DeviceEnumerator.Unknown
+            || string.Equals(vendor, "0x8086", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Reports whether Jellyfin could use a Windows adapter index for QSV or AMF.</summary>
     /// <param name="run">The run, for its adapter list.</param>
