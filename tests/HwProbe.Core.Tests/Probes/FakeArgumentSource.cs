@@ -16,6 +16,9 @@ internal sealed class FakeArgumentSource : IArgumentSource, IArgumentSourceFacto
     /// <summary>Gets or sets a value indicating whether deinterlacing happens on the CPU.</summary>
     public bool NoHardwareDeinterlace { get; set; }
 
+    /// <summary>Gets or sets the message of the <see cref="UnsafeProbeException"/> every hardware cell raises, or null for none.</summary>
+    public string? Refusal { get; set; }
+
     /// <summary>Gets environment overrides returned with every set of arguments.</summary>
     public Dictionary<string, string?> Environment { get; } = [];
 
@@ -34,6 +37,11 @@ internal sealed class FakeArgumentSource : IArgumentSource, IArgumentSourceFacto
         if (type == HwType.none)
         {
             return new ProbeArguments(string.Empty, cell.Bwdif ? " -vf \"bwdif=0:-1:0\"" : string.Empty, "libx264", Environment);
+        }
+
+        if (Refusal is not null)
+        {
+            throw new UnsafeProbeException(Refusal);
         }
 
         var input = Hwaccel(cell);

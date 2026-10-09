@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
 using Jellyfin.Plugin.HwProbe.TestSupport;
@@ -39,7 +40,7 @@ public sealed class InServerEnvironmentTests : IDisposable
 
         var ex = Assert.Throws<UnsafeProbeException>(() => source.Build(HwType.vaapi, Node, _smoke));
 
-        Assert.Contains("LIBVA_DRIVER_NAME=i965", ex.Message, StringComparison.Ordinal);
+        Assert.Equal(Catalog.Text("notServerDevice", ("device", Node)), ex.Message);
         Assert.Equal(_cleanBaseline, EncodingHelperEnvironment.Capture());
     }
 
