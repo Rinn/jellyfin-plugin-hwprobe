@@ -2,8 +2,8 @@ using Jellyfin.Plugin.HwProbe.Core.Resources;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Speed;
 
-/// <summary>Watches a run of copies: keeps the least free memory, stops the run when too little is free, and times the host's busy CPU.</summary>
-public sealed class CopyWatch : IAsyncDisposable
+/// <summary>Watches a run of copies: keeps the least free memory, stops the run when too little is free, and times the server's busy CPU.</summary>
+internal sealed class CopyWatch : IAsyncDisposable
 {
     private readonly Func<MemorySnapshot?> _readMemory;
     private readonly Func<double?> _readBusy;
@@ -19,7 +19,7 @@ public sealed class CopyWatch : IAsyncDisposable
 
     /// <summary>Initializes a new instance of the <see cref="CopyWatch"/> class and starts sampling.</summary>
     /// <param name="readMemory">Reads the memory now.</param>
-    /// <param name="readBusy">Reads the host's busy CPU seconds so far.</param>
+    /// <param name="readBusy">Reads the server's busy CPU seconds so far.</param>
     /// <param name="stopUnder">The free bytes under which the run is stopped, given a reading.</param>
     /// <param name="time">Paces sampling and times the run.</param>
     /// <param name="interval">How often memory is read.</param>
@@ -50,8 +50,8 @@ public sealed class CopyWatch : IAsyncDisposable
     /// <summary>Gets a value indicating whether the run was stopped because memory ran low.</summary>
     public bool Tripped { get; private set; }
 
-    /// <summary>Gets the cores the host kept busy on average over the run, once disposed, or null when it can't be read.</summary>
-    public double? HostCores { get; private set; }
+    /// <summary>Gets the cores the server kept busy on average over the run, once disposed, or null when it can't be read.</summary>
+    public double? BusyCores { get; private set; }
 
     /// <summary>Takes one memory reading, and stops the run when too little memory is free.</summary>
     public void Sample()
@@ -78,7 +78,7 @@ public sealed class CopyWatch : IAsyncDisposable
         // Completes once any running callback has returned, so the last sample counts.
         await _timer.DisposeAsync();
         var seconds = _time.GetElapsedTime(_started).TotalSeconds;
-        HostCores = _busyBefore is { } before && _readBusy() is { } after && seconds > 0 ? Math.Max(0, after - before) / seconds : null;
+        BusyCores = _busyBefore is { } before && _readBusy() is { } after && seconds > 0 ? Math.Max(0, after - before) / seconds : null;
         _stop.Dispose();
     }
 

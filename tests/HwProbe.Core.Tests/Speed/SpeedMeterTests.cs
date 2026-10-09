@@ -250,12 +250,40 @@ public sealed class SpeedMeterTests
     public async Task BudgetCapsTheCount(bool byCpu, string noteKey)
     {
         var host = new Host(capacity: 12, fps: 300);
-        var budget = new ScriptedBudget(new CopyLimit(5, byCpu), stopAt: int.MaxValue);
+        var budget = new ScriptedBudget(() => new CopyLimit(5, byCpu), stopAt: int.MaxValue);
 
         var measured = await SpeedMeter.MeasureAsync(budget.Wrap(host.LaunchAsync), SpeedMethod.Confirm, 24, countStreams: true, TestContext.Current.CancellationToken, budget: budget);
 
         Assert.Equal((5, true, Catalog.Text(noteKey, ("streams", "5"))), (measured.Streams, measured.Capped, measured.Note));
         Assert.DoesNotContain(host.Copies, c => c > 5);
+    }
+
+    /// <summary>A count that speed stopped carries no note, even when memory refused more copies earlier: free memory is read again at each step.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task SpeedLimitedCountHasNoNote()
+    {
+        var host = new Host(capacity: 7, fps: 300);
+        var asked = 0;
+        var budget = new ScriptedBudget(() => new CopyLimit(++asked == 1 ? 6 : 8, false), stopAt: int.MaxValue);
+
+        var measured = await SpeedMeter.MeasureAsync(budget.Wrap(host.LaunchAsync), SpeedMethod.Confirm, 24, countStreams: true, TestContext.Current.CancellationToken, budget: budget);
+
+        Assert.Equal((7, false, (string?)null), (measured.Streams, measured.Capped, measured.Note));
+    }
+
+    /// <summary>When there's room for one copy and one already kept real time, the count needs no further run.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task RoomForOneNeedsNoCount()
+    {
+        var host = new Host(capacity: 7, fps: 300);
+        var budget = new ScriptedBudget(() => new CopyLimit(1, false), stopAt: int.MaxValue);
+
+        var measured = await SpeedMeter.MeasureAsync(budget.Wrap(host.LaunchAsync), SpeedMethod.Confirm, 24, countStreams: true, TestContext.Current.CancellationToken, budget: budget);
+
+        Assert.Equal((1, true, Catalog.Text("noteMemoryLimited", ("streams", "1"))), (measured.Streams, measured.Capped, measured.Note));
+        Assert.Equal([1, 1], host.Copies);
     }
 
     /// <summary>A run that memory stopped counts as falling behind, so the count settles below it and says memory limited it.</summary>
@@ -264,7 +292,7 @@ public sealed class SpeedMeterTests
     public async Task StoppedRunSettlesBelowIt()
     {
         var host = new Host(capacity: 16, fps: 24 * 4);
-        var budget = new ScriptedBudget(null, stopAt: 7);
+        var budget = new ScriptedBudget(() => null, stopAt: 7);
 
         var measured = await SpeedMeter.MeasureAsync(budget.Wrap(host.LaunchAsync), SpeedMethod.Full, 24, countStreams: true, TestContext.Current.CancellationToken, budget: budget);
 
@@ -297,16 +325,16 @@ public sealed class SpeedMeterTests
         }
     }
 
-    /// <summary>A budget with a fixed cap that reports a stop for runs of at least some copies.</summary>
-    /// <param name="limit">The cap, or null for none.</param>
+    /// <summary>A budget with a scripted cap that reports a stop for runs of at least some copies.</summary>
+    /// <param name="limit">Returns the cap each time it's asked, or null for none.</param>
     /// <param name="stopAt">Runs of at least this many copies are stopped.</param>
-    private sealed class ScriptedBudget(CopyLimit? limit, int stopAt) : ICopyBudget
+    private sealed class ScriptedBudget(Func<CopyLimit?> limit, int stopAt) : ICopyBudget
     {
         /// <inheritdoc/>
         public bool LastStopped { get; private set; }
 
         /// <inheritdoc/>
-        public CopyLimit? MostCopies(double speed) => limit;
+        public CopyLimit? MostCopies(double speed) => limit();
 
         /// <summary>Wraps a launch so each run records whether it was stopped.</summary>
         /// <param name="launch">The scripted launch.</param>

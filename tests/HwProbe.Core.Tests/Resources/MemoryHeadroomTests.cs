@@ -53,6 +53,21 @@ public sealed class MemoryHeadroomTests
         Assert.Equal((GiB, 4 * GiB), (snapshot.Available, snapshot.Total));
     }
 
+    /// <summary>Docker on cgroup v1 shows the container its own memory cgroup at the root, not under the path its membership names.</summary>
+    [Fact]
+    public void CgroupV1ContainerSeesItsOwnRoot()
+    {
+        var host = Linux("6:memory:/docker/2b6a\n");
+        host.Files["/sys/fs/cgroup/memory/memory.limit_in_bytes"] = (2 * GiB).ToString(System.Globalization.CultureInfo.InvariantCulture) + "\n";
+        host.Files["/sys/fs/cgroup/memory/memory.usage_in_bytes"] = "142606336\n";
+        host.Files["/sys/fs/cgroup/memory/memory.stat"] = "inactive_file 32026624\ntotal_inactive_file 32026624\n";
+
+        var snapshot = new MemoryHeadroom(host).Read();
+
+        Assert.NotNull(snapshot);
+        Assert.Equal(((2 * GiB) - (142606336 - 32026624), 2 * GiB), (snapshot.Available, snapshot.Total));
+    }
+
     /// <summary>Off Linux, or without <c>/proc/meminfo</c>, nothing is known.</summary>
     [Fact]
     public void UnknownElsewhere()
@@ -61,15 +76,31 @@ public sealed class MemoryHeadroomTests
         Assert.Null(new MemoryHeadroom(new FakeHostPlatform(HostOs.Linux)).Read());
     }
 
-    /// <summary>The host's busy CPU time is everything in the cpu line but idle and iowait, at 100 ticks a second.</summary>
+    /// <summary>The server's CPU time comes from its cgroup when it can be read, v2 then v1, so other containers' load doesn't count.</summary>
+    [Fact]
+    public void ServerCpuReadsItsCgroup()
+    {
+        var v2 = new FakeHostPlatform(HostOs.Linux);
+        v2.Files["/proc/self/cgroup"] = "0::/\n";
+        v2.Files["/sys/fs/cgroup/cpu.stat"] = "usage_usec 12500000\nuser_usec 10000000\n";
+        v2.Files["/proc/stat"] = "cpu  1000 100 400 9000 500 0 0 0 0 0\n";
+        var v1 = new FakeHostPlatform(HostOs.Linux);
+        v1.Files["/proc/self/cgroup"] = "8:cpuacct:/docker/2b6a\n";
+        v1.Files["/sys/fs/cgroup/cpuacct/cpuacct.usage"] = "3000000000\n";
+
+        Assert.Equal(12.5, Assert.NotNull(new ServerCpu(v2).BusySeconds()), 6);
+        Assert.Equal(3, Assert.NotNull(new ServerCpu(v1).BusySeconds()), 6);
+    }
+
+    /// <summary>Without a cgroup, the host's busy CPU time is everything in the cpu line but idle and iowait, at 100 ticks a second.</summary>
     [Fact]
     public void HostBusyCpuExcludesIdle()
     {
         var host = new FakeHostPlatform(HostOs.Linux);
         host.Files["/proc/stat"] = "cpu  1000 100 400 9000 500 0 0 0 0 0\ncpu0 1 2 3 4 5 6 7 8 9 10\n";
 
-        Assert.Equal(15, Assert.NotNull(new HostCpu(host).BusySeconds()), 6);
-        Assert.Null(new HostCpu(new FakeHostPlatform(HostOs.MacOS)).BusySeconds());
+        Assert.Equal(15, Assert.NotNull(new ServerCpu(host).BusySeconds()), 6);
+        Assert.Null(new ServerCpu(new FakeHostPlatform(HostOs.MacOS)).BusySeconds());
     }
 
     /// <summary>Creates a Linux host with the meminfo above and a cgroup membership.</summary>

@@ -12,6 +12,9 @@ public sealed class CatalogConcurrency
     /// <summary>Gets the multiple of one copy's measured memory each copy is counted as.</summary>
     public required double MemoryMargin { get; init; }
 
+    /// <summary>Gets the least memory a copy counts as, in MiB, so a run too short to sample still counts.</summary>
+    public required int MemoryMinimumCopyMiB { get; init; }
+
     /// <summary>Gets the share of the memory reserve under which running copies are stopped.</summary>
     public required double MemoryStopShare { get; init; }
 

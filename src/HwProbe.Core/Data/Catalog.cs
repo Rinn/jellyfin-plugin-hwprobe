@@ -414,9 +414,9 @@ public sealed partial class Catalog
             throw new InvalidDataException("catalog.yaml: advice requires noise, maxStreamLoss, and resourceMargin between 0 and 1, and headroom of at least 1.");
         }
 
-        if (Concurrency is not { MemoryReserveShare: > 0 and < 1, MemoryReserveMinimumMiB: >= 0, MemoryMargin: >= 1, MemoryStopShare: > 0 and <= 1, CpuShare: > 0 and <= 1 })
+        if (Concurrency is not { MemoryReserveShare: > 0 and < 1, MemoryReserveMinimumMiB: >= 0, MemoryMargin: >= 1, MemoryMinimumCopyMiB: > 0, MemoryStopShare: > 0 and <= 1, CpuShare: > 0 and <= 1 })
         {
-            throw new InvalidDataException("catalog.yaml: concurrency requires memoryReserveShare between 0 and 1, memoryReserveMinimumMiB of 0 or more, memoryMargin of at least 1, and memoryStopShare and cpuShare above 0 and at most 1.");
+            throw new InvalidDataException("catalog.yaml: concurrency requires memoryReserveShare between 0 and 1, memoryReserveMinimumMiB of 0 or more, memoryMargin of at least 1, memoryMinimumCopyMiB above 0, and memoryStopShare and cpuShare above 0 and at most 1.");
         }
 
         string[] resources = ["Cpu", "Memory", "Gpu", "GpuMemory", "Power"];

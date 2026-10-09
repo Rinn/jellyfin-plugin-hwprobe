@@ -856,12 +856,13 @@ testDelay: 1
 
 # Counting concurrent streams leaves the server this much memory and CPU. An Intel GPU's video surfaces are shared memory no process is charged for, about 500 MB a 4K QSV copy on a UHD 770; 14 at once filled an 8 GB container, whose OOM killer then picked Jellyfin.
 concurrency:
-  # Memory kept free: this share of the server's memory (the host's, or its cgroup's limit), and at least memoryReserveMinimumMiB.
+  # Memory kept free: this share of the server's memory (the host's, or its cgroup's limit), at least memoryReserveMinimumMiB, and at most half of it.
   memoryReserveShare: 0.25
   memoryReserveMinimumMiB: 1536
-  # Each copy counts as this multiple of one copy's measured memory, as several can take more than one each.
+  # Each copy counts as this multiple of one copy's measured memory (at least memoryMinimumCopyMiB), as several can take more than one each.
   memoryMargin: 1.5
-  # Copies still running are stopped when what's free falls under this share of the reserve.
+  memoryMinimumCopyMiB: 64
+  # Two or more copies still running are stopped when what's free falls under this share of the reserve; one copy is what one transcode takes, and runs.
   memoryStopShare: 0.5
   # The copies may need at most this share of the server's cores to keep real time, so the server stays responsive.
   cpuShare: 0.75
@@ -922,7 +923,6 @@ texts:
   # Speed notes for the memory and CPU concurrent streams leave the server (concurrency, above).
   noteMemoryLimited: "Memory left room for {streams} at once: at least that many keep up."
   noteCpuLimited: "The CPU left room for {streams} at once: at least that many keep up."
-  noteMemoryStopped: "Stopped: the server's memory ran low."
   deviceUnavailableQsvWindows: No Direct3D 11 adapter opened. Check the Intel graphics driver is installed.
   deviceUnavailableAmf: No Direct3D 11 adapter opened. Check the AMD graphics driver is installed.
   deviceUnavailableNvencContainer: ffmpeg has CUDA but no NVIDIA device opened. Run the container with the NVIDIA runtime (--gpus all).

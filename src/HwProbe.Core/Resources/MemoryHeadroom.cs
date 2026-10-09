@@ -6,7 +6,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Resources;
 /// <summary>Reads how much memory the server has to spare on Linux, from <c>/proc/meminfo</c> and its own cgroup.</summary>
 /// <remarks>
 /// An Intel GPU's video surfaces are shared memory charged to the cgroup but to no process, so they show here and in no
-/// ffmpeg's RSS. The cgroup's use excludes its inactive page cache, which it reclaims first, as the kernel's working set does.
+/// ffmpeg's RSS. The cgroup's use excludes its inactive page cache, which it reclaims first, as cAdvisor's working set does.
 /// </remarks>
 /// <param name="platform">Host access.</param>
 public sealed class MemoryHeadroom(IHostPlatform platform)

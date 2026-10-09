@@ -58,6 +58,10 @@ public sealed record SpeedResult(HwType Type, string Device, string Test, string
     [JsonIgnore]
     public bool Interrupted { get; init; }
 
+    /// <summary>Gets a value indicating whether the stream count stopped at the memory or CPU free at the time; such a result isn't saved for reuse.</summary>
+    [JsonIgnore]
+    public bool HostLimited { get; init; }
+
     /// <summary>Gets when an earlier run measured it, when it was reused rather than measured again, or null.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public DateTimeOffset? ReusedFromUtc { get; init; }
