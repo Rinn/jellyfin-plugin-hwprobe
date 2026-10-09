@@ -13,7 +13,7 @@ namespace Jellyfin.Plugin.HwProbe.Core.Probes;
 /// <summary>Runs build enumeration, device probes and the codec matrix, pruning as it goes, and assembles the report.</summary>
 public sealed class ProbeEngine : IDisposable
 {
-    private static readonly HwType[] _unvalidated = [HwType.amf, HwType.rkmpp];
+    private static readonly HwType[] _unvalidated = [HwType.amf];
 
     private readonly IFfmpegRunner _runner;
     private readonly IArgumentSourceFactory _arguments;
@@ -818,9 +818,21 @@ public sealed class ProbeEngine : IDisposable
                     : lowPowerDropped
                     ? ProbeOutcome.CodecUnsupported
                     : VerdictEvaluator.Evaluate(ran, new ProbeExpectation(MatrixCatalog.Frames, StderrMarkers.HardwareFrames(candidate.Type, args.Hwaccel)));
+
+                // A tone map through OpenCL that fails where OpenCL doesn't start says nothing about the GPU. Upstream takes
+                // Vulkan rather than OpenCL on AMD when interop works, which isn't probed, so there it's untested.
+                var openclDown = cell.Group == MatrixGroup.Tonemap && outcome != ProbeOutcome.Pass && (args.InputArgs + args.FilterArgs).Contains("opencl", StringComparison.Ordinal)
+                    && (run.NoOpencl.Contains(candidate) || VerdictEvaluator.Crashed(ran));
+                var amd = run.Opened.Exists(o => o.Candidate == candidate && o.Open.Driver == VaapiDriver.Amd);
+                if (openclDown)
+                {
+                    outcome = amd ? ProbeOutcome.Untested : ProbeOutcome.DeviceUnavailable;
+                }
+
                 var hint = outcome == ProbeOutcome.Pass ? string.Empty
                     : lowPowerDropped && IntelLowPower(run, candidate) is var gen && LowPowerHost(run.Host).HucRequested(gen) != false && gen != LowPowerSupport.None && !(cell.Cell.OutputCodec == "hevc" && gen == LowPowerSupport.H264Only) ? LowPowerAdvice.Dropped
                     : cell.Cell.LowPower ? LowPowerAdvice.Remedy(cell.Cell.OutputCodec, LowPowerHost(run.Host), IntelLowPower(run, candidate))
+                    : openclDown ? (amd ? Data.Catalog.Text("amdOpenclTonemap") : Hints.OpenclUnavailable(inContainer))
                     : cell.Group == MatrixGroup.Tonemap && !cell.Cell.VppTonemap && run.NoOpencl.Contains(candidate) ? Hints.OpenclUnavailable(inContainer)
                     : Hints.For(outcome, candidate.Type, run.Host.Os, inContainer);
                 var recorded = Record(candidate, cell, stage, outcome, ran, hint, commandLine);

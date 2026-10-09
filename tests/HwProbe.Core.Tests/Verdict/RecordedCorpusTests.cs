@@ -8,7 +8,7 @@ using Xunit;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Tests.Verdict;
 
-/// <summary>Real ffmpeg output in <c>tests/Corpus/stderr</c>: Intel Apollo Lake (iHD 26.3.5, jellyfin-ffmpeg 8.1.3), RTX 5080 (jellyfin-ffmpeg 8.1.2 in Jellyfin 12.1), Rockchip RK3588S (jellyfin-ffmpeg 8.1.3 in Jellyfin 12.2), Raspberry Pi V4L2, macOS VideoToolbox, and hosts with no hardware.</summary>
+/// <summary>Real ffmpeg output in <c>tests/Corpus/stderr</c>: Intel Apollo Lake (iHD 26.3.5, jellyfin-ffmpeg 8.1.3), RTX 5080 (jellyfin-ffmpeg 8.1.2 in Jellyfin 12.1), Intel UHD 630 with AMD RX 480 and Rockchip RK3588S (jellyfin-ffmpeg 8.1.3 in Jellyfin 12.2), Raspberry Pi V4L2, macOS VideoToolbox, and hosts with no hardware.</summary>
 [Trait("Category", "Unit")]
 public sealed class RecordedCorpusTests
 {
@@ -31,6 +31,8 @@ public sealed class RecordedCorpusTests
     [InlineData("stderr/jellyfin-linux-nvenc-bwdif-pass.txt", HwType.nvenc, "cuda", 0, MatrixCatalog.Frames, ProbeOutcome.Pass)]
     [InlineData("stderr/jellyfin-linux-rkmpp-smoke-no-device.txt", HwType.rkmpp, null, 234, 0, ProbeOutcome.DeviceUnavailable)]
     [InlineData("stderr/jellyfin-linux-rkmpp-rk3588s-smoke-pass.txt", HwType.rkmpp, "rkmpp", 0, MatrixCatalog.Frames, ProbeOutcome.Pass)]
+    [InlineData("stderr/jellyfin-linux-rkmpp-vp8-unsupported.txt", HwType.rkmpp, "rkmpp", 187, 0, ProbeOutcome.CodecUnsupported)]
+    [InlineData("stderr/jellyfin-linux-vaapi-amd-smoke-pass.txt", HwType.vaapi, "vaapi", 0, MatrixCatalog.Frames, ProbeOutcome.Pass)]
     [InlineData("stderr/jellyfin-linux-v4l2m2m-no-device.txt", HwType.v4l2m2m, null, 234, 0, ProbeOutcome.DeviceUnavailable)]
     [InlineData("stderr/v4l2m2m-bcm2835-h264-pass.txt", HwType.v4l2m2m, null, 0, MatrixCatalog.Frames, ProbeOutcome.Pass)]
     [InlineData("stderr/videotoolbox-h264-pass.txt", HwType.videotoolbox, null, 0, MatrixCatalog.Frames, ProbeOutcome.Pass)]
@@ -73,6 +75,23 @@ public sealed class RecordedCorpusTests
     public void OpenclWithoutRuntimeIsUnavailable() =>
         Assert.Equal(ProbeOutcome.DeviceUnavailable, DeviceOpenProbe.EvaluateOpencl(new(FfmpegRunStatus.Exited, 237, string.Empty, CorpusFile.Load(OpenclNoRuntime), null, TimeSpan.Zero, null)));
 
+    /// <summary>An OpenCL derive that aborts logs no failure, and is still DeviceUnavailable.</summary>
+    [Fact]
+    public void OpenclThatAbortsIsUnavailable() =>
+        Assert.Equal(ProbeOutcome.DeviceUnavailable, DeviceOpenProbe.EvaluateOpencl(Exited(134, 0, CorpusFile.Load("stderr/jellyfin-linux-opencl-abort.txt"))));
+
+    /// <summary>A run is a crash when a signal ended it, not when ffmpeg exited itself, whatever the code.</summary>
+    /// <param name="file">The recorded stderr.</param>
+    /// <param name="exitCode">The exit code.</param>
+    /// <param name="expected">Whether it crashed.</param>
+    [Theory]
+    [InlineData("stderr/jellyfin-linux-vaapi-amd-tonemap-opencl-abort.txt", 134, true)]
+    [InlineData("stderr/jellyfin-linux-opencl-abort.txt", 134, true)]
+    [InlineData("stderr/jellyfin-linux-vaapi-amd-smoke-pass.txt", 0, false)]
+    [InlineData("stderr/jellyfin-linux-vaapi-amd-smoke-pass.txt", 134, false)]
+    public void CrashIsASignalWithNoExitLine(string file, int exitCode, bool expected) =>
+        Assert.Equal(expected, VerdictEvaluator.Crashed(Exited(exitCode, 0, CorpusFile.Load(file))));
+
     /// <summary>Lines the rows above depend on: warnings a pass tolerates, the low-power marker, and the V4L2 device line only a real device logs.</summary>
     /// <param name="file">The recorded stderr.</param>
     /// <param name="line">The text looked for.</param>
@@ -111,7 +130,7 @@ public sealed class RecordedCorpusTests
     [Fact]
     public void EveryRecordedFileIsCovered()
     {
-        var covered = new[] { nameof(Evaluate), nameof(DeviceOpen) }
+        var covered = new[] { nameof(Evaluate), nameof(DeviceOpen), nameof(CrashIsASignalWithNoExitLine) }
             .SelectMany(m => typeof(RecordedCorpusTests).GetMethod(m)?.GetCustomAttributes<InlineDataAttribute>() ?? throw new InvalidOperationException($"No test method {m}."))
             .Select(a => a.Data[0])
             .OfType<string>()

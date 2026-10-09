@@ -906,7 +906,7 @@ texts:
   permissionDeniedHost: Add the jellyfin user to the render group (usermod -aG render jellyfin), then restart Jellyfin.
   permissionDenied: The device exists but this user cannot open it.
   notIntelGpu: Not an Intel GPU; QSV requires one.
-  noVaapiDriver: No VA-API driver found for this GPU ({driver}).
+  noVaapiDriver: No VA-API driver found for this device ({driver}).
   deviceUnavailableQsvWindows: No Direct3D 11 adapter opened. Check the Intel graphics driver is installed.
   deviceUnavailableAmf: No Direct3D 11 adapter opened. Check the AMD graphics driver is installed.
   deviceUnavailableNvencContainer: ffmpeg has CUDA but no NVIDIA device opened. Run the container with the NVIDIA runtime (--gpus all).
@@ -918,6 +918,8 @@ texts:
   noVendorAdapterDevice: Adapter {device} isn't an {maker} adapter.
   # The official image installs intel-opencl-icd, and intel-opencl-icd-legacy1 for Gen 11 and older (jellyfin-packaging, docker/Dockerfile); the linuxserver mod installs both at start (docker-mods, jellyfin-opencl-intel).
   openclUnavailableContainer: Install Intel's OpenCL runtime in the container. The official jellyfin/jellyfin image includes it (intel-opencl-icd, and intel-opencl-icd-legacy1 for Gen 11 and older GPUs). On linuxserver/jellyfin, set DOCKER_MODS=linuxserver/mods:jellyfin-opencl-intel and check the container's start-up log shows the packages installing.
+  # Jellyfin's AMD guide (Tone-mapping Methods): the Vulkan method doesn't require the ROCm OpenCL runtime; upstream takes it when IsVaapiDeviceSupportVulkanDrmInterop (EncodingHelper.cs, v12.2, L1081).
+  amdOpenclTonemap: "Not tested: OpenCL doesn't start for this GPU. Jellyfin tone-maps AMD GPUs with Vulkan instead when VA-API and Vulkan interop work, which isn't probed; its OpenCL method requires the ROCm OpenCL runtime."
   openclUnavailableHost: "Install Intel's OpenCL runtime: intel-opencl-icd, or intel-opencl-icd-legacy1 for Gen 11 and older GPUs."
   legacyCopyBack: Filters run in software (copy-back). Install the OpenCL runtime (intel-opencl-icd on Intel) to reach the full hardware pipeline.
   legacyCopyBackFfmpeg: Filters run in software (copy-back). This ffmpeg lacks {filters}; use jellyfin-ffmpeg for the {pipeline} pipeline.

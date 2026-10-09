@@ -97,16 +97,17 @@ The page should look and behave like a native Jellyfin dashboard page, stay calm
 
 - Vulkan DRM interop isn't probed, so AMD never resolves to `FullVulkan` (a finding says so), and an AMD probe uses the server's Vulkan DRM support only when the server's own VA-API device is AMD.
 - An i965 device is reported `Untested` by the plugin unless Jellyfin started with Hardware acceleration set to VAAPI on an i965 device, since probing it sets `LIBVA_DRIVER_NAME`, which the server's own transcodes would pick up. That includes the only GPU on a host still set to None. Its row on the Hardware Probe tab, and the Recommended Settings card when it's the configured device, say to set it as the VA-API Device and restart Jellyfin, as the server reads the device's driver only at start-up (`MediaEncoder.SetFFmpegPath`). The CLI can test it as is. AMD devices are probed whatever the server uses: `AMD_DEBUG`, which only AMD's Mesa driver reads, is undone right after generation.
+- AMD VAAPI is confirmed through Jellyfin on one Radeon RX 480 (Polaris, radeonsi, Mesa 26.0.8) beside an Intel UHD 630, from a user's diagnostics, on the non-Vulkan path only. A tone map through OpenCL that fails where OpenCL doesn't start (a check that fails or aborts, or a crash) is put down to OpenCL: `DeviceUnavailable` with the OpenCL remedy on Intel, `Untested` on AMD, where Jellyfin takes Vulkan when interop works.
 - CUDA is probed at index 0 only; `EncodingHelper` hard-codes device 0.
 - Intel low power is untested on real hardware: the Intel NAS has no HuC firmware, so the Intel low power suite and its per-codec comparisons rest on unit tests alone.
 - AMD GPU power (amdgpu hwmon `power1_input` or `power1_average`, sampled every 200 ms and summed by `EnergySpan`) is untested, as no AMD hardware is available. On APUs the reading includes the CPU, so it overlaps the CPU package's.
 - Audio inputs leave out DSD (ffmpeg has no DSD encoder and FATE has no `.dsf` sample) and Shorten (FATE's sample is cut mid-frame and stops instead of looping).
 - macOS has no power figures: IOReport is a private API whose CPU channels read 0 on macOS 27.
 - v4l2m2m is confirmed from a recorded Raspberry Pi run (`Using device /dev/videoN`), not yet through Jellyfin.
-- rkmpp is confirmed from one recorded smoke probe through Jellyfin on an RK3588S (Orange Pi 5B, `tests/Corpus/stderr`), not yet the full matrix. jellyfin-ffmpeg's RKMPP encoder logs EAGAIN as "Failed to … queue: -11" at debug level, so those lines are in `StderrMarkers.Harmless`.
+- rkmpp is confirmed through Jellyfin on an RK3588S (Orange Pi 5B), full matrix, from users' diagnostics (`tests/Corpus/stderr`). jellyfin-ffmpeg's RKMPP encoder logs EAGAIN as "Failed to … queue: -11" at debug level, so those lines are in `StderrMarkers.Harmless`.
 - Page and CLI text are English only. Behaviour doesn't depend on locale: ffmpeg runs with `LC_ALL=C`, numbers are formatted and parsed invariantly, and the page reads structured fields rather than message text. `CultureScope` tests and `HWPROBE_LOCALE` in `container-plugin.sh` check it.
 - The busy check (`ProbeService.IsTranscoding`) skips direct play and remux, but a transcode that finished ahead of playback still blocks until playback stops: `TranscodeManager.OnFfMpegProcessExited` leaves the session's `TranscodingInfo` set, and Jellyfin has no API to list running jobs by session.
 
 ## To do
 
-Nothing queued.
+- Probe Vulkan DRM interop per AMD device, as upstream does with `EncoderValidator.CheckVulkanDrmDeviceByExtensionName`, so AMD probes take Jellyfin's Vulkan pipeline (tone mapping, overlays) instead of the OpenCL one; removes the first known limit. Deferred: larger, and untestable without AMD hardware.

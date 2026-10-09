@@ -1,0 +1,73 @@
+# Observed: Orange Pi 5B (RK3588S, vendor kernel 6.1.115), Jellyfin 12.2 in Docker, jellyfin-ffmpeg 8.1.3. VP8 decode; vp8_rkmpp fails to open (exit 187).
+# ffmpeg -hide_banner -v debug -nostats -progress pipe:1 -init_hw_device rkmpp=rk -hwaccel rkmpp -hwaccel_output_format drm_prime -noautorotate -i "/cache/hwprobe/fixtures/sha256_07d96bd4c7a1865bacded842208162a7cb8928cc9b9c3d2def36f61c532d9678/vp8.webm" -frames:v 10 -vf "setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,vpp_rkrga=format=nv12:afbc=1" -c:v h264_rkmpp -an -f null -
+Splitting the commandline.
+Reading option '-hide_banner' ... matched as option 'hide_banner' (do not show program banner) with argument '1'.
+Reading option '-v' ... matched as option 'v' (set logging level) with argument 'debug'.
+Reading option '-nostats' ... matched as option 'stats' (print progress report during encoding) with argument 0.
+Reading option '-progress' ... matched as option 'progress' (write program-readable progress information) with argument 'pipe:1'.
+Reading option '-init_hw_device' ... matched as option 'init_hw_device' (initialise hardware device) with argument 'rkmpp=rk'.
+Reading option '-hwaccel' ... matched as option 'hwaccel' (use HW accelerated decoding) with argument 'rkmpp'.
+Reading option '-hwaccel_output_format' ... matched as option 'hwaccel_output_format' (select output format used with HW accelerated decoding) with argument 'drm_prime'.
+Reading option '-noautorotate' ... matched as option 'autorotate' (automatically insert correct rotate filters) with argument 0.
+Reading option '-i' ... matched as input url with argument '/cache/hwprobe/fixtures/sha256_07d96bd4c7a1865bacded842208162a7cb8928cc9b9c3d2def36f61c532d9678/vp8.webm'.
+Reading option '-frames:v' ... matched as option 'frames' (set the number of frames to output) with argument '10'.
+Reading option '-vf' ... matched as option 'vf' (alias for -filter:v (apply filters to video streams)) with argument 'setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,vpp_rkrga=format=nv12:afbc=1'.
+Reading option '-c:v' ... matched as option 'c' (select encoder/decoder ('copy' to copy stream without reencoding)) with argument 'h264_rkmpp'.
+Reading option '-an' ... matched as option 'an' (disable audio) with argument '1'.
+Reading option '-f' ... matched as option 'f' (force container format (auto-detected otherwise)) with argument 'null'.
+Reading option '-' ... matched as output url.
+Finished splitting the commandline.
+Parsing a group of options: global .
+Applying option hide_banner (do not show program banner) with argument 1.
+Applying option v (set logging level) with argument debug.
+Applying option nostats (print progress report during encoding) with argument 0.
+Applying option progress (write program-readable progress information) with argument pipe:1.
+[pipe @ 0xffffaef50070] Setting default whitelist 'crypto,data'
+Applying option init_hw_device (initialise hardware device) with argument rkmpp=rk.
+Successfully parsed a group of options.
+Parsing a group of options: input url /cache/hwprobe/fixtures/sha256_07d96bd4c7a1865bacded842208162a7cb8928cc9b9c3d2def36f61c532d9678/vp8.webm.
+Applying option hwaccel (use HW accelerated decoding) with argument rkmpp.
+Applying option hwaccel_output_format (select output format used with HW accelerated decoding) with argument drm_prime.
+Applying option noautorotate (automatically insert correct rotate filters) with argument 0.
+Successfully parsed a group of options.
+Opening an input file: /cache/hwprobe/fixtures/sha256_07d96bd4c7a1865bacded842208162a7cb8928cc9b9c3d2def36f61c532d9678/vp8.webm.
+[in#0 @ 0xffffaf0a0000] Opening '/cache/hwprobe/fixtures/sha256_07d96bd4c7a1865bacded842208162a7cb8928cc9b9c3d2def36f61c532d9678/vp8.webm' for reading
+[file @ 0xffffaf0300e0] Setting default whitelist 'file,crypto,data'
+[in#0 @ 0xffffaf0a0000] Format matroska,webm probed with size=2048 and score=100
+st:0 removing common factor 1000000 from timebase
+[in#0/matroska,webm @ 0xffffaf0a0000] Before avformat_find_stream_info() pos: 476 bytes read:32768 seeks:0 nb_streams:1
+[in#0/matroska,webm @ 0xffffaf0a0000] All info found
+[in#0/matroska,webm @ 0xffffaf0a0000] After avformat_find_stream_info() pos: 15375 bytes read:32768 seeks:0 frames:1
+[vist#0:0/vp8 @ 0xffffaf510480] Selecting decoder 'vp8_rkmpp' because of requested hwaccel method rkmpp
+Input #0, matroska,webm, from '/cache/hwprobe/fixtures/sha256_07d96bd4c7a1865bacded842208162a7cb8928cc9b9c3d2def36f61c532d9678/vp8.webm':
+  Metadata:
+    ENCODER         : Lavf62.12.103
+  Duration: 00:00:01.00, start: 0.000000, bitrate: 314 kb/s
+  Stream #0:0, 1, 1/1000: Video: vp8, 1 reference frame, yuv420p(tv, progressive), 640x360, 0/1, SAR 1:1 DAR 16:9, 25 fps, 25 tbr, 1k tbn
+    Metadata:
+      ENCODER         : Lavc62.28.103 libvpx
+      DURATION        : 00:00:01.000000000
+Successfully opened the file.
+Parsing a group of options: output url -.
+Applying option frames:v (set the number of frames to output) with argument 10.
+Applying option vf (alias for -filter:v (apply filters to video streams)) with argument setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,vpp_rkrga=format=nv12:afbc=1.
+Applying option c:v (select encoder/decoder ('copy' to copy stream without reencoding)) with argument h264_rkmpp.
+Applying option an (disable audio) with argument 1.
+Applying option f (force container format (auto-detected otherwise)) with argument null.
+Successfully parsed a group of options.
+Opening an output file: -.
+[out#0/null @ 0xffffaf4fd340] No explicit maps, mapping streams automatically...
+[vost#0:0/h264_rkmpp @ 0xffffaebf0000] Created video stream from input stream 0:0
+[AVFilterGraph @ 0xffffaf422e80] Setting 'color_primaries' to value 'bt709'
+[AVFilterGraph @ 0xffffaf422e80] Setting 'color_trc' to value 'bt709'
+[AVFilterGraph @ 0xffffaf422e80] Setting 'colorspace' to value 'bt709'
+[AVFilterGraph @ 0xffffaf422e80] Setting 'format' to value 'nv12'
+[AVFilterGraph @ 0xffffaf422e80] Setting 'afbc' to value '1'
+[vp8_rkmpp @ 0xffffaf0f0e00] Format drm_prime chosen by get_format().
+[vp8_rkmpp @ 0xffffaf0f0e00] Failed to set enable deinterlace: -3
+[vist#0:0/vp8 @ 0xffffaf510480] [dec:vp8_rkmpp @ 0xffffaf540500] Error while opening decoder: Generic error in an external library
+Error opening output file -.
+Error opening output files: Generic error in an external library
+[AVIOContext @ 0xffffaf5403c0] Statistics: 32768 bytes read, 0 seeks
+
+Exiting with exit code -542398533

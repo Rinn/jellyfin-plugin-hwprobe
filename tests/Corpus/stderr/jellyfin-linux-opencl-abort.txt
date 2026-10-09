@@ -1,0 +1,10 @@
+# Observed: Intel UHD 630 and AMD Radeon RX 480 (radeonsi, Mesa 26.0.8), Jellyfin 12.2 in Docker, jellyfin-ffmpeg 8.1.3. OpenCL derived from the UHD 630; aborted (exit 134) with no failure logged.
+# ffmpeg -v verbose -hide_banner -init_hw_device vaapi=va:/dev/dri/renderD128 -init_hw_device opencl=ocl@va
+[VAAPI @ 0x5590bda21800] libva: VA-API version 1.24.0
+[VAAPI @ 0x5590bda21800] libva: Trying to open /usr/lib/jellyfin-ffmpeg/lib/dri/iHD_drv_video.so
+[VAAPI @ 0x5590bda21800] libva: Found init function __vaDriverInit_1_24
+[VAAPI @ 0x5590bda21800] libva: va_openDriver() returns 0
+[VAAPI @ 0x5590bda21800] Initialised VAAPI connection: version 1.24
+[VAAPI @ 0x5590bda21800] VAAPI driver: Intel iHD driver for Intel(R) Gen Graphics - 26.3.5 (1b5e662).
+[VAAPI @ 0x5590bda21800] Driver not found in known nonstandard list, using standard behaviour.
+free(): invalid pointer

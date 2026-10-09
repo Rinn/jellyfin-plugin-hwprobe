@@ -16,6 +16,9 @@ internal sealed class FakeArgumentSource : IArgumentSource, IArgumentSourceFacto
     /// <summary>Gets or sets a value indicating whether deinterlacing happens on the CPU.</summary>
     public bool NoHardwareDeinterlace { get; set; }
 
+    /// <summary>Gets or sets the filter arguments tone-map cells get, or null for VideoToolbox's.</summary>
+    public string? TonemapFilters { get; set; }
+
     /// <summary>Gets or sets the message of the <see cref="UnsafeProbeException"/> every hardware cell raises, or null for none.</summary>
     public string? Refusal { get; set; }
 
@@ -45,7 +48,7 @@ internal sealed class FakeArgumentSource : IArgumentSource, IArgumentSourceFacto
         }
 
         var input = Hwaccel(cell);
-        var filters = cell.Tonemap ? " -vf \"scale_vt=color_transfer=bt709\"" : string.Empty;
+        var filters = cell.Tonemap ? TonemapFilters ?? " -vf \"scale_vt=color_transfer=bt709\"" : string.Empty;
         return new ProbeArguments(input, filters, $"{cell.OutputCodec}_{type}", Environment)
         {
             HardwareDecoder = cell.HardwareDecode && !SoftwareDecoded.Contains(cell.InputCodec) ? "-hwaccel videotoolbox" : null,
