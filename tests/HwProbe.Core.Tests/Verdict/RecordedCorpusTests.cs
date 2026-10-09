@@ -63,6 +63,11 @@ public sealed class RecordedCorpusTests
     public void MissingVaapiDriverIsNamed(string file, string? expected) =>
         Assert.Equal(expected, DeviceOpenProbe.MissingVaapiDriver(CorpusFile.Load(file)));
 
+    /// <summary>A missing driver Jellyfin's ffmpeg ships can be installed, so it isn't reported as a GPU with no driver.</summary>
+    [Fact]
+    public void MissingShippedDriverIsNotNamed() =>
+        Assert.Null(DeviceOpenProbe.MissingVaapiDriver(CorpusFile.Load("stderr/jellyfin-linux-vaapi-rockchip-no-driver.txt").Replace("rockchip_drv_video.so", "iHD_drv_video.so", StringComparison.Ordinal)));
+
     /// <summary>Deriving OpenCL with no OpenCL runtime installed is DeviceUnavailable.</summary>
     [Fact]
     public void OpenclWithoutRuntimeIsUnavailable() =>
