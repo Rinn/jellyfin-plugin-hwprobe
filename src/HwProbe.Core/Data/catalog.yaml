@@ -905,6 +905,7 @@ texts:
   permissionDeniedContainer: The render node is not accessible. Add the host's render group to the container (--group-add).
   permissionDeniedHost: Add the jellyfin user to the render group (usermod -aG render jellyfin), then restart Jellyfin.
   permissionDenied: The device exists but this user cannot open it.
+  notIntelGpu: Not an Intel GPU; QSV requires one.
   deviceUnavailableQsvWindows: No Direct3D 11 adapter opened. Check the Intel graphics driver is installed.
   deviceUnavailableAmf: No Direct3D 11 adapter opened. Check the AMD graphics driver is installed.
   deviceUnavailableNvencContainer: ffmpeg has CUDA but no NVIDIA device opened. Run the container with the NVIDIA runtime (--gpus all).

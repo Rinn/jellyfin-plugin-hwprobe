@@ -132,18 +132,18 @@ public sealed class ProbeEngineIntelTests : IDisposable
         Assert.Equal(denied, vaapi.Hint == Catalog.Text("permissionDeniedHost"));
     }
 
-    /// <summary>QSV skips a render node whose sysfs vendor isn't Intel, and still tries one whose vendor can't be read.</summary>
+    /// <summary>A QSV render node whose VAAPI parent loads a non-Intel driver says so and gets no fix, even in a container; recorded from a Radeon RX 480 beside an Intel UHD 630 (jellyfin-ffmpeg 8.1.3, docker).</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
-    public async Task QsvSkipsNonIntelNodes()
+    public async Task QsvOnNonIntelGpuSaysSo()
     {
-        _runner.Probe = _ => EngineRunner.Exited(1, null, IntelDriver);
-        var host = new FakeHostPlatform(HostOs.Linux) { OsDescription = "Linux 6.8.0" };
+        const string Amd = "[VAAPI @ 0x1] VAAPI driver: Mesa Gallium driver 26.0.8 for AMD Radeon RX 480 Graphics (radeonsi, polaris10, ACO, DRM 3.64, 6.18.9).\n"
+            + "[QSV @ 0x2] Error setting child device handle: -17\nDevice creation failed: -1313558101.\n";
+        _runner.Probe = invocation => EngineRunner.Exited(1, null, invocation.Arguments.Contains("renderD129", StringComparison.Ordinal) ? Amd : IntelDriver);
+        var host = new FakeHostPlatform(HostOs.Linux) { OsDescription = "Linux 6.18.9" };
+        host.Files["/.dockerenv"] = string.Empty;
         host.Files[Node] = string.Empty;
-        host.Files["/sys/class/drm/renderD128/device/vendor"] = "0x8086\n";
         host.Files["/dev/dri/renderD129"] = string.Empty;
-        host.Files["/sys/class/drm/renderD129/device/vendor"] = "0x1002\n";
-        host.Files["/dev/dri/renderD130"] = string.Empty;
         var options = new EngineOptions(
             new FfmpegLocation("/usr/lib/jellyfin-ffmpeg/ffmpeg", FfmpegSource.CommandLine),
             StopStage.Devices,
@@ -158,7 +158,10 @@ public sealed class ProbeEngineIntelTests : IDisposable
         using var engine = new ProbeEngine(_runner, new FakeArgumentSource(), host, TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
         var report = await engine.RunAsync(options, TestContext.Current.CancellationToken);
 
-        Assert.Equal([Node, "/dev/dri/renderD130"], report.Probes.Where(p => p.Stage == ProbeStage.DeviceOpen).Select(p => p.DevicePath));
+        var amd = Assert.Single(report.Backends, b => b.Device == "/dev/dri/renderD129");
+        Assert.Equal((BackendVerdict.NotPresent, Catalog.Text("notIntelGpu")), (amd.Verdict, amd.Hint));
+        Assert.Null(amd.Fix);
+        Assert.NotEqual(Catalog.Text("notIntelGpu"), Assert.Single(report.Backends, b => b.Device == Node).Hint);
     }
 
     /// <inheritdoc/>

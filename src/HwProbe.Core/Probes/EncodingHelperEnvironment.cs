@@ -9,7 +9,7 @@ public static class EncodingHelperEnvironment
     public static IReadOnlyList<string> Variables { get; } = ["LIBVA_DRIVER_NAME", "LIBVA_DRIVER_NAME_JELLYFIN", "AMD_DEBUG"];
 
     /// <summary>Gets the variables only AMD's Mesa driver reads, so setting one can't change a transcode on other hardware.</summary>
-    /// <remarks>Mesa reads <c>AMD_DEBUG</c> only in radeonsi and the radeon winsys (si_pipe.c, si_mm_screen.c, radeon_drm_winsys.c).</remarks>
+    /// <remarks>Mesa (main, 2026-10) reads <c>AMD_DEBUG</c> only in radeonsi and the radeon winsys: si_pipe.c, gfx/si_gfx_screen.c, mm/si_mm_screen.c, and radeon_drm_winsys.c.</remarks>
     public static IReadOnlyList<string> AmdOnly { get; } = ["AMD_DEBUG"];
 
     /// <summary>Reads the current values of <see cref="Variables"/>.</summary>

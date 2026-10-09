@@ -316,8 +316,8 @@ public sealed class ArgumentSource : IArgumentSource
             }
             else
             {
-                // The probe's ffmpeg gets these from the returned environment; the server's own transcodes never set them.
-                Restore(before.Where(v => foreign.Contains(v.Key)).ToDictionary(v => v.Key, v => v.Value, StringComparer.Ordinal));
+                // The probe's ffmpeg gets these from the returned environment, and the server's configuration doesn't set them.
+                Restore(before.Where(v => foreign.Contains(v.Key) && changed.ContainsKey(v.Key)).ToDictionary(v => v.Key, v => v.Value, StringComparer.Ordinal));
             }
         }
 

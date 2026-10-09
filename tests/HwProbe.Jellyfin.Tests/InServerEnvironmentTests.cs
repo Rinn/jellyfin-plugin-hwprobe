@@ -71,6 +71,19 @@ public sealed class InServerEnvironmentTests : IDisposable
         Assert.Equal(_cleanBaseline, EncodingHelperEnvironment.Capture());
     }
 
+    /// <summary>A value of AMD_DEBUG the server's process already had is put back after an AMD probe's generation.</summary>
+    [Fact(Skip = Skip, SkipUnless = nameof(TestEnvironment.IsLinux), SkipType = typeof(TestEnvironment))]
+    public void AmdWriteRestoresThePriorValue()
+    {
+        Environment.SetEnvironmentVariable("AMD_DEBUG", "nodcc");
+        var source = Source(VaapiDriver.Amd, serverOwned: new Dictionary<string, string>());
+
+        var args = source.Build(HwType.vaapi, Node, _smoke);
+
+        Assert.Equal("noefc", args.Environment["AMD_DEBUG"]);
+        Assert.Equal("nodcc", Environment.GetEnvironmentVariable("AMD_DEBUG"));
+    }
+
     /// <summary>An AMD write the server makes itself is left in place.</summary>
     [Fact(Skip = Skip, SkipUnless = nameof(TestEnvironment.IsLinux), SkipType = typeof(TestEnvironment))]
     public void ServerOwnedAmdWriteIsKept()

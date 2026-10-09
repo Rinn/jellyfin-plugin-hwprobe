@@ -145,7 +145,7 @@ public sealed class ProbeEngine : IDisposable
             },
             new StageASummary([.. caps.Hwaccels.Order(StringComparer.Ordinal)], caps.BuildStatus, caps.FilterOptions),
             [.. run.Backends
-                .Select(b => b.Verdict == BackendVerdict.Viable ? b : b with { Fix = Hints.FixFor(b.Verdict, b.Type, host.Os, host.Container is not null) })
+                .Select(b => b.Verdict == BackendVerdict.Viable || run.NotIntel.Contains(new DeviceCandidate(b.Type, b.Device)) ? b : b with { Fix = Hints.FixFor(b.Verdict, b.Type, host.Os, host.Container is not null) })
                 .OrderBy(b => b.Type).ThenBy(b => b.Device, StringComparer.Ordinal)],
             run.Findings,
             run.Probes)
@@ -185,19 +185,7 @@ public sealed class ProbeEngine : IDisposable
 
             // Jellyfin picks the adapter by vendor: QSV any Intel one (vendor=0x8086 unless QsvDevice names an index, L965-971),
             // AMF always the first AMD one (vendor=0x1002, L1181; there's no AMF device setting).
-            .Where(c => run.Adapters.Count == 0 || c.Type is not (HwType.qsv or HwType.amf) || IsAdapterJellyfinUses(run, c))
-
-            // On Linux Jellyfin opens a QSV render node with the iHD driver (GetQsvDeviceArgs, v12.2, L953-959), so only an Intel one can work.
-            .Where(c => c.Type != HwType.qsv || run.Host.Os != HostOs.Linux || IsIntelOrUnknownNode(run, c.Device));
-
-    /// <summary>Reports whether a render node's sysfs vendor is Intel or couldn't be read.</summary>
-    /// <param name="run">The run, for its render nodes.</param>
-    /// <param name="node">The render node path.</param>
-    /// <returns>False only for a node whose vendor was read and isn't Intel.</returns>
-    private static bool IsIntelOrUnknownNode(Run run, string node) =>
-        run.Devices.RenderNodes.FirstOrDefault(n => n.Node == node)?.Vendor is not { } vendor
-            || vendor == DeviceEnumerator.Unknown
-            || string.Equals(vendor, "0x8086", StringComparison.OrdinalIgnoreCase);
+            .Where(c => run.Adapters.Count == 0 || c.Type is not (HwType.qsv or HwType.amf) || IsAdapterJellyfinUses(run, c));
 
     /// <summary>Reports whether Jellyfin could use a Windows adapter index for QSV or AMF.</summary>
     /// <param name="run">The run, for its adapter list.</param>
@@ -477,7 +465,10 @@ public sealed class ProbeEngine : IDisposable
                 run.DriverLines[candidate.Device] = open.DriverDescription;
             }
 
-            var hint = Hints.For(open.Outcome, candidate.Type, run.Host.Os, inContainer);
+            // Jellyfin opens a QSV render node with the iHD driver (GetQsvDeviceArgs, v12.2, L953-959), so a node whose VAAPI parent loaded another driver can't work, whatever the setup.
+            var notIntel = open.Outcome != ProbeOutcome.Pass && candidate.Type == HwType.qsv && run.Host.Os == HostOs.Linux
+                && open.DriverDescription is not null && open.Driver is not (VaapiDriver.IntelIhd or VaapiDriver.IntelI965);
+            var hint = notIntel ? Data.Catalog.Text("notIntelGpu") : Hints.For(open.Outcome, candidate.Type, run.Host.Os, inContainer);
             run.Probes.Add(Record(candidate, null, ProbeStage.DeviceOpen, open.Outcome, result, hint, arguments));
             if (open.Outcome == ProbeOutcome.Pass)
             {
@@ -497,6 +488,13 @@ public sealed class ProbeEngine : IDisposable
             var denied = open.Outcome == ProbeOutcome.PermissionDenied
                 || (renderNode && run.Devices.RenderNodeAccess == DirectoryAccess.Denied)
                 || (renderNode && open.Outcome == ProbeOutcome.DeviceUnavailable && _platform.IsAccessDenied(candidate.Device));
+            if (notIntel)
+            {
+                run.NotIntel.Add(candidate);
+                run.Backends.Add(EmptyRow(candidate, BackendVerdict.NotPresent, hint));
+                continue;
+            }
+
             var verdict = denied ? BackendVerdict.PermissionDenied : BackendVerdict.NotPresent;
             run.Backends.Add(EmptyRow(candidate, verdict, denied ? Hints.For(ProbeOutcome.PermissionDenied, candidate.Type, run.Host.Os, inContainer) : hint));
         }
@@ -840,6 +838,9 @@ public sealed class ProbeEngine : IDisposable
 
         /// <summary>Gets devices on the OpenCL pipeline whose OpenCL runtime doesn't start.</summary>
         public HashSet<DeviceCandidate> NoOpencl { get; } = [];
+
+        /// <summary>Gets QSV render nodes whose VAAPI driver isn't Intel's; no setting makes them work, so their rows get no fix.</summary>
+        public HashSet<DeviceCandidate> NotIntel { get; } = [];
 
         /// <summary>Gets VAAPI driver lines by device, for the fingerprint.</summary>
         public Dictionary<string, string> DriverLines { get; } = new(StringComparer.Ordinal);
