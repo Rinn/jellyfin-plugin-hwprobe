@@ -1,0 +1,327 @@
+# Observed: Orange Pi 5B (RK3588S, vendor kernel 6.1.115), Jellyfin 12.2 in Docker, jellyfin-ffmpeg 8.1.3. Smoke probe; exit 0, 10 frames, decoded, scaled, and encoded in hardware.
+# ffmpeg -hide_banner -v debug -nostats -progress pipe:1 -init_hw_device rkmpp=rk -hwaccel rkmpp -hwaccel_output_format drm_prime -noautorotate -afbc rga -i "/cache/hwprobe/fixtures/sha256_07d96bd4c7a1865bacded842208162a7cb8928cc9b9c3d2def36f61c532d9678/h264_8bit.mp4" -frames:v 10 -vf "setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,vpp_rkrga=w=320:h=180:format=nv12:afbc=1" -c:v h264_rkmpp -an -f null -
+Splitting the commandline.
+Reading option '-hide_banner' ... matched as option 'hide_banner' (do not show program banner) with argument '1'.
+Reading option '-v' ... matched as option 'v' (set logging level) with argument 'debug'.
+Reading option '-nostats' ... matched as option 'stats' (print progress report during encoding) with argument 0.
+Reading option '-progress' ... matched as option 'progress' (write program-readable progress information) with argument 'pipe:1'.
+Reading option '-init_hw_device' ... matched as option 'init_hw_device' (initialise hardware device) with argument 'rkmpp=rk'.
+Reading option '-hwaccel' ... matched as option 'hwaccel' (use HW accelerated decoding) with argument 'rkmpp'.
+Reading option '-hwaccel_output_format' ... matched as option 'hwaccel_output_format' (select output format used with HW accelerated decoding) with argument 'drm_prime'.
+Reading option '-noautorotate' ... matched as option 'autorotate' (automatically insert correct rotate filters) with argument 0.
+Reading option '-afbc' ... matched as AVOption 'afbc' with argument 'rga'.
+Reading option '-i' ... matched as input url with argument '/cache/hwprobe/fixtures/sha256_07d96bd4c7a1865bacded842208162a7cb8928cc9b9c3d2def36f61c532d9678/h264_8bit.mp4'.
+Reading option '-frames:v' ... matched as option 'frames' (set the number of frames to output) with argument '10'.
+Reading option '-vf' ... matched as option 'vf' (alias for -filter:v (apply filters to video streams)) with argument 'setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,vpp_rkrga=w=320:h=180:format=nv12:afbc=1'.
+Reading option '-c:v' ... matched as option 'c' (select encoder/decoder ('copy' to copy stream without reencoding)) with argument 'h264_rkmpp'.
+Reading option '-an' ... matched as option 'an' (disable audio) with argument '1'.
+Reading option '-f' ... matched as option 'f' (force container format (auto-detected otherwise)) with argument 'null'.
+Reading option '-' ... matched as output url.
+Finished splitting the commandline.
+Parsing a group of options: global .
+Applying option hide_banner (do not show program banner) with argument 1.
+Applying option v (set logging level) with argument debug.
+Applying option nostats (print progress report during encoding) with argument 0.
+Applying option progress (write program-readable progress information) with argument pipe:1.
+[pipe @ 0xffff7e350070] Setting default whitelist 'crypto,data'
+Applying option init_hw_device (initialise hardware device) with argument rkmpp=rk.
+Successfully parsed a group of options.
+Parsing a group of options: input url /cache/hwprobe/fixtures/sha256_07d96bd4c7a1865bacded842208162a7cb8928cc9b9c3d2def36f61c532d9678/h264_8bit.mp4.
+Applying option hwaccel (use HW accelerated decoding) with argument rkmpp.
+Applying option hwaccel_output_format (select output format used with HW accelerated decoding) with argument drm_prime.
+Applying option noautorotate (automatically insert correct rotate filters) with argument 0.
+Successfully parsed a group of options.
+Opening an input file: /cache/hwprobe/fixtures/sha256_07d96bd4c7a1865bacded842208162a7cb8928cc9b9c3d2def36f61c532d9678/h264_8bit.mp4.
+[in#0 @ 0xffff7e4a0000] Opening '/cache/hwprobe/fixtures/sha256_07d96bd4c7a1865bacded842208162a7cb8928cc9b9c3d2def36f61c532d9678/h264_8bit.mp4' for reading
+[file @ 0xffff7e4300e0] Setting default whitelist 'file,crypto,data'
+[in#0 @ 0xffff7e4a0000] Format mov,mp4,m4a,3gp,3g2,mj2 probed with size=2048 and score=100
+[in#0 @ 0xffff7e4a0000] ISO: File Type Major Brand: isom
+[in#0 @ 0xffff7e4a0000] Unknown dref type 0x206c7275 size 12
+[in#0 @ 0xffff7e4a0000] Processing st: 0, edit list 0 - media time: 1024, duration: 12800
+[in#0 @ 0xffff7e4a0000] Offset DTS by 1024 to make first pts zero.
+[in#0 @ 0xffff7e4a0000] Setting codecpar->delay to 2 for stream st: 0
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0xffff7e4a0000] Before avformat_find_stream_info() pos: 93513 bytes read:33896 seeks:1 nb_streams:1
+[h264 @ 0xffff7e4f0380] nal_unit_type: 7(SPS), nal_ref_idc: 3
+[h264 @ 0xffff7e4f0380] Decoding VUI
+[h264 @ 0xffff7e4f0380] nal_unit_type: 8(PPS), nal_ref_idc: 3
+[h264 @ 0xffff7e4f0380] nal_unit_type: 7(SPS), nal_ref_idc: 3
+[h264 @ 0xffff7e4f0380] Decoding VUI
+[h264 @ 0xffff7e4f0380] nal_unit_type: 8(PPS), nal_ref_idc: 3
+[h264 @ 0xffff7e4f0380] nal_unit_type: 6(SEI), nal_ref_idc: 0
+[h264 @ 0xffff7e4f0380] nal_unit_type: 5(IDR), nal_ref_idc: 3
+[h264 @ 0xffff7e4f0380] Format yuv420p chosen by get_format().
+[h264 @ 0xffff7e4f0380] Reinit context to 640x368, pix_fmt: yuv420p
+[h264 @ 0xffff7e4f0380] no picture 
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0xffff7e4a0000] All info found
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0xffff7e4a0000] After avformat_find_stream_info() pos: 8959 bytes read:66664 seeks:2 frames:1
+[vist#0:0/h264 @ 0xffff7e910480] Selecting decoder 'h264_rkmpp' because of requested hwaccel method rkmpp
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/cache/hwprobe/fixtures/sha256_07d96bd4c7a1865bacded842208162a7cb8928cc9b9c3d2def36f61c532d9678/h264_8bit.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf62.12.103
+  Duration: 00:00:01.00, start: 0.000000, bitrate: 748 kb/s
+  Stream #0:0[0x1](und), 1, 1/12800: Video: h264 (High), 1 reference frame (avc1 / 0x31637661), yuv420p(progressive, left), 640x360 [SAR 1:1 DAR 16:9], 0/1, 738 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+    Metadata:
+      handler_name    : VideoHandler
+      encoder         : Lavc62.28.103 libx264
+Successfully opened the file.
+Parsing a group of options: output url -.
+Applying option frames:v (set the number of frames to output) with argument 10.
+Applying option vf (alias for -filter:v (apply filters to video streams)) with argument setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,vpp_rkrga=w=320:h=180:format=nv12:afbc=1.
+Applying option c:v (select encoder/decoder ('copy' to copy stream without reencoding)) with argument h264_rkmpp.
+Applying option an (disable audio) with argument 1.
+Applying option f (force container format (auto-detected otherwise)) with argument null.
+Successfully parsed a group of options.
+Opening an output file: -.
+[out#0/null @ 0xffff7e8fd340] No explicit maps, mapping streams automatically...
+[vost#0:0/h264_rkmpp @ 0xffff7df00600] Created video stream from input stream 0:0
+[AVFilterGraph @ 0xffff7e822f00] Setting 'color_primaries' to value 'bt709'
+[AVFilterGraph @ 0xffff7e822f00] Setting 'color_trc' to value 'bt709'
+[AVFilterGraph @ 0xffff7e822f00] Setting 'colorspace' to value 'bt709'
+[AVFilterGraph @ 0xffff7e822f00] Setting 'w' to value '320'
+[AVFilterGraph @ 0xffff7e822f00] Setting 'h' to value '180'
+[AVFilterGraph @ 0xffff7e822f00] Setting 'format' to value 'nv12'
+[AVFilterGraph @ 0xffff7e822f00] Setting 'afbc' to value '1'
+[h264_rkmpp @ 0xffff7e4f1180] Format drm_prime chosen by get_format().
+[h264_rkmpp @ 0xffff7e4f1180] Found SoC name from device-tree: 'rockchip,rk3588s-orangepi-5 rockchip,rk3588'
+[h264_rkmpp @ 0xffff7e4f1180] Picked up an existing RKMPP hardware device
+Successfully opened the file.
+Stream mapping:
+  Stream #0:0 -> #0:0 (h264 (h264_rkmpp) -> h264 (h264_rkmpp))
+[vost#0:0/h264_rkmpp @ 0xffff7df00600] Starting thread...
+[vf#0:0 @ 0xffff7dbf0000] Starting thread...
+[vist#0:0/h264 @ 0xffff7e910480] [dec:h264_rkmpp @ 0xffff7e940500] Starting thread...
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0xffff7e940280] Starting thread...
+Press [q] to stop, [?] for help
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 8990 bytes to decoder
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 4496 bytes to decoder
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 3130 bytes to decoder
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 4441 bytes to decoder
+[h264_rkmpp @ 0xffff7e4f1180] Noticed an info change
+[h264_rkmpp @ 0xffff7e4f1180] Decoder options: deint=true afbc=2 fast_parse=true buf_mode=0
+[h264_rkmpp @ 0xffff7e4f1180] Configured with size: 640x360 | pix_fmt: drm_prime | sw_pix_fmt: nv12
+[h264_rkmpp @ 0xffff7e4f1180] Received a frame
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 2947 bytes to decoder
+[AVFilterGraph @ 0xffff798b0000] Setting 'color_primaries' to value 'bt709'
+[AVFilterGraph @ 0xffff798b0000] Setting 'color_trc' to value 'bt709'
+[AVFilterGraph @ 0xffff798b0000] Setting 'colorspace' to value 'bt709'
+[AVFilterGraph @ 0xffff798b0000] Setting 'w' to value '320'
+[AVFilterGraph @ 0xffff798b0000] Setting 'h' to value '180'
+[AVFilterGraph @ 0xffff798b0000] Setting 'format' to value 'nv12'
+[AVFilterGraph @ 0xffff798b0000] Setting 'afbc' to value '1'
+detected 8 logical cores
+[graph -1 input from stream 0:0 @ 0xffff73b00180] w:640 h:360 pixfmt:drm_prime tb:1/12800 fr:25/1 sar:1/1 csp:unknown range:tv alpha:unspecified
+[format @ 0xffff73b003c0] Setting 'pix_fmts' to value 'gray|yuv420p|yuvj420p|yuv422p|yuvj422p|yuv444p|yuvj444p|nv12|nv21|nv16|nv24|yuyv422|yvyu422|uyvy422|rgb24|bgr24|rgba|rgb0|bgra|bgr0|argb|0rgb|abgr|0bgr|drm_prime'
+[format @ 0xffff73b003c0] Setting 'color_ranges' to value 'tv|pc'
+Filter 'Parsed_setparams_0' formats:
+  in[0] 'default':
+    Pixel formats: yuv420p yuyv422 rgb24 bgr24 yuv422p yuv444p yuv410p yuv411p gray monow monob pal8 yuvj420p yuvj422p yuvj444p uyvy422 uyyvyy411 bgr8 bgr4 bgr4_byte rgb8 rgb4 rgb4_byte nv12 nv21 argb rgba abgr bgra gray16be gray16le yuv440p yuvj440p yuva420p rgb48be rgb48le rgb565be rgb565le rgb555be rgb555le bgr565be bgr565le bgr555be bgr555le vaapi yuv420p16le yuv420p16be yuv422p16le yuv422p16be yuv444p16le yuv444p16be dxva2_vld rgb444le rgb444be bgr444le bgr444be ya8 bgr48be bgr48le yuv420p9be yuv420p9le yuv420p10be yuv420p10le yuv422p10be yuv422p10le yuv444p9be yuv444p9le yuv444p10be yuv444p10le yuv422p9be yuv422p9le gbrp gbrp9be gbrp9le gbrp10be gbrp10le gbrp16be gbrp16le yuva422p yuva444p yuva420p9be yuva420p9le yuva422p9be yuva422p9le yuva444p9be yuva444p9le yuva420p10be yuva420p10le yuva422p10be yuva422p10le yuva444p10be yuva444p10le yuva420p16be yuva420p16le yuva422p16be yuva422p16le yuva444p16be yuva444p16le vdpau xyz12le xyz12be nv16 nv20le nv20be rgba64be rgba64le bgra64be bgra64le yvyu422 ya16be ya16le gbrap gbrap16be gbrap16le qsv mmal d3d11va_vld cuda 0rgb rgb0 0bgr bgr0 yuv420p12be yuv420p12le yuv420p14be yuv420p14le yuv422p12be yuv422p12le yuv422p14be yuv422p14le yuv444p12be yuv444p12le yuv444p14be yuv444p14le gbrp12be gbrp12le gbrp14be gbrp14le yuvj411p bayer_bggr8 bayer_rggb8 bayer_gbrg8 bayer_grbg8 bayer_bggr16le bayer_bggr16be bayer_rggb16le bayer_rggb16be bayer_gbrg16le bayer_gbrg16be bayer_grbg16le bayer_grbg16be yuv440p10le yuv440p10be yuv440p12le yuv440p12be ayuv64le ayuv64be videotoolbox_vld p010le p010be gbrap12be gbrap12le gbrap10be gbrap10le mediacodec gray12be gray12le gray10be gray10le p016le p016be d3d11 gray9be gray9le gbrpf32be gbrpf32le gbrapf32be gbrapf32le drm_prime opencl gray14be gray14le grayf32be grayf32le yuva422p12be yuva422p12le yuva444p12be yuva444p12le nv24 nv42 vulkan y210be y210le x2rgb10le x2rgb10be x2bgr10le x2bgr10be p210be p210le p410be p410le p216be p216le p416be p416le vuya rgbaf16be rgbaf16le vuyx p012le p012be y212be y212le xv30be xv30le xv36be xv36le rgbf32be rgbf32le rgbaf32be rgbaf32le p212be p212le p412be p412le gbrap14be gbrap14le d3d12 ayuv uyva vyu444 v30xbe v30xle rgbf16be rgbf16le rgba128be rgba128le rgb96be rgb96le y216be y216le xv48be xv48le gbrpf16be gbrpf16le gbrapf16be gbrapf16le grayf16be grayf16le amf gray32be gray32le yaf32be yaf32le yaf16be yaf16le gbrap32be gbrap32le yuv444p10msbbe yuv444p10msble yuv444p12msbbe yuv444p12msble gbrp10msbbe gbrp10msble gbrp12msbbe gbrp12msble ohcodec nv15 nv20
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+  out[0] 'default':
+    Pixel formats: yuv420p yuyv422 rgb24 bgr24 yuv422p yuv444p yuv410p yuv411p gray monow monob pal8 yuvj420p yuvj422p yuvj444p uyvy422 uyyvyy411 bgr8 bgr4 bgr4_byte rgb8 rgb4 rgb4_byte nv12 nv21 argb rgba abgr bgra gray16be gray16le yuv440p yuvj440p yuva420p rgb48be rgb48le rgb565be rgb565le rgb555be rgb555le bgr565be bgr565le bgr555be bgr555le vaapi yuv420p16le yuv420p16be yuv422p16le yuv422p16be yuv444p16le yuv444p16be dxva2_vld rgb444le rgb444be bgr444le bgr444be ya8 bgr48be bgr48le yuv420p9be yuv420p9le yuv420p10be yuv420p10le yuv422p10be yuv422p10le yuv444p9be yuv444p9le yuv444p10be yuv444p10le yuv422p9be yuv422p9le gbrp gbrp9be gbrp9le gbrp10be gbrp10le gbrp16be gbrp16le yuva422p yuva444p yuva420p9be yuva420p9le yuva422p9be yuva422p9le yuva444p9be yuva444p9le yuva420p10be yuva420p10le yuva422p10be yuva422p10le yuva444p10be yuva444p10le yuva420p16be yuva420p16le yuva422p16be yuva422p16le yuva444p16be yuva444p16le vdpau xyz12le xyz12be nv16 nv20le nv20be rgba64be rgba64le bgra64be bgra64le yvyu422 ya16be ya16le gbrap gbrap16be gbrap16le qsv mmal d3d11va_vld cuda 0rgb rgb0 0bgr bgr0 yuv420p12be yuv420p12le yuv420p14be yuv420p14le yuv422p12be yuv422p12le yuv422p14be yuv422p14le yuv444p12be yuv444p12le yuv444p14be yuv444p14le gbrp12be gbrp12le gbrp14be gbrp14le yuvj411p bayer_bggr8 bayer_rggb8 bayer_gbrg8 bayer_grbg8 bayer_bggr16le bayer_bggr16be bayer_rggb16le bayer_rggb16be bayer_gbrg16le bayer_gbrg16be bayer_grbg16le bayer_grbg16be yuv440p10le yuv440p10be yuv440p12le yuv440p12be ayuv64le ayuv64be videotoolbox_vld p010le p010be gbrap12be gbrap12le gbrap10be gbrap10le mediacodec gray12be gray12le gray10be gray10le p016le p016be d3d11 gray9be gray9le gbrpf32be gbrpf32le gbrapf32be gbrapf32le drm_prime opencl gray14be gray14le grayf32be grayf32le yuva422p12be yuva422p12le yuva444p12be yuva444p12le nv24 nv42 vulkan y210be y210le x2rgb10le x2rgb10be x2bgr10le x2bgr10be p210be p210le p410be p410le p216be p216le p416be p416le vuya rgbaf16be rgbaf16le vuyx p012le p012be y212be y212le xv30be xv30le xv36be xv36le rgbf32be rgbf32le rgbaf32be rgbaf32le p212be p212le p412be p412le gbrap14be gbrap14le d3d12 ayuv uyva vyu444 v30xbe v30xle rgbf16be rgbf16le rgba128be rgba128le rgb96be rgb96le y216be y216le xv48be xv48le gbrpf16be gbrpf16le gbrapf16be gbrapf16le grayf16be grayf16le amf gray32be gray32le yaf32be yaf32le yaf16be yaf16le gbrap32be gbrap32le yuv444p10msbbe yuv444p10msble yuv444p12msbbe yuv444p12msble gbrp10msbbe gbrp10msble gbrp12msbbe gbrp12msble ohcodec nv15 nv20
+    Color spaces: bt709
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+[h264_rkmpp @ 0xffff7e4f1180] Received a frame
+Filter 'Parsed_vpp_rkrga_1' formats:
+  in[0] 'default':
+    Pixel formats: drm_prime
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+  out[0] 'default':
+    Pixel formats: drm_prime
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 4712 bytes to decoder
+[h264_rkmpp @ 0xffff7e4f1180] Received a frame
+Filter 'graph -1 input from stream 0:0' formats:
+  out[0] 'default':
+    Pixel formats: drm_prime
+    Color spaces: unknown
+    Color ranges: tv
+    Alpha modes: unspecified premultiplied straight
+Filter 'out_#0:0' formats:
+  in[0] 'default':
+    Pixel formats: yuv420p yuyv422 rgb24 bgr24 yuv422p yuv444p yuv410p yuv411p gray monow monob pal8 yuvj420p yuvj422p yuvj444p uyvy422 uyyvyy411 bgr8 bgr4 bgr4_byte rgb8 rgb4 rgb4_byte nv12 nv21 argb rgba abgr bgra gray16be gray16le yuv440p yuvj440p yuva420p rgb48be rgb48le rgb565be rgb565le rgb555be rgb555le bgr565be bgr565le bgr555be bgr555le vaapi yuv420p16le yuv420p16be yuv422p16le yuv422p16be yuv444p16le yuv444p16be dxva2_vld rgb444le rgb444be bgr444le bgr444be ya8 bgr48be bgr48le yuv420p9be yuv420p9le yuv420p10be yuv420p10le yuv422p10be yuv422p10le yuv444p9be yuv444p9le yuv444p10be yuv444p10le yuv422p9be yuv422p9le gbrp gbrp9be gbrp9le gbrp10be gbrp10le gbrp16be gbrp16le yuva422p yuva444p yuva420p9be yuva420p9le yuva422p9be yuva422p9le yuva444p9be yuva444p9le yuva420p10be yuva420p10le yuva422p10be yuva422p10le yuva444p10be yuva444p10le yuva420p16be yuva420p16le yuva422p16be yuva422p16le yuva444p16be yuva444p16le vdpau xyz12le xyz12be nv16 nv20le nv20be rgba64be rgba64le bgra64be bgra64le yvyu422 ya16be ya16le gbrap gbrap16be gbrap16le qsv mmal d3d11va_vld cuda 0rgb rgb0 0bgr bgr0 yuv420p12be yuv420p12le yuv420p14be yuv420p14le yuv422p12be yuv422p12le yuv422p14be yuv422p14le yuv444p12be yuv444p12le yuv444p14be yuv444p14le gbrp12be gbrp12le gbrp14be gbrp14le yuvj411p bayer_bggr8 bayer_rggb8 bayer_gbrg8 bayer_grbg8 bayer_bggr16le bayer_bggr16be bayer_rggb16le bayer_rggb16be bayer_gbrg16le bayer_gbrg16be bayer_grbg16le bayer_grbg16be yuv440p10le yuv440p10be yuv440p12le yuv440p12be ayuv64le ayuv64be videotoolbox_vld p010le p010be gbrap12be gbrap12le gbrap10be gbrap10le mediacodec gray12be gray12le gray10be gray10le p016le p016be d3d11 gray9be gray9le gbrpf32be gbrpf32le gbrapf32be gbrapf32le drm_prime opencl gray14be gray14le grayf32be grayf32le yuva422p12be yuva422p12le yuva444p12be yuva444p12le nv24 nv42 vulkan y210be y210le x2rgb10le x2rgb10be x2bgr10le x2bgr10be p210be p210le p410be p410le p216be p216le p416be p416le vuya rgbaf16be rgbaf16le vuyx p012le p012be y212be y212le xv30be xv30le xv36be xv36le rgbf32be rgbf32le rgbaf32be rgbaf32le p212be p212le p412be p412le gbrap14be gbrap14le d3d12 ayuv uyva vyu444 v30xbe v30xle rgbf16be rgbf16le rgba128be rgba128le rgb96be rgb96le y216be y216le xv48be xv48le gbrpf16be gbrpf16le gbrapf16be gbrapf16le grayf16be grayf16le amf gray32be gray32le yaf32be yaf32le yaf16be yaf16le gbrap32be gbrap32le yuv444p10msbbe yuv444p10msble yuv444p12msbbe yuv444p12msble gbrp10msbbe gbrp10msble gbrp12msbbe gbrp12msble ohcodec nv15 nv20
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+Filter 'format' formats:
+  in[0] 'default':
+    Pixel formats: gray yuv420p yuvj420p yuv422p yuvj422p yuv444p yuvj444p nv12 nv21 nv16 nv24 yuyv422 yvyu422 uyvy422 rgb24 bgr24 rgba rgb0 bgra bgr0 argb 0rgb abgr 0bgr drm_prime
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: tv pc
+    Alpha modes: unspecified premultiplied straight
+  out[0] 'default':
+    Pixel formats: gray yuv420p yuvj420p yuv422p yuvj422p yuv444p yuvj444p nv12 nv21 nv16 nv24 yuyv422 yvyu422 uyvy422 rgb24 bgr24 rgba rgb0 bgra bgr0 argb 0rgb abgr 0bgr drm_prime
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: tv pc
+    Alpha modes: unspecified premultiplied straight
+[AVFilterGraph @ 0xffff798b0000] query_formats: 5 queried, 16 merged, 0 already done, 0 delayed
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] w:640 h:360 fmt:nv12 -> w:320 h:180 fmt:nv12
+[graph -1 input from stream 0:0 @ 0xffff73b00180] video frame properties congruent with link at pts_time: 0
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA src | fd:16 mmu:1 rd:1 csc:0 | x:0 y:4 w:640 h:360 ws:640 hs:368 fmt:0xa
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA dst | fd:31 mmu:1 rd:1 csc:0 | x:0 y:0 w:320 h:180 ws:320 hs:192 fmt:0xa
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 3306 bytes to decoder
+[h264_rkmpp @ 0xffff7e4f1180] Received a frame
+    Last message repeated 1 times
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA src | fd:24 mmu:1 rd:1 csc:0 | x:0 y:4 w:640 h:360 ws:640 hs:368 fmt:0xa
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA dst | fd:34 mmu:1 rd:1 csc:0 | x:0 y:0 w:320 h:180 ws:320 hs:192 fmt:0xa
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 2633 bytes to decoder
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 2912 bytes to decoder
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 4351 bytes to decoder
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 3350 bytes to decoder
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA src | fd:22 mmu:1 rd:1 csc:0 | x:0 y:4 w:640 h:360 ws:640 hs:368 fmt:0xa
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA dst | fd:37 mmu:1 rd:1 csc:0 | x:0 y:0 w:320 h:180 ws:320 hs:192 fmt:0xa
+[vost#0:0/h264_rkmpp @ 0xffff7df00600] [enc:h264_rkmpp @ 0xffff7e350850] Using input frames context (format drm_prime) with h264_rkmpp encoder.
+[h264_rkmpp @ 0xffff7e4f1180] Received a frame
+[h264_rkmpp @ 0xffff7e4f0e00] Rate Control mode is set to CBR
+[h264_rkmpp @ 0xffff7e4f0e00] Bitrate Target/Min/Max is set to 2000000/1875000/2125000
+[h264_rkmpp @ 0xffff7e4f0e00] QP Init/Max/Min/Max_I/Min_I is set to 26/48/0/48/0
+[h264_rkmpp @ 0xffff7e4f0e00] Profile is set to HIGH
+[h264_rkmpp @ 0xffff7e4f0e00] 8x8 Transform is enabled
+[h264_rkmpp @ 0xffff7e4f0e00] Level is set to 0
+[h264_rkmpp @ 0xffff7e4f0e00] Coder is set to CABAC
+Output #0, null, to 'pipe:':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf62.12.103
+  Stream #0:0(und), 0, 1/25: Video: h264 (High), 1 reference frame, nv12(tv, bt709, progressive, left), 320x180 [SAR 1:1 DAR 16:9], 0/1, q=2-31, 2000 kb/s, 25 fps, 25 tbn (default)
+    Metadata:
+      encoder         : Lavc62.28.103 h264_rkmpp
+      handler_name    : VideoHandler
+[out#0/null @ 0xffff7e8fd340] Starting thread...
+[out#0/null @ 0xffff7e8fd340] sq: send 0 ts 0.04
+[out#0/null @ 0xffff7e8fd340] sq: receive 0 ts 0.04 queue head 0 ts 0.04
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 3080 bytes to decoder
+[h264_rkmpp @ 0xffff7e4f1180] Received a frame
+[h264_rkmpp @ 0xffff7e4f0e00] Configured with size: 320x180 | pix_fmt: drm_prime | sw_pix_fmt: nv12
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA src | fd:28 mmu:1 rd:1 csc:0 | x:0 y:4 w:640 h:360 ws:640 hs:368 fmt:0xa
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA dst | fd:54 mmu:1 rd:1 csc:0 | x:0 y:0 w:320 h:180 ws:320 hs:192 fmt:0xa
+[h264_rkmpp @ 0xffff7e4f0e00] Wrote 172032 bytes to encoder
+[out#0/null @ 0xffff7e8fd340] sq: send 0 ts 0.08
+[out#0/null @ 0xffff7e8fd340] sq: receive 0 ts 0.08 queue head 0 ts 0.08
+[h264_rkmpp @ 0xffff7e4f1180] Received a frame
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA src | fd:26 mmu:1 rd:1 csc:0 | x:0 y:4 w:640 h:360 ws:640 hs:368 fmt:0xa
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA dst | fd:36 mmu:1 rd:1 csc:0 | x:0 y:0 w:320 h:180 ws:320 hs:192 fmt:0xa
+[h264_rkmpp @ 0xffff7e4f0e00] Failed to get packet from encoder output queue: -11
+[h264_rkmpp @ 0xffff7e4f0e00] Wrote 172032 bytes to encoder
+[h264_rkmpp @ 0xffff7e4f0e00] Received a packet
+[out#0/null @ 0xffff7e8fd340] sq: send 0 ts 0.12
+[out#0/null @ 0xffff7e8fd340] sq: receive 0 ts 0.12 queue head 0 ts 0.12
+[h264_rkmpp @ 0xffff7e4f0e00] Wrote 172032 bytes to encoder
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA src | fd:39 mmu:1 rd:1 csc:0 | x:0 y:4 w:640 h:360 ws:640 hs:368 fmt:0xa
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA dst | fd:31 mmu:1 rd:1 csc:0 | x:0 y:0 w:320 h:180 ws:320 hs:192 fmt:0xa
+[h264_rkmpp @ 0xffff7e4f1180] Received a frame
+[out#0/null @ 0xffff7e8fd340] sq: send 0 ts 0.16
+[out#0/null @ 0xffff7e8fd340] sq: receive 0 ts 0.16 queue head 0 ts 0.16
+[h264_rkmpp @ 0xffff7e4f1180] Received a frame
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA src | fd:35 mmu:1 rd:1 csc:0 | x:0 y:4 w:640 h:360 ws:640 hs:368 fmt:0xa
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA dst | fd:56 mmu:1 rd:1 csc:0 | x:0 y:0 w:320 h:180 ws:320 hs:192 fmt:0xa
+[out#0/null @ 0xffff7e8fd340] sq: send 0 ts 0.2
+[out#0/null @ 0xffff7e8fd340] sq: receive 0 ts 0.2 queue head 0 ts 0.2
+[h264_rkmpp @ 0xffff7e4f1180] Received a frame
+[h264_rkmpp @ 0xffff7e4f0e00] Failed to get packet from encoder output queue: -11
+[h264_rkmpp @ 0xffff7e4f0e00] Wrote 172032 bytes to encoder
+[h264_rkmpp @ 0xffff7e4f0e00] Received a packet
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA src | fd:41 mmu:1 rd:1 csc:0 | x:0 y:4 w:640 h:360 ws:640 hs:368 fmt:0xa
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA dst | fd:61 mmu:1 rd:1 csc:0 | x:0 y:0 w:320 h:180 ws:320 hs:192 fmt:0xa
+[h264_rkmpp @ 0xffff7e4f0e00] Wrote 172032 bytes to encoder
+[out#0/null @ 0xffff7e8fd340] sq: send 0 ts 0.24
+[out#0/null @ 0xffff7e8fd340] sq: receive 0 ts 0.24 queue head 0 ts 0.24
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA src | fd:29 mmu:1 rd:1 csc:0 | x:0 y:4 w:640 h:360 ws:640 hs:368 fmt:0xa
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA dst | fd:34 mmu:1 rd:1 csc:0 | x:0 y:0 w:320 h:180 ws:320 hs:192 fmt:0xa
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 3203 bytes to decoder
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 4397 bytes to decoder
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 3385 bytes to decoder
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 3011 bytes to decoder
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0xffff7e940280] EOF while reading input
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0xffff7e940280] Terminating thread with return code 0 (success)
+[out#0/null @ 0xffff7e8fd340] sq: send 0 ts 0.28
+[out#0/null @ 0xffff7e8fd340] sq: receive 0 ts 0.28 queue head 0 ts 0.28
+[h264_rkmpp @ 0xffff7e4f1180] Received a frame
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 2932 bytes to decoder
+[h264_rkmpp @ 0xffff7e4f0e00] Failed to get packet from encoder output queue: -11
+[h264_rkmpp @ 0xffff7e4f1180] Received a frame
+[h264_rkmpp @ 0xffff7e4f0e00] Wrote 172032 bytes to encoder
+[h264_rkmpp @ 0xffff7e4f0e00] Received a packet
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA src | fd:16 mmu:1 rd:1 csc:0 | x:0 y:4 w:640 h:360 ws:640 hs:368 fmt:0xa
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA dst | fd:60 mmu:1 rd:1 csc:0 | x:0 y:0 w:320 h:180 ws:320 hs:192 fmt:0xa
+[h264_rkmpp @ 0xffff7e4f0e00] Wrote 172032 bytes to encoder
+[h264_rkmpp @ 0xffff7e4f0e00] Received a packet
+[out#0/null @ 0xffff7e8fd340] sq: send 0 ts 0.32
+[out#0/null @ 0xffff7e8fd340] sq: receive 0 ts 0.32 queue head 0 ts 0.32
+[h264_rkmpp @ 0xffff7e4f0e00] Wrote 172032 bytes to encoder
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA src | fd:43 mmu:1 rd:1 csc:0 | x:0 y:4 w:640 h:360 ws:640 hs:368 fmt:0xa
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA dst | fd:54 mmu:1 rd:1 csc:0 | x:0 y:0 w:320 h:180 ws:320 hs:192 fmt:0xa
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 4162 bytes to decoder
+[out#0/null @ 0xffff7e8fd340] sq: send 0 ts 0.36
+[out#0/null @ 0xffff7e8fd340] sq: receive 0 ts 0.36 queue head 0 ts 0.36
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA src | fd:24 mmu:1 rd:1 csc:0 | x:0 y:4 w:640 h:360 ws:640 hs:368 fmt:0xa
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA dst | fd:37 mmu:1 rd:1 csc:0 | x:0 y:0 w:320 h:180 ws:320 hs:192 fmt:0xa
+[out#0/null @ 0xffff7e8fd340] sq: send 0 ts 0.4
+[out#0/null @ 0xffff7e8fd340] sq: 0 frames_max 10 reached
+[out#0/null @ 0xffff7e8fd340] sq: finish 0; head ts 0.4
+[out#0/null @ 0xffff7e8fd340] sq: finish queue
+[out#0/null @ 0xffff7e8fd340] sq: receive 0 ts 0.4 queue head 0 ts 0.4
+[out#0/null @ 0xffff7e8fd340] sq: 0 EOF
+[out#0/null @ 0xffff7e8fd340] sq: finish queue
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA src | fd:42 mmu:1 rd:1 csc:0 | x:0 y:4 w:640 h:360 ws:640 hs:368 fmt:0xa
+[Parsed_vpp_rkrga_1 @ 0xffff73b000c0] RGA dst | fd:58 mmu:1 rd:1 csc:0 | x:0 y:0 w:320 h:180 ws:320 hs:192 fmt:0xa
+[h264_rkmpp @ 0xffff7e4f0e00] Failed to get packet from encoder output queue: -11
+[h264_rkmpp @ 0xffff7e4f0e00] Wrote 172032 bytes to encoder
+[h264_rkmpp @ 0xffff7e4f0e00] Received a packet
+[h264_rkmpp @ 0xffff7e4f0e00] Wrote 172032 bytes to encoder
+[h264_rkmpp @ 0xffff7e4f0e00] Received a packet
+[vost#0:0/h264_rkmpp @ 0xffff7df00600] [enc:h264_rkmpp @ 0xffff7e350850] Encoder thread received EOF
+[h264_rkmpp @ 0xffff7e4f0e00] End of stream
+[vf#0:0 @ 0xffff7dbf0000] All consumers returned EOF
+[h264_rkmpp @ 0xffff7e4f0e00] Wrote 0 bytes to encoder
+[h264_rkmpp @ 0xffff7e4f0e00] Received a packet
+[h264_rkmpp @ 0xffff7e4f0e00] End of stream
+[h264_rkmpp @ 0xffff7e4f0e00] Wrote 0 bytes to encoder
+[h264_rkmpp @ 0xffff7e4f0e00] Received a packet
+[h264_rkmpp @ 0xffff7e4f0e00] End of stream
+[h264_rkmpp @ 0xffff7e4f0e00] Wrote 0 bytes to encoder
+[h264_rkmpp @ 0xffff7e4f0e00] Received a packet
+[h264_rkmpp @ 0xffff7e4f0e00] End of stream
+[h264_rkmpp @ 0xffff7e4f1180] Received a frame
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 3608 bytes to decoder
+[h264_rkmpp @ 0xffff7e4f1180] Received a frame
+[out#0/null @ 0xffff7e8fd340] sq: 0 EOF
+[out#0/null @ 0xffff7e8fd340] sq: finish queue
+[vf#0:0 @ 0xffff7dbf0000] Terminating thread with return code 0 (success)
+[h264_rkmpp @ 0xffff7e4f0e00] Wrote 0 bytes to encoder
+[h264_rkmpp @ 0xffff7e4f0e00] Received a packet
+[h264_rkmpp @ 0xffff7e4f0e00] End of stream
+[h264_rkmpp @ 0xffff7e4f0e00] Wrote 0 bytes to encoder
+[h264_rkmpp @ 0xffff7e4f0e00] Received an EOS packet
+[vost#0:0/h264_rkmpp @ 0xffff7df00600] Terminating thread with return code 0 (success)
+[out#0/null @ 0xffff7e8fd340] All streams finished
+[out#0/null @ 0xffff7e8fd340] Terminating thread with return code 0 (success)
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 3282 bytes to decoder
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 3151 bytes to decoder
+[h264_rkmpp @ 0xffff7e4f1180] Wrote 3557 bytes to decoder
+[h264_rkmpp @ 0xffff7e4f1180] Received a frame
+[vist#0:0/h264 @ 0xffff7e910480] [dec:h264_rkmpp @ 0xffff7e940500] Decoder returned EOF, finishing
+[vist#0:0/h264 @ 0xffff7e910480] [dec:h264_rkmpp @ 0xffff7e940500] Terminating thread with return code 0 (success)
+[out#0/null @ 0xffff7e8fd340] Output file #0 (pipe:):
+[out#0/null @ 0xffff7e8fd340]   Output stream #0:0 (video): 10 frames encoded; 10 packets muxed (27186 bytes); 
+[out#0/null @ 0xffff7e8fd340]   Total: 10 packets (27186 bytes) muxed
+[out#0/null @ 0xffff7e8fd340] video:27KiB audio:0KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+frame=   10 fps=0.0 q=18.0 Lsize=N/A time=00:00:00.36 bitrate=N/A speed=  12x elapsed=0:00:00.02    
+[AVIOContext @ 0xffff7e940140] Statistics: 178 bytes written, 0 seeks, 1 writeouts
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0xffff7e940280] Input file #0 (/cache/hwprobe/fixtures/sha256_07d96bd4c7a1865bacded842208162a7cb8928cc9b9c3d2def36f61c532d9678/h264_8bit.mp4):
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0xffff7e940280]   Input stream #0:0 (video): 25 packets read (92337 bytes); 16 frames decoded; 0 decode errors; 
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0xffff7e940280]   Total: 25 packets (92337 bytes) demuxed
+[AVIOContext @ 0xffff7e9403c0] Statistics: 127361 bytes read, 2 seeks
+
+Exiting with exit code 0

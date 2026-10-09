@@ -8,7 +8,7 @@ using Xunit;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Tests.Verdict;
 
-/// <summary>Real ffmpeg output in <c>tests/Corpus/stderr</c>: Intel Apollo Lake (iHD 26.3.5, jellyfin-ffmpeg 8.1.3), RTX 5080 (jellyfin-ffmpeg 8.1.2 in Jellyfin 12.1), Raspberry Pi V4L2, macOS VideoToolbox, and hosts with no hardware.</summary>
+/// <summary>Real ffmpeg output in <c>tests/Corpus/stderr</c>: Intel Apollo Lake (iHD 26.3.5, jellyfin-ffmpeg 8.1.3), RTX 5080 (jellyfin-ffmpeg 8.1.2 in Jellyfin 12.1), Rockchip RK3588S (jellyfin-ffmpeg 8.1.3 in Jellyfin 12.2), Raspberry Pi V4L2, macOS VideoToolbox, and hosts with no hardware.</summary>
 [Trait("Category", "Unit")]
 public sealed class RecordedCorpusTests
 {
@@ -30,6 +30,7 @@ public sealed class RecordedCorpusTests
     [InlineData("stderr/jellyfin-linux-nvenc-smoke-pass.txt", HwType.nvenc, "cuda", 0, MatrixCatalog.Frames, ProbeOutcome.Pass)]
     [InlineData("stderr/jellyfin-linux-nvenc-bwdif-pass.txt", HwType.nvenc, "cuda", 0, MatrixCatalog.Frames, ProbeOutcome.Pass)]
     [InlineData("stderr/jellyfin-linux-rkmpp-smoke-no-device.txt", HwType.rkmpp, null, 234, 0, ProbeOutcome.DeviceUnavailable)]
+    [InlineData("stderr/jellyfin-linux-rkmpp-rk3588s-smoke-pass.txt", HwType.rkmpp, "rkmpp", 0, MatrixCatalog.Frames, ProbeOutcome.Pass)]
     [InlineData("stderr/jellyfin-linux-v4l2m2m-no-device.txt", HwType.v4l2m2m, null, 234, 0, ProbeOutcome.DeviceUnavailable)]
     [InlineData("stderr/v4l2m2m-bcm2835-h264-pass.txt", HwType.v4l2m2m, null, 0, MatrixCatalog.Frames, ProbeOutcome.Pass)]
     [InlineData("stderr/videotoolbox-h264-pass.txt", HwType.videotoolbox, null, 0, MatrixCatalog.Frames, ProbeOutcome.Pass)]
@@ -49,8 +50,18 @@ public sealed class RecordedCorpusTests
     [InlineData("stderr/jellyfin-windows-d3d11-no-adapter.txt", HwType.qsv, 255, ProbeOutcome.DeviceUnavailable)]
     [InlineData("stderr/jellyfin-windows-d3d11-no-adapter.txt", HwType.amf, 255, ProbeOutcome.DeviceUnavailable)]
     [InlineData("stderr/jellyfin-linux-rkmpp-open-without-device.txt", HwType.rkmpp, 1, ProbeOutcome.Pass)]
+    [InlineData("stderr/jellyfin-linux-vaapi-rockchip-no-driver.txt", HwType.vaapi, 251, ProbeOutcome.DeviceUnavailable)]
     public void DeviceOpen(string file, HwType type, int exitCode, ProbeOutcome expected) =>
         Assert.Equal(expected, DeviceOpenProbe.Evaluate(type, Exited(exitCode, 0, CorpusFile.Load(file))).Outcome);
+
+    /// <summary>A VAAPI open that reached libva but found no driver names the driver file; one that loaded a driver names none.</summary>
+    /// <param name="file">The recorded stderr.</param>
+    /// <param name="expected">The driver file, or null.</param>
+    [Theory]
+    [InlineData("stderr/jellyfin-linux-vaapi-rockchip-no-driver.txt", "rockchip_drv_video.so")]
+    [InlineData("stderr/jellyfin-linux-qsv-over-vaapi-pass.txt", null)]
+    public void MissingVaapiDriverIsNamed(string file, string? expected) =>
+        Assert.Equal(expected, DeviceOpenProbe.MissingVaapiDriver(CorpusFile.Load(file)));
 
     /// <summary>Deriving OpenCL with no OpenCL runtime installed is DeviceUnavailable.</summary>
     [Fact]
@@ -66,6 +77,7 @@ public sealed class RecordedCorpusTests
     [InlineData("stderr/v4l2m2m-bcm2835-h264-pass.txt", StderrMarkers.V4l2Device, true)]
     [InlineData("stderr/jellyfin-linux-v4l2m2m-no-device.txt", StderrMarkers.V4l2Device, false)]
     [InlineData("stderr/videotoolbox-mjpeg-pass.txt", "is not supported on this device", true)]
+    [InlineData("stderr/jellyfin-linux-rkmpp-rk3588s-smoke-pass.txt", "Failed to get packet from encoder output queue: -11", true)]
     public void RecordedLines(string file, string line, bool present) =>
         Assert.Equal(present, CorpusFile.Load(file).Contains(line, StringComparison.Ordinal));
 

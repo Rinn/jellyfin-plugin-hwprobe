@@ -103,6 +103,7 @@ The page should look and behave like a native Jellyfin dashboard page, stay calm
 - Audio inputs leave out DSD (ffmpeg has no DSD encoder and FATE has no `.dsf` sample) and Shorten (FATE's sample is cut mid-frame and stops instead of looping).
 - macOS has no power figures: IOReport is a private API whose CPU channels read 0 on macOS 27.
 - v4l2m2m is confirmed from a recorded Raspberry Pi run (`Using device /dev/videoN`), not yet through Jellyfin.
+- rkmpp is confirmed from one recorded smoke probe through Jellyfin on an RK3588S (Orange Pi 5B, `tests/Corpus/stderr`), not yet the full matrix. jellyfin-ffmpeg's RKMPP encoder logs EAGAIN as "Failed to … queue: -11" at debug level, so those lines are in `StderrMarkers.Harmless`.
 - Page and CLI text are English only. Behaviour doesn't depend on locale: ffmpeg runs with `LC_ALL=C`, numbers are formatted and parsed invariantly, and the page reads structured fields rather than message text. `CultureScope` tests and `HWPROBE_LOCALE` in `container-plugin.sh` check it.
 - The busy check (`ProbeService.IsTranscoding`) skips direct play and remux, but a transcode that finished ahead of playback still blocks until playback stops: `TranscodeManager.OnFfMpegProcessExited` leaves the session's `TranscodingInfo` set, and Jellyfin has no API to list running jobs by session.
 
