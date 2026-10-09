@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "1.4.2.0",
+        "changelog": "- Tests an AMD GPU whatever Hardware acceleration Jellyfin is set to.\n- QSV on a GPU that isn't Intel says so, instead of suggesting a fix that can't help.",
+        "targetAbi": "12.2.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v1.4.2/hwprobe-plugin_1.4.2.0.zip",
+        "checksum": "f5d9d151c6fb9b2a6ae6760a4be389e6",
+        "timestamp": "2026-10-09T07:49:40Z"
+      },
+      {
         "version": "1.4.1.0",
         "changelog": "- A GPU that can only be tested while Jellyfin uses it now says which settings to change, on the Hardware Probe tab and Recommended Settings.",
         "targetAbi": "12.2.0.0",
