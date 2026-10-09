@@ -1,4 +1,5 @@
 using System.Globalization;
+using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
 using MediaBrowser.Common.Configuration;
@@ -166,7 +167,7 @@ public sealed class ArgumentSource : IArgumentSource
         }
 
         // A probe cell has no source path (the probe names its clip itself), and GetInputArgument requires one.
-        var ((inputArgs, inputArgument), childEnvironment) = Generate(type, () => (
+        var ((inputArgs, inputArgument), childEnvironment) = Generate(type, device, () => (
             _helper.GetInputVideoHwaccelArgs(state, options),
             cell.FullQuality && cell.SourcePath is not null ? _helper.GetInputArgument(state, options, null) : null));
 
@@ -243,7 +244,7 @@ public sealed class ArgumentSource : IArgumentSource
             OutputContainer = cell.OutputCodec,
             BaseRequest = new BaseEncodingJobOptions { AudioCodec = cell.OutputCodec, MaxAudioChannels = cell.OutputChannels, AudioChannels = cell.OutputChannels, EnableAudioVbrEncoding = true },
         };
-        var ((modifier, input), environment) = Generate(HwType.none, () => (_helper.GetInputModifier(state, options, null), _helper.GetInputArgument(state, options, null)));
+        var ((modifier, input), environment) = Generate(HwType.none, null, () => (_helper.GetInputModifier(state, options, null), _helper.GetInputArgument(state, options, null)));
         var head = $"{modifier} {input}".Trim();
         if (cell.OutputCodec is not { } codec)
         {
@@ -254,7 +255,7 @@ public sealed class ArgumentSource : IArgumentSource
         state.OutputAudioBitrate = EncodingHelper.LosslessAudioCodecs.Contains(codec, StringComparer.OrdinalIgnoreCase)
             ? stream.BitRate ?? 0
             : _helper.GetAudioBitrateParam(null, codec, stream, state.OutputAudioChannels) ?? 0;
-        var (full, _) = Generate(HwType.none, () => _helper.GetProgressiveAudioFullCommandLine(state, options, AudioOutput));
+        var (full, _) = Generate(HwType.none, null, () => _helper.GetProgressiveAudioFullCommandLine(state, options, AudioOutput));
         var tail = $" -y \"{AudioOutput}\"";
         if (!full.StartsWith(head, StringComparison.Ordinal) || !full.EndsWith(tail, StringComparison.Ordinal))
         {
@@ -289,14 +290,15 @@ public sealed class ArgumentSource : IArgumentSource
     /// <summary>Runs generation that may set EncodingHelper's environment variables, inside one snapshot, and checks it set only what was predicted.</summary>
     /// <typeparam name="T">What generation returns.</typeparam>
     /// <param name="type">The backend.</param>
+    /// <param name="device">Render node or adapter, or null.</param>
     /// <param name="generate">The generation.</param>
     /// <returns>Its result, and the environment the child must run with: generation's values, else the start-up values, never whatever is set right now.</returns>
-    private (T Value, Dictionary<string, string?> Environment) Generate<T>(HwType type, Func<T> generate)
+    private (T Value, Dictionary<string, string?> Environment) Generate<T>(HwType type, string? device, Func<T> generate)
     {
         var effects = type == HwType.vaapi
             ? EncodingHelperEnvironment.Predict(type, _encoder.IsVaapiDeviceInteliHD, _encoder.IsVaapiDeviceInteli965, _encoder.IsVaapiDeviceAmd)
             : new Dictionary<string, string>();
-        RefuseForeignWrites(type, effects);
+        RefuseForeignWrites(device, effects);
 
         var before = Snapshot();
         T value;
@@ -330,23 +332,18 @@ public sealed class ArgumentSource : IArgumentSource
     }
 
     /// <summary>Inside the server, refuses generation that would set a variable the server's own configuration doesn't.</summary>
-    /// <param name="type">The backend.</param>
+    /// <param name="device">Render node, or null.</param>
     /// <param name="effects">Variables generation will set.</param>
-    private void RefuseForeignWrites(HwType type, IReadOnlyDictionary<string, string> effects)
+    private void RefuseForeignWrites(string? device, IReadOnlyDictionary<string, string> effects)
     {
         if (_environment.RestoreAfterGeneration)
         {
             return;
         }
 
-        var foreign = effects
-            .Where(e => !_environment.ServerOwned.TryGetValue(e.Key, out var owned) || owned != e.Value)
-            .Select(e => $"{e.Key}={e.Value}")
-            .ToList();
-        if (foreign.Count > 0)
+        if (effects.Any(e => !_environment.ServerOwned.TryGetValue(e.Key, out var owned) || owned != e.Value))
         {
-            throw new UnsafeProbeException(
-                $"Generating {type} arguments for this device sets {string.Join(", ", foreign)} in the server process, which the server's own configuration doesn't. Test this device with the hwprobe CLI.");
+            throw new UnsafeProbeException(Catalog.Text("notServerDevice", ("device", device ?? string.Empty)));
         }
     }
 

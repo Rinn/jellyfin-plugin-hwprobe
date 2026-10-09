@@ -322,6 +322,19 @@ public sealed class ProbeEngineTests : IDisposable
         Assert.DoesNotContain(_runner.Calls, c => c.Contains("-progress", StringComparison.Ordinal) && c.Contains("av1_8bit", StringComparison.Ordinal));
     }
 
+    /// <summary>A device the server refuses to probe is Untested, and its row gives the refusal rather than the generic hint.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task RefusedDeviceRowGivesTheReason()
+    {
+        _arguments.Refusal = "refused";
+
+        var report = await RunAsync(StopStage.Devices);
+
+        var backend = Assert.Single(report.Backends, b => b.Type != HwType.none);
+        Assert.Equal((BackendVerdict.Untested, "refused"), (backend.Verdict, backend.Hint));
+    }
+
     /// <summary>CPU deinterlacing is left out of the deinterlace column rather than filed under the input codec.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]

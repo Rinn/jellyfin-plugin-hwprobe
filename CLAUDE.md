@@ -96,7 +96,7 @@ The page should look and behave like a native Jellyfin dashboard page, stay calm
 ## Known limits
 
 - Vulkan DRM interop isn't probed, so AMD never resolves to `FullVulkan` (a finding says so).
-- A second i965/AMD GPU (not the configured device) is reported `Untested` by the plugin, since probing it would change the server's environment; the CLI can test it.
+- An i965 or AMD device is reported `Untested` by the plugin unless Jellyfin started with Hardware acceleration set to VAAPI on a device with the same driver, since probing it would change the server's environment. That includes the only GPU on a host still set to None. Its row on the Hardware Probe tab, and the Recommended Settings card when it's the configured device, say to set it as the VA-API Device and restart Jellyfin, as the server reads the device's driver only at start-up (`MediaEncoder.SetFFmpegPath`). The CLI can test it as is.
 - CUDA is probed at index 0 only; `EncodingHelper` hard-codes device 0.
 - Intel low power is untested on real hardware: the Intel NAS has no HuC firmware, so the Intel low power suite and its per-codec comparisons rest on unit tests alone.
 - AMD GPU power (amdgpu hwmon `power1_input` or `power1_average`, sampled every 200 ms and summed by `EnergySpan`) is untested, as no AMD hardware is available. On APUs the reading includes the CPU, so it overlaps the CPU package's.

@@ -514,7 +514,10 @@ public sealed class ProbeEngine : IDisposable
                 ProbeOutcome.PermissionDenied => BackendVerdict.PermissionDenied,
                 _ => BackendVerdict.DevicePresentPipelineBroken,
             };
-            run.Backends.Add(EmptyRow(candidate, verdict, Hints.For(smoke.Outcome, candidate.Type, run.Host.Os, inContainer)));
+
+            // An untested smoke probe's hint has the specific reason, such as a refused device.
+            var hint = smoke.Outcome == ProbeOutcome.Untested ? smoke.Hint : Hints.For(smoke.Outcome, candidate.Type, run.Host.Os, inContainer);
+            run.Backends.Add(EmptyRow(candidate, verdict, hint));
             return;
         }
 
