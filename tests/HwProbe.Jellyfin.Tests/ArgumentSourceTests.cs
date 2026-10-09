@@ -1,6 +1,7 @@
 using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
 using Jellyfin.Plugin.HwProbe.TestSupport;
+using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Model.Entities;
 using Xunit;
 
@@ -44,6 +45,29 @@ public sealed class ArgumentSourceTests
         Assert.StartsWith("-init_hw_device vaapi=va", args.InputArgs, StringComparison.Ordinal);
         Assert.Contains("-hwaccel vaapi -hwaccel_output_format vaapi -noautorotate", args.InputArgs, StringComparison.Ordinal);
         Assert.Equal("h264_vaapi", args.VideoEncoder);
+    }
+
+    /// <summary>For an AMD device upstream derives a Vulkan device from DRM only with Vulkan DRM interop, which is how the tier knows the full Vulkan pipeline was used.</summary>
+    /// <param name="interop">Whether the server found Vulkan DRM interop.</param>
+    [Theory(Skip = "Requires Linux: EncodingHelper only emits VAAPI args there.", SkipUnless = nameof(TestEnvironment.IsLinux), SkipType = typeof(TestEnvironment))]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void AmdVulkanDeviceFollowsInterop(bool interop)
+    {
+        // jellyfin-ffmpeg 8.1.3 has the Vulkan filters upstream requires (IsVulkanFullSupported); the RX 570 report's build did.
+        var caps = TestCapabilities.Full with
+        {
+            Filters = new HashSet<string>(TestCapabilities.Full.Filters) { "libplacebo", "scale_vulkan", "transpose_vulkan", "flip_vulkan" },
+            FilterOptions = new HashSet<FilterOptionType>(TestCapabilities.Full.FilterOptions) { FilterOptionType.OverlayVulkanFrameSync },
+            IsVaapiDeviceInteliHD = false,
+            IsVaapiDeviceAmd = true,
+            IsVaapiDeviceSupportVulkanDrmInterop = interop,
+            IsVaapiDeviceSupportVulkanDrmModifier = interop,
+        };
+
+        var args = new ArgumentSource(caps, _recorder).Build(HwType.vaapi, ArgumentSourceCells.Node, ArgumentSourceCells.Smoke);
+
+        Assert.Equal(interop, args.InputArgs.Contains("-init_hw_device vulkan=vk@dr", StringComparison.Ordinal));
     }
 
     /// <summary>QSV on Linux derives the QSV device from a VAAPI parent and never uses child_device.</summary>
