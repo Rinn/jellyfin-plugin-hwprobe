@@ -207,8 +207,9 @@ public sealed class ProbeEngine : IDisposable
     /// <param name="run">Run state.</param>
     /// <param name="type">The backend.</param>
     /// <param name="driver">The VAAPI driver from the device open.</param>
+    /// <param name="vulkanDrmInterop">Whether upstream found Vulkan DRM interop for the device.</param>
     /// <returns>The tier, or <see cref="PipelineTier.Unknown"/> outside VAAPI/QSV.</returns>
-    private static PipelineTier ResolveTier(Run run, HwType type, VaapiDriver driver)
+    private static PipelineTier ResolveTier(Run run, HwType type, VaapiDriver driver, bool vulkanDrmInterop)
     {
         // Vulkan DRM interop is not probed; upstream checks it with a separate device init.
         var caps = run.Caps;
@@ -225,7 +226,7 @@ public sealed class ProbeEngine : IDisposable
             BuildGates.VulkanFull(caps.SupportsHwaccel, caps.SupportsFilter, caps.SupportsFilterWithOption),
             caps.SupportsFilter("alphasrc"),
             driver,
-            VulkanDrmInterop: false,
+            vulkanDrmInterop,
             KernelVersion(run.Host.Kernel)));
     }
 
@@ -538,11 +539,14 @@ public sealed class ProbeEngine : IDisposable
             return;
         }
 
+        // Upstream derives a Vulkan device from DRM only when the server measured interop for its device
+        // (EncodingHelper.GetInputVideoHwaccelArgs, v12.2, L1079-1086), so its arguments say what interop isn't probed for.
+        var vulkanDrmInterop = smoke.CommandLine?.Contains("-init_hw_device vulkan=", StringComparison.Ordinal) == true;
         var tier = candidate.Type switch
         {
             HwType.videotoolbox => VideoToolboxTier.Resolve(run.Caps.SupportsHwaccel, run.Caps.SupportsFilter),
             HwType.nvenc => CudaTier.Resolve(run.Caps.SupportsHwaccel, run.Caps.SupportsFilter, run.Caps.SupportsFilterWithOption),
-            _ => ResolveTier(run, candidate.Type, open.Driver),
+            _ => ResolveTier(run, candidate.Type, open.Driver, vulkanDrmInterop),
         };
         if (tier == PipelineTier.LegacyCopyBack)
         {
@@ -568,7 +572,7 @@ public sealed class ProbeEngine : IDisposable
             await CheckOpenclAsync(run, candidate, openclArguments, cancellationToken);
         }
 
-        if (open.Driver == VaapiDriver.Amd)
+        if (open.Driver == VaapiDriver.Amd && !vulkanDrmInterop)
         {
             run.Findings.Add(new Finding(FindingSeverity.Info, "vulkan-interop-unprobed", $"{candidate.Type}{DevicePrefix(candidate.Device)}{Data.Catalog.Text("findingVulkanUnprobed")}") { Backend = candidate.Type });
         }
@@ -819,8 +823,8 @@ public sealed class ProbeEngine : IDisposable
                     ? ProbeOutcome.CodecUnsupported
                     : VerdictEvaluator.Evaluate(ran, new ProbeExpectation(MatrixCatalog.Frames, StderrMarkers.HardwareFrames(candidate.Type, args.Hwaccel)));
 
-                // A tone map through OpenCL that fails where OpenCL doesn't start says nothing about the GPU. Upstream takes
-                // Vulkan rather than OpenCL on AMD when interop works, which isn't probed, so there it's untested.
+                // A tone map through OpenCL that fails where OpenCL doesn't start says nothing about the GPU. On AMD, upstream
+                // takes Vulkan instead when the server found interop, which a probe on the OpenCL path can't tell, so there it's untested.
                 var openclDown = cell.Group == MatrixGroup.Tonemap && outcome != ProbeOutcome.Pass && (args.InputArgs + args.FilterArgs).Contains("opencl", StringComparison.Ordinal)
                     && (run.NoOpencl.Contains(candidate) || VerdictEvaluator.Crashed(ran));
                 var amd = run.Opened.Exists(o => o.Candidate == candidate && o.Open.Driver == VaapiDriver.Amd);

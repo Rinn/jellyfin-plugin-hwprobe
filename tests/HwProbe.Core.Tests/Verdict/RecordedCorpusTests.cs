@@ -33,6 +33,7 @@ public sealed class RecordedCorpusTests
     [InlineData("stderr/jellyfin-linux-rkmpp-rk3588s-smoke-pass.txt", HwType.rkmpp, "rkmpp", 0, MatrixCatalog.Frames, ProbeOutcome.Pass)]
     [InlineData("stderr/jellyfin-linux-rkmpp-vp8-unsupported.txt", HwType.rkmpp, "rkmpp", 187, 0, ProbeOutcome.CodecUnsupported)]
     [InlineData("stderr/jellyfin-linux-vaapi-amd-smoke-pass.txt", HwType.vaapi, "vaapi", 0, MatrixCatalog.Frames, ProbeOutcome.Pass)]
+    [InlineData("stderr/jellyfin-linux-vaapi-amd-vulkan-smoke-pass.txt", HwType.vaapi, "vaapi", 0, MatrixCatalog.Frames, ProbeOutcome.Pass)]
     [InlineData("stderr/jellyfin-linux-v4l2m2m-no-device.txt", HwType.v4l2m2m, null, 234, 0, ProbeOutcome.DeviceUnavailable)]
     [InlineData("stderr/v4l2m2m-bcm2835-h264-pass.txt", HwType.v4l2m2m, null, 0, MatrixCatalog.Frames, ProbeOutcome.Pass)]
     [InlineData("stderr/videotoolbox-h264-pass.txt", HwType.videotoolbox, null, 0, MatrixCatalog.Frames, ProbeOutcome.Pass)]
@@ -102,6 +103,8 @@ public sealed class RecordedCorpusTests
     [InlineData("stderr/jellyfin-linux-v4l2m2m-no-device.txt", StderrMarkers.V4l2Device, false)]
     [InlineData("stderr/videotoolbox-mjpeg-pass.txt", "is not supported on this device", true)]
     [InlineData("stderr/jellyfin-linux-rkmpp-rk3588s-smoke-pass.txt", "Failed to get packet from encoder output queue: -11", true)]
+    [InlineData("stderr/jellyfin-linux-vaapi-amd-vulkan-smoke-pass.txt", "with argument vulkan=vk@dr", true)]
+    [InlineData("stderr/jellyfin-linux-vaapi-amd-smoke-pass.txt", "with argument vulkan=vk@dr", false)]
     public void RecordedLines(string file, string line, bool present) =>
         Assert.Equal(present, CorpusFile.Load(file).Contains(line, StringComparison.Ordinal));
 

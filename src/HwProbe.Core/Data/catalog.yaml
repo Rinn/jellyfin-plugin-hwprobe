@@ -967,7 +967,7 @@ texts:
   findingLowPowerAvailable: "low-power {codec} encoding works. Turning on '{option}' frees the GPU, which speeds up OpenCL tone-mapping."
   findingLowPowerDropped: "'{option}' has no effect: {reason}"
   findingLowPowerUnavailable: "leave '{option}' off. {reason}"
-  findingVulkanUnprobed: Vulkan DRM interop is not probed, so FullVulkan is never reported.
+  findingVulkanUnprobed: "Vulkan DRM interop isn't probed: the full Vulkan pipeline is tested only when Jellyfin is set to VAAPI on this GPU and found it."
   findingUnvalidated: "hwprobe's {backend} checks have not been validated on real hardware."
   findingOpenclUnavailable: "OpenCL doesn't start, but Jellyfin still picks its OpenCL pipeline because this ffmpeg was built with OpenCL, so OpenCL tone-mapping fails. {remedy}"
   # Performance test notes.
