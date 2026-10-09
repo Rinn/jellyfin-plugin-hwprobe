@@ -515,7 +515,7 @@ public sealed class ProbeEngine : IDisposable
                 _ => BackendVerdict.DevicePresentPipelineBroken,
             };
 
-            // An untested smoke probe's hint has the specific reason, such as a refused device or a missing clip.
+            // An untested smoke probe's hint has the specific reason, such as a refused device.
             var hint = smoke.Outcome == ProbeOutcome.Untested ? smoke.Hint : Hints.For(smoke.Outcome, candidate.Type, run.Host.Os, inContainer);
             run.Backends.Add(EmptyRow(candidate, verdict, hint));
             return;

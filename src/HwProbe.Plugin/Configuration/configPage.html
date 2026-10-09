@@ -589,9 +589,13 @@
                 function backendTable(rows) {
                     const table = el('table', null, 'hwprobe-backends hwprobe-full');
                     row(table, [el('th'), el('th', 'Backend'), el('th', 'Device'), el('th', 'Status')]);
-                    for (const [type, device, status, fix, state] of rows) {
-                        const markCell = state === 'works' ? emojiMark('\u2705', 'Works') : state === 'failed' ? emojiMark('\u274c', 'Failed') : emojiMark('\ud83d\udeab', 'Not available');
-                        row(table, [markCell, names[type] || type, breakable(device || '-'), resultCell(status, fix, state === 'works' ? '' : 'secondaryText')]);
+                    for (const [type, device, status, fix, state, note] of rows) {
+                        const markCell = state === 'works' ? emojiMark('\u2705', 'Works') : state === 'failed' ? emojiMark('\u274c', 'Failed') : state === 'untested' ? emojiMark('\u2754', 'Not tested') : emojiMark('\ud83d\udeab', 'Not available');
+                        const statusCell = resultCell(status, fix, state === 'works' ? '' : 'secondaryText');
+                        if (note) {
+                            statusCell.appendChild(el('div', note));
+                        }
+                        row(table, [markCell, names[type] || type, breakable(device || '-'), statusCell]);
                     }
                     return sortable(table, 'backends');
                 }
@@ -1114,7 +1118,7 @@
                         const backend = (names[type] || type) + (device ? ' ' + device : '');
                         title.appendChild(document.createTextNode('Hardware acceleration: '));
                         if (entry) {
-                            title.appendChild(el('span', entry.verdict === 'Viable' ? '\u2705 ' : '\u274c ', 'hwprobe-emoji'));
+                            title.appendChild(el('span', entry.verdict === 'Viable' ? '\u2705 ' : entry.verdict === 'Untested' ? '\u2754 ' : '\u274c ', 'hwprobe-emoji'));
                         }
                         title.appendChild(document.createTextNode(backend));
                         if (entry && entry.verdict === 'Viable') {
@@ -1126,6 +1130,10 @@
                         }
                     }
                     box.appendChild(title);
+                    const untested = shown && type && type !== 'none' && shown.backends.find(b => b.verdict === 'Untested' && isConfigured(b));
+                    if (untested && untested.hint) {
+                        box.appendChild(el('div', untested.hint, 'secondaryText'));
+                    }
                     if (shown) {
                         renderBrokenBackend(box, viable);
                         renderPreferredBackend(box, viable);
@@ -1161,7 +1169,7 @@
                     const unavailable = report.backends.filter(b => b.verdict !== 'Viable')
                         .map(b => b.verdict === 'NotPresent' && wrongArchitecture(b.type)
                             ? [b.type, '', wrongArchitecture(b.type)]
-                            : [b.type, b.verdict === 'NotPresent' ? '' : b.device, verdicts[b.verdict] || b.verdict, b.fix, b.verdict === 'PermissionDenied' || b.verdict === 'DevicePresentPipelineBroken' ? 'failed' : 'absent'])
+                            : [b.type, b.verdict === 'NotPresent' ? '' : b.device, verdicts[b.verdict] || b.verdict, b.fix, b.verdict === 'PermissionDenied' || b.verdict === 'DevicePresentPipelineBroken' ? 'failed' : b.verdict === 'Untested' ? 'untested' : 'absent', b.verdict === 'Untested' ? b.hint : null])
                         .concat(Object.entries(report.stageA.types || {}).filter(([, s]) => s === 'NotBuilt').map(([t]) => [t, '', notBuilt(t)]))
                         // A NotPresent row per adapter would repeat the same line.
                         .filter((r, i, all) => all.findIndex(o => o[0] === r[0] && o[1] === r[1] && o[2] === r[2]) === i)
