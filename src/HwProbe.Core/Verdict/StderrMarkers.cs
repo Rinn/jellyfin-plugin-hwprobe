@@ -85,6 +85,9 @@ public static class StderrMarkers
     /// jellyfin-ffmpeg 8.1.3 for mjpeg_videotoolbox on Apple silicon. A V4L2 encoder rejecting optional frame-level
     /// rate control (libavcodec/v4l2_m2m_enc.c), and its device search skipping devices that don't fit
     /// (libavcodec/v4l2_m2m.c), both observed with ffmpeg 7.1.5 on a Raspberry Pi's bcm2835-codec.
+    /// jellyfin-ffmpeg's RKMPP encoder logging EAGAIN (-11) at debug level when its output queue is empty or its
+    /// input queue full, then trying again (debian/patches/0042, rkmppenc.c); the first observed with
+    /// jellyfin-ffmpeg 8.1.3 on an RK3588S.
     /// </remarks>
     public static readonly IReadOnlyList<string> Harmless =
     [
@@ -93,6 +96,8 @@ public static class StderrMarkers
         "Failed to set frame level rate control: Invalid argument",
         "v4l2 capture format not supported",
         "v4l2 output format not supported",
+        "Failed to get packet from encoder output queue: -11",
+        "Failed to put frame to encoder input queue: -11",
     ];
 
     /// <summary>Lines ffmpeg prints as a failure spreads through its threads and outputs, which name no cause, so a failure note skips them for the line that does.</summary>

@@ -7,6 +7,7 @@ using Jellyfin.Plugin.HwProbe.Core.Probes;
 using Jellyfin.Plugin.HwProbe.Core.Report;
 using Jellyfin.Plugin.HwProbe.Core.Tests.Devices;
 using Jellyfin.Plugin.HwProbe.Core.Tests.Fixtures;
+using Jellyfin.Plugin.HwProbe.Core.Tests.Verdict;
 using Jellyfin.Plugin.HwProbe.Core.Verdict;
 using Xunit;
 
@@ -162,6 +163,35 @@ public sealed class ProbeEngineIntelTests : IDisposable
         Assert.Equal((BackendVerdict.NotPresent, Catalog.Text("notIntelGpu")), (amd.Verdict, amd.Hint));
         Assert.Null(amd.Fix);
         Assert.NotEqual(Catalog.Text("notIntelGpu"), Assert.Single(report.Backends, b => b.Device == Node).Hint);
+    }
+
+    /// <summary>A render node libva finds no driver for says so and gets no fix, even in a container; recorded on an RK3588S, whose Mali GPU has no VA-API driver.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task NodeWithoutVaapiDriverSaysSo()
+    {
+        var noDriver = CorpusFile.Load("stderr/jellyfin-linux-vaapi-rockchip-no-driver.txt");
+        _runner.Probe = _ => EngineRunner.Exited(251, null, noDriver);
+        var host = new FakeHostPlatform(HostOs.Linux) { OsDescription = "Linux 6.1.115" };
+        host.Files["/.dockerenv"] = string.Empty;
+        host.Files[Node] = string.Empty;
+        var options = new EngineOptions(
+            new FfmpegLocation("/usr/lib/jellyfin-ffmpeg/ffmpeg", FfmpegSource.CommandLine),
+            StopStage.Devices,
+            new HashSet<HwType> { HwType.vaapi },
+            null,
+            TimeSpan.FromSeconds(5),
+            TimeSpan.FromSeconds(5),
+            Path.Combine(_root, "fixtures"),
+            Path.Combine(_root, "reports"),
+            Refresh: true);
+
+        using var engine = new ProbeEngine(_runner, new FakeArgumentSource(), host, TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
+        var report = await engine.RunAsync(options, TestContext.Current.CancellationToken);
+
+        var vaapi = Assert.Single(report.Backends);
+        Assert.Equal((BackendVerdict.NotPresent, Catalog.Text("noVaapiDriver", ("driver", "rockchip_drv_video.so"))), (vaapi.Verdict, vaapi.Hint));
+        Assert.Null(vaapi.Fix);
     }
 
     /// <inheritdoc/>
