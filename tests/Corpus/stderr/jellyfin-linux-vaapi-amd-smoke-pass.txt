@@ -1,0 +1,698 @@
+# Observed: Intel UHD 630 and AMD Radeon RX 480 (radeonsi, Mesa 26.0.8), Jellyfin 12.2 in Docker, jellyfin-ffmpeg 8.1.3. VAAPI smoke probe on the RX 480; exit 0, 10 frames.
+# ffmpeg -hide_banner -v debug -nostats -progress pipe:1 -init_hw_device vaapi=va:/dev/dri/renderD129 -filter_hw_device va -hwaccel vaapi -hwaccel_output_format vaapi -noautorotate -i "/config/cache/hwprobe/fixtures/sha256_07d96bd4c7a1865bacded842208162a7cb8928cc9b9c3d2def36f61c532d9678/h264_8bit.mp4" -frames:v 10 -vf "setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,scale_vaapi=w=320:h=180:format=nv12:extra_hw_frames=24" -c:v h264_vaapi -an -f null -
+Splitting the commandline.
+Reading option '-hide_banner' ... matched as option 'hide_banner' (do not show program banner) with argument '1'.
+Reading option '-v' ... matched as option 'v' (set logging level) with argument 'debug'.
+Reading option '-nostats' ... matched as option 'stats' (print progress report during encoding) with argument 0.
+Reading option '-progress' ... matched as option 'progress' (write program-readable progress information) with argument 'pipe:1'.
+Reading option '-init_hw_device' ... matched as option 'init_hw_device' (initialise hardware device) with argument 'vaapi=va:/dev/dri/renderD129'.
+Reading option '-filter_hw_device' ... matched as option 'filter_hw_device' (set hardware device used when filtering) with argument 'va'.
+Reading option '-hwaccel' ... matched as option 'hwaccel' (use HW accelerated decoding) with argument 'vaapi'.
+Reading option '-hwaccel_output_format' ... matched as option 'hwaccel_output_format' (select output format used with HW accelerated decoding) with argument 'vaapi'.
+Reading option '-noautorotate' ... matched as option 'autorotate' (automatically insert correct rotate filters) with argument 0.
+Reading option '-i' ... matched as input url with argument '/config/cache/hwprobe/fixtures/sha256_07d96bd4c7a1865bacded842208162a7cb8928cc9b9c3d2def36f61c532d9678/h264_8bit.mp4'.
+Reading option '-frames:v' ... matched as option 'frames' (set the number of frames to output) with argument '10'.
+Reading option '-vf' ... matched as option 'vf' (alias for -filter:v (apply filters to video streams)) with argument 'setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,scale_vaapi=w=320:h=180:format=nv12:extra_hw_frames=24'.
+Reading option '-c:v' ... matched as option 'c' (select encoder/decoder ('copy' to copy stream without reencoding)) with argument 'h264_vaapi'.
+Reading option '-an' ... matched as option 'an' (disable audio) with argument '1'.
+Reading option '-f' ... matched as option 'f' (force container format (auto-detected otherwise)) with argument 'null'.
+Reading option '-' ... matched as output url.
+Finished splitting the commandline.
+Parsing a group of options: global .
+Applying option hide_banner (do not show program banner) with argument 1.
+Applying option v (set logging level) with argument debug.
+Applying option nostats (print progress report during encoding) with argument 0.
+Applying option progress (write program-readable progress information) with argument pipe:1.
+[pipe @ 0x55b92bd60a40] Setting default whitelist 'crypto,data'
+Applying option init_hw_device (initialise hardware device) with argument vaapi=va:/dev/dri/renderD129.
+[VAAPI @ 0x55b92bd74dc0] libva: VA-API version 1.24.0
+[VAAPI @ 0x55b92bd74dc0] libva: Trying to open /usr/lib/jellyfin-ffmpeg/lib/dri/radeonsi_drv_video.so
+[VAAPI @ 0x55b92bd74dc0] libva: Found init function __vaDriverInit_1_24
+[VAAPI @ 0x55b92bd74dc0] libva: va_openDriver() returns 0
+[VAAPI @ 0x55b92bd74dc0] Initialised VAAPI connection: version 1.24
+[VAAPI @ 0x55b92bd74dc0] Format 0x3231564e -> nv12.
+[VAAPI @ 0x55b92bd74dc0] Format 0x30313050 -> p010le.
+[VAAPI @ 0x55b92bd74dc0] Format 0x32313050 -> p012le.
+[VAAPI @ 0x55b92bd74dc0] Format 0x36313050 -> unknown.
+[VAAPI @ 0x55b92bd74dc0] Format 0x30323449 -> yuv420p.
+[VAAPI @ 0x55b92bd74dc0] Format 0x32315659 -> yuv420p.
+[VAAPI @ 0x55b92bd74dc0] Format 0x56595559 -> unknown.
+[VAAPI @ 0x55b92bd74dc0] Format 0x32595559 -> yuyv422.
+[VAAPI @ 0x55b92bd74dc0] Format 0x59565955 -> uyvy422.
+[VAAPI @ 0x55b92bd74dc0] Format 0x30303859 -> gray.
+[VAAPI @ 0x55b92bd74dc0] Format 0x50343434 -> yuv444p.
+[VAAPI @ 0x55b92bd74dc0] Format 0x56323234 -> yuv440p.
+[VAAPI @ 0x55b92bd74dc0] Format 0x50424752 -> unknown.
+[VAAPI @ 0x55b92bd74dc0] Format 0x41524742 -> bgra.
+[VAAPI @ 0x55b92bd74dc0] Format 0x41424752 -> rgba.
+[VAAPI @ 0x55b92bd74dc0] Format 0x42475241 -> argb.
+[VAAPI @ 0x55b92bd74dc0] Format 0x58524742 -> bgr0.
+[VAAPI @ 0x55b92bd74dc0] Format 0x58424752 -> rgb0.
+[VAAPI @ 0x55b92bd74dc0] Format 0x30335241 -> unknown.
+[VAAPI @ 0x55b92bd74dc0] Format 0x30334241 -> unknown.
+[VAAPI @ 0x55b92bd74dc0] Format 0x30335258 -> x2rgb10le.
+[VAAPI @ 0x55b92bd74dc0] Format 0x30334258 -> x2bgr10le.
+[VAAPI @ 0x55b92bd74dc0] VAAPI driver: Mesa Gallium driver 26.0.8 for AMD Radeon RX 480 Graphics (radeonsi, polaris10, ACO, DRM 3.64, 6.18.9).
+[VAAPI @ 0x55b92bd74dc0] Driver not found in known nonstandard list, using standard behaviour.
+Applying option filter_hw_device (set hardware device used when filtering) with argument va.
+Successfully parsed a group of options.
+Parsing a group of options: input url /config/cache/hwprobe/fixtures/sha256_07d96bd4c7a1865bacded842208162a7cb8928cc9b9c3d2def36f61c532d9678/h264_8bit.mp4.
+Applying option hwaccel (use HW accelerated decoding) with argument vaapi.
+Applying option hwaccel_output_format (select output format used with HW accelerated decoding) with argument vaapi.
+Applying option noautorotate (automatically insert correct rotate filters) with argument 0.
+Successfully parsed a group of options.
+Opening an input file: /config/cache/hwprobe/fixtures/sha256_07d96bd4c7a1865bacded842208162a7cb8928cc9b9c3d2def36f61c532d9678/h264_8bit.mp4.
+[in#0 @ 0x55b92bebcc80] Opening '/config/cache/hwprobe/fixtures/sha256_07d96bd4c7a1865bacded842208162a7cb8928cc9b9c3d2def36f61c532d9678/h264_8bit.mp4' for reading
+[file @ 0x55b92bebd080] Setting default whitelist 'file,crypto,data'
+[in#0 @ 0x55b92bebcc80] Format mov,mp4,m4a,3gp,3g2,mj2 probed with size=2048 and score=100
+[in#0 @ 0x55b92bebcc80] ISO: File Type Major Brand: isom
+[in#0 @ 0x55b92bebcc80] Unknown dref type 0x206c7275 size 12
+[in#0 @ 0x55b92bebcc80] Processing st: 0, edit list 0 - media time: 1024, duration: 12800
+[in#0 @ 0x55b92bebcc80] Offset DTS by 1024 to make first pts zero.
+[in#0 @ 0x55b92bebcc80] Setting codecpar->delay to 2 for stream st: 0
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x55b92bebcc80] Before avformat_find_stream_info() pos: 93675 bytes read:33896 seeks:1 nb_streams:1
+[h264 @ 0x55b92bebd900] nal_unit_type: 7(SPS), nal_ref_idc: 3
+[h264 @ 0x55b92bebd900] Decoding VUI
+[h264 @ 0x55b92bebd900] nal_unit_type: 8(PPS), nal_ref_idc: 3
+[h264 @ 0x55b92bebd900] nal_unit_type: 7(SPS), nal_ref_idc: 3
+[h264 @ 0x55b92bebd900] Decoding VUI
+[h264 @ 0x55b92bebd900] nal_unit_type: 8(PPS), nal_ref_idc: 3
+[h264 @ 0x55b92bebd900] nal_unit_type: 6(SEI), nal_ref_idc: 0
+[h264 @ 0x55b92bebd900] nal_unit_type: 5(IDR), nal_ref_idc: 3
+[h264 @ 0x55b92bebd900] Format yuv420p chosen by get_format().
+[h264 @ 0x55b92bebd900] Reinit context to 640x368, pix_fmt: yuv420p
+[h264 @ 0x55b92bebd900] no picture 
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x55b92bebcc80] All info found
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x55b92bebcc80] After avformat_find_stream_info() pos: 8933 bytes read:66664 seeks:2 frames:1
+[vist#0:0/h264 @ 0x55b92bec2000] Selecting decoder 'h264' because of requested hwaccel method vaapi
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/config/cache/hwprobe/fixtures/sha256_07d96bd4c7a1865bacded842208162a7cb8928cc9b9c3d2def36f61c532d9678/h264_8bit.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf62.12.103
+  Duration: 00:00:01.00, start: 0.000000, bitrate: 749 kb/s
+  Stream #0:0[0x1](und), 1, 1/12800: Video: h264 (High), 1 reference frame (avc1 / 0x31637661), yuv420p(progressive, left), 640x360 [SAR 1:1 DAR 16:9], 0/1, 739 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+    Metadata:
+      handler_name    : VideoHandler
+      encoder         : Lavc62.28.103 libx264
+Successfully opened the file.
+Parsing a group of options: output url -.
+Applying option frames:v (set the number of frames to output) with argument 10.
+Applying option vf (alias for -filter:v (apply filters to video streams)) with argument setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,scale_vaapi=w=320:h=180:format=nv12:extra_hw_frames=24.
+Applying option c:v (select encoder/decoder ('copy' to copy stream without reencoding)) with argument h264_vaapi.
+Applying option an (disable audio) with argument 1.
+Applying option f (force container format (auto-detected otherwise)) with argument null.
+Successfully parsed a group of options.
+Opening an output file: -.
+[out#0/null @ 0x55b92beef3c0] No explicit maps, mapping streams automatically...
+[vost#0:0/h264_vaapi @ 0x55b92beef740] Created video stream from input stream 0:0
+[AVFilterGraph @ 0x55b92bec1940] Setting 'color_primaries' to value 'bt709'
+[AVFilterGraph @ 0x55b92bec1940] Setting 'color_trc' to value 'bt709'
+[AVFilterGraph @ 0x55b92bec1940] Setting 'colorspace' to value 'bt709'
+[AVFilterGraph @ 0x55b92bec1940] Setting 'w' to value '320'
+[AVFilterGraph @ 0x55b92bec1940] Setting 'h' to value '180'
+[AVFilterGraph @ 0x55b92bec1940] Setting 'format' to value 'nv12'
+[AVFilterGraph @ 0x55b92bec1940] Setting 'extra_hw_frames' to value '24'
+detected 12 logical cores
+[h264 @ 0x55b92befd500] nal_unit_type: 7(SPS), nal_ref_idc: 3
+[h264 @ 0x55b92befd500] Decoding VUI
+[h264 @ 0x55b92befd500] nal_unit_type: 8(PPS), nal_ref_idc: 3
+Successfully opened the file.
+Stream mapping:
+  Stream #0:0 -> #0:0 (h264 (native) -> h264 (h264_vaapi))
+[vost#0:0/h264_vaapi @ 0x55b92beef740] Starting thread...
+[vf#0:0 @ 0x55b92beee100] Starting thread...
+[vist#0:0/h264 @ 0x55b92bec2000] [dec:h264 @ 0x55b92bee8400] Starting thread...
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x55b92bebc3c0] Starting thread...
+Press [q] to stop, [?] for help
+[h264 @ 0x55b92befd500] nal_unit_type: 6(SEI), nal_ref_idc: 0
+[h264 @ 0x55b92befd500] nal_unit_type: 5(IDR), nal_ref_idc: 3
+[h264 @ 0x55b92befd500] Format vaapi chosen by get_format().
+[h264 @ 0x55b92befd500] Format vaapi requires hwaccel h264_vaapi initialisation.
+[h264 @ 0x55b92befd500] Considering format 0x3231564e -> nv12.
+[h264 @ 0x55b92befd500] Picked nv12 (0x3231564e) as best match for yuv420p.
+[AVHWFramesContext @ 0x7f93a80026c0] Created surface 0x1.
+[AVHWFramesContext @ 0x7f93a80026c0] Direct mapping possible.
+[h264 @ 0x55b92befd500] Decode context initialised: 0x2/0x3.
+[h264 @ 0x55b92befd500] Reinit context to 640x368, pix_fmt: vaapi
+[h264 @ 0x55b92befd500] no picture 
+[h264 @ 0x55b92befd500] Param buffer (type 0, 672 bytes) is 0x4.
+[h264 @ 0x55b92befd500] Param buffer (type 1, 240 bytes) is 0x5.
+[h264 @ 0x55b92befd500] Slice 0 param buffer (3128 bytes) is 0x6.
+[h264 @ 0x55b92befd500] Slice 0 data buffer (8204 bytes) is 0x7.
+[h264 @ 0x55b92befd500] Decode to surface 0x1.
+[h264 @ 0x55b92bf06100] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[AVHWFramesContext @ 0x7f93a80026c0] Created surface 0x4.
+[h264 @ 0x55b92bf06100] no picture 
+[h264 @ 0x55b92bf06100] Param buffer (type 0, 672 bytes) is 0x5.
+[h264 @ 0x55b92bf06100] Param buffer (type 1, 240 bytes) is 0x6.
+[h264 @ 0x55b92bf06100] Slice 0 param buffer (3128 bytes) is 0x7.
+[h264 @ 0x55b92bf06100] Slice 0 data buffer (4505 bytes) is 0x8.
+[h264 @ 0x55b92bf06100] Decode to surface 0x4.
+[h264 @ 0x55b92bf01ec0] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[AVHWFramesContext @ 0x7f93a80026c0] Created surface 0x5.
+[h264 @ 0x55b92bf01ec0] Param buffer (type 0, 672 bytes) is 0x6.
+[h264 @ 0x55b92bf01ec0] Param buffer (type 1, 240 bytes) is 0x7.
+[h264 @ 0x55b92bf01ec0] Slice 0 param buffer (3128 bytes) is 0x8.
+[h264 @ 0x55b92bf01ec0] Slice 0 data buffer (3113 bytes) is 0x9.
+[h264 @ 0x55b92bf01ec0] Decode to surface 0x5.
+[AVFilterGraph @ 0x7f93b80010c0] Setting 'color_primaries' to value 'bt709'
+[AVFilterGraph @ 0x7f93b80010c0] Setting 'color_trc' to value 'bt709'
+[AVFilterGraph @ 0x7f93b80010c0] Setting 'colorspace' to value 'bt709'
+[AVFilterGraph @ 0x7f93b80010c0] Setting 'w' to value '320'
+[AVFilterGraph @ 0x7f93b80010c0] Setting 'h' to value '180'
+[AVFilterGraph @ 0x7f93b80010c0] Setting 'format' to value 'nv12'
+[AVFilterGraph @ 0x7f93b80010c0] Setting 'extra_hw_frames' to value '24'
+[h264 @ 0x55b92bf29b80] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[AVHWFramesContext @ 0x7f93a80026c0] Created surface 0x6.
+[h264 @ 0x55b92bf29b80] Param buffer (type 0, 672 bytes) is 0x7.
+[h264 @ 0x55b92bf29b80] Param buffer (type 1, 240 bytes) is 0x8.
+[h264 @ 0x55b92bf29b80] Slice 0 param buffer (3128 bytes) is 0x9.
+[h264 @ 0x55b92bf29b80] Slice 0 data buffer (4404 bytes) is 0xa.
+[h264 @ 0x55b92bf29b80] Decode to surface 0x6.
+[graph -1 input from stream 0:0 @ 0x7f93b8003a80] w:640 h:360 pixfmt:vaapi tb:1/12800 fr:25/1 sar:1/1 csp:unknown range:unknown alpha:unspecified
+[format @ 0x7f93b8004100] Setting 'pix_fmts' to value 'vaapi'
+[format @ 0x7f93b8004100] Setting 'color_ranges' to value 'tv|pc'
+Filter 'Parsed_setparams_0' formats:
+  in[0] 'default':
+    Pixel formats: yuv420p yuyv422 rgb24 bgr24 yuv422p yuv444p yuv410p yuv411p gray monow monob pal8 yuvj420p yuvj422p yuvj444p uyvy422 uyyvyy411 bgr8 bgr4 bgr4_byte rgb8 rgb4 rgb4_byte nv12 nv21 argb rgba abgr bgra gray16be gray16le yuv440p yuvj440p yuva420p rgb48be rgb48le rgb565be rgb565le rgb555be rgb555le bgr565be bgr565le bgr555be bgr555le vaapi yuv420p16le yuv420p16be yuv422p16le yuv422p16be yuv444p16le yuv444p16be dxva2_vld rgb444le rgb444be bgr444le bgr444be ya8 bgr48be bgr48le yuv420p9be yuv420p9le yuv420p10be yuv420p10le yuv422p10be yuv422p10le yuv444p9be yuv444p9le yuv444p10be yuv444p10le yuv422p9be yuv422p9le gbrp gbrp9be gbrp9le gbrp10be gbrp10le gbrp16be gbrp16le yuva422p yuva444p yuva420p9be yuva420p9le yuva422p9be yuva422p9le yuva444p9be yuva444p9le yuva420p10be yuva420p10le yuva422p10be yuva422p10le yuva444p10be yuva444p10le yuva420p16be yuva420p16le yuva422p16be yuva422p16le yuva444p16be yuva444p16le vdpau xyz12le xyz12be nv16 nv20le nv20be rgba64be rgba64le bgra64be bgra64le yvyu422 ya16be ya16le gbrap gbrap16be gbrap16le qsv mmal d3d11va_vld cuda 0rgb rgb0 0bgr bgr0 yuv420p12be yuv420p12le yuv420p14be yuv420p14le yuv422p12be yuv422p12le yuv422p14be yuv422p14le yuv444p12be yuv444p12le yuv444p14be yuv444p14le gbrp12be gbrp12le gbrp14be gbrp14le yuvj411p bayer_bggr8 bayer_rggb8 bayer_gbrg8 bayer_grbg8 bayer_bggr16le bayer_bggr16be bayer_rggb16le bayer_rggb16be bayer_gbrg16le bayer_gbrg16be bayer_grbg16le bayer_grbg16be yuv440p10le yuv440p10be yuv440p12le yuv440p12be ayuv64le ayuv64be videotoolbox_vld p010le p010be gbrap12be gbrap12le gbrap10be gbrap10le mediacodec gray12be gray12le gray10be gray10le p016le p016be d3d11 gray9be gray9le gbrpf32be gbrpf32le gbrapf32be gbrapf32le drm_prime opencl gray14be gray14le grayf32be grayf32le yuva422p12be yuva422p12le yuva444p12be yuva444p12le nv24 nv42 vulkan y210be y210le x2rgb10le x2rgb10be x2bgr10le x2bgr10be p210be p210le p410be p410le p216be p216le p416be p416le vuya rgbaf16be rgbaf16le vuyx p012le p012be y212be y212le xv30be xv30le xv36be xv36le rgbf32be rgbf32le rgbaf32be rgbaf32le p212be p212le p412be p412le gbrap14be gbrap14le d3d12 ayuv uyva vyu444 v30xbe v30xle rgbf16be rgbf16le rgba128be rgba128le rgb96be rgb96le y216be y216le xv48be xv48le gbrpf16be gbrpf16le gbrapf16be gbrapf16le grayf16be grayf16le amf gray32be gray32le yaf32be yaf32le yaf16be yaf16le gbrap32be gbrap32le yuv444p10msbbe yuv444p10msble yuv444p12msbbe yuv444p12msble gbrp10msbbe gbrp10msble gbrp12msbbe gbrp12msble ohcodec nv15 nv20
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+  out[0] 'default':
+    Pixel formats: yuv420p yuyv422 rgb24 bgr24 yuv422p yuv444p yuv410p yuv411p gray monow monob pal8 yuvj420p yuvj422p yuvj444p uyvy422 uyyvyy411 bgr8 bgr4 bgr4_byte rgb8 rgb4 rgb4_byte nv12 nv21 argb rgba abgr bgra gray16be gray16le yuv440p yuvj440p yuva420p rgb48be rgb48le rgb565be rgb565le rgb555be rgb555le bgr565be bgr565le bgr555be bgr555le vaapi yuv420p16le yuv420p16be yuv422p16le yuv422p16be yuv444p16le yuv444p16be dxva2_vld rgb444le rgb444be bgr444le bgr444be ya8 bgr48be bgr48le yuv420p9be yuv420p9le yuv420p10be yuv420p10le yuv422p10be yuv422p10le yuv444p9be yuv444p9le yuv444p10be yuv444p10le yuv422p9be yuv422p9le gbrp gbrp9be gbrp9le gbrp10be gbrp10le gbrp16be gbrp16le yuva422p yuva444p yuva420p9be yuva420p9le yuva422p9be yuva422p9le yuva444p9be yuva444p9le yuva420p10be yuva420p10le yuva422p10be yuva422p10le yuva444p10be yuva444p10le yuva420p16be yuva420p16le yuva422p16be yuva422p16le yuva444p16be yuva444p16le vdpau xyz12le xyz12be nv16 nv20le nv20be rgba64be rgba64le bgra64be bgra64le yvyu422 ya16be ya16le gbrap gbrap16be gbrap16le qsv mmal d3d11va_vld cuda 0rgb rgb0 0bgr bgr0 yuv420p12be yuv420p12le yuv420p14be yuv420p14le yuv422p12be yuv422p12le yuv422p14be yuv422p14le yuv444p12be yuv444p12le yuv444p14be yuv444p14le gbrp12be gbrp12le gbrp14be gbrp14le yuvj411p bayer_bggr8 bayer_rggb8 bayer_gbrg8 bayer_grbg8 bayer_bggr16le bayer_bggr16be bayer_rggb16le bayer_rggb16be bayer_gbrg16le bayer_gbrg16be bayer_grbg16le bayer_grbg16be yuv440p10le yuv440p10be yuv440p12le yuv440p12be ayuv64le ayuv64be videotoolbox_vld p010le p010be gbrap12be gbrap12le gbrap10be gbrap10le mediacodec gray12be gray12le gray10be gray10le p016le p016be d3d11 gray9be gray9le gbrpf32be gbrpf32le gbrapf32be gbrapf32le drm_prime opencl gray14be gray14le grayf32be grayf32le yuva422p12be yuva422p12le yuva444p12be yuva444p12le nv24 nv42 vulkan y210be y210le x2rgb10le x2rgb10be x2bgr10le x2bgr10be p210be p210le p410be p410le p216be p216le p416be p416le vuya rgbaf16be rgbaf16le vuyx p012le p012be y212be y212le xv30be xv30le xv36be xv36le rgbf32be rgbf32le rgbaf32be rgbaf32le p212be p212le p412be p412le gbrap14be gbrap14le d3d12 ayuv uyva vyu444 v30xbe v30xle rgbf16be rgbf16le rgba128be rgba128le rgb96be rgb96le y216be y216le xv48be xv48le gbrpf16be gbrpf16le gbrapf16be gbrapf16le grayf16be grayf16le amf gray32be gray32le yaf32be yaf32le yaf16be yaf16le gbrap32be gbrap32le yuv444p10msbbe yuv444p10msble yuv444p12msbbe yuv444p12msble gbrp10msbbe gbrp10msble gbrp12msbbe gbrp12msble ohcodec nv15 nv20
+    Color spaces: bt709
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+Filter 'Parsed_scale_vaapi_1' formats:
+  in[0] 'default':
+    Pixel formats: vaapi
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+  out[0] 'default':
+    Pixel formats: vaapi
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+Filter 'graph -1 input from stream 0:0' formats:
+  out[0] 'default':
+    Pixel formats: vaapi
+    Color spaces: unknown
+    Color ranges: unknown tv
+    Alpha modes: unspecified premultiplied straight
+Filter 'out_#0:0' formats:
+  in[0] 'default':
+    Pixel formats: yuv420p yuyv422 rgb24 bgr24 yuv422p yuv444p yuv410p yuv411p gray monow monob pal8 yuvj420p yuvj422p yuvj444p uyvy422 uyyvyy411 bgr8 bgr4 bgr4_byte rgb8 rgb4 rgb4_byte nv12 nv21 argb rgba abgr bgra gray16be gray16le yuv440p yuvj440p yuva420p rgb48be rgb48le rgb565be rgb565le rgb555be rgb555le bgr565be bgr565le bgr555be bgr555le vaapi yuv420p16le yuv420p16be yuv422p16le yuv422p16be yuv444p16le yuv444p16be dxva2_vld rgb444le rgb444be bgr444le bgr444be ya8 bgr48be bgr48le yuv420p9be yuv420p9le yuv420p10be yuv420p10le yuv422p10be yuv422p10le yuv444p9be yuv444p9le yuv444p10be yuv444p10le yuv422p9be yuv422p9le gbrp gbrp9be gbrp9le gbrp10be gbrp10le gbrp16be gbrp16le yuva422p yuva444p yuva420p9be yuva420p9le yuva422p9be yuva422p9le yuva444p9be yuva444p9le yuva420p10be yuva420p10le yuva422p10be yuva422p10le yuva444p10be yuva444p10le yuva420p16be yuva420p16le yuva422p16be yuva422p16le yuva444p16be yuva444p16le vdpau xyz12le xyz12be nv16 nv20le nv20be rgba64be rgba64le bgra64be bgra64le yvyu422 ya16be ya16le gbrap gbrap16be gbrap16le qsv mmal d3d11va_vld cuda 0rgb rgb0 0bgr bgr0 yuv420p12be yuv420p12le yuv420p14be yuv420p14le yuv422p12be yuv422p12le yuv422p14be yuv422p14le yuv444p12be yuv444p12le yuv444p14be yuv444p14le gbrp12be gbrp12le gbrp14be gbrp14le yuvj411p bayer_bggr8 bayer_rggb8 bayer_gbrg8 bayer_grbg8 bayer_bggr16le bayer_bggr16be bayer_rggb16le bayer_rggb16be bayer_gbrg16le bayer_gbrg16be bayer_grbg16le bayer_grbg16be yuv440p10le yuv440p10be yuv440p12le yuv440p12be ayuv64le ayuv64be videotoolbox_vld p010le p010be gbrap12be gbrap12le gbrap10be gbrap10le mediacodec gray12be gray12le gray10be gray10le p016le p016be d3d11 gray9be gray9le gbrpf32be gbrpf32le gbrapf32be gbrapf32le drm_prime opencl gray14be gray14le grayf32be grayf32le yuva422p12be yuva422p12le yuva444p12be yuva444p12le nv24 nv42 vulkan y210be y210le x2rgb10le x2rgb10be x2bgr10le x2bgr10be p210be p210le p410be p410le p216be p216le p416be p416le vuya rgbaf16be rgbaf16le vuyx p012le p012be y212be y212le xv30be xv30le xv36be xv36le rgbf32be rgbf32le rgbaf32be rgbaf32le p212be p212le p412be p412le gbrap14be gbrap14le d3d12 ayuv uyva vyu444 v30xbe v30xle rgbf16be rgbf16le rgba128be rgba128le rgb96be rgb96le y216be y216le xv48be xv48le gbrpf16be gbrpf16le gbrapf16be gbrapf16le grayf16be grayf16le amf gray32be gray32le yaf32be yaf32le yaf16be yaf16le gbrap32be gbrap32le yuv444p10msbbe yuv444p10msble yuv444p12msbbe yuv444p12msble gbrp10msbbe gbrp10msble gbrp12msbbe gbrp12msble ohcodec nv15 nv20
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+Filter 'format' formats:
+  in[0] 'default':
+    Pixel formats: vaapi
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: tv pc
+    Alpha modes: unspecified premultiplied straight
+  out[0] 'default':
+    Pixel formats: vaapi
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: tv pc
+    Alpha modes: unspecified premultiplied straight
+[AVFilterGraph @ 0x7f93b80010c0] query_formats: 5 queried, 16 merged, 0 already done, 0 delayed
+[AVHWFramesContext @ 0x7f93b8004b80] Created surface 0x8.
+[AVHWFramesContext @ 0x7f93b8004b80] Direct mapping possible.
+[graph -1 input from stream 0:0 @ 0x7f93b8003a80] video frame properties congruent with link at pts_time: 0
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter input: vaapi, 640x360 (0).
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Mapped colour properties tv bt709/bt709/bt709 left to VA standard 13 chroma siting 0x6 range 0x1.
+    Last message repeated 1 times
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter frame from surface 0x1 to 0x8.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Pipeline parameter buffer is 0xa.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter output: vaapi, 320x180 (0), mode: FAST.
+[vost#0:0/h264_vaapi @ 0x55b92beef740] [enc:h264_vaapi @ 0x55b92bec3c40] Using input frames context (format vaapi) with h264_vaapi encoder.
+[h264_vaapi @ 0x55b92beedd40] Using overrides for AMD.
+[h264_vaapi @ 0x55b92beedd40] Input surface format is nv12.
+[h264_vaapi @ 0x55b92beedd40] Using VAAPI profile VAProfileH264High (7).
+[h264_vaapi @ 0x55b92beedd40] Using VAAPI entrypoint VAEntrypointEncSlice (6).
+[h264_vaapi @ 0x55b92beedd40] Using VAAPI render target format YUV420 (0x1).
+[h264_vaapi @ 0x55b92beedd40] Driver supports RC modes CQP, CBR, VBR.
+[h264_vaapi @ 0x55b92beedd40] Driver does not support ICQ RC mode.
+[h264_vaapi @ 0x55b92beedd40] No quality level set; using default (20).
+[h264_vaapi @ 0x55b92beedd40] RC mode: CQP.
+[h264_vaapi @ 0x55b92beedd40] Block Level bitrate control: OFF.
+[h264_vaapi @ 0x55b92beedd40] RC quality: 20.
+[h264_vaapi @ 0x55b92beedd40] RC framerate: 25/1 (25.00 fps).
+[h264_vaapi @ 0x55b92beedd40] Driver does not report any additional prediction constraints.
+[h264_vaapi @ 0x55b92beedd40] Using intra and P-frames (supported references: 1 / 0).
+[h264_vaapi @ 0x55b92beedd40] All wanted packed headers available (wanted 0xd, found 0x1f).
+[h264_vaapi @ 0x55b92beedd40] Using nv12 as format of reconstructed frames.
+[AVHWFramesContext @ 0x7f93b81be080] Created surface 0xb.
+[AVHWFramesContext @ 0x7f93b81be080] Direct mapping possible.
+[h264_vaapi @ 0x55b92beedd40] Using fixed QP = 20 / 20 / 24 for IDR- / P- / B-frames.
+[h264_vaapi @ 0x55b92beedd40] Using level 1.2.
+Output #0, null, to 'pipe:':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf62.12.103
+  Stream #0:0(und), 0, 1/25: Video: h264 (High), 1 reference frame, nv12(tv, bt709, progressive, left), 320x180 [SAR 1:1 DAR 16:9], 0/1, q=2-31, 25 fps, 25 tbn (default)
+    Metadata:
+      encoder         : Lavc62.28.103 h264_vaapi
+      handler_name    : VideoHandler
+[out#0/null @ 0x55b92beef3c0] Starting thread...
+[out#0/null @ 0x55b92beef3c0] sq: send 0 ts 0.04
+[out#0/null @ 0x55b92beef3c0] sq: receive 0 ts 0.04 queue head 0 ts 0.04
+[h264_vaapi @ 0x55b92beedd40] Input frame: 320x180 (0).
+[h264_vaapi @ 0x55b92beedd40] Pick forced IDR-picture to encode next.
+[h264_vaapi @ 0x55b92beedd40] Issuing encode for pic 0/0 as type IDR.
+[h264_vaapi @ 0x55b92beedd40] No reference pictures.
+[h264_vaapi @ 0x55b92beedd40] Input surface is 0x8.
+[h264_vaapi @ 0x55b92beedd40] Recon surface is 0xb.
+[h264_vaapi @ 0x55b92beedd40] Allocated output buffer 0xd
+[h264_vaapi @ 0x55b92beedd40] Output buffer is 0xd.
+[h264_vaapi @ 0x55b92beedd40] Param buffer (22) is 0xe.
+[h264_vaapi @ 0x55b92beedd40] Param buffer (27) is 0xf.
+[h264_vaapi @ 0x55b92beedd40] Param buffer (23) is 0x10.
+[h264_vaapi @ 0x55b92beedd40] Packed header buffer (1) is 0x11/0x12 (344 bits).
+[h264_vaapi @ 0x55b92beedd40] Packed header buffer (4) is 0x13/0x14 (1264 bits).
+[h264_vaapi @ 0x55b92beedd40] Slice 0: 0-11 (12 rows), 0-239 (240 blocks).
+[h264_vaapi @ 0x55b92beedd40] Packed header buffer (3) is 0x15/0x16 (64 bits).
+[h264_vaapi @ 0x55b92beedd40] Param buffer (24) is 0x17.
+[h264 @ 0x55b92bf712c0] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[AVHWFramesContext @ 0x7f93a80026c0] Created surface 0xe.
+[h264 @ 0x55b92bf712c0] Param buffer (type 0, 672 bytes) is 0xf.
+[h264 @ 0x55b92bf712c0] Param buffer (type 1, 240 bytes) is 0x10.
+[h264 @ 0x55b92bf712c0] Slice 0 param buffer (3128 bytes) is 0x11.
+[h264 @ 0x55b92bf712c0] Slice 0 data buffer (2970 bytes) is 0x12.
+[h264 @ 0x55b92bf712c0] Decode to surface 0xe.
+[h264 @ 0x55b92bf91000] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[AVHWFramesContext @ 0x7f93a80026c0] Created surface 0xf.
+[h264 @ 0x55b92bf91000] Param buffer (type 0, 672 bytes) is 0x10.
+[h264 @ 0x55b92bf91000] Param buffer (type 1, 240 bytes) is 0x11.
+[h264 @ 0x55b92bf91000] Slice 0 param buffer (3128 bytes) is 0x12.
+[h264 @ 0x55b92bf91000] Slice 0 data buffer (4733 bytes) is 0x13.
+[h264 @ 0x55b92bf91000] Decode to surface 0xf.
+[h264 @ 0x55b92bfb0d40] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[AVHWFramesContext @ 0x7f93a80026c0] Created surface 0x10.
+[h264 @ 0x55b92bfb0d40] Param buffer (type 0, 672 bytes) is 0x11.
+[h264 @ 0x55b92bfb0d40] Param buffer (type 1, 240 bytes) is 0x12.
+[h264 @ 0x55b92bfb0d40] Slice 0 param buffer (3128 bytes) is 0x13.
+[h264 @ 0x55b92bfb0d40] Slice 0 data buffer (3308 bytes) is 0x14.
+[h264 @ 0x55b92bfb0d40] Decode to surface 0x10.
+[h264 @ 0x55b92bfd0a80] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[AVHWFramesContext @ 0x7f93a80026c0] Created surface 0x11.
+[h264 @ 0x55b92bfd0a80] Param buffer (type 0, 672 bytes) is 0x12.
+[h264 @ 0x55b92bfd0a80] Param buffer (type 1, 240 bytes) is 0x13.
+[h264 @ 0x55b92bfd0a80] Slice 0 param buffer (3128 bytes) is 0x14.
+[h264 @ 0x55b92bfd0a80] Slice 0 data buffer (2758 bytes) is 0x15.
+[h264 @ 0x55b92bfd0a80] Decode to surface 0x11.
+[h264 @ 0x55b92bff07c0] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[AVHWFramesContext @ 0x7f93a80026c0] Created surface 0x12.
+[h264 @ 0x55b92bff07c0] Param buffer (type 0, 672 bytes) is 0x13.
+[h264 @ 0x55b92bff07c0] Param buffer (type 1, 240 bytes) is 0x14.
+[h264 @ 0x55b92bff07c0] Slice 0 param buffer (3128 bytes) is 0x15.
+[h264 @ 0x55b92bff07c0] Slice 0 data buffer (3069 bytes) is 0x16.
+[h264 @ 0x55b92bff07c0] Decode to surface 0x12.
+[h264 @ 0x55b92c010500] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[AVHWFramesContext @ 0x7f93a80026c0] Created surface 0x13.
+[h264 @ 0x55b92c010500] Param buffer (type 0, 672 bytes) is 0x14.
+[h264 @ 0x55b92c010500] Param buffer (type 1, 240 bytes) is 0x15.
+[h264 @ 0x55b92c010500] Slice 0 param buffer (3128 bytes) is 0x16.
+[h264 @ 0x55b92c010500] Slice 0 data buffer (4410 bytes) is 0x17.
+[h264 @ 0x55b92c010500] Decode to surface 0x13.
+[h264 @ 0x55b92c030240] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[AVHWFramesContext @ 0x7f93a80026c0] Created surface 0x14.
+[h264 @ 0x55b92c030240] Param buffer (type 0, 672 bytes) is 0x15.
+[h264 @ 0x55b92c030240] Param buffer (type 1, 240 bytes) is 0x16.
+[h264 @ 0x55b92c030240] Slice 0 param buffer (3128 bytes) is 0x17.
+[h264 @ 0x55b92c030240] Slice 0 data buffer (3354 bytes) is 0x18.
+[h264 @ 0x55b92c030240] Decode to surface 0x14.
+[h264 @ 0x55b92c04ff80] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[AVHWFramesContext @ 0x7f93a80026c0] Created surface 0x15.
+[h264 @ 0x55b92c04ff80] Param buffer (type 0, 672 bytes) is 0x16.
+[h264 @ 0x55b92c04ff80] Param buffer (type 1, 240 bytes) is 0x17.
+[h264 @ 0x55b92c04ff80] Slice 0 param buffer (3128 bytes) is 0x18.
+[h264 @ 0x55b92c04ff80] Slice 0 data buffer (2974 bytes) is 0x19.
+[h264 @ 0x55b92c04ff80] Decode to surface 0x15.
+[h264 @ 0x55b92c06fcc0] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[AVHWFramesContext @ 0x7f93a80026c0] Created surface 0x16.
+[h264 @ 0x55b92c06fcc0] Param buffer (type 0, 672 bytes) is 0x17.
+[h264 @ 0x55b92c06fcc0] Param buffer (type 1, 240 bytes) is 0x18.
+[h264 @ 0x55b92c06fcc0] Slice 0 param buffer (3128 bytes) is 0x19.
+[h264 @ 0x55b92c06fcc0] Slice 0 data buffer (3154 bytes) is 0x1a.
+[h264 @ 0x55b92c06fcc0] Decode to surface 0x16.
+[h264 @ 0x55b92befd500] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[AVHWFramesContext @ 0x7f93a80026c0] Created surface 0x17.
+[h264 @ 0x55b92befd500] Param buffer (type 0, 672 bytes) is 0x18.
+[h264 @ 0x55b92befd500] Param buffer (type 1, 240 bytes) is 0x19.
+[h264 @ 0x55b92befd500] Slice 0 param buffer (3128 bytes) is 0x1a.
+[h264 @ 0x55b92befd500] Slice 0 data buffer (4342 bytes) is 0x1b.
+[h264 @ 0x55b92befd500] Decode to surface 0x17.
+[h264 @ 0x55b92bf06100] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[AVHWFramesContext @ 0x7f93a80026c0] Created surface 0x18.
+[h264 @ 0x55b92bf06100] Param buffer (type 0, 672 bytes) is 0x19.
+[h264 @ 0x55b92bf06100] Param buffer (type 1, 240 bytes) is 0x1a.
+[h264 @ 0x55b92bf06100] Slice 0 param buffer (3128 bytes) is 0x1b.
+[h264 @ 0x55b92bf06100] Slice 0 data buffer (3403 bytes) is 0x1c.
+[h264 @ 0x55b92bf06100] Decode to surface 0x18.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter input: vaapi, 640x360 (512).
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x55b92bebc3c0] EOF while reading input
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x55b92bebc3c0] Terminating thread with return code 0 (success)
+[AVHWFramesContext @ 0x7f93b8004b80] Created surface 0x19.
+[h264 @ 0x55b92bf01ec0] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Mapped colour properties tv bt709/bt709/bt709 left to VA standard 13 chroma siting 0x6 range 0x1.
+    Last message repeated 1 times
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter frame from surface 0x5 to 0x19.
+[AVHWFramesContext @ 0x7f93a80026c0] Created surface 0x1a.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Pipeline parameter buffer is 0x1b.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter output: vaapi, 320x180 (512), mode: FAST.
+[out#0/null @ 0x55b92beef3c0] sq: send 0 ts 0.08
+[out#0/null @ 0x55b92beef3c0] sq: receive 0 ts 0.08 queue head 0 ts 0.08
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter input: vaapi, 640x360 (1024).
+[h264_vaapi @ 0x55b92beedd40] Input frame: 320x180 (1).
+[AVHWFramesContext @ 0x7f93b81be080] Created surface 0x1d.
+[h264_vaapi @ 0x55b92beedd40] Pick normal P-picture to encode next.
+[h264_vaapi @ 0x55b92beedd40] Issuing encode for pic 1/1 as type P.
+[h264_vaapi @ 0x55b92beedd40] L0 refers toParam buffer (type 0, 672 bytes) is 0x1b.
+[AVHWFramesContext @ 0x7f93b8004b80] Created surface 0x1c.
+[h264 @ 0x55b92bf01ec0] Param buffer (type 1, 240 bytes) is 0x1e.
+[h264_vaapi @ 0x55b92beedd40]  0/0.
+[h264_vaapi @ 0x55b92beedd40] Input surface is 0x19.
+[h264_vaapi @ 0x55b92beedd40] Recon surface is 0x1d.
+[h264_vaapi @ 0x55b92beedd40] Allocated output buffer 0x20
+[h264_vaapi @ 0x55b92beedd40] Output buffer is 0x20.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Mapped colour properties tv bt709/bt709/bt709 left to VA standard 13 chroma siting 0x6 range 0x1.
+    Last message repeated 1 times
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter frame from surface 0x4 to 0x1c.
+[h264_vaapi @ 0x55b92beedd40] Param buffer (23) is 0x21.
+[h264_vaapi @ 0x55b92beedd40] Slice 0: 0-11 (12 rows), 0-239 (240 blocks).
+[h264_vaapi @ 0x55b92beedd40] Default RefPicList0 for fn=1/poc=2:  fn=0/poc=0
+[h264 @ 0x55b92bf01ec0] Slice 0 param buffer (3128 bytes) is 0x1f.
+[h264_vaapi @ 0x55b92beedd40] Packed header buffer (3) is 0x23/0x24 (72 bits).
+[h264_vaapi @ 0x55b92beedd40] Param buffer (24) is 0x25.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Pipeline parameter buffer is 0x22.
+[h264 @ 0x55b92bf01ec0] Slice 0 data buffer (3003 bytes) is 0x26.
+[h264 @ 0x55b92bf01ec0] Decode to surface 0x1a.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter output: vaapi, 320x180 (1024), mode: FAST.
+[out#0/null @ 0x55b92beef3c0] sq: send 0 ts 0.12
+[out#0/null @ 0x55b92beef3c0] sq: receive 0 ts 0.12 queue head 0 ts 0.12
+[h264_vaapi @ 0x55b92beedd40] Input frame: 320x180 (2).
+[AVHWFramesContext @ 0x7f93b81be080] Created surface 0x1b.
+[h264 @ 0x55b92bf29b80] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[h264_vaapi @ 0x55b92beedd40] Pick normal P-picture to encode next.
+[h264_vaapi @ 0x55b92beedd40] Issuing encode for pic 2/2 as type P.
+[h264_vaapi @ 0x55b92beedd40] L0 refers to 1/1.
+[h264_vaapi @ 0x55b92beedd40] Input surface is 0x1c.
+[h264_vaapi @ 0x55b92beedd40] Recon surface is 0x1b.
+[h264_vaapi @ 0x55b92beedd40] Allocated output buffer 0x1e
+[h264_vaapi @ 0x55b92beedd40] Output buffer is 0x1e.
+[h264_vaapi @ 0x55b92beedd40] Param buffer (23) is 0x1f.
+[h264_vaapi @ 0x55b92beedd40] Slice 0: 0-11 (12 rows), 0-239 (240 blocks).
+[h264_vaapi @ 0x55b92beedd40] Default RefPicList0 for fn=2/poc=4:  fn=1/poc=2
+[h264_vaapi @ 0x55b92beedd40] Packed header buffer (3) is 0x21/0x22 (72 bits).
+[h264_vaapi @ 0x55b92beedd40] Param buffer (24) is 0x23.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter input: vaapi, 640x360 (1536).
+[AVHWFramesContext @ 0x7f93b8004b80] Created surface 0x1f.
+[h264 @ 0x55b92bf29b80] Param buffer (type 0, 672 bytes) is 0x21.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Mapped colour properties tv bt709/bt709/bt709 left to VA standard 13 chroma siting 0x6 range 0x1.
+    Last message repeated 1 times
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter frame from surface 0xe to 0x1f.
+[h264 @ 0x55b92bf29b80] Param buffer (type 1, 240 bytes) is 0x22.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Pipeline parameter buffer is 0x23.
+[h264 @ 0x55b92bf29b80] Slice 0 param buffer (3128 bytes) is 0x24.
+[h264 @ 0x55b92bf29b80] Slice 0 data buffer (2964 bytes) is 0x25.
+[h264 @ 0x55b92bf29b80] Decode to surface 0x5.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter output: vaapi, 320x180 (1536), mode: FAST.
+[out#0/null @ 0x55b92beef3c0] sq: send 0 ts 0.16
+[out#0/null @ 0x55b92beef3c0] sq: receive 0 ts 0.16 queue head 0 ts 0.16
+[h264_vaapi @ 0x55b92beedd40] Input frame: 320x180 (3).
+[AVHWFramesContext @ 0x7f93b81be080] Created surface 0x21.
+[h264_vaapi @ 0x55b92beedd40] Pick normal P-picture to encode next.
+[h264 @ 0x55b92bf712c0] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[AVHWFramesContext @ 0x7f93a80026c0] Created surface 0x22.
+[h264_vaapi @ 0x55b92beedd40] Issuing encode for pic 3/3 as type P.
+[h264_vaapi @ 0x55b92beedd40] L0 refers to 2/2.
+[h264_vaapi @ 0x55b92beedd40] Input surface is 0x1f.
+[h264_vaapi @ 0x55b92beedd40] Recon surface is 0x21.
+[h264_vaapi @ 0x55b92beedd40] Allocated output buffer 0x23
+[h264_vaapi @ 0x55b92beedd40] Output buffer is 0x23.
+[h264_vaapi @ 0x55b92beedd40] Param buffer (23) is 0x24.
+[h264_vaapi @ 0x55b92beedd40] Slice 0: 0-11 (12 rows), 0-239 (240 blocks).
+[h264_vaapi @ 0x55b92beedd40] Default RefPicList0 for fn=3/poc=6:  fn=2/poc=4
+[h264_vaapi @ 0x55b92beedd40] Packed header buffer (3) is 0x25/0x26 (72 bits).
+[h264_vaapi @ 0x55b92beedd40] Param buffer (24) is 0x27.
+[h264_vaapi @ 0x55b92beedd40] Sync to pic 0/0 (input surface 0x8).
+[h264 @ 0x55b92bf712c0] Param buffer (type 0, 672 bytes) is 0x24.
+[h264 @ 0x55b92bf712c0] Param buffer (type 1, 240 bytes) is 0x25.
+[h264 @ 0x55b92bf712c0] Slice 0 param buffer (3128 bytes) is 0x26.
+[h264 @ 0x55b92bf712c0] Slice 0 data buffer (4057 bytes) is 0x27.
+[h264 @ 0x55b92bf712c0] Decode to surface 0x22.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter input: vaapi, 640x360 (2048).
+[AVHWFramesContext @ 0x7f93b8004b80] Created surface 0x24.
+[h264 @ 0x55b92bf91000] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Mapped colour properties tv bt709/bt709/bt709 left to VA standard 13 chroma siting 0x6 range 0x1.
+    Last message repeated 1 times
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter frame from surface 0x6 to 0x24.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Pipeline parameter buffer is 0x25.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter output: vaapi, 320x180 (2048), mode: FAST.
+[out#0/null @ 0x55b92beef3c0] sq: send 0 ts 0.2
+[h264 @ 0x55b92bf91000] Param buffer (type 0, 672 bytes) is 0x25.
+[h264 @ 0x55b92bf91000] Param buffer (type 1, 240 bytes) is 0x26.
+[h264 @ 0x55b92bf91000] Slice 0 param buffer (3128 bytes) is 0x27.
+[h264 @ 0x55b92bf91000] Slice 0 data buffer (3562 bytes) is 0x28.
+[h264 @ 0x55b92bf91000] Decode to surface 0xe.
+[out#0/null @ 0x55b92beef3c0] sq: receive 0 ts 0.2 queue head 0 ts 0.2
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter input: vaapi, 640x360 (2560).
+[AVHWFramesContext @ 0x7f93b8004b80] Created surface 0x25.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Mapped colour properties tv bt709/bt709/bt709 left to VA standard 13 chroma siting 0x6 range 0x1.
+    Last message repeated 1 times
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter frame from surface 0x11 to 0x25.
+[h264 @ 0x55b92bfb0d40] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Pipeline parameter buffer is 0x26.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter output: vaapi, 320x180 (2560), mode: FAST.
+[out#0/null @ 0x55b92beef3c0] sq: send 0 ts 0.24
+[out#0/null @ 0x55b92beef3c0] sq: receive 0 ts 0.24 queue head 0 ts 0.24
+[h264 @ 0x55b92bfb0d40] Param buffer (type 0, 672 bytes) is 0x26.
+[h264 @ 0x55b92bfb0d40] Param buffer (type 1, 240 bytes) is 0x27.
+[h264 @ 0x55b92bfb0d40] Slice 0 param buffer (3128 bytes) is 0x28.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter input: vaapi, 640x360 (3072).
+[h264 @ 0x55b92bfb0d40] Slice 0 data buffer (3241 bytes) is 0x29.
+[h264 @ 0x55b92bfb0d40] Decode to surface 0x4.
+[AVHWFramesContext @ 0x7f93b8004b80] Created surface 0x2a.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Mapped colour properties tv bt709/bt709/bt709 left to VA standard 13 chroma siting 0x6 range 0x1.
+    Last message repeated 1 times
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter frame from surface 0x10 to 0x2a.
+[h264 @ 0x55b92bfd0a80] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Pipeline parameter buffer is 0x26.
+[h264 @ 0x55b92bfd0a80] Param buffer (type 0, 672 bytes) is 0x27.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter output: vaapi, 320x180 (3072), mode: FAST.
+[h264 @ 0x55b92bfd0a80] Param buffer (type 1, 240 bytes) is 0x26.
+[h264 @ 0x55b92bfd0a80] Slice 0 param buffer (3128 bytes) is 0x28.
+[out#0/null @ 0x55b92beef3c0] sq: send 0 ts 0.28
+[h264 @ 0x55b92bfd0a80] Slice 0 data buffer (3134 bytes) is 0x29.
+[h264 @ 0x55b92bfd0a80] Decode to surface 0x11.
+[out#0/null @ 0x55b92beef3c0] sq: receive 0 ts 0.28 queue head 0 ts 0.28
+[h264 @ 0x55b92bff07c0] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[h264 @ 0x55b92bff07c0] Param buffer (type 0, 672 bytes) is 0x26.
+[h264 @ 0x55b92bff07c0] Param buffer (type 1, 240 bytes) is 0x27.
+[h264 @ 0x55b92bff07c0] Slice 0 param buffer (3128 bytes) is 0x28.
+[h264 @ 0x55b92bff07c0] Slice 0 data buffer (3544 bytes) is 0x29.
+[h264 @ 0x55b92bff07c0] Decode to surface 0x1.
+[h264 @ 0x55b92c010500] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[AVHWFramesContext @ 0x7f93a80026c0] Created surface 0x26.
+[h264 @ 0x55b92c010500] Param buffer (type 0, 672 bytes) is 0x27.
+[h264 @ 0x55b92c010500] Param buffer (type 1, 240 bytes) is 0x28.
+[h264 @ 0x55b92c010500] Slice 0 param buffer (3128 bytes) is 0x29.
+[h264 @ 0x55b92c010500] Slice 0 data buffer (3451 bytes) is 0x2b.
+[h264 @ 0x55b92c010500] Decode to surface 0x26.
+[h264_vaapi @ 0x55b92beedd40] Output buffer: 34 bytes (status 10000000).
+[h264 @ 0x55b92c030240] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[h264_vaapi @ 0x55b92beedd40] Output buffer: 8 bytes (status 10000000).
+[h264_vaapi @ 0x55b92beedd40] Output buffer: 158 bytes (status 10000000).
+[h264_vaapi @ 0x55b92beedd40] Output buffer: 4801 bytes (status 00000000).
+[h264_vaapi @ 0x55b92beedd40] Output read for pic 0/0.
+[h264_vaapi @ 0x55b92beedd40] Output packet: pts 0, dts 0, size 5001 bytes.
+[h264_vaapi @ 0x55b92beedd40] Input frame: 320x180 (4).
+[AVHWFramesContext @ 0x7f93b81be080] Created surface 0x27.
+[h264_vaapi @ 0x55b92beedd40] Pick normal P-picture to encode next.
+[h264_vaapi @ 0x55b92beedd40] Issuing encode for pic 4/4 as type P.
+[h264_vaapi @ 0x55b92beedd40] L0 refers to 3/3.
+[h264_vaapi @ 0x55b92beedd40] Input surface is 0x24.
+[h264_vaapi @ 0x55b92beedd40] Recon surface is 0x27.
+[h264_vaapi @ 0x55b92beedd40] Output buffer is 0xd.
+[h264_vaapi @ 0x55b92beedd40] Param buffer (23) is 0x28.
+[h264_vaapi @ 0x55b92beedd40] Slice 0: 0-11 (12 rows), 0-239 (240 blocks).
+[h264_vaapi @ 0x55b92beedd40] Default RefPicList0 for fn=4/poc=8:  fn=3/poc=6
+[h264 @ 0x55b92c030240] Param buffer (type 0, 672 bytes) is 0x29.
+[h264_vaapi @ 0x55b92beedd40] Packed header buffer (3) is 0x2b/0x2c (72 bits).
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter input: vaapi, 640x360 (3584).
+[h264 @ 0x55b92c030240] Param buffer (type 1, 240 bytes) is 0x2d.
+[h264_vaapi @ 0x55b92beedd40] Param buffer (24) is 0x2e.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Mapped colour properties tv bt709/bt709/bt709 left to VA standard 13 chroma siting 0x6 range 0x1.
+    Last message repeated 1 times
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter frame from surface 0x12 to 0x8.
+[h264 @ 0x55b92c030240] Slice 0 param buffer (3128 bytes) is 0x2f.
+[h264_vaapi @ 0x55b92beedd40] Sync to pic 1/1 (input surface 0x19).
+[h264_vaapi @ 0x55b92beedd40] Output buffer: 2711 bytes (status 00000000).
+[h264 @ 0x55b92c030240] Slice 0 data buffer (2982 bytes) is 0x28.
+[h264_vaapi @ 0x55b92beedd40] Output read for pic 1/1.
+[h264_vaapi @ 0x55b92beedd40] Output packet: pts 1, dts 1, size 2711 bytes.
+[h264 @ 0x55b92c030240] Decode to surface 0x6.
+[h264_vaapi @ 0x55b92beedd40] Input frame: 320x180 (5).
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Pipeline parameter buffer is 0x2b.
+[h264 @ 0x55b92c04ff80] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter output: vaapi, 320x180 (3584), mode: FAST.
+[h264 @ 0x55b92c04ff80] Param buffer (type 0, 672 bytes) is 0x29.
+[out#0/null @ 0x55b92beef3c0] sq: send 0 ts 0.32
+[h264 @ 0x55b92c04ff80] Param buffer (type 1, 240 bytes) is 0x2b.
+[AVHWFramesContext @ 0x7f93b81be080] Created surface 0x28.
+[h264_vaapi @ 0x55b92beedd40] Pick normal P-picture to encode next.
+[h264_vaapi @ 0x55b92beedd40] Issuing encode for pic 5/5 as type P.
+[h264_vaapi @ 0x55b92beedd40] L0 refers to 4/4Slice 0 param buffer (3128 bytes) is 0x2c.
+[h264_vaapi @ 0x55b92beedd40] .
+[h264_vaapi @ 0x55b92beedd40] Input surface is 0x25.
+[h264_vaapi @ 0x55b92beedd40] Recon surface is 0x28.
+[h264 @ 0x55b92c04ff80] Slice 0 data buffer (3083 bytes) is 0x2d.
+[out#0/null @ 0x55b92beef3c0] sq: receive 0 ts 0.32 queue head 0 ts 0.32
+[h264 @ 0x55b92c04ff80] Decode to surface 0x10.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter input: vaapi, 640x360 (4096).
+[h264_vaapi @ 0x55b92beedd40] Output buffer is 0x20.
+[vist#0:0/h264 @ 0x55b92bec2000] [dec:h264 @ 0x55b92bee8400] Decoder thread received EOF packet
+[h264_vaapi @ 0x55b92beedd40] Param buffer (23) is 0x29.
+[h264_vaapi @ 0x55b92beedd40] Slice 0: 0-11 (12 rows), 0-239 (240 blocks).
+[h264_vaapi @ 0x55b92beedd40] Default RefPicList0 for fn=5/poc=10:  fn=4/poc=8
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Mapped colour properties tv bt709/bt709/bt709 left to VA standard 13 chroma siting 0x6 range 0x1.
+    Last message repeated 1 times
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter frame from surface 0xf to 0x19.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Pipeline parameter buffer is 0x2d.
+[h264_vaapi @ 0x55b92beedd40] Packed header buffer (3) is 0x2b/0x2c (72 bits).
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter output: vaapi, 320x180 (4096), mode: FAST.
+[h264_vaapi @ 0x55b92beedd40] Param buffer (24) is 0x2d.
+[out#0/null @ 0x55b92beef3c0] sq: send 0 ts 0.36
+[out#0/null @ 0x55b92beef3c0] sq: receive 0 ts 0.36 queue head 0 ts 0.36
+[h264_vaapi @ 0x55b92beedd40] Sync to pic 2/2 (input surface 0x1c).
+[h264_vaapi @ 0x55b92beedd40] Output buffer: 2414 bytes (status 00000000).
+[h264_vaapi @ 0x55b92beedd40] Output read for pic 2/2.
+[h264_vaapi @ 0x55b92beedd40] Output packet: pts 2, dts 2, size 2414 bytes.
+[h264_vaapi @ 0x55b92beedd40] Input frame: 320x180 (6).
+[h264_vaapi @ 0x55b92beedd40] Pick normal P-picture to encode next.
+[h264_vaapi @ 0x55b92beedd40] Issuing encode for pic 6/6 as type P.
+[h264_vaapi @ 0x55b92beedd40] L0 refers toFilter input: vaapi, 640x360 (4608).
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Mapped colour properties tv bt709/bt709/bt709 left to VA standard 13 chroma siting 0x6 range 0x1.
+    Last message repeated 1 times
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter frame from surface 0x15 to 0x1c.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Pipeline parameter buffer is 0x29.
+[h264_vaapi @ 0x55b92beedd40]  5/5.
+[h264_vaapi @ 0x55b92beedd40] Input surface is 0x2a.
+[h264_vaapi @ 0x55b92beedd40] Recon surface is 0xb.
+[h264_vaapi @ 0x55b92beedd40] Output buffer is 0x1e.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter output: vaapi, 320x180 (4608), mode: FAST.
+[h264_vaapi @ 0x55b92beedd40] Param buffer (23) is 0x29.
+[h264_vaapi @ 0x55b92beedd40] Slice 0: 0-11 (12 rows), 0-239 (240 blocks).
+[h264_vaapi @ 0x55b92beedd40] Default RefPicList0 for fn=6/poc=12:  fn=5/poc=10
+[h264_vaapi @ 0x55b92beedd40] Packed header buffer (3) is 0x2b/0x2c (72 bits).
+[h264_vaapi @ 0x55b92beedd40] Param buffer (24) is 0x2d.
+[out#0/null @ 0x55b92beef3c0] sq: send 0 ts 0.4
+[out#0/null @ 0x55b92beef3c0] sq: 0 frames_max 10 reached
+[out#0/null @ 0x55b92beef3c0] sq: finish 0; head ts 0.4
+[out#0/null @ 0x55b92beef3c0] sq: finish queue
+[out#0/null @ 0x55b92beef3c0] sq: receive 0 ts 0.4 queue head 0 ts 0.4
+[h264_vaapi @ 0x55b92beedd40] Sync to pic 3/3 (input surface 0x1f).
+[h264_vaapi @ 0x55b92beedd40] Output buffer: 2685 bytes (status 00000000).
+[h264_vaapi @ 0x55b92beedd40] Output read for pic 3/3.
+[h264_vaapi @ 0x55b92beedd40] Output packet: pts 3, dts 3, size 2685 bytes.
+[h264_vaapi @ 0x55b92beedd40] Input frame: 320x180 (7).
+[out#0/null @ 0x55b92beef3c0] sq: 0 EOF
+[out#0/null @ 0x55b92beef3c0] sq: finish queue
+[h264_vaapi @ 0x55b92beedd40] Pick normal P-picture to encode next.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter input: vaapi, 640x360 (5120).
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Mapped colour properties tv bt709/bt709/bt709 left to VA standard 13 chroma siting 0x6 range 0x1.
+    Last message repeated 1 times
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter frame from surface 0x14 to 0x1f.
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Pipeline parameter buffer is 0x29.
+[h264_vaapi @ 0x55b92beedd40] Issuing encode for pic 7/7 as type P.
+[h264_vaapi @ 0x55b92beedd40] L0 refers to 6/6.
+[h264_vaapi @ 0x55b92beedd40] Input surface is 0x8.
+[h264_vaapi @ 0x55b92beedd40] Recon surface is 0x1d.
+[h264_vaapi @ 0x55b92beedd40] Output buffer is 0x23.
+[h264_vaapi @ 0x55b92beedd40] Param buffer (23) is 0x29.
+[h264_vaapi @ 0x55b92beedd40] Slice 0: 0-11 (12 rows), 0-239 (240 blocks).
+[h264_vaapi @ 0x55b92beedd40] Default RefPicList0 for fn=7/poc=14:  fn=6/poc=12
+[Parsed_scale_vaapi_1 @ 0x7f93b8003140] Filter output: vaapi, 320x180 (5120), mode: FAST.
+[vf#0:0 @ 0x55b92beee100] All consumers returned EOF
+[h264_vaapi @ 0x55b92beedd40] Packed header buffer (3) is 0x2b/0x2c (72 bits).
+[h264_vaapi @ 0x55b92beedd40] Param buffer (24) is 0x2d.
+[h264_vaapi @ 0x55b92beedd40] Sync to pic 4/4 (input surface 0x24).
+[h264_vaapi @ 0x55b92beedd40] Output buffer: 2601 bytes (status 00000000).
+[h264_vaapi @ 0x55b92beedd40] Output read for pic 4/4.
+[h264_vaapi @ 0x55b92beedd40] Output packet: pts 4, dts 4, size 2601 bytes.
+[h264_vaapi @ 0x55b92beedd40] Input frame: 320x180 (8).
+[h264_vaapi @ 0x55b92beedd40] Pick normal P-picture to encode next.
+[h264_vaapi @ 0x55b92beedd40] Issuing encode for pic 8/8 as type P.
+[h264_vaapi @ 0x55b92beedd40] L0 refers to 7/7.
+[h264_vaapi @ 0x55b92beedd40] Input surface is 0x19.
+[h264_vaapi @ 0x55b92beedd40] Recon surface is 0x1b.
+[h264_vaapi @ 0x55b92beedd40] Output buffer is 0xd.
+[h264_vaapi @ 0x55b92beedd40] Param buffer (23) is 0x7.
+[h264_vaapi @ 0x55b92beedd40] Slice 0: 0-11 (12 rows), 0-239 (240 blocks).
+[h264_vaapi @ 0x55b92beedd40] Default RefPicList0 for fn=8/poc=16:  fn=7/poc=14
+[h264_vaapi @ 0x55b92beedd40] Packed header buffer (3) is 0x9/0x29 (72 bits).
+[h264_vaapi @ 0x55b92beedd40] Param buffer (24) is 0x2b.
+[h264_vaapi @ 0x55b92beedd40] Sync to pic 5/5 (input surface 0x25).
+[h264_vaapi @ 0x55b92beedd40] Output buffer: 2552 bytes (status 00000000).
+[h264_vaapi @ 0x55b92beedd40] Output read for pic 5/5.
+[h264_vaapi @ 0x55b92beedd40] Output packet: pts 5, dts 5, size 2552 bytes.
+[out#0/null @ 0x55b92beef3c0] sq: 0 EOF
+[out#0/null @ 0x55b92beef3c0] sq: finish queue
+[h264_vaapi @ 0x55b92beedd40] Input frame: 320x180 (9).
+[h264_vaapi @ 0x55b92beedd40] Pick normal P-picture to encode next.
+[h264_vaapi @ 0x55b92beedd40] Issuing encode for pic 9/9 as type P.
+[h264_vaapi @ 0x55b92beedd40] L0 refers to 8/8.
+[h264_vaapi @ 0x55b92beedd40] Input surface is 0x1c.
+[h264_vaapi @ 0x55b92beedd40] Recon surface is 0x21.
+[vf#0:0 @ 0x55b92beee100] Terminating thread with return code 0 (success)
+[h264_vaapi @ 0x55b92beedd40] Output buffer is 0x20.
+[h264_vaapi @ 0x55b92beedd40] Param buffer (23) is 0x7.
+[h264_vaapi @ 0x55b92beedd40] Slice 0: 0-11 (12 rows), 0-239 (240 blocks).
+[h264_vaapi @ 0x55b92beedd40] Default RefPicList0 for fn=9/poc=18:  fn=8/poc=16
+[h264_vaapi @ 0x55b92beedd40] Packed header buffer (3) is 0x9/0x29 (72 bits).
+[h264_vaapi @ 0x55b92beedd40] Param buffer (24) is 0x2b.
+[h264_vaapi @ 0x55b92beedd40] Sync to pic 6/6 (input surface 0x2a).
+[h264_vaapi @ 0x55b92beedd40] Output buffer: 2733 bytes (status 00000000).
+[h264_vaapi @ 0x55b92beedd40] Output read for pic 6/6.
+[h264_vaapi @ 0x55b92beedd40] Output packet: pts 6, dts 6, size 2733 bytes.
+[vost#0:0/h264_vaapi @ 0x55b92beef740] [enc:h264_vaapi @ 0x55b92bec3c40] Encoder thread received EOF
+[h264_vaapi @ 0x55b92beedd40] Sync to pic 7/7 (input surface 0x8).
+[vist#0:0/h264 @ 0x55b92bec2000] [dec:h264 @ 0x55b92bee8400] Decoder returned EOF, finishing
+[h264_vaapi @ 0x55b92beedd40] Output buffer: 2600 bytes (status 00000000).
+[h264_vaapi @ 0x55b92beedd40] Output read for pic 7/7.
+[h264_vaapi @ 0x55b92beedd40] Output packet: pts 7, dts 7, size 2600 bytes.
+[h264_vaapi @ 0x55b92beedd40] Sync to pic 8/8 (input surface 0x19).
+[h264_vaapi @ 0x55b92beedd40] Output buffer: 2840 bytes (status 00000000).
+[h264_vaapi @ 0x55b92beedd40] Output read for pic 8/8.
+[h264_vaapi @ 0x55b92beedd40] Output packet: pts 8, dts 8, size 2840 bytes.
+[h264_vaapi @ 0x55b92beedd40] Sync to pic 9/9 (input surface 0x1c).
+[vist#0:0/h264 @ 0x55b92bec2000] [dec:h264 @ 0x55b92bee8400] Terminating thread with return code 0 (success)
+[h264_vaapi @ 0x55b92beedd40] Output buffer: 2597 bytes (status 00000000).
+[h264_vaapi @ 0x55b92beedd40] Output read for pic 9/9.
+[h264_vaapi @ 0x55b92beedd40] Output packet: pts 9, dts 9, size 2597 bytes.
+[vost#0:0/h264_vaapi @ 0x55b92beef740] Terminating thread with return code 0 (success)
+[out#0/null @ 0x55b92beef3c0] All streams finished
+[out#0/null @ 0x55b92beef3c0] Terminating thread with return code 0 (success)
+[out#0/null @ 0x55b92beef3c0] Output file #0 (pipe:):
+[out#0/null @ 0x55b92beef3c0]   Output stream #0:0 (video): 10 frames encoded; 10 packets muxed (28734 bytes); 
+[out#0/null @ 0x55b92beef3c0]   Total: 10 packets (28734 bytes) muxed
+[out#0/null @ 0x55b92beef3c0] video:28KiB audio:0KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+frame=   10 fps=0.0 q=-0.0 Lsize=N/A time=00:00:00.40 bitrate=N/A speed=1.93x elapsed=0:00:00.20    
+[AVIOContext @ 0x55b92bd74c80] Statistics: 178 bytes written, 0 seeks, 1 writeouts
+[h264_vaapi @ 0x55b92beedd40] Freed output buffer 0x20
+[h264_vaapi @ 0x55b92beedd40] Freed output buffer 0xd
+[h264_vaapi @ 0x55b92beedd40] Freed output buffer 0x23
+[h264_vaapi @ 0x55b92beedd40] Freed output buffer 0x1e
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x55b92bebc3c0] Input file #0 (/config/cache/hwprobe/fixtures/sha256_07d96bd4c7a1865bacded842208162a7cb8928cc9b9c3d2def36f61c532d9678/h264_8bit.mp4):
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x55b92bebc3c0]   Input stream #0:0 (video): 25 packets read (92499 bytes); 13 frames decoded; 0 decode errors; 
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0x55b92bebc3c0]   Total: 25 packets (92499 bytes) demuxed
+[AVIOContext @ 0x55b92bec51c0] Statistics: 127523 bytes read, 2 seeks
+
+Exiting with exit code 0

@@ -24,12 +24,15 @@ public sealed class ProbeEngineIntelTests : IDisposable
     private readonly string _root = Directory.CreateTempSubdirectory("hwprobe-opencl-").FullName;
     private readonly EngineRunner _runner = new("jellyfin-8.1.2-linux-amd64");
 
-    /// <summary>A missing OpenCL runtime keeps the tier upstream picks, warns, and gives tone-map failures the OpenCL remedy.</summary>
+    /// <summary>A missing OpenCL runtime, or one that aborts, keeps the tier upstream picks, warns, and gives tone-map failures the OpenCL remedy.</summary>
+    /// <param name="aborts">Whether OpenCL aborts rather than failing with a message.</param>
     /// <returns>A task representing the test.</returns>
-    [Fact]
-    public async Task MissingRuntimeWarnsWithoutChangingTier()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MissingRuntimeWarnsWithoutChangingTier(bool aborts)
     {
-        var report = await RunAsync(openclStarts: false);
+        var report = await RunAsync(openclStarts: false, openclAborts: aborts);
 
         var vaapi = Assert.Single(report.Backends);
         Assert.Equal(PipelineTier.FullOpencl, vaapi.Tier);
@@ -204,8 +207,9 @@ public sealed class ProbeEngineIntelTests : IDisposable
     /// <param name="openFails">Whether the device open fails.</param>
     /// <param name="progress">Receives the probe's progress, or null.</param>
     /// <param name="enableGuc">The i915 enable_guc value, "unreadable" for a parameter only root can read, or null when i915 isn't loaded.</param>
+    /// <param name="openclAborts">Whether a failing OpenCL derive aborts (glibc's "free(): invalid pointer", exit 134) instead of logging the failure.</param>
     /// <returns>The report.</returns>
-    private async Task<CapabilityReport> RunAsync(bool openclStarts, string? lowPowerDropped = null, bool nodeDenied = false, bool openFails = false, IProgress<ProbeProgress>? progress = null, string? enableGuc = null)
+    private async Task<CapabilityReport> RunAsync(bool openclStarts, string? lowPowerDropped = null, bool nodeDenied = false, bool openFails = false, IProgress<ProbeProgress>? progress = null, string? enableGuc = null, bool openclAborts = false)
     {
         _runner.Probe = invocation => invocation.Arguments switch
         {
@@ -213,6 +217,8 @@ public sealed class ProbeEngineIntelTests : IDisposable
                 EngineRunner.Exited(1, null, "[AVHWDeviceContext @ 0x1] Failed to initialise VAAPI connection: -1 (unknown libva error).\nDevice creation failed: -5.\n"),
             var a when lowPowerDropped is not null && a.Contains($"-c:v {lowPowerDropped}_vaapi -low_power 1", StringComparison.Ordinal) =>
                 EngineRunner.Exited(0, 10, "[h264 @ 0x3] Format vaapi chosen by get_format().\n[hevc_qsv @ 0x4] Some encoding parameters are not supported under Low power mode, trying to recover with it set to disabled\n"),
+            var a when a.Contains("opencl=ocl@va", StringComparison.Ordinal) && !openclStarts && openclAborts =>
+                EngineRunner.Exited(134, null, IntelDriver + "free(): invalid pointer\n"),
             var a when a.Contains("opencl=ocl@va", StringComparison.Ordinal) && !openclStarts =>
                 EngineRunner.Exited(237, null, IntelDriver + "[OpenCL @ 0x2] Failed to get number of OpenCL platforms: -1001.\nDevice creation failed: -19.\n"),
             var a when !a.Contains("-progress", StringComparison.Ordinal) => EngineRunner.Exited(1, null, IntelDriver),

@@ -47,6 +47,20 @@ public static class VerdictEvaluator
         return expectation.ConfirmationStrings.Count == 0 ? ProbeOutcome.Untested : ProbeOutcome.Pass;
     }
 
+    /// <summary>Reports whether ffmpeg died on a signal rather than exiting itself.</summary>
+    /// <param name="result">The ffmpeg run.</param>
+    /// <returns>True for a SIGABRT or SIGSEGV with no exit line.</returns>
+    /// <remarks>
+    /// .NET reports a child a signal killed as 128 plus the signal's number. ffmpeg logs "Exiting with exit code" at verbose
+    /// level when it exits itself, so a real exit code of 134 or 139 isn't taken for a crash. Observed with jellyfin-ffmpeg
+    /// 8.1.3 in Docker on a host with an Intel and an AMD GPU: glibc's "free(): invalid pointer" abort while OpenCL starts.
+    /// </remarks>
+    public static bool Crashed(FfmpegRunResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        return result.Status == FfmpegRunStatus.Exited && result.ExitCode is 134 or 139 && !result.Stderr.Contains("Exiting with exit code", StringComparison.Ordinal);
+    }
+
     /// <summary>Classifies a software transcode, which has no hardware to confirm.</summary>
     /// <param name="result">The ffmpeg run.</param>
     /// <param name="expectedFrames">Minimum final <c>frame=</c> count.</param>

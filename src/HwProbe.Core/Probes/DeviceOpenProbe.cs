@@ -50,11 +50,13 @@ public static partial class DeviceOpenProbe
     /// <summary>Classifies an OpenCL derive.</summary>
     /// <param name="result">The run of <see cref="OpenclArguments"/>.</param>
     /// <returns>The outcome.</returns>
-    /// <remarks>Observed with jellyfin-ffmpeg 8.1.3: with no OpenCL runtime, "Failed to get number of OpenCL platforms: -1001" then "Device creation failed".</remarks>
+    /// <remarks>Observed with jellyfin-ffmpeg 8.1.3: with no OpenCL runtime, "Failed to get number of OpenCL platforms: -1001" then "Device creation failed"; with a broken one, an abort that logs no failure at all.</remarks>
     public static ProbeOutcome EvaluateOpencl(FfmpegRunResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
-        return result.Status == FfmpegRunStatus.TimedOut ? ProbeOutcome.Timeout : GenericOutcome(result.Stderr);
+        return result.Status == FfmpegRunStatus.TimedOut ? ProbeOutcome.Timeout
+            : VerdictEvaluator.Crashed(result) ? ProbeOutcome.DeviceUnavailable
+            : GenericOutcome(result.Stderr);
     }
 
     /// <summary>Classifies a device-open run.</summary>
