@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "1.4.4.0",
+        "changelog": "- Recognises hardware transcoding on Rockchip RK3588 instead of reporting it as software.\n- A GPU with no VA-API driver, such as a Mali GPU, says so instead of suggesting a fix that can't help.",
+        "targetAbi": "12.2.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v1.4.4/hwprobe-plugin_1.4.4.0.zip",
+        "checksum": "8f696d6102adc11ef74efe97b7f3f5f7",
+        "timestamp": "2026-10-09T10:23:03Z"
+      },
+      {
         "version": "1.4.3.0",
         "changelog": "- Use this backend is shown as a button.",
         "targetAbi": "12.2.0.0",
