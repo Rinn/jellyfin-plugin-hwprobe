@@ -823,8 +823,8 @@ public sealed class ProbeEngine : IDisposable
                     ? ProbeOutcome.CodecUnsupported
                     : VerdictEvaluator.Evaluate(ran, new ProbeExpectation(MatrixCatalog.Frames, StderrMarkers.HardwareFrames(candidate.Type, args.Hwaccel)));
 
-                // A tone map through OpenCL that fails where OpenCL doesn't start says nothing about the GPU. Upstream takes
-                // Vulkan rather than OpenCL on AMD when interop works, which isn't probed, so there it's untested.
+                // A tone map through OpenCL that fails where OpenCL doesn't start says nothing about the GPU. On AMD, upstream
+                // takes Vulkan instead when the server found interop, which a probe on the OpenCL path can't tell, so there it's untested.
                 var openclDown = cell.Group == MatrixGroup.Tonemap && outcome != ProbeOutcome.Pass && (args.InputArgs + args.FilterArgs).Contains("opencl", StringComparison.Ordinal)
                     && (run.NoOpencl.Contains(candidate) || VerdictEvaluator.Crashed(ran));
                 var amd = run.Opened.Exists(o => o.Candidate == candidate && o.Open.Driver == VaapiDriver.Amd);
