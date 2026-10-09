@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "1.4.1.0",
+        "changelog": "- A GPU that can only be tested while Jellyfin uses it now says which settings to change, on the Hardware Probe tab and Recommended Settings.",
+        "targetAbi": "12.2.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v1.4.1/hwprobe-plugin_1.4.1.0.zip",
+        "checksum": "d27c4014167a1ed0ee6f6b7e11308036",
+        "timestamp": "2026-10-09T06:38:33Z"
+      },
+      {
         "version": "1.4.0.0",
         "changelog": "- The diagnostics zip can include the test results and measurements, with a checkbox on the Help tab that is off by default.\n- Report on GitHub fills in the GPU, and ffmpeg shows whether it is jellyfin-ffmpeg instead of its path.\n- The hardware report form requires the versions, ffmpeg, and backends, and takes the diagnostics zip as an upload.",
         "targetAbi": "12.2.0.0",
