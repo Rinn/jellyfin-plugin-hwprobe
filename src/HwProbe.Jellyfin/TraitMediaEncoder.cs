@@ -6,7 +6,7 @@ using MediaBrowser.Controller.MediaEncoding;
 
 namespace Jellyfin.Plugin.HwProbe.Jellyfin;
 
-/// <summary>Forwards to the server's IMediaEncoder, but reports VAAPI driver traits for the probed device.</summary>
+/// <summary>Forwards to the server's IMediaEncoder, but reports VAAPI driver traits, and the Vulkan DRM support that goes with them, for the probed device.</summary>
 /// <remarks>
 /// The server's encoder answers for its configured device only. Public and unsealed because
 /// <see cref="DispatchProxy"/> generates a subclass at runtime.
@@ -45,16 +45,29 @@ public class TraitMediaEncoder : DispatchProxy
                 return _traits.Driver == VaapiDriver.IntelI965;
             case "get_IsVaapiDeviceAmd":
                 return _traits.Driver == VaapiDriver.Amd;
+
+            // Upstream reads these only on its AMD paths (EncodingHelper.cs, v12.2, L1081, L5126, L5447), and the server's answer is for its own device, so it carries over only when that is AMD too.
+            case "get_IsVaapiDeviceSupportVulkanDrmInterop" or "get_IsVaapiDeviceSupportVulkanDrmModifier":
+                return _traits.Driver == VaapiDriver.Amd && _inner is { IsVaapiDeviceAmd: true } && Forward(targetMethod, args) is true;
             default:
-                try
-                {
-                    return targetMethod.Invoke(_inner, args);
-                }
-                catch (TargetInvocationException ex) when (ex.InnerException is not null)
-                {
-                    ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
-                    throw;
-                }
+                return Forward(targetMethod, args);
+        }
+    }
+
+    /// <summary>Calls the wrapped encoder, rethrowing its own exception rather than the reflection wrapper.</summary>
+    /// <param name="targetMethod">The member called.</param>
+    /// <param name="args">Its arguments.</param>
+    /// <returns>What the wrapped encoder returned.</returns>
+    private object? Forward(MethodInfo targetMethod, object?[]? args)
+    {
+        try
+        {
+            return targetMethod.Invoke(_inner, args);
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException is not null)
+        {
+            ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
+            throw;
         }
     }
 }

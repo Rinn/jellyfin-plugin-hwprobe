@@ -132,6 +132,38 @@ public sealed class ProbeEngineIntelTests : IDisposable
         Assert.Equal(denied, vaapi.Hint == Catalog.Text("permissionDeniedHost"));
     }
 
+    /// <summary>A QSV render node whose VAAPI parent loads a non-Intel driver says so and gets no fix, even in a container; recorded from a Radeon RX 480 beside an Intel UHD 630 (jellyfin-ffmpeg 8.1.3, docker).</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task QsvOnNonIntelGpuSaysSo()
+    {
+        const string Amd = "[VAAPI @ 0x1] VAAPI driver: Mesa Gallium driver 26.0.8 for AMD Radeon RX 480 Graphics (radeonsi, polaris10, ACO, DRM 3.64, 6.18.9).\n"
+            + "[QSV @ 0x2] Error setting child device handle: -17\nDevice creation failed: -1313558101.\n";
+        _runner.Probe = invocation => EngineRunner.Exited(1, null, invocation.Arguments.Contains("renderD129", StringComparison.Ordinal) ? Amd : IntelDriver);
+        var host = new FakeHostPlatform(HostOs.Linux) { OsDescription = "Linux 6.18.9" };
+        host.Files["/.dockerenv"] = string.Empty;
+        host.Files[Node] = string.Empty;
+        host.Files["/dev/dri/renderD129"] = string.Empty;
+        var options = new EngineOptions(
+            new FfmpegLocation("/usr/lib/jellyfin-ffmpeg/ffmpeg", FfmpegSource.CommandLine),
+            StopStage.Devices,
+            new HashSet<HwType> { HwType.qsv },
+            null,
+            TimeSpan.FromSeconds(5),
+            TimeSpan.FromSeconds(5),
+            Path.Combine(_root, "fixtures"),
+            Path.Combine(_root, "reports"),
+            Refresh: true);
+
+        using var engine = new ProbeEngine(_runner, new FakeArgumentSource(), host, TimeProvider.System, EnvironmentRules.Standalone()) { FixtureDownloader = ScriptedDownloader.Offline };
+        var report = await engine.RunAsync(options, TestContext.Current.CancellationToken);
+
+        var amd = Assert.Single(report.Backends, b => b.Device == "/dev/dri/renderD129");
+        Assert.Equal((BackendVerdict.NotPresent, Catalog.Text("notIntelGpu")), (amd.Verdict, amd.Hint));
+        Assert.Null(amd.Fix);
+        Assert.NotEqual(Catalog.Text("notIntelGpu"), Assert.Single(report.Backends, b => b.Device == Node).Hint);
+    }
+
     /// <inheritdoc/>
     public void Dispose() => Directory.Delete(_root, recursive: true);
 
