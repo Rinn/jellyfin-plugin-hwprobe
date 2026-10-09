@@ -994,7 +994,7 @@
                     if (!configured) {
                         const line = el('div', null, 'hwprobe-row hwprobe-start');
                         line.appendChild(el('span', 'Not the configured backend', 'secondaryText'));
-                        line.appendChild(idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: selected.type, Device: selected.device })));
+                        line.appendChild(idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: selected.type, Device: selected.device }), 'raised'));
                         container.appendChild(line);
                     }
 
@@ -1955,7 +1955,7 @@
                             }
                             if (s.Kind === 'FastestBackend') {
                                 const rows = [{ text: backendName(s.Type), value: s.Type, speed: s.Speed, streams: s.Streams, capped: s.StreamsCapped, savings: s.Savings, lower: null, current: false, action: null, best: true }];
-                                rows[0].action = idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: s.Type, Device: s.Device }, true));
+                                rows[0].action = idleAction('Use this backend', () => post('HwProbe/UseBackend', { Type: s.Type, Device: s.Device }, true), 'raised');
                                 rows.push(...s.Compared.map(c => ({ text: backendName(c.Value), value: c.Value, speed: c.Speed, streams: c.Streams, capped: c.StreamsCapped, savings: [], lower: null, current: true, action: null })));
                                 // Measured alike, it's suggested when it is more efficient, or as Jellyfin's preferred Intel backend; the wording is Jellyfin's hardware acceleration guides'.
                                 const recommended = 'Recommendation: ' + backendName(s.Type) + ' \u2013 ';
