@@ -26,6 +26,7 @@ public static partial class SpeedMeter
     /// <param name="cancellationToken">Cancels the measurement.</param>
     /// <param name="timeUp">Reports when the measurement's time limit has passed; checked before each run of copies, never before the first run. Null for no limit.</param>
     /// <param name="pace">How much content the copies process and how speed is read; null for <see cref="MeterPace.Frames"/>.</param>
+    /// <param name="budget">What the server's memory and CPU leave room for, which caps the copies run at once; null for no limit but <see cref="MaxStreams"/>.</param>
     /// <returns>The fps and stream count.</returns>
     public static async Task<SpeedMeasurement> MeasureAsync(
         Func<int, TimeSpan, CancellationToken, Task<IReadOnlyList<FfmpegRunResult>>> launch,
@@ -34,13 +35,19 @@ public static partial class SpeedMeter
         bool countStreams,
         CancellationToken cancellationToken,
         Func<bool>? timeUp = null,
-        MeterPace? pace = null)
+        MeterPace? pace = null,
+        ICopyBudget? budget = null)
     {
         ArgumentNullException.ThrowIfNull(launch);
         pace ??= MeterPace.Frames;
         double? Rate(FfmpegRunResult run, TimeSpan content) => pace.ByContent ? ContentFps(run, content, frameRate) : Fps(run);
 
         var single = (await launch(1, pace.Content, cancellationToken))[0];
+        if (budget?.LastStopped == true)
+        {
+            return new SpeedMeasurement(null, null, false, Data.Catalog.Text("noteMemoryStopped"));
+        }
+
         var longerCutOff = false;
         var fps = Rate(single, pace.Content);
         var resources = single.Resources;
@@ -78,6 +85,8 @@ public static partial class SpeedMeter
 
         var erroredAt = 0;
         var keptUp = 0;
+        CopyLimit? limit = null;
+        void Limit(CopyLimit at) => limit = limit is null || at.Copies < limit.Copies ? at : limit;
         async Task<bool> KeepsUpAsync(int copies)
         {
             if (timeUp?.Invoke() == true)
@@ -85,7 +94,21 @@ public static partial class SpeedMeter
                 throw new TimeoutException();
             }
 
+            // Copies whose GPU memory no process is charged for can exhaust the host (a container's OOM killer then picks
+            // Jellyfin), and more than the CPU can keep at real time only slow the server down.
+            if (budget?.MostCopies(fps.Value / frameRate) is { } most && copies > most.Copies)
+            {
+                Limit(most);
+                return false;
+            }
+
             var runs = await launch(copies, pace.Content, cancellationToken);
+            if (budget?.LastStopped == true)
+            {
+                Limit(new CopyLimit(copies - 1, false));
+                return false;
+            }
+
             if (runs.Any(r => r.Status == FfmpegRunStatus.LaunchFailed || (r.Status == FfmpegRunStatus.Exited && r.ExitCode != 0)))
             {
                 erroredAt = erroredAt == 0 ? copies : Math.Min(erroredAt, copies);
@@ -111,7 +134,9 @@ public static partial class SpeedMeter
         }
 
         // Copies that fail rather than fall behind usually hit the driver's limit on sessions at once (NVENC has one).
-        var note = erroredAt == streams + 1
+        var note = limit is { } limited && streams >= limited.Copies
+            ? (streams == 0 ? Data.Catalog.Text("noteMemoryStopped") : Data.Catalog.Text(limited.ByCpu ? "noteCpuLimited" : "noteMemoryLimited", ("streams", streams.ToString(CultureInfo.InvariantCulture))))
+            : erroredAt == streams + 1
             ? string.Create(CultureInfo.InvariantCulture, $"{erroredAt} at once failed to start, likely the driver's limit on sessions rather than speed.")
             : null;
 

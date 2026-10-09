@@ -6,6 +6,7 @@ using Jellyfin.Plugin.HwProbe.Core.Model;
 using Jellyfin.Plugin.HwProbe.Core.Pipeline;
 using Jellyfin.Plugin.HwProbe.Core.Probes;
 using Jellyfin.Plugin.HwProbe.Core.Report;
+using Jellyfin.Plugin.HwProbe.Core.Resources;
 using Jellyfin.Plugin.HwProbe.Core.Storage;
 using Jellyfin.Plugin.HwProbe.Core.Verdict;
 
@@ -540,12 +541,37 @@ public sealed class SpeedEngine : IDisposable
     /// <param name="measureResources">Whether a single copy is measured for resource usage.</param>
     /// <param name="pace">The pace, for the copies' timeout.</param>
     /// <param name="inspect">Sees each launch's results, or null.</param>
+    /// <param name="budget">Keeps runs of copies within the memory and CPU the server has to spare, or null for none.</param>
     /// <returns>The launcher.</returns>
-    private Func<int, TimeSpan, CancellationToken, Task<IReadOnlyList<FfmpegRunResult>>> Launcher(EngineOptions options, Func<TimeSpan, string> command, IReadOnlyDictionary<string, string?> environment, bool measureResources, MeterPace pace, Action<IReadOnlyList<FfmpegRunResult>>? inspect) =>
+    private Func<int, TimeSpan, CancellationToken, Task<IReadOnlyList<FfmpegRunResult>>> Launcher(EngineOptions options, Func<TimeSpan, string> command, IReadOnlyDictionary<string, string?> environment, bool measureResources, MeterPace pace, Action<IReadOnlyList<FfmpegRunResult>>? inspect, CopyBudget? budget = null) =>
         async (copies, content, token) =>
         {
             var invocation = new FfmpegInvocation(options.Ffmpeg.Path, command(content), environment, copies == 1 ? _singleTimeout : pace.Content + _copiesGrace) { MeasureResources = measureResources && copies == 1 };
-            var runs = await Task.WhenAll(Enumerable.Range(0, copies).Select(_ => _runner.RunAsync(invocation, token)));
+            IReadOnlyList<FfmpegRunResult> runs;
+            if (budget is null)
+            {
+                runs = await Task.WhenAll(Enumerable.Range(0, copies).Select(_ => _runner.RunAsync(invocation, token)));
+            }
+            else
+            {
+                var watch = budget.Watch(token);
+                try
+                {
+                    runs = await Task.WhenAll(Enumerable.Range(0, copies).Select(_ => _runner.RunAsync(invocation, watch.Token)));
+                }
+                catch (OperationCanceledException) when (watch.Tripped && !token.IsCancellationRequested)
+                {
+                    // The runner killed every copy's process tree before rethrowing.
+                    runs = [.. Enumerable.Repeat(CopyBudget.Stopped, copies)];
+                }
+                finally
+                {
+                    await watch.DisposeAsync();
+                }
+
+                budget.Finish(watch, runs);
+            }
+
             inspect?.Invoke(runs);
             return runs;
         };
@@ -618,12 +644,13 @@ public sealed class SpeedEngine : IDisposable
 
                 // jellyfin-ffmpeg's qsvenc drops low-power mode it can't use and carries on (debian/patches/0071), so the run measures normal mode.
                 var lowPowerDropped = false;
-                var launch = Launcher(options, Command, args.Environment, measureResources, pace, runs => lowPowerDropped |= cell.LowPower && runs.Any(r => StderrMarkers.LowPowerDisabled.Any(m => r.Stderr.Contains(m, StringComparison.Ordinal))));
+                var budget = test.DecodeOnly ? null : new CopyBudget(new MemoryHeadroom(_platform).Read, new HostCpu(_platform).BusySeconds, Environment.ProcessorCount, Data.Catalog.Default.Concurrency, _time);
+                var launch = Launcher(options, Command, args.Environment, measureResources, pace, runs => lowPowerDropped |= cell.LowPower && runs.Any(r => StderrMarkers.LowPowerDisabled.Any(m => r.Stderr.Contains(m, StringComparison.Ordinal))), budget);
 
                 // Double-rate deinterlacing makes a frame per field, so real time is twice the source rate (EncodingHelper.GetSwDeinterlaceFilter and the hardware deinterlace filters, v12.2: interlaced sources of 30 fps or less).
                 var outputRate = cell.DoubleRate && test.Interlaced && !test.DecodeOnly && test.FrameRate <= 30 ? test.FrameRate * 2 : test.FrameRate;
                 CommandLog?.Invoke($"{options.Ffmpeg.Path} {Command(pace.Content)}");
-                var measured = await SpeedMeter.MeasureAsync(launch, method, outputRate, !test.DecodeOnly, ct, timeUp, pace);
+                var measured = await SpeedMeter.MeasureAsync(launch, method, outputRate, !test.DecodeOnly, ct, timeUp, pace, budget);
                 note = lowPowerDropped ? Data.Catalog.Text("noteLowPowerDropped") : note;
                 return new SpeedResult(type, device, test.Key, string.Empty, measured.Fps, measured.Streams, measured.Capped, measured.Note ?? note) { OutputSize = size, Interrupted = measured.Interrupted, Command = CommandHash(Command(pace.Content)), Resources = measured.Resources, LowPowerDropped = lowPowerDropped, FrameRate = outputRate };
             },

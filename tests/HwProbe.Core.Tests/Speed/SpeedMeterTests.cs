@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.HwProbe.Core.Data;
 using Jellyfin.Plugin.HwProbe.Core.Ffmpeg;
 using Jellyfin.Plugin.HwProbe.Core.Speed;
 using Xunit;
@@ -239,6 +240,37 @@ public sealed class SpeedMeterTests
         Assert.Equal("ffmpeg didn't finish before the time limit", slow.Note);
     }
 
+    /// <summary>A memory or CPU cap stops the count at the cap, never runs more, and reports a lower bound naming the limit.</summary>
+    /// <param name="byCpu">Whether the CPU sets the cap rather than memory.</param>
+    /// <param name="noteKey">The catalog note expected.</param>
+    /// <returns>A task representing the test.</returns>
+    [Theory]
+    [InlineData(false, "noteMemoryLimited")]
+    [InlineData(true, "noteCpuLimited")]
+    public async Task BudgetCapsTheCount(bool byCpu, string noteKey)
+    {
+        var host = new Host(capacity: 12, fps: 300);
+        var budget = new ScriptedBudget(new CopyLimit(5, byCpu), stopAt: int.MaxValue);
+
+        var measured = await SpeedMeter.MeasureAsync(budget.Wrap(host.LaunchAsync), SpeedMethod.Confirm, 24, countStreams: true, TestContext.Current.CancellationToken, budget: budget);
+
+        Assert.Equal((5, true, Catalog.Text(noteKey, ("streams", "5"))), (measured.Streams, measured.Capped, measured.Note));
+        Assert.DoesNotContain(host.Copies, c => c > 5);
+    }
+
+    /// <summary>A run that memory stopped counts as falling behind, so the count settles below it and says memory limited it.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task StoppedRunSettlesBelowIt()
+    {
+        var host = new Host(capacity: 16, fps: 24 * 4);
+        var budget = new ScriptedBudget(null, stopAt: 7);
+
+        var measured = await SpeedMeter.MeasureAsync(budget.Wrap(host.LaunchAsync), SpeedMethod.Full, 24, countStreams: true, TestContext.Current.CancellationToken, budget: budget);
+
+        Assert.Equal((6, true, Catalog.Text("noteMemoryLimited", ("streams", "6"))), (measured.Streams, measured.Capped, measured.Note));
+    }
+
     /// <summary>A scripted host that keeps a fixed number of copies at real time.</summary>
     /// <param name="capacity">Copies that finish within real time at once.</param>
     /// <param name="fps">One copy's fps when alone.</param>
@@ -263,5 +295,27 @@ public sealed class SpeedMeterTests
             var seconds = copies > capacity ? content.TotalSeconds * 1.5 : copies == 1 ? frames / fps : content.TotalSeconds * 0.9;
             return Task.FromResult<IReadOnlyList<FfmpegRunResult>>([.. Enumerable.Repeat(new FfmpegRunResult(FfmpegRunStatus.Exited, 0, string.Empty, string.Empty, frames, TimeSpan.FromSeconds(seconds), null), copies)]);
         }
+    }
+
+    /// <summary>A budget with a fixed cap that reports a stop for runs of at least some copies.</summary>
+    /// <param name="limit">The cap, or null for none.</param>
+    /// <param name="stopAt">Runs of at least this many copies are stopped.</param>
+    private sealed class ScriptedBudget(CopyLimit? limit, int stopAt) : ICopyBudget
+    {
+        /// <inheritdoc/>
+        public bool LastStopped { get; private set; }
+
+        /// <inheritdoc/>
+        public CopyLimit? MostCopies(double speed) => limit;
+
+        /// <summary>Wraps a launch so each run records whether it was stopped.</summary>
+        /// <param name="launch">The scripted launch.</param>
+        /// <returns>The wrapped launch.</returns>
+        public Func<int, TimeSpan, CancellationToken, Task<IReadOnlyList<FfmpegRunResult>>> Wrap(Func<int, TimeSpan, CancellationToken, Task<IReadOnlyList<FfmpegRunResult>>> launch) =>
+            async (copies, content, token) =>
+            {
+                LastStopped = copies >= stopAt;
+                return LastStopped ? [.. Enumerable.Repeat(CopyBudget.Stopped, copies)] : await launch(copies, content, token);
+            };
     }
 }
