@@ -420,7 +420,7 @@ public sealed class SpeedAdvisorTests
     public void ComparesRunsThatDifferInOneSetting()
     {
         const string Film = "live-action|h264-8mbps";
-        var medium = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.none, Film, 125), Result(HwType.none, "pattern|h264-8mbps", 375));
+        var medium = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.none, Film, 125), Result(HwType.none, "pattern|h264-8mbps", 300));
         var fast = Run(new SpeedSettings { EncoderPreset = "fast" }, Result(HwType.none, Film, 150), Result(HwType.none, "pattern|h264-8mbps", 450));
         var nvdec = Run(new SpeedSettings { EncoderPreset = "fast", EnhancedNvdec = false }, Result(HwType.none, Film, 150));
         var slowMedium = Run(new SpeedSettings { EncoderPreset = "medium" }, Result(HwType.none, Film, 30), Result(HwType.none, "pattern|h264-8mbps", 90));
@@ -433,9 +433,9 @@ public sealed class SpeedAdvisorTests
         var faster = Assert.Single(onMedium, s => s.Kind == SpeedSuggestionKind.FasterSetting);
         Assert.Equal(("EncoderPreset", "fast", "medium", 0.2, false), (faster.Setting, faster.Value, Assert.Single(faster.Others), Math.Round(Assert.NotNull(faster.Gain), 2), faster.TestVideosOnly));
 
-        // Headroom comes from the film alone: the test video's 12x overstates it.
+        // Headroom and the cost in speed come from the film alone: the test video's 12x overstates the one and its 33% slowdown the other.
         var quality = Assert.Single(onFast, s => s.Kind == SpeedSuggestionKind.HigherQuality);
-        Assert.Equal(("medium", 5.0), (quality.Value, Assert.NotNull(quality.Speed)));
+        Assert.Equal(("medium", 5.0, -0.17), (quality.Value, Assert.NotNull(quality.Speed), Math.Round(Assert.NotNull(quality.Gain), 2)));
         Assert.Equal([Film], quality.Outputs);
         Assert.Equal(SpeedSuggestionKind.NoChange, Assert.Single(onFast, s => s.Setting == "EnhancedNvdec").Kind);
     }
