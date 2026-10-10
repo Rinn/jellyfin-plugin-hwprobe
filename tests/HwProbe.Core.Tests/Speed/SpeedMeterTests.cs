@@ -254,7 +254,7 @@ public sealed class SpeedMeterTests
 
         var measured = await SpeedMeter.MeasureAsync(budget.Wrap(host.LaunchAsync), SpeedMethod.Confirm, 24, countStreams: true, TestContext.Current.CancellationToken, budget: budget);
 
-        Assert.Equal((5, true, Catalog.Text(noteKey, ("streams", "5"))), (measured.Streams, measured.Capped, measured.Note));
+        Assert.Equal((5, true, Catalog.Text(noteKey)), (measured.Streams, measured.Capped, measured.Note));
         Assert.DoesNotContain(host.Copies, c => c > 5);
     }
 
@@ -282,7 +282,7 @@ public sealed class SpeedMeterTests
 
         var measured = await SpeedMeter.MeasureAsync(budget.Wrap(host.LaunchAsync), SpeedMethod.Confirm, 24, countStreams: true, TestContext.Current.CancellationToken, budget: budget);
 
-        Assert.Equal((1, true, Catalog.Text("noteMemoryLimited", ("streams", "1"))), (measured.Streams, measured.Capped, measured.Note));
+        Assert.Equal((1, true, Catalog.Text("noteMemoryLimited")), (measured.Streams, measured.Capped, measured.Note));
         Assert.Equal([1, 1], host.Copies);
     }
 
@@ -296,7 +296,7 @@ public sealed class SpeedMeterTests
 
         var measured = await SpeedMeter.MeasureAsync(budget.Wrap(host.LaunchAsync), SpeedMethod.Full, 24, countStreams: true, TestContext.Current.CancellationToken, budget: budget);
 
-        Assert.Equal((6, true, Catalog.Text("noteMemoryLimited", ("streams", "6"))), (measured.Streams, measured.Capped, measured.Note));
+        Assert.Equal((6, true, Catalog.Text("noteMemoryLimited")), (measured.Streams, measured.Capped, measured.Note));
     }
 
     /// <summary>A scripted host that keeps a fixed number of copies at real time.</summary>

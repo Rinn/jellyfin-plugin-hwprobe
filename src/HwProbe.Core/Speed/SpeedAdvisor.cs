@@ -481,7 +481,7 @@ public static class SpeedAdvisor
             var chosen = Recommended(key, [.. setting.Where(s => s.Kind != SpeedSuggestionKind.Compatible)], values, against, type);
             var speeds = values.First(v => v.Value == chosen.Value).Speeds;
 
-            // The row's speed and streams are the table's; a better-quality value's speed, which its reason gives, from real video alone, as it was judged.
+            // The row's speed and streams are the table's; a better-quality value's speed from real video alone, as it was judged.
             var real = against.Where(c => !c.Generated && (chosen.Value == serverValue || c.Value == chosen.Value)).Select(c => chosen.Value == serverValue ? c.OtherSpeed : c.Speed).ToList();
             var table = chosen with
             {

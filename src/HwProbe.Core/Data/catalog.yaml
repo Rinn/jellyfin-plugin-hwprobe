@@ -921,8 +921,8 @@ texts:
   notIntelGpu: Not an Intel GPU; QSV requires one.
   noVaapiDriver: No VA-API driver found for this device ({driver}).
   # Speed notes for the memory and CPU concurrent streams leave the server (concurrency, above).
-  noteMemoryLimited: "Memory left room for {streams} at once: at least that many keep up."
-  noteCpuLimited: "The CPU left room for {streams} at once: at least that many keep up."
+  noteMemoryLimited: Concurrent streams limited by memory.
+  noteCpuLimited: Concurrent streams limited by CPU.
   deviceUnavailableQsvWindows: No Direct3D 11 adapter opened. Check the Intel graphics driver is installed.
   deviceUnavailableAmf: No Direct3D 11 adapter opened. Check the AMD graphics driver is installed.
   deviceUnavailableNvencContainer: ffmpeg has CUDA but no NVIDIA device opened. Run the container with the NVIDIA runtime (--gpus all).
