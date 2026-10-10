@@ -21,6 +21,20 @@ public sealed class SuggestionRendererTests
         Assert.Contains("H.264 encoding CRF: 28, 50% faster than 18, 23, or 26\n", text, StringComparison.Ordinal);
     }
 
+    /// <summary>A better-quality value gives its cost in speed, and a cost within noise reads as fast.</summary>
+    [Fact]
+    public void GivesTheCostOfBetterQuality()
+    {
+        var text = SuggestionRenderer.Render(
+        [
+            new SpeedSuggestion(SpeedSuggestionKind.HigherQuality, ["a"]) { Setting = "H264Crf", Value = "18", Others = ["23"], Gain = -0.25 },
+            new SpeedSuggestion(SpeedSuggestionKind.HigherQuality, ["a"]) { Setting = "H264Crf", Value = "23", Others = ["26"], Gain = -SpeedAdvisor.Noise / 2 },
+        ]);
+
+        Assert.Contains("H.264 encoding CRF: 18, better quality than 23, 25% slower\n", text, StringComparison.Ordinal);
+        Assert.Contains("H.264 encoding CRF: 23, better quality than 26, as fast\n", text, StringComparison.Ordinal);
+    }
+
     /// <summary>No bitrate limit is the suggestion, the limit that keeps real time its alternative, and an output every backend falls behind on is named with the fastest.</summary>
     [Fact]
     public void NamesTheBitrateChoicesAndOutputsThatFallBehind()

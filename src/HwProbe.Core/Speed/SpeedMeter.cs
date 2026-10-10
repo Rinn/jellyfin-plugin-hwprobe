@@ -81,7 +81,7 @@ public static partial class SpeedMeter
         // One copy already kept real time from start-up on, and there's room for no more.
         if (budget?.MostCopies(fps.Value / frameRate) is { Copies: 1 } only && fps.Value >= frameRate)
         {
-            return new SpeedMeasurement(fps, 1, true, LimitNote(only, 1)) { Resources = resources, Interrupted = cutOff, HostLimited = true };
+            return new SpeedMeasurement(fps, 1, true, LimitNote(only)) { Resources = resources, Interrupted = cutOff, HostLimited = true };
         }
 
         var erroredAt = 0;
@@ -139,7 +139,7 @@ public static partial class SpeedMeter
         // Copies that fail rather than fall behind usually hit the driver's limit on sessions at once (NVENC has one).
         var hostLimited = refused is { } limit && limit.Copies == streams + 1 && streams > 0;
         var note = hostLimited && refused is { } named
-            ? LimitNote(named, streams)
+            ? LimitNote(named)
             : erroredAt == streams + 1
             ? string.Create(CultureInfo.InvariantCulture, $"{erroredAt} at once failed to start, likely the driver's limit on sessions rather than speed.")
             : null;
@@ -150,10 +150,8 @@ public static partial class SpeedMeter
 
     /// <summary>Names what limited a count.</summary>
     /// <param name="limit">What refused more copies.</param>
-    /// <param name="streams">The copies that kept up.</param>
     /// <returns>The note.</returns>
-    private static string LimitNote(CopyLimit limit, int streams) =>
-        Data.Catalog.Text(limit.ByCpu ? "noteCpuLimited" : "noteMemoryLimited", ("streams", streams.ToString(CultureInfo.InvariantCulture)));
+    private static string LimitNote(CopyLimit limit) => Data.Catalog.Text(limit.ByCpu ? "noteCpuLimited" : "noteMemoryLimited");
 
     /// <summary>Counts the streams that keep up: doubling from a starting count until they fall behind, then narrowing down.</summary>
     /// <param name="keepsUp">Runs that many copies and reports whether all kept real time.</param>

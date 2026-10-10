@@ -1835,7 +1835,7 @@
                             return x.Kind === 'RecommendedValue' ? [recommended + (option ? option.RecommendedReason : ''), backendNote ? name + ' on ' + backendNote + '.' : '', best]
                                 : x.Kind === 'FasterSetting' ? [recommended + percent + ' faster than ' + versus + '.', lower]
                                 : x.Kind === 'EfficientSetting' ? [recommended + 'as fast as ' + versus + '.', 'Uses ' + savingsText(x.Savings) + '.', lower]
-                                : x.Kind === 'HigherQuality' ? [recommended + 'better quality than ' + versus + '.', 'Still ' + x.Speed.toFixed(2) + '\u00d7 real time on real video.']
+                                : x.Kind === 'HigherQuality' ? [recommended + 'better quality than ' + versus + '.', x.Gain < -advice.Noise ? percent + ' slower than ' + versus + '.' : 'As fast as ' + versus + '.']
                                 : x.Kind === 'Compatible' ? [recommended + 'avoids the drawback below.', lower]
                                 : x.Kind === 'BitrateLimit' ? [recommended + 'out of network devices transcode any video whose bitrate exceeds the limit instead of direct playing it.']
                                 : x.Kind === 'NoChange' ? [recommended + 'no other value measured is better.']
