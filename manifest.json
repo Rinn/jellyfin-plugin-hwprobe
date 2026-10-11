@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "1.4.8.0",
+        "changelog": "- Concurrent stream counts say whether memory or the CPU limited them.\n- Better-quality recommendations say how much slower they are than the value they replace.",
+        "targetAbi": "12.2.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v1.4.8/hwprobe-plugin_1.4.8.0.zip",
+        "checksum": "d4720ce48a5b6495ccd2f8621c67ef25",
+        "timestamp": "2026-10-11T00:00:25Z"
+      },
+      {
         "version": "1.4.7.0",
         "changelog": "- An AMD GPU on Jellyfin's Vulkan pipeline is reported as the full GPU pipeline, instead of GPU scaling only.",
         "targetAbi": "12.2.0.0",
