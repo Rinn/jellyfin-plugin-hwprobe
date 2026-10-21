@@ -125,7 +125,7 @@ jobs:
           name: hwprobe-report-${{ matrix.os }}
           path: hwprobe-report.json
 
-  # macOS and Windows runners are scarcer and can queue for a long time, so they run on pull requests only and the CI check doesn't wait for them; Linux keeps the badge current.
+  # macOS and Windows can queue for a long time, so the CI check doesn't wait for them and pushes to main skip them; Linux keeps the badge current.
   build-test-other:
     name: Build and test (${{ matrix.os }})
     needs: changes
