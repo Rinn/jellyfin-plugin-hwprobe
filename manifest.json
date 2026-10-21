@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "1.4.9.0",
+        "changelog": "- AV1 encoding through AMD AMF is recognised as hardware instead of reported as software.\n- AMD AMF results are no longer marked as unvalidated.",
+        "targetAbi": "12.2.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v1.4.9/hwprobe-plugin_1.4.9.0.zip",
+        "checksum": "7a84c3480c93d54c3e5ad8014deacdb0",
+        "timestamp": "2026-10-21T21:55:52Z"
+      },
+      {
         "version": "1.4.8.0",
         "changelog": "- Concurrent stream counts say whether memory or the CPU limited them.\n- Better-quality recommendations say how much slower they are than the value they replace.",
         "targetAbi": "12.2.0.0",
