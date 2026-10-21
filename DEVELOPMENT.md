@@ -28,7 +28,7 @@ HWPROBE_HW_TESTS=1 dotnet test     # also real-ffmpeg and hardware tests
 
 `scripts/package.py` runs `scripts/notices.py`, which writes each archive's `THIRD-PARTY-NOTICES.md` (every shipped library with its version, declared licence, and licence text, read from the package or from its repository at the commit it was built from through the GitHub API) and the plugin's `libraries.json` (the Help tab's list); the CLI archives also get the .NET runtime's notices. Nothing generated is committed. The checks above run before every commit through the hook; install it once per clone with `git config core.hooksPath scripts/`. After changing a package version, run `dotnet restore --force-evaluate` and commit the lock files.
 
-CI runs the whole suite on Linux and only `Category=Platform` tests on macOS and Windows; pushes to main run Linux only.
+CI runs the whole suite on Linux and only `Category=Platform` tests on macOS and Windows. macOS and Windows run on pull requests only, and the required `CI` check doesn't wait for them, so check their results before merging; pushes to main run Linux only.
 
 With podman:
 
