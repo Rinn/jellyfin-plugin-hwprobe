@@ -2,7 +2,7 @@
 
 ## Hardware reports
 
-Results from backends not yet tested on real hardware (VAAPI on AMD, Rockchip MPP, and Video4Linux2) are the most useful contribution. Run the probe, download the diagnostics zip from the **Help** tab, and attach it to a [hardware report](../../issues/new?template=hardware-report.yml). The zip includes file paths and host names.
+Results from Video4Linux2, the only backend not yet tested on real hardware, are the most useful contribution. Run the probe, download the diagnostics zip from the **Help** tab, and attach it to a [hardware report](../../issues/new?template=hardware-report.yml). The zip includes file paths and host names.
 
 ## Issues
 
