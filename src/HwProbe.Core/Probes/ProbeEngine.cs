@@ -13,8 +13,6 @@ namespace Jellyfin.Plugin.HwProbe.Core.Probes;
 /// <summary>Runs build enumeration, device probes and the codec matrix, pruning as it goes, and assembles the report.</summary>
 public sealed class ProbeEngine : IDisposable
 {
-    private static readonly HwType[] _unvalidated = [HwType.amf];
-
     private readonly IFfmpegRunner _runner;
     private readonly IArgumentSourceFactory _arguments;
     private readonly IHostPlatform _platform;
@@ -575,11 +573,6 @@ public sealed class ProbeEngine : IDisposable
         if (open.Driver == VaapiDriver.Amd && !vulkanDrmInterop)
         {
             run.Findings.Add(new Finding(FindingSeverity.Info, "vulkan-interop-unprobed", $"{candidate.Type}{DevicePrefix(candidate.Device)}{Data.Catalog.Text("findingVulkanUnprobed")}") { Backend = candidate.Type });
-        }
-
-        if (_unvalidated.Contains(candidate.Type))
-        {
-            run.Findings.Add(new Finding(FindingSeverity.Info, "unvalidated-backend", $"{candidate.Type}: {Data.Catalog.Text("findingUnvalidated", ("backend", candidate.Type.ToString()))}") { Backend = candidate.Type });
         }
 
         Dictionary<string, ProbeOutcome> decode = [];

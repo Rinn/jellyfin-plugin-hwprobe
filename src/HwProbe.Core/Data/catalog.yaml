@@ -968,7 +968,6 @@ texts:
   findingLowPowerDropped: "'{option}' has no effect: {reason}"
   findingLowPowerUnavailable: "leave '{option}' off. {reason}"
   findingVulkanUnprobed: "Vulkan DRM interop isn't probed: the full Vulkan pipeline is tested only when Jellyfin is set to VAAPI on this GPU and found it."
-  findingUnvalidated: "hwprobe's {backend} checks have not been validated on real hardware."
   findingOpenclUnavailable: "OpenCL doesn't start, but Jellyfin still picks its OpenCL pipeline because this ffmpeg was built with OpenCL, so OpenCL tone-mapping fails. {remedy}"
   # Performance test notes.
   noteSoftwareDecode: Decoded in software with this backend, then encoded on the GPU.
@@ -1057,7 +1056,6 @@ findings:
   opencl-unavailable: "OpenCL unavailable: OpenCL tone mapping fails"
   legacy-copyback: "Copy-back pipeline: filters run on the CPU"
   vulkan-interop-unprobed: Vulkan interop not tested
-  unvalidated-backend: Not validated on real hardware
 
 # The settings a speed run started from, as the results list them, in the Transcoding page's order; keyed by SpeedSettings property.
 settings:

@@ -41,7 +41,7 @@ No data leaves the server. Real videos are Creative Commons or public domain, an
 
 ✅ marks backends tested on real hardware. Results for the others are welcome as a [hardware report](../../issues/new?template=hardware-report.yml).
 
-- ❔ AMD AMF
+- ✅ AMD AMF
 - ✅ Nvidia NVENC
 - ✅ Intel Quicksync (QSV)
 - ✅ Video Acceleration API (VAAPI) on Intel

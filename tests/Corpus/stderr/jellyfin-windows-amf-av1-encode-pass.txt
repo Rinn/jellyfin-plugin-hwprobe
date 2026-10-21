@@ -1,0 +1,815 @@
+# Observed: AMD Radeon RX 7700 XT beside an AMD Radeon integrated GPU, Windows 10.0.26200, Jellyfin 12.2.0 on the host, jellyfin-ffmpeg 8.1.3. AV1 encode probe (av1_amf); exit 0, 10 frames, decoded with D3D11VA, scaled with OpenCL, and encoded with AMF, which warns that VCN instance 1 has no AV1 encode service.
+# ffmpeg -hide_banner -v debug -nostats -progress pipe:1 -init_hw_device d3d11va=dx11:,vendor=0x1002 -init_hw_device opencl=ocl@dx11 -filter_hw_device ocl -hwaccel d3d11va -hwaccel_output_format d3d11 -noautorotate -threads 2 -i "C:\Users\fampc\Docker\Data\cache\hwprobe\fixtures\sha256_6de636530efd2f91f000e99b6b83ced56c06f804fb7e10b6a9a44916024695c0\h264_8bit.mp4" -frames:v 10 -vf "setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,hwmap=derive_device=opencl:mode=read,scale_opencl=format=nv12,hwmap=derive_device=d3d11va:mode=write:reverse=1,format=d3d11" -c:v av1_amf -an -f null -
+Splitting the commandline.
+Reading option '-hide_banner' ... matched as option 'hide_banner' (do not show program banner) with argument '1'.
+Reading option '-v' ... matched as option 'v' (set logging level) with argument 'debug'.
+Reading option '-nostats' ... matched as option 'stats' (print progress report during encoding) with argument 0.
+Reading option '-progress' ... matched as option 'progress' (write program-readable progress information) with argument 'pipe:1'.
+Reading option '-init_hw_device' ... matched as option 'init_hw_device' (initialise hardware device) with argument 'd3d11va=dx11:,vendor=0x1002'.
+Reading option '-init_hw_device' ... matched as option 'init_hw_device' (initialise hardware device) with argument 'opencl=ocl@dx11'.
+Reading option '-filter_hw_device' ... matched as option 'filter_hw_device' (set hardware device used when filtering) with argument 'ocl'.
+Reading option '-hwaccel' ... matched as option 'hwaccel' (use HW accelerated decoding) with argument 'd3d11va'.
+Reading option '-hwaccel_output_format' ... matched as option 'hwaccel_output_format' (select output format used with HW accelerated decoding) with argument 'd3d11'.
+Reading option '-noautorotate' ... matched as option 'autorotate' (automatically insert correct rotate filters) with argument 0.
+Reading option '-threads' ... matched as AVOption 'threads' with argument '2'.
+Reading option '-i' ... matched as input url with argument 'C:\Users\fampc\Docker\Data\cache\hwprobe\fixtures\sha256_6de636530efd2f91f000e99b6b83ced56c06f804fb7e10b6a9a44916024695c0\h264_8bit.mp4'.
+Reading option '-frames:v' ... matched as option 'frames' (set the number of frames to output) with argument '10'.
+Reading option '-vf' ... matched as option 'vf' (alias for -filter:v (apply filters to video streams)) with argument 'setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,hwmap=derive_device=opencl:mode=read,scale_opencl=format=nv12,hwmap=derive_device=d3d11va:mode=write:reverse=1,format=d3d11'.
+Reading option '-c:v' ... matched as option 'c' (select encoder/decoder ('copy' to copy stream without reencoding)) with argument 'av1_amf'.
+Reading option '-an' ... matched as option 'an' (disable audio) with argument '1'.
+Reading option '-f' ... matched as option 'f' (force container format (auto-detected otherwise)) with argument 'null'.
+Reading option '-' ... matched as output url.
+Finished splitting the commandline.
+Parsing a group of options: global .
+Applying option hide_banner (do not show program banner) with argument 1.
+Applying option v (set logging level) with argument debug.
+Applying option nostats (print progress report during encoding) with argument 0.
+Applying option progress (write program-readable progress information) with argument pipe:1.
+[pipe @ 0000024010ff3880] Setting default whitelist 'crypto,data'
+Applying option init_hw_device (initialise hardware device) with argument d3d11va=dx11:,vendor=0x1002.
+[D3D11VA @ 0000024010ff9700] Selecting d3d11va adapter 0
+[D3D11VA @ 0000024010ff9700] Using device 1002:747e (AMD Radeon RX 7700 XT).
+Applying option init_hw_device (initialise hardware device) with argument opencl=ocl@dx11.
+[OpenCL @ 0000024011042580] 1 OpenCL platforms found.
+[OpenCL @ 0000024011042580] 0.0: AMD Accelerated Parallel Processing / gfx1101
+[OpenCL @ 0000024011042580] DXVA2 to OpenCL mapping function found (clCreateFromDX9MediaSurfaceKHR).
+[OpenCL @ 0000024011042580] DXVA2 in OpenCL acquire function found (clEnqueueAcquireDX9MediaSurfacesKHR).
+[OpenCL @ 0000024011042580] DXVA2 in OpenCL release function found (clEnqueueReleaseDX9MediaSurfacesKHR).
+[OpenCL @ 0000024011042580] cl_khr_d3d11_sharing found as platform extension.
+[OpenCL @ 0000024011042580] cl_amd_planar_yuv found as device extension.
+[OpenCL @ 0000024011042580] D3D11 to OpenCL mapping function found (clCreateFromD3D11Texture2DKHR).
+[OpenCL @ 0000024011042580] D3D11 in OpenCL acquire function found (clEnqueueAcquireD3D11ObjectsKHR).
+[OpenCL @ 0000024011042580] D3D11 in OpenCL release function found (clEnqueueReleaseD3D11ObjectsKHR).
+[OpenCL @ 0000024011042580] D3D11 to OpenCL image planar mapping on AMD function found (clGetPlaneFromImageAMD).
+[OpenCL @ 0000024011042580] D3D11 to OpenCL image data type converting on AMD function found (clConvertImageAMD).
+Applying option filter_hw_device (set hardware device used when filtering) with argument ocl.
+Successfully parsed a group of options.
+Parsing a group of options: input url C:\Users\fampc\Docker\Data\cache\hwprobe\fixtures\sha256_6de636530efd2f91f000e99b6b83ced56c06f804fb7e10b6a9a44916024695c0\h264_8bit.mp4.
+Applying option hwaccel (use HW accelerated decoding) with argument d3d11va.
+Applying option hwaccel_output_format (select output format used with HW accelerated decoding) with argument d3d11.
+Applying option noautorotate (automatically insert correct rotate filters) with argument 0.
+Successfully parsed a group of options.
+Opening an input file: C:\Users\fampc\Docker\Data\cache\hwprobe\fixtures\sha256_6de636530efd2f91f000e99b6b83ced56c06f804fb7e10b6a9a44916024695c0\h264_8bit.mp4.
+[in#0 @ 0000024023c78880] Opening 'C:\Users\fampc\Docker\Data\cache\hwprobe\fixtures\sha256_6de636530efd2f91f000e99b6b83ced56c06f804fb7e10b6a9a44916024695c0\h264_8bit.mp4' for reading
+[file @ 0000024022eaaec0] Setting default whitelist 'file,crypto,data'
+[in#0 @ 0000024023c78880] Format mov,mp4,m4a,3gp,3g2,mj2 probed with size=2048 and score=100
+[in#0 @ 0000024023c78880] ISO: File Type Major Brand: isom
+[in#0 @ 0000024023c78880] Unknown dref type 0x206c7275 size 12
+[in#0 @ 0000024023c78880] Processing st: 0, edit list 0 - media time: 1024, duration: 12800
+[in#0 @ 0000024023c78880] Offset DTS by 1024 to make first pts zero.
+[in#0 @ 0000024023c78880] Setting codecpar->delay to 2 for stream st: 0
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0000024023c78880] Before avformat_find_stream_info() pos: 93690 bytes read:33896 seeks:1 nb_streams:1
+[h264 @ 0000024024593b40] nal_unit_type: 7(SPS), nal_ref_idc: 3
+[h264 @ 0000024024593b40] Decoding VUI
+[h264 @ 0000024024593b40] nal_unit_type: 8(PPS), nal_ref_idc: 3
+[h264 @ 0000024024593b40] nal_unit_type: 7(SPS), nal_ref_idc: 3
+[h264 @ 0000024024593b40] Decoding VUI
+[h264 @ 0000024024593b40] nal_unit_type: 8(PPS), nal_ref_idc: 3
+[h264 @ 0000024024593b40] nal_unit_type: 6(SEI), nal_ref_idc: 0
+[h264 @ 0000024024593b40] nal_unit_type: 5(IDR), nal_ref_idc: 3
+[h264 @ 0000024024593b40] Format yuv420p chosen by get_format().
+[h264 @ 0000024024593b40] Reinit context to 640x368, pix_fmt: yuv420p
+[h264 @ 0000024024593b40] no picture
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0000024023c78880] All info found
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0000024023c78880] After avformat_find_stream_info() pos: 8948 bytes read:66664 seeks:2 frames:1
+[vist#0:0/h264 @ 00000240222dc200] Selecting decoder 'h264' because of requested hwaccel method d3d11va
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\Users\fampc\Docker\Data\cache\hwprobe\fixtures\sha256_6de636530efd2f91f000e99b6b83ced56c06f804fb7e10b6a9a44916024695c0\h264_8bit.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf62.12.103
+  Duration: 00:00:01.00, start: 0.000000, bitrate: 749 kb/s
+  Stream #0:0[0x1](und), 1, 1/12800: Video: h264 (High), 1 reference frame (avc1 / 0x31637661), yuv420p(progressive, left), 640x360 [SAR 1:1 DAR 16:9], 0/1, 740 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+    Metadata:
+      handler_name    : VideoHandler
+      encoder         : Lavc62.28.103 libx264
+Successfully opened the file.
+Parsing a group of options: output url -.
+Applying option frames:v (set the number of frames to output) with argument 10.
+Applying option vf (alias for -filter:v (apply filters to video streams)) with argument setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,hwmap=derive_device=opencl:mode=read,scale_opencl=format=nv12,hwmap=derive_device=d3d11va:mode=write:reverse=1,format=d3d11.
+Applying option c:v (select encoder/decoder ('copy' to copy stream without reencoding)) with argument av1_amf.
+Applying option an (disable audio) with argument 1.
+Applying option f (force container format (auto-detected otherwise)) with argument null.
+Successfully parsed a group of options.
+Opening an output file: -.
+[out#0/null @ 0000024022162c40] No explicit maps, mapping streams automatically...
+[vost#0:0/av1_amf @ 00000240237d75c0] Created video stream from input stream 0:0
+[AVFilterGraph @ 0000024022dd79c0] Setting 'color_primaries' to value 'bt709'
+[AVFilterGraph @ 0000024022dd79c0] Setting 'color_trc' to value 'bt709'
+[AVFilterGraph @ 0000024022dd79c0] Setting 'colorspace' to value 'bt709'
+[AVFilterGraph @ 0000024022dd79c0] Setting 'derive_device' to value 'opencl'
+[AVFilterGraph @ 0000024022dd79c0] Setting 'mode' to value 'read'
+[AVFilterGraph @ 0000024022dd79c0] Setting 'format' to value 'nv12'
+[AVFilterGraph @ 0000024022dd79c0] Setting 'derive_device' to value 'd3d11va'
+[AVFilterGraph @ 0000024022dd79c0] Setting 'mode' to value 'write'
+[AVFilterGraph @ 0000024022dd79c0] Setting 'reverse' to value '1'
+[AVFilterGraph @ 0000024022dd79c0] Setting 'pix_fmts' to value 'd3d11'
+[h264 @ 00000240243aa040] nal_unit_type: 7(SPS), nal_ref_idc: 3
+[h264 @ 00000240243aa040] Decoding VUI
+[h264 @ 00000240243aa040] nal_unit_type: 8(PPS), nal_ref_idc: 3
+Successfully opened the file.
+Stream mapping:
+  Stream #0:0 -> #0:0 (h264 (native) -> av1 (av1_amf))
+[vost#0:0/av1_amf @ 00000240237d75c0] Starting thread...
+[vf#0:0 @ 00000240222d15c0] Starting thread...
+[vist#0:0/h264 @ 00000240222dc200] [dec:h264 @ 000002402312f700] Starting thread...
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 00000240222b3c00] Starting thread...
+Press [q] to stop, [?] for help
+[h264 @ 00000240243aa040] nal_unit_type: 6(SEI), nal_ref_idc: 0
+[h264 @ 00000240243aa040] nal_unit_type: 5(IDR), nal_ref_idc: 3
+[h264 @ 00000240243aa040] Format d3d11 chosen by get_format().
+[h264 @ 00000240243aa040] Format d3d11 requires hwaccel h264_d3d11va2 initialisation.
+[h264 @ 00000240243aa040] Decoder GUIDs reported as supported:
+[h264 @ 00000240243aa040] {c58b9a06-7e89-11e1-bb00-70b34824019b} 103
+[h264 @ 00000240243aa040] {1b81be68-a0c7-11d3-b984-00c04f2e73c5} 103
+[h264 @ 00000240243aa040] {4245f676-2bbc-4166-a0bb-54e7b849c380} 103
+[h264 @ 00000240243aa040] {9901ccd3-ca12-4b7e-867a-e2223d9255c3} 103
+[h264 @ 00000240243aa040] {d79be8da-0cf1-4c81-b82a-69a4e236f43d} 103
+[h264 @ 00000240243aa040] {f9aaccbb-c2b6-4cfc-8779-5707b1760552} 103
+[h264 @ 00000240243aa040] {d1c20509-ae7b-4e72-ae3b-49f88d58992f} 103 107
+[h264 @ 00000240243aa040] {5b11d51b-2f4c-4452-bcc3-09f2a1160cc0} 103
+[h264 @ 00000240243aa040] {ea72396a-67ec-4781-bede-56f498f04ef2} 103
+[h264 @ 00000240243aa040] {c152ca8f-738c-461b-ad89-fc292cf8f162} 103
+[h264 @ 00000240243aa040] {514a356c-7027-4aff-8a60-afd2c1f672f1} 103
+[h264 @ 00000240243aa040] {107af0e0-ef1a-4d19-aba8-67a163073d13} 103 104
+[h264 @ 00000240243aa040] {65d1fa41-58af-453a-9cab-5d981156da9f} 103 104
+[h264 @ 00000240243aa040] {2db154b6-dbb2-4079-a3ff-60d7a898a6ab} 103 104
+[h264 @ 00000240243aa040] {c74a3fd0-d713-4581-a02e-8edfb112ace3} 103 104
+[h264 @ 00000240243aa040] {463707f8-a1d0-4585-876d-83aa6d60b89e} 103
+[h264 @ 00000240243aa040] {a4c749ef-6ecf-48aa-8448-50a7a1165ff7} 103 104
+[h264 @ 00000240243aa040] {2d80bed6-9cac-4835-9e91-327bbc4f9ee8} 105
+[h264 @ 00000240243aa040] {b8be4ccb-cf53-46ba-8d59-d6b8a6da5d2a} 103 104
+[h264 @ 00000240243aa040] {603a4756-a864-4f91-bb62-2c935b7a1391} 103
+[h264 @ 00000240243aa040] {84ad67f6-4c21-419a-9f0b-24f0578906c1} 103
+[h264 @ 00000240243aa040] Creating the decoder with a texture array.
+[h264 @ 00000240243aa040] Reinit context to 640x368, pix_fmt: d3d11
+[h264 @ 00000240243aa040] no picture
+[h264 @ 0000024023133140] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[h264 @ 0000024023133140] no picture
+[h264 @ 00000240243aa040] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[h264 @ 0000024023133140] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[AVFilterGraph @ 0000024022ea5900] Setting 'color_primaries' to value 'bt709'
+[AVFilterGraph @ 0000024022ea5900] Setting 'color_trc' to value 'bt709'
+[AVFilterGraph @ 0000024022ea5900] Setting 'colorspace' to value 'bt709'
+[AVFilterGraph @ 0000024022ea5900] Setting 'derive_device' to value 'opencl'
+[AVFilterGraph @ 0000024022ea5900] Setting 'mode' to value 'read'
+[AVFilterGraph @ 0000024022ea5900] Setting 'format' to value 'nv12'
+[AVFilterGraph @ 0000024022ea5900] Setting 'derive_device' to value 'd3d11va'
+[AVFilterGraph @ 0000024022ea5900] Setting 'mode' to value 'write'
+[AVFilterGraph @ 0000024022ea5900] Setting 'reverse' to value '1'
+[AVFilterGraph @ 0000024022ea5900] Setting 'pix_fmts' to value 'd3d11'
+detected 12 logical cores
+[graph -1 input from stream 0:0 @ 0000024022eca580] w:640 h:360 pixfmt:d3d11 tb:1/12800 fr:25/1 sar:1/1 csp:unknown range:unknown alpha:unspecified
+[format @ 0000024022ec9ac0] Setting 'pix_fmts' to value 'nv12|yuv420p|d3d11|dxva2_vld|p010le|amf|bgr0|rgb0|bgra|argb|rgba|x2bgr10le|rgbaf16le'
+[format @ 0000024022ec9ac0] Setting 'color_ranges' to value 'tv|pc'
+Filter 'Parsed_setparams_0' formats:
+  in[0] 'default':
+    Pixel formats: yuv420p yuyv422 rgb24 bgr24 yuv422p yuv444p yuv410p yuv411p gray monow monob pal8 yuvj420p yuvj422p yuvj444p uyvy422 uyyvyy411 bgr8 bgr4 bgr4_byte rgb8 rgb4 rgb4_byte nv12 nv21 argb rgba abgr bgra gray16be gray16le yuv440p yuvj440p yuva420p rgb48be rgb48le rgb565be rgb565le rgb555be rgb555le bgr565be bgr565le bgr555be bgr555le vaapi yuv420p16le yuv420p16be yuv422p16le yuv422p16be yuv444p16le yuv444p16be dxva2_vld rgb444le rgb444be bgr444le bgr444be ya8 bgr48be bgr48le yuv420p9be yuv420p9le yuv420p10be yuv420p10le yuv422p10be yuv422p10le yuv444p9be yuv444p9le yuv444p10be yuv444p10le yuv422p9be yuv422p9le gbrp gbrp9be gbrp9le gbrp10be gbrp10le gbrp16be gbrp16le yuva422p yuva444p yuva420p9be yuva420p9le yuva422p9be yuva422p9le yuva444p9be yuva444p9le yuva420p10be yuva420p10le yuva422p10be yuva422p10le yuva444p10be yuva444p10le yuva420p16be yuva420p16le yuva422p16be yuva422p16le yuva444p16be yuva444p16le vdpau xyz12le xyz12be nv16 nv20le nv20be rgba64be rgba64le bgra64be bgra64le yvyu422 ya16be ya16le gbrap gbrap16be gbrap16le qsv mmal d3d11va_vld cuda 0rgb rgb0 0bgr bgr0 yuv420p12be yuv420p12le yuv420p14be yuv420p14le yuv422p12be yuv422p12le yuv422p14be yuv422p14le yuv444p12be yuv444p12le yuv444p14be yuv444p14le gbrp12be gbrp12le gbrp14be gbrp14le yuvj411p bayer_bggr8 bayer_rggb8 bayer_gbrg8 bayer_grbg8 bayer_bggr16le bayer_bggr16be bayer_rggb16le bayer_rggb16be bayer_gbrg16le bayer_gbrg16be bayer_grbg16le bayer_grbg16be yuv440p10le yuv440p10be yuv440p12le yuv440p12be ayuv64le ayuv64be videotoolbox_vld p010le p010be gbrap12be gbrap12le gbrap10be gbrap10le mediacodec gray12be gray12le gray10be gray10le p016le p016be d3d11 gray9be gray9le gbrpf32be gbrpf32le gbrapf32be gbrapf32le drm_prime opencl gray14be gray14le grayf32be grayf32le yuva422p12be yuva422p12le yuva444p12be yuva444p12le nv24 nv42 vulkan y210be y210le x2rgb10le x2rgb10be x2bgr10le x2bgr10be p210be p210le p410be p410le p216be p216le p416be p416le vuya rgbaf16be rgbaf16le vuyx p012le p012be y212be y212le xv30be xv30le xv36be xv36le rgbf32be rgbf32le rgbaf32be rgbaf32le p212be p212le p412be p412le gbrap14be gbrap14le d3d12 ayuv uyva vyu444 v30xbe v30xle rgbf16be rgbf16le rgba128be rgba128le rgb96be rgb96le y216be y216le xv48be xv48le gbrpf16be gbrpf16le gbrapf16be gbrapf16le grayf16be grayf16le amf gray32be gray32le yaf32be yaf32le yaf16be yaf16le gbrap32be gbrap32le yuv444p10msbbe yuv444p10msble yuv444p12msbbe yuv444p12msble gbrp10msbbe gbrp10msble gbrp12msbbe gbrp12msble ohcodec nv15 nv20
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+  out[0] 'default':
+    Pixel formats: yuv420p yuyv422 rgb24 bgr24 yuv422p yuv444p yuv410p yuv411p gray monow monob pal8 yuvj420p yuvj422p yuvj444p uyvy422 uyyvyy411 bgr8 bgr4 bgr4_byte rgb8 rgb4 rgb4_byte nv12 nv21 argb rgba abgr bgra gray16be gray16le yuv440p yuvj440p yuva420p rgb48be rgb48le rgb565be rgb565le rgb555be rgb555le bgr565be bgr565le bgr555be bgr555le vaapi yuv420p16le yuv420p16be yuv422p16le yuv422p16be yuv444p16le yuv444p16be dxva2_vld rgb444le rgb444be bgr444le bgr444be ya8 bgr48be bgr48le yuv420p9be yuv420p9le yuv420p10be yuv420p10le yuv422p10be yuv422p10le yuv444p9be yuv444p9le yuv444p10be yuv444p10le yuv422p9be yuv422p9le gbrp gbrp9be gbrp9le gbrp10be gbrp10le gbrp16be gbrp16le yuva422p yuva444p yuva420p9be yuva420p9le yuva422p9be yuva422p9le yuva444p9be yuva444p9le yuva420p10be yuva420p10le yuva422p10be yuva422p10le yuva444p10be yuva444p10le yuva420p16be yuva420p16le yuva422p16be yuva422p16le yuva444p16be yuva444p16le vdpau xyz12le xyz12be nv16 nv20le nv20be rgba64be rgba64le bgra64be bgra64le yvyu422 ya16be ya16le gbrap gbrap16be gbrap16le qsv mmal d3d11va_vld cuda 0rgb rgb0 0bgr bgr0 yuv420p12be yuv420p12le yuv420p14be yuv420p14le yuv422p12be yuv422p12le yuv422p14be yuv422p14le yuv444p12be yuv444p12le yuv444p14be yuv444p14le gbrp12be gbrp12le gbrp14be gbrp14le yuvj411p bayer_bggr8 bayer_rggb8 bayer_gbrg8 bayer_grbg8 bayer_bggr16le bayer_bggr16be bayer_rggb16le bayer_rggb16be bayer_gbrg16le bayer_gbrg16be bayer_grbg16le bayer_grbg16be yuv440p10le yuv440p10be yuv440p12le yuv440p12be ayuv64le ayuv64be videotoolbox_vld p010le p010be gbrap12be gbrap12le gbrap10be gbrap10le mediacodec gray12be gray12le gray10be gray10le p016le p016be d3d11 gray9be gray9le gbrpf32be gbrpf32le gbrapf32be gbrapf32le drm_prime opencl gray14be gray14le grayf32be grayf32le yuva422p12be yuva422p12le yuva444p12be yuva444p12le nv24 nv42 vulkan y210be y210le x2rgb10le x2rgb10be x2bgr10le x2bgr10be p210be p210le p410be p410le p216be p216le p416be p416le vuya rgbaf16be rgbaf16le vuyx p012le p012be y212be y212le xv30be xv30le xv36be xv36le rgbf32be rgbf32le rgbaf32be rgbaf32le p212be p212le p412be p412le gbrap14be gbrap14le d3d12 ayuv uyva vyu444 v30xbe v30xle rgbf16be rgbf16le rgba128be rgba128le rgb96be rgb96le y216be y216le xv48be xv48le gbrpf16be gbrpf16le gbrapf16be gbrapf16le grayf16be grayf16le amf gray32be gray32le yaf32be yaf32le yaf16be yaf16le gbrap32be gbrap32le yuv444p10msbbe yuv444p10msble yuv444p12msbbe yuv444p12msble gbrp10msbbe gbrp10msble gbrp12msbbe gbrp12msble ohcodec nv15 nv20
+    Color spaces: bt709
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+Filter 'Parsed_hwmap_1' formats:
+  in[0] 'default':
+    Pixel formats: yuv420p yuyv422 rgb24 bgr24 yuv422p yuv444p yuv410p yuv411p gray monow monob pal8 yuvj420p yuvj422p yuvj444p uyvy422 uyyvyy411 bgr8 bgr4 bgr4_byte rgb8 rgb4 rgb4_byte nv12 nv21 argb rgba abgr bgra gray16be gray16le yuv440p yuvj440p yuva420p rgb48be rgb48le rgb565be rgb565le rgb555be rgb555le bgr565be bgr565le bgr555be bgr555le vaapi yuv420p16le yuv420p16be yuv422p16le yuv422p16be yuv444p16le yuv444p16be dxva2_vld rgb444le rgb444be bgr444le bgr444be ya8 bgr48be bgr48le yuv420p9be yuv420p9le yuv420p10be yuv420p10le yuv422p10be yuv422p10le yuv444p9be yuv444p9le yuv444p10be yuv444p10le yuv422p9be yuv422p9le gbrp gbrp9be gbrp9le gbrp10be gbrp10le gbrp16be gbrp16le yuva422p yuva444p yuva420p9be yuva420p9le yuva422p9be yuva422p9le yuva444p9be yuva444p9le yuva420p10be yuva420p10le yuva422p10be yuva422p10le yuva444p10be yuva444p10le yuva420p16be yuva420p16le yuva422p16be yuva422p16le yuva444p16be yuva444p16le vdpau xyz12le xyz12be nv16 nv20le nv20be rgba64be rgba64le bgra64be bgra64le yvyu422 ya16be ya16le gbrap gbrap16be gbrap16le qsv mmal d3d11va_vld cuda 0rgb rgb0 0bgr bgr0 yuv420p12be yuv420p12le yuv420p14be yuv420p14le yuv422p12be yuv422p12le yuv422p14be yuv422p14le yuv444p12be yuv444p12le yuv444p14be yuv444p14le gbrp12be gbrp12le gbrp14be gbrp14le yuvj411p bayer_bggr8 bayer_rggb8 bayer_gbrg8 bayer_grbg8 bayer_bggr16le bayer_bggr16be bayer_rggb16le bayer_rggb16be bayer_gbrg16le bayer_gbrg16be bayer_grbg16le bayer_grbg16be yuv440p10le yuv440p10be yuv440p12le yuv440p12be ayuv64le ayuv64be videotoolbox_vld p010le p010be gbrap12be gbrap12le gbrap10be gbrap10le mediacodec gray12be gray12le gray10be gray10le p016le p016be d3d11 gray9be gray9le gbrpf32be gbrpf32le gbrapf32be gbrapf32le drm_prime opencl gray14be gray14le grayf32be grayf32le yuva422p12be yuva422p12le yuva444p12be yuva444p12le nv24 nv42 vulkan y210be y210le x2rgb10le x2rgb10be x2bgr10le x2bgr10be p210be p210le p410be p410le p216be p216le p416be p416le vuya rgbaf16be rgbaf16le vuyx p012le p012be y212be y212le xv30be xv30le xv36be xv36le rgbf32be rgbf32le rgbaf32be rgbaf32le p212be p212le p412be p412le gbrap14be gbrap14le d3d12 ayuv uyva vyu444 v30xbe v30xle rgbf16be rgbf16le rgba128be rgba128le rgb96be rgb96le y216be y216le xv48be xv48le gbrpf16be gbrpf16le gbrapf16be gbrapf16le grayf16be grayf16le amf gray32be gray32le yaf32be yaf32le yaf16be yaf16le gbrap32be gbrap32le yuv444p10msbbe yuv444p10msble yuv444p12msbbe yuv444p12msble gbrp10msbbe gbrp10msble gbrp12msbbe gbrp12msble ohcodec nv15 nv20
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+  out[0] 'default':
+    Pixel formats: yuv420p yuyv422 rgb24 bgr24 yuv422p yuv444p yuv410p yuv411p gray monow monob pal8 yuvj420p yuvj422p yuvj444p uyvy422 uyyvyy411 bgr8 bgr4 bgr4_byte rgb8 rgb4 rgb4_byte nv12 nv21 argb rgba abgr bgra gray16be gray16le yuv440p yuvj440p yuva420p rgb48be rgb48le rgb565be rgb565le rgb555be rgb555le bgr565be bgr565le bgr555be bgr555le vaapi yuv420p16le yuv420p16be yuv422p16le yuv422p16be yuv444p16le yuv444p16be dxva2_vld rgb444le rgb444be bgr444le bgr444be ya8 bgr48be bgr48le yuv420p9be yuv420p9le yuv420p10be yuv420p10le yuv422p10be yuv422p10le yuv444p9be yuv444p9le yuv444p10be yuv444p10le yuv422p9be yuv422p9le gbrp gbrp9be gbrp9le gbrp10be gbrp10le gbrp16be gbrp16le yuva422p yuva444p yuva420p9be yuva420p9le yuva422p9be yuva422p9le yuva444p9be yuva444p9le yuva420p10be yuva420p10le yuva422p10be yuva422p10le yuva444p10be yuva444p10le yuva420p16be yuva420p16le yuva422p16be yuva422p16le yuva444p16be yuva444p16le vdpau xyz12le xyz12be nv16 nv20le nv20be rgba64be rgba64le bgra64be bgra64le yvyu422 ya16be ya16le gbrap gbrap16be gbrap16le qsv mmal d3d11va_vld cuda 0rgb rgb0 0bgr bgr0 yuv420p12be yuv420p12le yuv420p14be yuv420p14le yuv422p12be yuv422p12le yuv422p14be yuv422p14le yuv444p12be yuv444p12le yuv444p14be yuv444p14le gbrp12be gbrp12le gbrp14be gbrp14le yuvj411p bayer_bggr8 bayer_rggb8 bayer_gbrg8 bayer_grbg8 bayer_bggr16le bayer_bggr16be bayer_rggb16le bayer_rggb16be bayer_gbrg16le bayer_gbrg16be bayer_grbg16le bayer_grbg16be yuv440p10le yuv440p10be yuv440p12le yuv440p12be ayuv64le ayuv64be videotoolbox_vld p010le p010be gbrap12be gbrap12le gbrap10be gbrap10le mediacodec gray12be gray12le gray10be gray10le p016le p016be d3d11 gray9be gray9le gbrpf32be gbrpf32le gbrapf32be gbrapf32le drm_prime opencl gray14be gray14le grayf32be grayf32le yuva422p12be yuva422p12le yuva444p12be yuva444p12le nv24 nv42 vulkan y210be y210le x2rgb10le x2rgb10be x2bgr10le x2bgr10be p210be p210le p410be p410le p216be p216le p416be p416le vuya rgbaf16be rgbaf16le vuyx p012le p012be y212be y212le xv30be xv30le xv36be xv36le rgbf32be rgbf32le rgbaf32be rgbaf32le p212be p212le p412be p412le gbrap14be gbrap14le d3d12 ayuv uyva vyu444 v30xbe v30xle rgbf16be rgbf16le rgba128be rgba128le rgb96be rgb96le y216be y216le xv48be xv48le gbrpf16be gbrpf16le gbrapf16be gbrapf16le grayf16be grayf16le amf gray32be gray32le yaf32be yaf32le yaf16be yaf16le gbrap32be gbrap32le yuv444p10msbbe yuv444p10msble yuv444p12msbbe yuv444p12msble gbrp10msbbe gbrp10msble gbrp12msbbe gbrp12msble ohcodec nv15 nv20
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+Filter 'Parsed_scale_opencl_2' formats:
+  in[0] 'default':
+    Pixel formats: opencl
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+  out[0] 'default':
+    Pixel formats: opencl
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+Filter 'Parsed_hwmap_3' formats:
+  in[0] 'default':
+    Pixel formats: yuv420p yuyv422 rgb24 bgr24 yuv422p yuv444p yuv410p yuv411p gray monow monob pal8 yuvj420p yuvj422p yuvj444p uyvy422 uyyvyy411 bgr8 bgr4 bgr4_byte rgb8 rgb4 rgb4_byte nv12 nv21 argb rgba abgr bgra gray16be gray16le yuv440p yuvj440p yuva420p rgb48be rgb48le rgb565be rgb565le rgb555be rgb555le bgr565be bgr565le bgr555be bgr555le vaapi yuv420p16le yuv420p16be yuv422p16le yuv422p16be yuv444p16le yuv444p16be dxva2_vld rgb444le rgb444be bgr444le bgr444be ya8 bgr48be bgr48le yuv420p9be yuv420p9le yuv420p10be yuv420p10le yuv422p10be yuv422p10le yuv444p9be yuv444p9le yuv444p10be yuv444p10le yuv422p9be yuv422p9le gbrp gbrp9be gbrp9le gbrp10be gbrp10le gbrp16be gbrp16le yuva422p yuva444p yuva420p9be yuva420p9le yuva422p9be yuva422p9le yuva444p9be yuva444p9le yuva420p10be yuva420p10le yuva422p10be yuva422p10le yuva444p10be yuva444p10le yuva420p16be yuva420p16le yuva422p16be yuva422p16le yuva444p16be yuva444p16le vdpau xyz12le xyz12be nv16 nv20le nv20be rgba64be rgba64le bgra64be bgra64le yvyu422 ya16be ya16le gbrap gbrap16be gbrap16le qsv mmal d3d11va_vld cuda 0rgb rgb0 0bgr bgr0 yuv420p12be yuv420p12le yuv420p14be yuv420p14le yuv422p12be yuv422p12le yuv422p14be yuv422p14le yuv444p12be yuv444p12le yuv444p14be yuv444p14le gbrp12be gbrp12le gbrp14be gbrp14le yuvj411p bayer_bggr8 bayer_rggb8 bayer_gbrg8 bayer_grbg8 bayer_bggr16le bayer_bggr16be bayer_rggb16le bayer_rggb16be bayer_gbrg16le bayer_gbrg16be bayer_grbg16le bayer_grbg16be yuv440p10le yuv440p10be yuv440p12le yuv440p12be ayuv64le ayuv64be videotoolbox_vld p010le p010be gbrap12be gbrap12le gbrap10be gbrap10le mediacodec gray12be gray12le gray10be gray10le p016le p016be d3d11 gray9be gray9le gbrpf32be gbrpf32le gbrapf32be gbrapf32le drm_prime opencl gray14be gray14le grayf32be grayf32le yuva422p12be yuva422p12le yuva444p12be yuva444p12le nv24 nv42 vulkan y210be y210le x2rgb10le x2rgb10be x2bgr10le x2bgr10be p210be p210le p410be p410le p216be p216le p416be p416le vuya rgbaf16be rgbaf16le vuyx p012le p012be y212be y212le xv30be xv30le xv36be xv36le rgbf32be rgbf32le rgbaf32be rgbaf32le p212be p212le p412be p412le gbrap14be gbrap14le d3d12 ayuv uyva vyu444 v30xbe v30xle rgbf16be rgbf16le rgba128be rgba128le rgb96be rgb96le y216be y216le xv48be xv48le gbrpf16be gbrpf16le gbrapf16be gbrapf16le grayf16be grayf16le amf gray32be gray32le yaf32be yaf32le yaf16be yaf16le gbrap32be gbrap32le yuv444p10msbbe yuv444p10msble yuv444p12msbbe yuv444p12msble gbrp10msbbe gbrp10msble gbrp12msbbe gbrp12msble ohcodec nv15 nv20
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+  out[0] 'default':
+    Pixel formats: yuv420p yuyv422 rgb24 bgr24 yuv422p yuv444p yuv410p yuv411p gray monow monob pal8 yuvj420p yuvj422p yuvj444p uyvy422 uyyvyy411 bgr8 bgr4 bgr4_byte rgb8 rgb4 rgb4_byte nv12 nv21 argb rgba abgr bgra gray16be gray16le yuv440p yuvj440p yuva420p rgb48be rgb48le rgb565be rgb565le rgb555be rgb555le bgr565be bgr565le bgr555be bgr555le vaapi yuv420p16le yuv420p16be yuv422p16le yuv422p16be yuv444p16le yuv444p16be dxva2_vld rgb444le rgb444be bgr444le bgr444be ya8 bgr48be bgr48le yuv420p9be yuv420p9le yuv420p10be yuv420p10le yuv422p10be yuv422p10le yuv444p9be yuv444p9le yuv444p10be yuv444p10le yuv422p9be yuv422p9le gbrp gbrp9be gbrp9le gbrp10be gbrp10le gbrp16be gbrp16le yuva422p yuva444p yuva420p9be yuva420p9le yuva422p9be yuva422p9le yuva444p9be yuva444p9le yuva420p10be yuva420p10le yuva422p10be yuva422p10le yuva444p10be yuva444p10le yuva420p16be yuva420p16le yuva422p16be yuva422p16le yuva444p16be yuva444p16le vdpau xyz12le xyz12be nv16 nv20le nv20be rgba64be rgba64le bgra64be bgra64le yvyu422 ya16be ya16le gbrap gbrap16be gbrap16le qsv mmal d3d11va_vld cuda 0rgb rgb0 0bgr bgr0 yuv420p12be yuv420p12le yuv420p14be yuv420p14le yuv422p12be yuv422p12le yuv422p14be yuv422p14le yuv444p12be yuv444p12le yuv444p14be yuv444p14le gbrp12be gbrp12le gbrp14be gbrp14le yuvj411p bayer_bggr8 bayer_rggb8 bayer_gbrg8 bayer_grbg8 bayer_bggr16le bayer_bggr16be bayer_rggb16le bayer_rggb16be bayer_gbrg16le bayer_gbrg16be bayer_grbg16le bayer_grbg16be yuv440p10le yuv440p10be yuv440p12le yuv440p12be ayuv64le ayuv64be videotoolbox_vld p010le p010be gbrap12be gbrap12le gbrap10be gbrap10le mediacodec gray12be gray12le gray10be gray10le p016le p016be d3d11 gray9be gray9le gbrpf32be gbrpf32le gbrapf32be gbrapf32le drm_prime opencl gray14be gray14le grayf32be grayf32le yuva422p12be yuva422p12le yuva444p12be yuva444p12le nv24 nv42 vulkan y210be y210le x2rgb10le x2rgb10be x2bgr10le x2bgr10be p210be p210le p410be p410le p216be p216le p416be p416le vuya rgbaf16be rgbaf16le vuyx p012le p012be y212be y212le xv30be xv30le xv36be xv36le rgbf32be rgbf32le rgbaf32be rgbaf32le p212be p212le p412be p412le gbrap14be gbrap14le d3d12 ayuv uyva vyu444 v30xbe v30xle rgbf16be rgbf16le rgba128be rgba128le rgb96be rgb96le y216be y216le xv48be xv48le gbrpf16be gbrpf16le gbrapf16be gbrapf16le grayf16be grayf16le amf gray32be gray32le yaf32be yaf32le yaf16be yaf16le gbrap32be gbrap32le yuv444p10msbbe yuv444p10msble yuv444p12msbbe yuv444p12msble gbrp10msbbe gbrp10msble gbrp12msbbe gbrp12msble ohcodec nv15 nv20
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+Filter 'Parsed_format_4' formats:
+  in[0] 'default':
+    Pixel formats: d3d11
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+  out[0] 'default':
+    Pixel formats: d3d11
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+Filter 'graph -1 input from stream 0:0' formats:
+  out[0] 'default':
+    Pixel formats: d3d11
+    Color spaces: unknown
+    Color ranges: unknown tv
+    Alpha modes: unspecified premultiplied straight
+Filter 'out_#0:0' formats:
+  in[0] 'default':
+    Pixel formats: yuv420p yuyv422 rgb24 bgr24 yuv422p yuv444p yuv410p yuv411p gray monow monob pal8 yuvj420p yuvj422p yuvj444p uyvy422 uyyvyy411 bgr8 bgr4 bgr4_byte rgb8 rgb4 rgb4_byte nv12 nv21 argb rgba abgr bgra gray16be gray16le yuv440p yuvj440p yuva420p rgb48be rgb48le rgb565be rgb565le rgb555be rgb555le bgr565be bgr565le bgr555be bgr555le vaapi yuv420p16le yuv420p16be yuv422p16le yuv422p16be yuv444p16le yuv444p16be dxva2_vld rgb444le rgb444be bgr444le bgr444be ya8 bgr48be bgr48le yuv420p9be yuv420p9le yuv420p10be yuv420p10le yuv422p10be yuv422p10le yuv444p9be yuv444p9le yuv444p10be yuv444p10le yuv422p9be yuv422p9le gbrp gbrp9be gbrp9le gbrp10be gbrp10le gbrp16be gbrp16le yuva422p yuva444p yuva420p9be yuva420p9le yuva422p9be yuva422p9le yuva444p9be yuva444p9le yuva420p10be yuva420p10le yuva422p10be yuva422p10le yuva444p10be yuva444p10le yuva420p16be yuva420p16le yuva422p16be yuva422p16le yuva444p16be yuva444p16le vdpau xyz12le xyz12be nv16 nv20le nv20be rgba64be rgba64le bgra64be bgra64le yvyu422 ya16be ya16le gbrap gbrap16be gbrap16le qsv mmal d3d11va_vld cuda 0rgb rgb0 0bgr bgr0 yuv420p12be yuv420p12le yuv420p14be yuv420p14le yuv422p12be yuv422p12le yuv422p14be yuv422p14le yuv444p12be yuv444p12le yuv444p14be yuv444p14le gbrp12be gbrp12le gbrp14be gbrp14le yuvj411p bayer_bggr8 bayer_rggb8 bayer_gbrg8 bayer_grbg8 bayer_bggr16le bayer_bggr16be bayer_rggb16le bayer_rggb16be bayer_gbrg16le bayer_gbrg16be bayer_grbg16le bayer_grbg16be yuv440p10le yuv440p10be yuv440p12le yuv440p12be ayuv64le ayuv64be videotoolbox_vld p010le p010be gbrap12be gbrap12le gbrap10be gbrap10le mediacodec gray12be gray12le gray10be gray10le p016le p016be d3d11 gray9be gray9le gbrpf32be gbrpf32le gbrapf32be gbrapf32le drm_prime opencl gray14be gray14le grayf32be grayf32le yuva422p12be yuva422p12le yuva444p12be yuva444p12le nv24 nv42 vulkan y210be y210le x2rgb10le x2rgb10be x2bgr10le x2bgr10be p210be p210le p410be p410le p216be p216le p416be p416le vuya rgbaf16be rgbaf16le vuyx p012le p012be y212be y212le xv30be xv30le xv36be xv36le rgbf32be rgbf32le rgbaf32be rgbaf32le p212be p212le p412be p412le gbrap14be gbrap14le d3d12 ayuv uyva vyu444 v30xbe v30xle rgbf16be rgbf16le rgba128be rgba128le rgb96be rgb96le y216be y216le xv48be xv48le gbrpf16be gbrpf16le gbrapf16be gbrapf16le grayf16be grayf16le amf gray32be gray32le yaf32be yaf32le yaf16be yaf16le gbrap32be gbrap32le yuv444p10msbbe yuv444p10msble yuv444p12msbbe yuv444p12msble gbrp10msbbe gbrp10msble gbrp12msbbe gbrp12msble ohcodec nv15 nv20
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: unknown tv pc
+    Alpha modes: unspecified premultiplied straight
+Filter 'format' formats:
+  in[0] 'default':
+    Pixel formats: nv12 yuv420p d3d11 dxva2_vld p010le amf bgr0 rgb0 bgra argb rgba x2bgr10le rgbaf16le
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: tv pc
+    Alpha modes: unspecified premultiplied straight
+  out[0] 'default':
+    Pixel formats: nv12 yuv420p d3d11 dxva2_vld p010le amf bgr0 rgb0 bgra argb rgba x2bgr10le rgbaf16le
+    Color spaces: unknown gbr bt709 fcc bt470bg smpte170m smpte240m ycgco bt2020nc bt2020c smpte2085 chroma-derived-nc chroma-derived-c ictcp ipt-c2 ycgco-re ycgco-ro
+    Color ranges: tv pc
+    Alpha modes: unspecified premultiplied straight
+[AVFilterGraph @ 0000024022ea5900] query_formats: 8 queried, 28 merged, 0 already done, 0 delayed
+[Parsed_hwmap_1 @ 0000024023d9f540] Configure hwmap d3d11 -> opencl.
+[Parsed_hwmap_1 @ 0000024023d9f540] Saved the fixed_pool_size from initial_pool_size: 22
+[Parsed_hwmap_3 @ 00000240222a3380] Configure hwmap opencl -> d3d11.
+[graph -1 input from stream 0:0 @ 0000024022eca580] video frame properties congruent with link at pts_time: 0
+[hwmap @ 0000024013140880] Filter input: d3d11, 640x360 (0).
+[AVHWFramesContext @ 0000024022fe5480] Map D3D11 texture 21 to OpenCL.
+[hwmap @ 0000024013140880] Filter output: opencl, 640x360 (0).
+[scale_opencl @ 0000024022eabf00] Filter input: opencl, 640x360 (0).
+[Parsed_scale_opencl_2 @ 0000024023d9f980] Generated OpenCL header:
+#define SCALE_BUILTIN
+#define SCALE_BUILTIN_NEIGHBOR
+
+[AVHWFramesContext @ 0000024022fe4880] Map D3D11 texture 23 to OpenCL.
+[Parsed_scale_opencl_2 @ 0000024023d9f980] Run kernel scale_builtin (320 x 180).
+[scale_opencl @ 0000024022eabf00] Filter output: opencl, 640x360 (0).
+[hwmap @ 0000024013141bc0] Filter input: opencl, 640x360 (0).
+[hwmap @ 0000024013141bc0] Filter output: d3d11, 640x360 (0).
+[vost#0:0/av1_amf @ 00000240237d75c0] [enc:av1_amf @ 000002402229c780] Using input frames context (format d3d11) with av1_amf encoder.
+[D3D11VA @ 0000024010ff9700] AMF via D3D11.
+[AMF @ 0000024022ec99c0] AMF initialisation succeeded via D3D11.
+[AMF @ 0000024022ec99c0] EncodeCoreHelper: 2026-10-21 16:46:03.002     6508 [EncodeCoreHelper]    Info: ***Found regpath, but key not found using default=1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.005     6508 [AMFEncoderCoreAv1] Warning:  AMFEncoderCoreAv1Impl::CreateEncodeService() not supported VCN instance 1!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreBaseImpl: 2026-10-21 16:46:03.005     6508 [AMFEncoderCoreBaseImpl]    Info: AMFEncoderCoreBaseImpl::QueryThroughput - maxThroughputMBPerSec = 2937600, totalRequiredThroughputMBPerSec = 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.005     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1FrameSize:640,360
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.005     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1Level), 14
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.005     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1TileConfigMethod), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.005     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1NumTilesPerFrame), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.005     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - TL0.QL0.Av1FrameRate:25,1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.005     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1EncodingLatencyMode), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.005     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1ColorBitDepth:8
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.005     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1OutputColorProfile:1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.005     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1NominalRange:false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.005     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1OutputColorTransferChar:1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.005     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1OutputColorPrimaries:1
+[av1_amf @ 00000240230ee3c0] Rate control turned to Peak VBR
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.005     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1RateControlMethod:2
+[av1_amf @ 00000240230ee3c0] rate control mode is vbr_peak but max_rate is not set, default max_rate will be applied.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.005     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1AlignmentMode:3
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.005     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1EnablePreAnalysis), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.005     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1AdaptiveMiniGop), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.005     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1QueryTimeout:1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.005     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1QueryTimeout), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.006     6508 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::Init(NV12, 640, 360)
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.006     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1ColorBitDepth), 8
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.006     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1QueryTimeout), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.006     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1EnableEncoderSmartAccessVideo), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1EncoderGPU), -1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreBaseImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreBaseImpl]    Info: AMFEncoderCoreBaseImpl::QueryThroughput - maxThroughputMBPerSec = 2937600, totalRequiredThroughputMBPerSec = 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1AlignmentMode:3
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1ColorBitDepth:8
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1FrameSize:640,360
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1Level), 14
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1TileConfigMethod), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1NumTilesPerFrame), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1NominalRange:false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1OutputColorPrimaries:1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1OutputColorProfile:1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1OutputColorTransferChar:1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1QueryTimeout:1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1RateControlMethod:2
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - TL0.QL0.Av1FrameRate:25,1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1EncodingLatencyMode), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1FrameSize:640,360
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1WidthAlignmentFactor:64
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1HeightAlignmentFactor:16
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1AlignmentMode), 3
+[AMF @ 0000024022ec99c0] EncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [EncoderCoreImpl]   Debug: UpdateColorConfigs input format 1, efcSupport 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1ColorBitDepth), 8
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1InputColorProfile), -1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1InputColorProfile:7
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1OutputColorTransferChar), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1InputColorPrimaries), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1InputColorPrimaries:1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1OutputColorPrimaries), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1OutputColorProfile), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1InputColorTransferChar), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1InputColorTransferChar:1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1OutputColorProfile:1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1RateControlMethod), 2
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1MaxConsecutiveBPictures), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1Level), 14
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1TileConfigMethod), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1NumTilesPerFrame), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1PictureManagementMethod:1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(AV1OutputMode), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 +1
+2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1NumTilesPerFrame), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.007     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(AV1OutputMode), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1RateControlPreEncode), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1HighMotionQualityBoost), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - queueType=8
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - usage=0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - frameWidth=640
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - frameHeight=360
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - bitDepth=0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - profile=1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - level=14
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - pictureManagementMethod=1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - maxNumTemporalLayers=1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - maxNumLongTermFrames=0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - maxNumTileOutputs=1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - rateControlMethod=4
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - initialBufferFullness=64
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - preEncodeMode=0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - enablePreEncodeChroma=0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - vbaqMode=1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - vbaqStrength=6
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - sceneChangeSensitivity=0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - sceneChangeMinKeyFrameInterval=0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - twoPassSearchCenterMapMode=0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - enableTileObu=0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - cdefMode=1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - disableScreenContentTools=0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - enableErrorResilientMode=0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - enableOrderHint=1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - enableFrameId=1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - ltrMode=0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - enableRenderSize=0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - deltaQYDc=0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - deltaQUDc=0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - deltaQUAc=0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - deltaQVDc=0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - deltaQVAc=0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - tileConfigurationMethod=1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - numTiles=1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - numTileCols=1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - numTileRows=1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.009     6508 [AMFEncoderCoreAv1]    Info: ConfigInit::Init() - tileRowStart=-1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.009     6508 +1
+2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1EnablePreAnalysis), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1Level), 14
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1TileConfigMethod), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1NumTilesPerFrame), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1PictureManagementMethod:1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(AV1OutputMode), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 +1
+2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1NumTilesPerFrame), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(AV1OutputMode), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1FrameRate), 25,1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1QualityPreset), 70
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1RateControlMethod), 2
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1EnablePreAnalysis), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1RateControlPreEncode), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1HighMotionQualityBoost), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1MaxConsecutiveBPictures), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1AdaptiveMiniGop), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1FillerData), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1RateControlMethod), 2
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1EnforceHRD), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1RateControlMethod), 2
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(TL1.QL0.Av1FillerData), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1RateControlMethod), 2
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(TL1.QL0.Av1EnforceHRD), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1RateControlMethod), 2
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(TL2.QL0.Av1FillerData), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1RateControlMethod), 2
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(TL2.QL0.Av1EnforceHRD), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1RateControlMethod), 2
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(TL3.QL0.Av1FillerData), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1RateControlMethod), 2
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(TL3.QL0.Av1EnforceHRD), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.011     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1RateControlMethod), 2
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.012     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1MaxConsecutiveBPictures), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.012     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1ScreenContentTools), true
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.012     6508 +1
+2026-10-21 16:46:03.012     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1ColorBitDepth), 8
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.012     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1WidthAlignmentFactor), 64
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.012     6508 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1HeightAlignmentFactor), 16
+Output #0, null, to 'pipe:':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf62.12.103
+  Stream #0:0(und), 0, 1/25: Video: av1, 1 reference frame, nv12(tv, bt709, progressive, left), 640x360 [SAR 1:1 DAR 16:9], 0/1, q=2-31, 25 fps, 25 tbn (default)
+    Metadata:
+      encoder         : Lavc62.28.103 av1_amf
+      handler_name    : VideoHandler
+    Side data:
+      Frame Cropping: 0/0/0/2
+[out#0/null @ 0000024022162c40] Starting thread...
+[out#0/null @ 0000024022162c40] sq: send 0 ts 0.04
+[out#0/null @ 0000024022162c40] sq: receive 0 ts 0.04 queue head 0 ts 0.04
+[h264 @ 00000240243aa040] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[hwmap @ 0000024013140880] Filter input: d3d11, 640x360 (512).
+[AVHWFramesContext @ 0000024022fe5480] Map D3D11 texture 19 to OpenCL.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.012     7168 [AMFEncoderCoreImpl]   Debug: AMFEncoderCoreImpl::SubmitInput_Start() : format (NV12), memory (DX11), width (640), height (360)
+[AMF @ 0000024022ec99c0] AMFEncoderCoreBaseImpl: 2026-10-21 16:46:03.012     7168 [AMFEncoderCoreBaseImpl]    Info: AMFEncoderCoreBaseImpl::AllocBuffer() Switching to AllocBufferEx()
+[h264 @ 0000024023133140] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[h264 @ 00000240243aa040] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[h264 @ 0000024023133140] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[AMF @ 0000024022ec99c0] EncoderCoreImpl: 2026-10-21 16:46:03.013     7168 +1
+2026-10-21 16:46:03.014     7168 [EncoderCoreImpl]   Debug: UpdateColorConfigs input format 1, efcSupport 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.014     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1ColorBitDepth), 8
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.014     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1InputColorProfile), 7
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.014     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1InputColorPrimaries), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.014     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1OutputColorProfile), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.014     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1InputColorTransferChar), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.014     7168 [AMFEncoderCoreImpl]   Debug: SetPropertyInternalBase() - Av1OutputColorProfile:1
+[hwmap @ 0000024013140880] Filter output: opencl, 640x360 (512).
+[scale_opencl @ 0000024022eabf00] Filter input: opencl, 640x360 (512).
+[AVHWFramesContext @ 0000024022fe4880] Map D3D11 texture 22 to OpenCL.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.015     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1RateControlSkipFrameEnable), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.015     7168 [AMFEncoderCoreImpl]   Debug: ParamType 0!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.015     7168 [AMFEncoderCoreImpl]   Debug: ParamType 1, Layer 0 update!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.015     7168 [AMFEncoderCoreImpl]   Debug: ParamType 2, Layer 0 update!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.015     7168 [AMFEncoderCoreImpl]   Debug: ParamType 4!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.015     7168 [AMFEncoderCoreImpl]   Debug: ParamType 5!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.015     7168 [AMFEncoderCoreImpl]   Debug: ParamType 6!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.015     7168 [AMFEncoderCoreImpl]   Debug: ParamType 8!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.015     7168 [AMFEncoderCoreImpl]   Debug: ParamType 9!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.015     7168 [AMFEncoderCoreAv1]    Info: ConfigQualityPreset::Update() - preset=1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.015     7168 [AMFEncoderCoreImpl]   Debug: ParamType 16!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.015     7168 [AMFEncoderCoreImpl]   Debug: ParamType 17!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.015     7168 [AMFEncoderCoreImpl]   Debug: ParamType 18!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.015     7168 [AMFEncoderCoreImpl]   Debug: ParamType 19!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.015     7168 [AMFEncoderCoreImpl]   Debug: ParamType 22!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.015     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1PictureManagementMethod), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.015     7168 [AMFEncoderCoreAv1]   Debug: SetBufferProps: Frame Type:0 @frame 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1FrameSize), 640,360
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1FrameRate), 25,1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1EnablePreAnalysis), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl] Warning: GetProperty(Av1PreAnalysis) not found
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1RateControlMethod), 2
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1ColorBitDepth), 8
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1InputColorPrimaries), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1InputColorTransferChar), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1OutputColorTransferChar), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1OutputColorPrimaries), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1InputColorProfile), 7
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1OutputColorProfile), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1Usage), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1TargetBitrate), 20000000
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1InHDRMetadata), (null)
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1QualityPreset), 70
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1QvbrQualityLevel), 23
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1Profile), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1MaxNumOfTemporalLayers), 1
+[Parsed_scale_opencl_2 @ 0000024023d9f980] Run kernel scale_builtin (320 x 180).
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(AV1OutputMode), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1GOPSize), 240
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1IntraPeriod), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.016     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1EncodingLatencyMode), 0
+[scale_opencl @ 0000024022eabf00] Filter output: opencl, 640x360 (512).
+[hwmap @ 0000024013141bc0] Filter input: opencl, 640x360 (512).
+[hwmap @ 0000024013141bc0] Filter output: d3d11, 640x360 (512).
+[out#0/null @ 0000024022162c40] sq: send 0 ts 0.08
+[out#0/null @ 0000024022162c40] sq: receive 0 ts 0.08 queue head 0 ts 0.08
+[hwmap @ 0000024013140880] Filter input: d3d11, 640x360 (1024).
+[AVHWFramesContext @ 0000024022fe5480] Map D3D11 texture 20 to OpenCL.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.017     7168 [AMFEncoderCoreImpl]   Debug: AMFEncoderCoreImpl::SubmitInput_Start() : format (NV12), memory (DX11), width (640), height (360)
+[h264 @ 00000240243aa040] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.018     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1RateControlSkipFrameEnable), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.018     7168 [AMFEncoderCoreImpl]   Debug: ParamType 0!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.018     7168 [AMFEncoderCoreAv1]   Debug: SetBufferProps: Frame Type:2 @frame 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.018     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::QueryOutput()
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.018     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1PictureManagementMethod), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.018     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback taskId = 1.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.018     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback status = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.018     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback isFirst = 1.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.018     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback isLast = 1.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.018     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback bitstreamoffset = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.018     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback bitstreamSize = 6735.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.018     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpEncrypted = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.018     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpInputCtrHi = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.018     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpInputCtrLo = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.018     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback fillerDataSize = 0.
+[hwmap @ 0000024013140880] Filter output: opencl, 640x360 (1024).
+[scale_opencl @ 0000024022eabf00] Filter input: opencl, 640x360 (1024).
+[AVHWFramesContext @ 0000024022fe4880] Map D3D11 texture 21 to OpenCL.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.019     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1FrameRate), 25,1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.019     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(AV1OutputMode), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.019     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreH264Impl::QueryOutput() End: frame pts=0 outputFrames=1 outputBufferSize=6735
+[Parsed_scale_opencl_2 @ 0000024023d9f980] Run kernel scale_builtin (320 x 180).
+[scale_opencl @ 0000024022eabf00] Filter output: opencl, 640x360 (1024).
+[hwmap @ 0000024013141bc0] Filter input: opencl, 640x360 (1024).
+[hwmap @ 0000024013141bc0] Filter output: d3d11, 640x360 (1024).
+[out#0/null @ 0000024022162c40] sq: send 0 ts 0.12
+[out#0/null @ 0000024022162c40] sq: receive 0 ts 0.12 queue head 0 ts 0.12
+[hwmap @ 0000024013140880] Filter input: d3d11, 640x360 (1536).
+[AVHWFramesContext @ 0000024022fe5480] Map D3D11 texture 17 to OpenCL.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.020     7168 [AMFEncoderCoreImpl]   Debug: AMFEncoderCoreImpl::SubmitInput_Start() : format (NV12), memory (DX11), width (640), height (360)
+[h264 @ 0000024023133140] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.022     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1RateControlSkipFrameEnable), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.022     7168 [AMFEncoderCoreImpl]   Debug: ParamType 0!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.022     7168 [AMFEncoderCoreAv1]   Debug: SetBufferProps: Frame Type:2 @frame 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.022     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::QueryOutput()
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.022     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1PictureManagementMethod), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.022     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback taskId = 2.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.022     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback status = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.022     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback isFirst = 1.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.022     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback isLast = 1.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.022     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback bitstreamoffset = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.022     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback bitstreamSize = 5581.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.022     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpEncrypted = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.022     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpInputCtrHi = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.022     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpInputCtrLo = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.022     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback fillerDataSize = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.022     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1FrameRate), 25,1
+[hwmap @ 0000024013140880] Filter output: opencl, 640x360 (1536).
+[scale_opencl @ 0000024022eabf00] Filter input: opencl, 640x360 (1536).
+[AVHWFramesContext @ 0000024022fe4880] Map D3D11 texture 23 to OpenCL.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.023     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(AV1OutputMode), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.023     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreH264Impl::QueryOutput() End: frame pts=1 outputFrames=2 outputBufferSize=5581
+[Parsed_scale_opencl_2 @ 0000024023d9f980] Run kernel scale_builtin (320 x 180).
+[scale_opencl @ 0000024022eabf00] Filter output: opencl, 640x360 (1536).
+[hwmap @ 0000024013141bc0] Filter input: opencl, 640x360 (1536).
+[hwmap @ 0000024013141bc0] Filter output: d3d11, 640x360 (1536).
+[out#0/null @ 0000024022162c40] sq: send 0 ts 0.16
+[out#0/null @ 0000024022162c40] sq: receive 0 ts 0.16 queue head 0 ts 0.16
+[hwmap @ 0000024013140880] Filter input: d3d11, 640x360 (2048).
+[AVHWFramesContext @ 0000024022fe5480] Map D3D11 texture 18 to OpenCL.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.024     7168 [AMFEncoderCoreImpl]   Debug: AMFEncoderCoreImpl::SubmitInput_Start() : format (NV12), memory (DX11), width (640), height (360)
+[h264 @ 00000240243aa040] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.024     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1RateControlSkipFrameEnable), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.024     7168 [AMFEncoderCoreImpl]   Debug: ParamType 0!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.024     7168 [AMFEncoderCoreAv1]   Debug: SetBufferProps: Frame Type:2 @frame 2
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.024     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::QueryOutput()
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.024     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1PictureManagementMethod), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.024     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback taskId = 3.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.024     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback status = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.024     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback isFirst = 1.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.024     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback isLast = 1.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.024     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback bitstreamoffset = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.024     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback bitstreamSize = 7226.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.024     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpEncrypted = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.024     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpInputCtrHi = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.024     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpInputCtrLo = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.025     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback fillerDataSize = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.025     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1FrameRate), 25,1
+[hwmap @ 0000024013140880] Filter output: opencl, 640x360 (2048).
+[scale_opencl @ 0000024022eabf00] Filter input: opencl, 640x360 (2048).
+[AVHWFramesContext @ 0000024022fe4880] Map D3D11 texture 22 to OpenCL.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.025     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(AV1OutputMode), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.025     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreH264Impl::QueryOutput() End: frame pts=2 outputFrames=3 outputBufferSize=7226
+[Parsed_scale_opencl_2 @ 0000024023d9f980] Run kernel scale_builtin (320 x 180).
+[scale_opencl @ 0000024022eabf00] Filter output: opencl, 640x360 (2048).
+[hwmap @ 0000024013141bc0] Filter input: opencl, 640x360 (2048).
+[hwmap @ 0000024013141bc0] Filter output: d3d11, 640x360 (2048).
+[out#0/null @ 0000024022162c40] sq: send 0 ts 0.2
+[out#0/null @ 0000024022162c40] sq: receive 0 ts 0.2 queue head 0 ts 0.2
+[hwmap @ 0000024013140880] Filter input: d3d11, 640x360 (2560).
+[AVHWFramesContext @ 0000024022fe5480] Map D3D11 texture 14 to OpenCL.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.026     7168 [AMFEncoderCoreImpl]   Debug: AMFEncoderCoreImpl::SubmitInput_Start() : format (NV12), memory (DX11), width (640), height (360)
+[h264 @ 0000024023133140] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.026     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1RateControlSkipFrameEnable), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.026     7168 [AMFEncoderCoreImpl]   Debug: ParamType 0!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.026     7168 [AMFEncoderCoreAv1]   Debug: SetBufferProps: Frame Type:2 @frame 3
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.026     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::QueryOutput()
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.026     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1PictureManagementMethod), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.026     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback taskId = 4.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.026     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback status = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.026     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback isFirst = 1.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.026     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback isLast = 1.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.026     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback bitstreamoffset = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.026     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback bitstreamSize = 8576.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.026     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpEncrypted = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.026     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpInputCtrHi = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.026     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpInputCtrLo = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.026     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback fillerDataSize = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.026     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1FrameRate), 25,1
+[hwmap @ 0000024013140880] Filter output: opencl, 640x360 (2560).
+[scale_opencl @ 0000024022eabf00] Filter input: opencl, 640x360 (2560).
+[AVHWFramesContext @ 0000024022fe4880] Map D3D11 texture 21 to OpenCL.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.027     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(AV1OutputMode), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.027     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreH264Impl::QueryOutput() End: frame pts=3 outputFrames=4 outputBufferSize=8576
+[Parsed_scale_opencl_2 @ 0000024023d9f980] Run kernel scale_builtin (320 x 180).
+[scale_opencl @ 0000024022eabf00] Filter output: opencl, 640x360 (2560).
+[hwmap @ 0000024013141bc0] Filter input: opencl, 640x360 (2560).
+[hwmap @ 0000024013141bc0] Filter output: d3d11, 640x360 (2560).
+[out#0/null @ 0000024022162c40] sq: send 0 ts 0.24
+[out#0/null @ 0000024022162c40] sq: receive 0 ts 0.24 queue head 0 ts 0.24
+[hwmap @ 0000024013140880] Filter input: d3d11, 640x360 (3072).
+[AVHWFramesContext @ 0000024022fe5480] Map D3D11 texture 15 to OpenCL.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.027     7168 [AMFEncoderCoreImpl]   Debug: AMFEncoderCoreImpl::SubmitInput_Start() : format (NV12), memory (DX11), width (640), height (360)
+[h264 @ 00000240243aa040] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.028     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1RateControlSkipFrameEnable), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.028     7168 [AMFEncoderCoreImpl]   Debug: ParamType 0!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.028     7168 [AMFEncoderCoreAv1]   Debug: SetBufferProps: Frame Type:2 @frame 4
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.028     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::QueryOutput()
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.028     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1PictureManagementMethod), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.028     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback taskId = 5.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.028     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback status = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.028     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback isFirst = 1.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.028     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback isLast = 1.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.028     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback bitstreamoffset = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.028     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback bitstreamSize = 11935.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.028     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpEncrypted = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.028     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpInputCtrHi = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.028     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpInputCtrLo = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.028     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback fillerDataSize = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.029     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1FrameRate), 25,1
+[hwmap @ 0000024013140880] Filter output: opencl, 640x360 (3072).
+[scale_opencl @ 0000024022eabf00] Filter input: opencl, 640x360 (3072).
+[AVHWFramesContext @ 0000024022fe4880] Map D3D11 texture 23 to OpenCL.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.029     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(AV1OutputMode), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.029     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreH264Impl::QueryOutput() End: frame pts=4 outputFrames=5 outputBufferSize=11935
+[Parsed_scale_opencl_2 @ 0000024023d9f980] Run kernel scale_builtin (320 x 180).
+[scale_opencl @ 0000024022eabf00] Filter output: opencl, 640x360 (3072).
+[hwmap @ 0000024013141bc0] Filter input: opencl, 640x360 (3072).
+[hwmap @ 0000024013141bc0] Filter output: d3d11, 640x360 (3072).
+[out#0/null @ 0000024022162c40] sq: send 0 ts 0.28
+[out#0/null @ 0000024022162c40] sq: receive 0 ts 0.28 queue head 0 ts 0.28
+[hwmap @ 0000024013140880] Filter input: d3d11, 640x360 (3584).
+[AVHWFramesContext @ 0000024022fe5480] Map D3D11 texture 21 to OpenCL.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.030     7168 [AMFEncoderCoreImpl]   Debug: AMFEncoderCoreImpl::SubmitInput_Start() : format (NV12), memory (DX11), width (640), height (360)
+[h264 @ 0000024023133140] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[hwmap @ 0000024013140880] Filter output: opencl, 640x360 (3584).
+[scale_opencl @ 0000024022eabf00] Filter input: opencl, 640x360 (3584).
+[AVHWFramesContext @ 0000024022fe4880] Map D3D11 texture 22 to OpenCL.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.030     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1RateControlSkipFrameEnable), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.030     7168 [AMFEncoderCoreImpl]   Debug: ParamType 0!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.030     7168 [AMFEncoderCoreAv1]   Debug: SetBufferProps: Frame Type:2 @frame 5
+[Parsed_scale_opencl_2 @ 0000024023d9f980] Run kernel scale_builtin (320 x 180).
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.031     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::QueryOutput()
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.031     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1PictureManagementMethod), 1
+[scale_opencl @ 0000024022eabf00] Filter output: opencl, 640x360 (3584).
+[hwmap @ 0000024013141bc0] Filter input: opencl, 640x360 (3584).
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.031     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback taskId = 6.
+[hwmap @ 0000024013141bc0] Filter output: d3d11, 640x360 (3584).
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.031     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback status = 0.
+[out#0/null @ 0000024022162c40] sq: send 0 ts 0.32
+[out#0/null @ 0000024022162c40] sq: receive 0 ts 0.32 queue head 0 ts 0.32
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.031     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback isFirst = 1.
+[hwmap @ 0000024013140880] Filter input: d3d11, 640x360 (4096).
+[AVHWFramesContext @ 0000024022fe5480] Map D3D11 texture 16 to OpenCL.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.031     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback isLast = 1.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.031     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback bitstreamoffset = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.031     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback bitstreamSize = 10920.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.031     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpEncrypted = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.031     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpInputCtrHi = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.031     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpInputCtrLo = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.031     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback fillerDataSize = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.031     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1FrameRate), 25,1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.031     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(AV1OutputMode), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.031     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreH264Impl::QueryOutput() End: frame pts=5 outputFrames=6 outputBufferSize=10920
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.031     7168 [AMFEncoderCoreImpl]   Debug: AMFEncoderCoreImpl::SubmitInput_Start() : format (NV12), memory (DX11), width (640), height (360)
+[h264 @ 00000240243aa040] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 2
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.032     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1RateControlSkipFrameEnable), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.032     7168 [AMFEncoderCoreImpl]   Debug: ParamType 0!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.032     7168 [AMFEncoderCoreAv1]   Debug: SetBufferProps: Frame Type:2 @frame 6
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.032     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::QueryOutput()
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.032     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1PictureManagementMethod), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.032     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback taskId = 7.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.032     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback status = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.032     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback isFirst = 1.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.032     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback isLast = 1.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.032     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback bitstreamoffset = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.032     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback bitstreamSize = 11851.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.032     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpEncrypted = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.032     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpInputCtrHi = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.032     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpInputCtrLo = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.032     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback fillerDataSize = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.032     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1FrameRate), 25,1
+[hwmap @ 0000024013140880] Filter output: opencl, 640x360 (4096).
+[scale_opencl @ 0000024022eabf00] Filter input: opencl, 640x360 (4096).
+[AVHWFramesContext @ 0000024022fe4880] Map D3D11 texture 21 to OpenCL.
+[Parsed_scale_opencl_2 @ 0000024023d9f980] Run kernel scale_builtin (320 x 180).
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.032     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(AV1OutputMode), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.032     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreH264Impl::QueryOutput() End: frame pts=6 outputFrames=7 outputBufferSize=11851
+[scale_opencl @ 0000024022eabf00] Filter output: opencl, 640x360 (4096).
+[hwmap @ 0000024013141bc0] Filter input: opencl, 640x360 (4096).
+[hwmap @ 0000024013141bc0] Filter output: d3d11, 640x360 (4096).
+[out#0/null @ 0000024022162c40] sq: send 0 ts 0.36
+[out#0/null @ 0000024022162c40] sq: receive 0 ts 0.36 queue head 0 ts 0.36
+[hwmap @ 0000024013140880] Filter input: d3d11, 640x360 (4608).
+[AVHWFramesContext @ 0000024022fe5480] Map D3D11 texture 19 to OpenCL.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.033     7168 [AMFEncoderCoreImpl]   Debug: AMFEncoderCoreImpl::SubmitInput_Start() : format (NV12), memory (DX11), width (640), height (360)
+[h264 @ 0000024023133140] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.033     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1RateControlSkipFrameEnable), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.033     7168 [AMFEncoderCoreImpl]   Debug: ParamType 0!
+[hwmap @ 0000024013140880] Filter output: opencl, 640x360 (4608).
+[scale_opencl @ 0000024022eabf00] Filter input: opencl, 640x360 (4608).
+[AVHWFramesContext @ 0000024022fe4880] Map D3D11 texture 23 to OpenCL.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.033     7168 [AMFEncoderCoreAv1]   Debug: SetBufferProps: Frame Type:2 @frame 7
+[Parsed_scale_opencl_2 @ 0000024023d9f980] Run kernel scale_builtin (320 x 180).
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.033     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::QueryOutput()
+[scale_opencl @ 0000024022eabf00] Filter output: opencl, 640x360 (4608).
+[hwmap @ 0000024013141bc0] Filter input: opencl, 640x360 (4608).
+[hwmap @ 0000024013141bc0] Filter output: d3d11, 640x360 (4608).
+[out#0/null @ 0000024022162c40] sq: send 0 ts 0.4
+[out#0/null @ 0000024022162c40] sq: 0 frames_max 10 reached
+[out#0/null @ 0000024022162c40] sq: finish 0; head ts 0.4
+[out#0/null @ 0000024022162c40] sq: finish queue
+[out#0/null @ 0000024022162c40] sq: receive 0 ts 0.4 queue head 0 ts 0.4
+[out#0/null @ 0000024022162c40] sq: 0 EOF
+[out#0/null @ 0000024022162c40] sq: finish queue
+[hwmap @ 0000024013140880] Filter input: d3d11, 640x360 (5120).
+[AVHWFramesContext @ 0000024022fe5480] Map D3D11 texture 17 to OpenCL.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.033     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1PictureManagementMethod), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.033     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback taskId = 8.
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 00000240222b3c00] EOF while reading input
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 00000240222b3c00] Terminating thread with return code 0 (success)
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.033     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback status = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.033     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback isFirst = 1.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.033     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback isLast = 1.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.034     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback bitstreamoffset = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.034     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback bitstreamSize = 12129.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.034     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpEncrypted = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.034     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpInputCtrHi = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.034     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpInputCtrLo = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.034     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback fillerDataSize = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.034     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1FrameRate), 25,1
+[h264 @ 00000240243aa040] nal_unit_type: 1(Coded slice of a non-IDR picture), nal_ref_idc: 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.034     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(AV1OutputMode), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.034     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreH264Impl::QueryOutput() End: frame pts=7 outputFrames=8 outputBufferSize=12129
+[hwmap @ 0000024013140880] Filter output: opencl, 640x360 (5120).
+[scale_opencl @ 0000024022eabf00] Filter input: opencl, 640x360 (5120).
+[AVHWFramesContext @ 0000024022fe4880] Map D3D11 texture 22 to OpenCL.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.034     7168 [AMFEncoderCoreImpl]   Debug: AMFEncoderCoreImpl::SubmitInput_Start() : format (NV12), memory (DX11), width (640), height (360)
+[Parsed_scale_opencl_2 @ 0000024023d9f980] Run kernel scale_builtin (320 x 180).
+[scale_opencl @ 0000024022eabf00] Filter output: opencl, 640x360 (5120).
+[hwmap @ 0000024013141bc0] Filter input: opencl, 640x360 (5120).
+[hwmap @ 0000024013141bc0] Filter output: d3d11, 640x360 (5120).
+[vf#0:0 @ 00000240222d15c0] All consumers returned EOF
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.035     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1RateControlSkipFrameEnable), false
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.035     7168 [AMFEncoderCoreImpl]   Debug: ParamType 0!
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.035     7168 [AMFEncoderCoreAv1]   Debug: SetBufferProps: Frame Type:2 @frame 8
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.035     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::QueryOutput()
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.035     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1PictureManagementMethod), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.035     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback taskId = 9.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.035     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback status = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.035     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback isFirst = 1.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.035     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback isLast = 1.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback bitstreamoffset = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback bitstreamSize = 12607.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpEncrypted = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpInputCtrHi = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpInputCtrLo = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback fillerDataSize = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1FrameRate), 25,1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(AV1OutputMode), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreH264Impl::QueryOutput() End: frame pts=8 outputFrames=9 outputBufferSize=12607
+[vost#0:0/av1_amf @ 00000240237d75c0] [enc:av1_amf @ 000002402229c780] Encoder thread received EOF
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::QueryOutput()
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(Av1PictureManagementMethod), 1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback taskId = 10.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback status = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback isFirst = 1.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback isLast = 1.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback bitstreamoffset = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback bitstreamSize = 11630.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpEncrypted = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpInputCtrHi = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback hdcpInputCtrLo = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::GetBitStreamSize() - ECAV1UVEReadFeedback fillerDataSize = 0.
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.036     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(TL0.QL0.Av1FrameRate), 25,1
+[AMF @ 0000024022ec99c0] AMFEncoderCoreImpl: 2026-10-21 16:46:03.037     7168 [AMFEncoderCoreImpl]   Debug: GetProperty(AV1OutputMode), 0
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.037     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreH264Impl::QueryOutput() End: frame pts=9 outputFrames=10 outputBufferSize=11630
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.037     7168 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::QueryOutput()
+[vost#0:0/av1_amf @ 00000240237d75c0] Terminating thread with return code 0 (success)
+[out#0/null @ 0000024022162c40] All streams finished
+[out#0/null @ 0000024022162c40] Terminating thread with return code 0 (success)
+[out#0/null @ 0000024022162c40] sq: 0 EOF
+[out#0/null @ 0000024022162c40] sq: finish queue
+[vf#0:0 @ 00000240222d15c0] Terminating thread with return code 0 (success)
+[vist#0:0/h264 @ 00000240222dc200] [dec:h264 @ 000002402312f700] Decoder returned EOF, finishing
+[vist#0:0/h264 @ 00000240222dc200] [dec:h264 @ 000002402312f700] Terminating thread with return code 0 (success)
+[out#0/null @ 0000024022162c40] Output file #0 (pipe:):
+[out#0/null @ 0000024022162c40]   Output stream #0:0 (video): 10 frames encoded; 10 packets muxed (99190 bytes);
+[out#0/null @ 0000024022162c40]   Total: 10 packets (99190 bytes) muxed
+[out#0/null @ 0000024022162c40] video:97KiB audio:0KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+frame=   10 fps=0.0 q=4.0 Lsize=N/A time=00:00:00.36 bitrate=N/A speed=1.23x elapsed=0:00:00.29
+[AVIOContext @ 0000024010fe24c0] Statistics: 177 bytes written, 0 seeks, 1 writeouts
+[AMF @ 0000024022ec99c0] AMFEncoderCoreAv1: 2026-10-21 16:46:03.047     7930 [AMFEncoderCoreAv1]   Debug: AMFEncoderCoreAv1Impl::Terminate()
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 00000240222b3c00] Input file #0 (C:\Users\fampc\Docker\Data\cache\hwprobe\fixtures\sha256_6de636530efd2f91f000e99b6b83ced56c06f804fb7e10b6a9a44916024695c0\h264_8bit.mp4):
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 00000240222b3c00]   Input stream #0:0 (video): 25 packets read (92514 bytes); 14 frames decoded; 0 decode errors;
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 00000240222b3c00]   Total: 25 packets (92514 bytes) demuxed
+[AVIOContext @ 000002401321d240] Statistics: 127538 bytes read, 2 seeks
+
+Exiting with exit code 0

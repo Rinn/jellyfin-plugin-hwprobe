@@ -29,7 +29,7 @@ Releases: run `release.yml` by hand (see `DEVELOPMENT.md`). Releases are immutab
 
 - Dev machine: macOS. Only VideoToolbox is exercisable here. ffmpeg at `/opt/homebrew/bin/ffmpeg` is not the binary the server uses; always report the resolved path and flag non-Jellyfin builds.
 - Real hardware: an Intel NAS (QSV over VAAPI) and an RTX 5080 Windows PC; see the NAS and Windows testing memories.
-- No AMD, AMF, or Rockchip hardware: ship those as argument-string tests plus recorded logs and report them `Untested`. Never imply a verdict that wasn't tested.
+- No AMD or Rockchip hardware: ship those as argument-string tests plus recorded logs and report them `Untested` until users' diagnostics confirm them (AMF, AMD VAAPI, and rkmpp so far; see Known limits). Never imply a verdict that wasn't tested.
 - Pinned argument strings: Linux in `LinuxDriftTests` (from recorded jellyfin-ffmpeg builds in `tests/Corpus/ffmpeg/`), Windows in `WindowsDriftTests` (blessed on the PC with `HWPROBE_BLESS`). Each runs only on its OS; re-bless when upstream changes.
 
 ## Consulting upstream Jellyfin source
@@ -107,6 +107,7 @@ The page should look and behave like a native Jellyfin dashboard page, stay calm
 - macOS has no power figures: IOReport is a private API whose CPU channels read 0 on macOS 27.
 - v4l2m2m is confirmed from a recorded Raspberry Pi run (`Using device /dev/videoN`), not yet through Jellyfin.
 - rkmpp is confirmed through Jellyfin on an RK3588S (Orange Pi 5B), full matrix, from users' diagnostics (`tests/Corpus/stderr`). jellyfin-ffmpeg's RKMPP encoder logs EAGAIN as "Failed to … queue: -11" at debug level, so those lines are in `StderrMarkers.Harmless`.
+- AMF is confirmed through Jellyfin on an RX 7700 XT (Windows, jellyfin-ffmpeg 8.1.3), full matrix, from a user's diagnostics (`tests/Corpus/stderr`). AMF's runtime warns "CreateEncodeService() not supported VCN instance 1!" in ffmpeg's debug log for AV1 and then encodes every frame, so that line is in `StderrMarkers.Harmless`. MPEG-2 and VC-1 fail there: D3D11VA can't set up, and ffmpeg crashes on the software fallback.
 - Page and CLI text are English only. Behaviour doesn't depend on locale: ffmpeg runs with `LC_ALL=C`, numbers are formatted and parsed invariantly, and the page reads structured fields rather than message text. `CultureScope` tests and `HWPROBE_LOCALE` in `container-plugin.sh` check it.
 - The busy check (`ProbeService.IsTranscoding`) skips direct play and remux, but a transcode that finished ahead of playback still blocks until playback stops: `TranscodeManager.OnFfMpegProcessExited` leaves the session's `TranscodingInfo` set, and Jellyfin has no API to list running jobs by session.
 

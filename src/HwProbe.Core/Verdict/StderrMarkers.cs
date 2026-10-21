@@ -87,7 +87,9 @@ public static class StderrMarkers
     /// (libavcodec/v4l2_m2m.c), both observed with ffmpeg 7.1.5 on a Raspberry Pi's bcm2835-codec.
     /// jellyfin-ffmpeg's RKMPP encoder logging EAGAIN (-11) at debug level when its output queue is empty or its
     /// input queue full, then trying again (debian/patches/0042, rkmppenc.c); the first observed with
-    /// jellyfin-ffmpeg 8.1.3 on an RK3588S.
+    /// jellyfin-ffmpeg 8.1.3 on an RK3588S. AMF's runtime warning, in its debug log, that a VCN instance has no encode
+    /// service for the codec, after which the encode carries on; an AMF encoder that can't open fails the run, as it has
+    /// no software path. Observed for av1_amf with jellyfin-ffmpeg 8.1.3 on an RX 7700 XT.
     /// </remarks>
     public static readonly IReadOnlyList<string> Harmless =
     [
@@ -98,6 +100,7 @@ public static class StderrMarkers
         "v4l2 output format not supported",
         "Failed to get packet from encoder output queue: -11",
         "Failed to put frame to encoder input queue: -11",
+        "CreateEncodeService() not supported VCN instance",
     ];
 
     /// <summary>Lines ffmpeg prints as a failure spreads through its threads and outputs, which name no cause, so a failure note skips them for the line that does.</summary>
