@@ -26,7 +26,6 @@ jobs:
     timeout-minutes: 5
     outputs:
       source: ${{ steps.diff.outputs.source }}
-      os: ${{ steps.diff.outputs.os }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -38,12 +37,6 @@ jobs:
         env:
           BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: |
-          # macOS and Windows ran in the pull request; Linux keeps the badge current.
-          if [ "$GITHUB_EVENT_NAME" = push ]; then
-            echo 'os=["ubuntu-latest"]' >> "$GITHUB_OUTPUT"
-          else
-            echo 'os=["ubuntu-latest","macos-latest","windows-latest"]' >> "$GITHUB_OUTPUT"
-          fi
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
             echo "source=true" >> "$GITHUB_OUTPUT"; exit 0
           fi
@@ -56,17 +49,16 @@ jobs:
     needs: changes
     if: needs.changes.outputs.source == 'true'
     strategy:
-      fail-fast: false
       matrix:
-        os: ${{ fromJSON(needs.changes.outputs.os) }}
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
-    env:
+    env: &build-test-env
       JELLYFIN_FFMPEG_VERSION: 8.1.3-1
-    defaults:
+    defaults: &build-test-defaults
       run:
         shell: bash
-    steps:
+    steps: &build-test-steps
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
@@ -133,6 +125,21 @@ jobs:
           name: hwprobe-report-${{ matrix.os }}
           path: hwprobe-report.json
 
+  # macOS and Windows can queue for a long time, so the CI check doesn't wait for them and pushes to main skip them; Linux keeps the badge current.
+  build-test-other:
+    name: Build and test (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.source == 'true' && github.event_name != 'push'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env: *build-test-env
+    defaults: *build-test-defaults
+    steps: *build-test-steps
+
   # Separate from build-test so the format check's own compile runs in parallel with the build.
   lint:
     name: Lint
@@ -194,7 +201,7 @@ jobs:
           name: hwprobe-dist
           path: artifacts/dist
 
-  # The one check branch rules require: it passes when every job passed or was skipped for a documentation-only change.
+  # The one check branch rules require: it passes when every job but macOS and Windows passed or was skipped for a documentation-only change.
   ci:
     name: CI
     needs: [changes, build-test, lint, editorconfig, package]
