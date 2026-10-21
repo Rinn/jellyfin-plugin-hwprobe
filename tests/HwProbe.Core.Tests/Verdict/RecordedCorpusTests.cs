@@ -8,7 +8,7 @@ using Xunit;
 
 namespace Jellyfin.Plugin.HwProbe.Core.Tests.Verdict;
 
-/// <summary>Real ffmpeg output in <c>tests/Corpus/stderr</c>: Intel Apollo Lake (iHD 26.3.5, jellyfin-ffmpeg 8.1.3), RTX 5080 (jellyfin-ffmpeg 8.1.2 in Jellyfin 12.1), Intel UHD 630 with AMD RX 480 and Rockchip RK3588S (jellyfin-ffmpeg 8.1.3 in Jellyfin 12.2), Raspberry Pi V4L2, macOS VideoToolbox, and hosts with no hardware.</summary>
+/// <summary>Real ffmpeg output in <c>tests/Corpus/stderr</c>: Intel Apollo Lake (iHD 26.3.5, jellyfin-ffmpeg 8.1.3), RTX 5080 (jellyfin-ffmpeg 8.1.2 in Jellyfin 12.1), Intel UHD 630 with AMD RX 480, Rockchip RK3588S, and AMD RX 7700 XT on Windows (jellyfin-ffmpeg 8.1.3 in Jellyfin 12.2), Raspberry Pi V4L2, macOS VideoToolbox, and hosts with no hardware.</summary>
 [Trait("Category", "Unit")]
 public sealed class RecordedCorpusTests
 {
@@ -34,6 +34,7 @@ public sealed class RecordedCorpusTests
     [InlineData("stderr/jellyfin-linux-rkmpp-vp8-unsupported.txt", HwType.rkmpp, "rkmpp", 187, 0, ProbeOutcome.CodecUnsupported)]
     [InlineData("stderr/jellyfin-linux-vaapi-amd-smoke-pass.txt", HwType.vaapi, "vaapi", 0, MatrixCatalog.Frames, ProbeOutcome.Pass)]
     [InlineData("stderr/jellyfin-linux-vaapi-amd-vulkan-smoke-pass.txt", HwType.vaapi, "vaapi", 0, MatrixCatalog.Frames, ProbeOutcome.Pass)]
+    [InlineData("stderr/jellyfin-windows-amf-av1-encode-pass.txt", HwType.amf, "d3d11va", 0, MatrixCatalog.Frames, ProbeOutcome.Pass)]
     [InlineData("stderr/jellyfin-linux-v4l2m2m-no-device.txt", HwType.v4l2m2m, null, 234, 0, ProbeOutcome.DeviceUnavailable)]
     [InlineData("stderr/v4l2m2m-bcm2835-h264-pass.txt", HwType.v4l2m2m, null, 0, MatrixCatalog.Frames, ProbeOutcome.Pass)]
     [InlineData("stderr/videotoolbox-h264-pass.txt", HwType.videotoolbox, null, 0, MatrixCatalog.Frames, ProbeOutcome.Pass)]
@@ -103,6 +104,7 @@ public sealed class RecordedCorpusTests
     [InlineData("stderr/jellyfin-linux-v4l2m2m-no-device.txt", StderrMarkers.V4l2Device, false)]
     [InlineData("stderr/videotoolbox-mjpeg-pass.txt", "is not supported on this device", true)]
     [InlineData("stderr/jellyfin-linux-rkmpp-rk3588s-smoke-pass.txt", "Failed to get packet from encoder output queue: -11", true)]
+    [InlineData("stderr/jellyfin-windows-amf-av1-encode-pass.txt", "CreateEncodeService() not supported VCN instance 1!", true)]
     [InlineData("stderr/jellyfin-linux-vaapi-amd-vulkan-smoke-pass.txt", "with argument vulkan=vk@dr", true)]
     [InlineData("stderr/jellyfin-linux-vaapi-amd-smoke-pass.txt", "with argument vulkan=vk@dr", false)]
     public void RecordedLines(string file, string line, bool present) =>
