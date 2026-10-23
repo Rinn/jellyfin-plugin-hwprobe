@@ -72,7 +72,7 @@ jobs:
       fail-fast: false
       matrix:
         # The minimum supported version (Jellyfin.Controller in Directory.Packages.props), and the newest release when it differs.
-        jellyfin: ["12.2"]
+        jellyfin: ["12.2", "12.3"]
         # copy: DLLs copied into the plugins folder. repository: installed from a plugin repository, as users do.
         install: [copy, repository]
     runs-on: ubuntu-latest
