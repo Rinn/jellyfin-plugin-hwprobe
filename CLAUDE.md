@@ -31,6 +31,7 @@ Releases: run `release.yml` by hand (see `DEVELOPMENT.md`). Releases are immutab
 - Real hardware: an Intel NAS (QSV over VAAPI) and an RTX 5080 Windows PC; see the NAS and Windows testing memories.
 - No AMD or Rockchip hardware: ship those as argument-string tests plus recorded logs and report them `Untested` until users' diagnostics confirm them (AMF, AMD VAAPI, and rkmpp so far; see Known limits). Never imply a verdict that wasn't tested.
 - Pinned argument strings: Linux in `LinuxDriftTests` (from recorded jellyfin-ffmpeg builds in `tests/Corpus/ffmpeg/`), Windows in `WindowsDriftTests` (blessed on the PC with `HWPROBE_BLESS`). Each runs only on its OS; re-bless when upstream changes.
+- Jellyfin versions: 12.2 is the minimum (`Jellyfin.Controller` in `Directory.Packages.props`, `targetAbi` in `build.yaml`), and upstream citations are v12.2. 12.3 is supported too: no cited symbol changed (the one cited file that did, `MediaEncoder.cs`, changed only `ExtractImageInternal`'s 3D filter), and its image bundles the same jellyfin-ffmpeg (8.1.3). For a new release, compare it with the cited version (`gh api 'repos/jellyfin/jellyfin/compare/v12.2...v12.3'`, and the same for jellyfin-web), check its image's jellyfin-ffmpeg version, and make it the newest version in the plugin e2e matrix in `release.yml`.
 
 ## Consulting upstream Jellyfin source
 
