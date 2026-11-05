@@ -3,6 +3,14 @@
     "guid": "6c1f2f6e-3a4b-4d8e-9f2a-7b5c8d1e0a93",
     "versions": [
       {
+        "version": "1.4.10.0",
+        "changelog": "- Tested with Jellyfin 12.4.\n- .NET security update for the command-line tool.",
+        "targetAbi": "12.2.0.0",
+        "sourceUrl": "https://github.com/Rinn/jellyfin-plugin-hwprobe/releases/download/v1.4.10/hwprobe-plugin_1.4.10.0.zip",
+        "checksum": "4ea2c18b43b5629cc59c2175160b7b5c",
+        "timestamp": "2026-11-05T16:12:38Z"
+      },
+      {
         "version": "1.4.9.0",
         "changelog": "- AV1 encoding through AMD AMF is recognised as hardware instead of reported as software.\n- AMD AMF results are no longer marked as unvalidated.",
         "targetAbi": "12.2.0.0",
